@@ -1,10 +1,12 @@
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { theme } from '@/constants/theme';
+import { designTokens, applyShadow } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Bell,
   Bookmark,
@@ -106,10 +108,10 @@ export default function HomeScreen() {
         <Text style={styles.brandName}>troodie</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/explore')}>
-            <Search size={24} color="#333" />
+            <Search size={24} color={designTokens.colors.textDark} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
-            <Bell size={24} color="#333" />
+            <Bell size={24} color={designTokens.colors.textDark} />
           </TouchableOpacity>
         </View>
       </View>
@@ -118,7 +120,10 @@ export default function HomeScreen() {
   );
 
   const renderWelcomeBanner = () => (
-    <View style={styles.welcomeBanner}>
+    <LinearGradient
+      colors={designTokens.gradients.welcomeBanner}
+      style={styles.welcomeBanner}
+    >
       <Text style={styles.welcomeTitle}>Welcome to troodie!</Text>
       <Text style={styles.welcomeDescription}>
         Discover amazing restaurants and build your food network
@@ -129,7 +134,7 @@ export default function HomeScreen() {
       >
         <Text style={styles.welcomeCTAText}>Get Started</Text>
       </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 
   const renderNetworkBuilding = () => (
@@ -294,9 +299,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.md,
+    paddingBottom: designTokens.spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.colors.borderLight,
   },
   headerTop: {
     flexDirection: 'row',
@@ -304,13 +311,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandName: {
-    fontSize: 28,
-    fontFamily: 'Poppins_700Bold',
-    color: '#333',
+    ...designTokens.typography.brandHeading,
+    color: designTokens.colors.textDark,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 16,
+    gap: designTokens.spacing.lg,
   },
   headerButton: {
     width: 40,
@@ -319,239 +325,220 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tagline: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginTop: 4,
+    color: designTokens.colors.textMedium,
+    marginTop: designTokens.spacing.xs,
   },
   welcomeBanner: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 24,
-    backgroundColor: 'rgba(255, 173, 39, 0.1)',
-    borderRadius: 16,
+    marginHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.xxl,
+    padding: designTokens.spacing.xxl,
+    borderRadius: designTokens.borderRadius.lg,
     alignItems: 'center',
   },
   welcomeTitle: {
-    fontSize: 24,
-    fontFamily: 'Poppins_700Bold',
-    color: '#333',
-    marginBottom: 8,
+    ...designTokens.typography.welcomeTitle,
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.sm,
   },
   welcomeDescription: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    ...designTokens.typography.bodyRegular,
+    color: designTokens.colors.textMedium,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: designTokens.spacing.lg,
   },
   welcomeCTA: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.xxl,
+    paddingVertical: designTokens.spacing.md,
+    borderRadius: designTokens.borderRadius.xxl,
   },
   welcomeCTAText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#FFFFFF',
+    ...designTokens.typography.bodyMedium,
+    color: designTokens.colors.white,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: designTokens.spacing.xxxl,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    ...designTokens.typography.sectionTitle,
+    color: designTokens.colors.textDark,
   },
   seeAll: {
-    fontSize: 14,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
+    color: designTokens.colors.primaryOrange,
   },
   networkCards: {
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: designTokens.spacing.lg,
+    gap: designTokens.spacing.md,
   },
   networkCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderRadius: designTokens.borderRadius.md,
+    padding: designTokens.spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    ...applyShadow('card'),
   },
   networkCardIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: theme.colors.primary + '20',
+    backgroundColor: designTokens.colors.primaryOrange + '20',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: designTokens.spacing.lg,
   },
   networkCardContent: {
     flex: 1,
   },
   networkCardTitle: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    ...designTokens.typography.bodyMedium,
+    color: designTokens.colors.textDark,
     marginBottom: 2,
   },
   networkCardDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 4,
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textMedium,
+    marginBottom: designTokens.spacing.xs,
   },
   networkCardBenefit: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
+    color: designTokens.colors.primaryOrange,
   },
   networkCardCTA: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.xl,
   },
   networkCardCTAText: {
-    fontSize: 14,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   personaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0F0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    backgroundColor: designTokens.colors.backgroundGray,
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.xl,
+    gap: designTokens.spacing.sm,
   },
   personaEmoji: {
     fontSize: 16,
   },
   personaName: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: '#666',
+    color: designTokens.colors.textMedium,
   },
   horizontalScroll: {
-    paddingLeft: 20,
+    paddingLeft: designTokens.spacing.lg,
   },
   categoryCard: {
     width: 200,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.md,
+    padding: designTokens.spacing.lg,
+    marginRight: designTokens.spacing.md,
+    ...applyShadow('card'),
   },
   categoryIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: designTokens.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: designTokens.spacing.md,
   },
   categoryName: {
-    fontSize: 16,
+    ...designTokens.typography.bodyMedium,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 4,
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.xs,
   },
   categoryDescription: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 8,
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+    marginBottom: designTokens.spacing.sm,
   },
   categoryCount: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
-    marginBottom: 12,
+    color: designTokens.colors.primaryOrange,
+    marginBottom: designTokens.spacing.md,
   },
   categoryButton: {
-    backgroundColor: '#F0F0F0',
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: designTokens.colors.backgroundGray,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.md,
     alignItems: 'center',
   },
   categoryButtonText: {
-    fontSize: 14,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#333',
+    color: designTokens.colors.textDark,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 40,
+    paddingVertical: designTokens.spacing.xxxl,
+    paddingHorizontal: designTokens.spacing.xxl,
+    marginHorizontal: designTokens.spacing.lg,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: designTokens.colors.borderLight,
+    borderRadius: designTokens.borderRadius.lg,
   },
   emptyStateIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: designTokens.colors.backgroundLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: designTokens.spacing.lg,
   },
   emptyStateTitle: {
-    fontSize: 18,
+    ...designTokens.typography.cardTitle,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 8,
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.sm,
     textAlign: 'center',
   },
   emptyStateDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textMedium,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: designTokens.spacing.lg,
   },
   emptyStateCTA: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.xxl,
+    paddingVertical: designTokens.spacing.md,
+    borderRadius: designTokens.borderRadius.xxl,
   },
   emptyStateCTAText: {
-    fontSize: 14,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   placeholderText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#999',
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textLight,
     textAlign: 'center',
-    paddingVertical: 32,
+    paddingVertical: designTokens.spacing.xxxl,
   },
   liveIndicator: {
     flexDirection: 'row',
@@ -570,24 +557,24 @@ const styles = StyleSheet.create({
     color: '#FF4444',
   },
   trendingCard: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.lg,
   },
   trendingHighlights: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    gap: designTokens.spacing.sm,
+    marginTop: designTokens.spacing.sm,
   },
   highlightBadge: {
-    backgroundColor: '#F0F0F0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    backgroundColor: designTokens.colors.backgroundGray,
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.lg,
   },
   highlightText: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: '#666',
+    color: designTokens.colors.textMedium,
   },
   quickActions: {
     position: 'absolute',
@@ -598,24 +585,17 @@ const styles = StyleSheet.create({
   quickActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.md,
+    borderRadius: designTokens.borderRadius.xxl,
+    gap: designTokens.spacing.sm,
+    ...applyShadow('button'),
   },
   quickActionText: {
-    fontSize: 14,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   bottomPadding: {
     height: 100,

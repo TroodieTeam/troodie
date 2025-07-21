@@ -1,5 +1,6 @@
 import { ExplorePostCard } from '@/components/cards/ExplorePostCard';
 import { theme } from '@/constants/theme';
+import { designTokens } from '@/constants/designTokens';
 import { ExploreFilter, ExplorePost } from '@/types/core';
 import { Search, SlidersHorizontal } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -183,7 +184,7 @@ export default function ExploreScreen() {
       <Text style={styles.subtitle}>Discover through your network</Text>
       
       <View style={styles.searchContainer}>
-        <Search size={20} color="#999" style={styles.searchIcon} />
+        <Search size={20} color={designTokens.colors.textLight} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search restaurants, friends, or cuisines..."
@@ -192,7 +193,7 @@ export default function ExploreScreen() {
           placeholderTextColor="#999"
         />
         <TouchableOpacity style={styles.filterButton}>
-          <SlidersHorizontal size={20} color="#333" />
+          <SlidersHorizontal size={20} color={designTokens.colors.textDark} />
         </TouchableOpacity>
       </View>
 
@@ -244,7 +245,7 @@ export default function ExploreScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
+            tintColor={designTokens.colors.primaryOrange}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -259,77 +260,65 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 16,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.md,
+    paddingBottom: designTokens.spacing.lg,
   },
   title: {
-    fontSize: 28,
-    fontFamily: 'Poppins_700Bold',
-    color: '#333',
-    marginBottom: 4,
+    ...designTokens.typography.screenTitle,
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 16,
+    ...designTokens.typography.bodyRegular,
+    color: designTokens.colors.textMedium,
+    marginBottom: designTokens.spacing.lg,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    backgroundColor: designTokens.colors.backgroundGray,
+    borderRadius: designTokens.borderRadius.md,
+    paddingHorizontal: designTokens.spacing.lg,
     height: 48,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    marginBottom: 16,
+    marginBottom: designTokens.spacing.md,
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: designTokens.spacing.md,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#333',
+    ...designTokens.typography.inputText,
+    color: designTokens.colors.textDark,
   },
   filterButton: {
-    padding: 8,
-    marginLeft: 8,
+    padding: designTokens.spacing.sm,
+    marginLeft: designTokens.spacing.sm,
   },
   filtersContainer: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+    marginHorizontal: -designTokens.spacing.lg,
+    paddingHorizontal: designTokens.spacing.lg,
   },
   filtersContent: {
     paddingRight: 40,
-    gap: 8,
+    gap: designTokens.spacing.sm,
   },
   filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F0',
-    marginRight: 8,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.full,
+    backgroundColor: designTokens.colors.backgroundGray,
+    marginRight: designTokens.spacing.sm,
   },
   filterPillActive: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: designTokens.colors.primaryOrange,
   },
   filterText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#666',
+    ...designTokens.typography.filterText,
+    color: designTokens.colors.textMediumDark,
   },
   filterTextActive: {
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   gridView: {
     flex: 1,
