@@ -9,6 +9,7 @@ export interface Profile {
   name?: string;
   bio?: string;
   avatar_url?: string;
+  profile_image_url?: string; // Add this property
   persona?: string;
   is_verified?: boolean;
   is_restaurant?: boolean;
@@ -21,16 +22,10 @@ export interface Profile {
   following_count?: number;
   saves_count?: number;
   boards_count?: number;
-  // Additional fields we can add later
+  reviews_count?: number; // Add this property
+  // Additional fields we might use later
   email?: string;
   location?: string;
-  website?: string;
-  instagram_handle?: string;
-  email_preferences?: {
-    marketing: boolean;
-    social: boolean;
-    notifications: boolean;
-  };
 }
 
 class ProfileService {
@@ -40,7 +35,7 @@ class ProfileService {
         .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to handle no rows
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -77,39 +72,85 @@ class ProfileService {
 
   async uploadProfileImage(userId: string, imageUri: string): Promise<string> {
     try {
-      // Generate unique filename
-      const fileName = `${userId}/profile-${Date.now()}.jpg`;
+      console.log('Starting profile image upload for user:', userId);
+      console.log('Image URI:', imageUri);
+      
+      // Generate unique filename with more randomness
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substr(2, 9);
+      const fileName = `${userId}/profile-${timestamp}-${randomId}.jpg`;
+      console.log('Generated filename:', fileName);
       
       // Read the image as blob
       const response = await fetch(imageUri);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} - ${response.statusText}`);
+      }
       const blob = await response.blob();
+      console.log('Image blob created, size:', blob.size, 'bytes');
+      
+      if (blob.size === 0) {
+        throw new Error('Image blob is empty - invalid image data');
+      }
+
+      // Test storage bucket access first
+      console.log('Testing storage bucket access...');
+      const { data: bucketData, error: bucketError } = await supabase.storage
+        .from('avatars')
+        .list('', { limit: 1 });
+      
+      if (bucketError) {
+        console.error('Storage bucket access error:', bucketError);
+        throw new Error(`Storage bucket not accessible: ${bucketError.message}`);
+      }
+      
+      console.log('Storage bucket accessible, proceeding with upload...');
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('avatars')
         .upload(fileName, blob, {
           contentType: 'image/jpeg',
-          upsert: true
+          upsert: true // Use upsert to overwrite existing files
         });
 
       if (error) {
-        console.error('Error uploading image:', error);
+        console.error('Error uploading image to storage:', error);
         throw error;
       }
+
+      console.log('Image uploaded successfully to storage:', data);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
+      console.log('Public URL generated:', publicUrl);
+
+      // Test if the URL is accessible
+      try {
+        const urlResponse = await fetch(publicUrl);
+        console.log('URL accessibility test:', urlResponse.status, urlResponse.ok);
+      } catch (urlError) {
+        console.warn('URL accessibility test failed:', urlError);
+      }
+
       // Update profile with new image URL
-      await this.updateProfile(userId, {
+      const updatedProfile = await this.updateProfile(userId, {
         avatar_url: publicUrl
       });
+
+      if (!updatedProfile) {
+        throw new Error('Failed to update profile with image URL');
+      }
+
+      console.log('Profile updated with image URL:', publicUrl);
 
       // Unlock achievement for adding profile image
       try {
         await achievementService.unlockAchievement(userId, 'profile_image_added');
+        console.log('Achievement unlocked: profile_image_added');
       } catch (achievementError) {
         console.warn('Achievement unlock failed:', achievementError);
       }
@@ -118,6 +159,35 @@ class ProfileService {
     } catch (error) {
       console.error('Error in uploadProfileImage:', error);
       throw error;
+    }
+  }
+
+  // Debug function to test storage access
+  async testStorageAccess(): Promise<void> {
+    try {
+      console.log('Testing storage access...');
+      
+      // Test bucket listing
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      console.log('Available buckets:', buckets);
+      
+      if (bucketError) {
+        console.error('Bucket listing error:', bucketError);
+      }
+      
+      // Test avatars bucket specifically
+      const { data: avatarsList, error: avatarsError } = await supabase.storage
+        .from('avatars')
+        .list('', { limit: 5 });
+      
+      console.log('Avatars bucket contents:', avatarsList);
+      
+      if (avatarsError) {
+        console.error('Avatars bucket error:', avatarsError);
+      }
+      
+    } catch (error) {
+      console.error('Storage access test failed:', error);
     }
   }
 
@@ -183,29 +253,7 @@ class ProfileService {
     }
   }
 
-  async updateEmailPreferences(
-    userId: string, 
-    preferences: Partial<Profile['email_preferences']>
-  ): Promise<Profile | null> {
-    try {
-      const currentProfile = await this.getProfile(userId);
-      const currentPreferences = currentProfile?.email_preferences || {
-        marketing: true,
-        social: true,
-        notifications: true
-      };
-
-      return await this.updateProfile(userId, {
-        email_preferences: {
-          ...currentPreferences,
-          ...preferences
-        }
-      });
-    } catch (error) {
-      console.error('Error in updateEmailPreferences:', error);
-      throw error;
-    }
-  }
+  // Email preferences removed - no longer needed
 
   async shareProfile(username: string): Promise<void> {
     try {

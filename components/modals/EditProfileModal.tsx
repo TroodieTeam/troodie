@@ -11,8 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform,
-  Switch
+  Platform
 } from 'react-native';
 import { Camera, X, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -37,34 +36,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [imageUri, setImageUri] = useState(currentProfile?.profile_image_url || '');
+  const [imageUri, setImageUri] = useState(currentProfile?.avatar_url || '');
   const [username, setUsername] = useState(currentProfile?.username || '');
   const [bio, setBio] = useState(currentProfile?.bio || '');
-  const [location, setLocation] = useState(currentProfile?.location || '');
-  const [website, setWebsite] = useState(currentProfile?.website || '');
-  const [instagramHandle, setInstagramHandle] = useState(currentProfile?.instagram_handle || '');
-  const [emailPreferences, setEmailPreferences] = useState({
-    marketing: currentProfile?.email_preferences?.marketing ?? true,
-    social: currentProfile?.email_preferences?.social ?? true,
-    notifications: currentProfile?.email_preferences?.notifications ?? true
-  });
   const [usernameError, setUsernameError] = useState('');
   const [checkingUsername, setCheckingUsername] = useState(false);
 
   useEffect(() => {
     if (visible && currentProfile) {
       // Reset form when modal opens
-      setImageUri(currentProfile.profile_image_url || '');
+      setImageUri(currentProfile.avatar_url || '');
       setUsername(currentProfile.username || '');
       setBio(currentProfile.bio || '');
-      setLocation(currentProfile.location || '');
-      setWebsite(currentProfile.website || '');
-      setInstagramHandle(currentProfile.instagram_handle || '');
-      setEmailPreferences({
-        marketing: currentProfile.email_preferences?.marketing ?? true,
-        social: currentProfile.email_preferences?.social ?? true,
-        notifications: currentProfile.email_preferences?.notifications ?? true
-      });
       setUsernameError('');
     }
   }, [visible, currentProfile]);
@@ -168,7 +151,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       let updatedProfile: Profile | null = null;
 
       // Upload image if changed
-      if (imageUri && imageUri !== currentProfile?.profile_image_url) {
+      if (imageUri && imageUri !== currentProfile?.avatar_url) {
         await profileService.uploadProfileImage(user.id, imageUri);
       }
 
@@ -182,13 +165,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         updatedProfile = await profileService.setBio(user.id, bio);
       }
 
-      // Update other fields
-      updatedProfile = await profileService.updateProfile(user.id, {
-        location,
-        website,
-        instagram_handle: instagramHandle,
-        email_preferences: emailPreferences
-      });
+      // Get the final updated profile
+      if (!updatedProfile) {
+        updatedProfile = await profileService.getProfile(user.id);
+      }
 
       if (updatedProfile) {
         // Check for profile completion achievement
@@ -294,80 +274,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <Text style={styles.charCount}>{bio.length}/150</Text>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.label}>Location</Text>
-            <TextInput
-              style={styles.input}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="City, State"
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.label}>Website</Text>
-            <TextInput
-              style={styles.input}
-              value={website}
-              onChangeText={setWebsite}
-              placeholder="https://yourwebsite.com"
-              placeholderTextColor="#999"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.label}>Instagram</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputPrefix}>@</Text>
-              <TextInput
-                style={[styles.input, styles.inputWithPrefix]}
-                value={instagramHandle}
-                onChangeText={setInstagramHandle}
-                placeholder="username"
-                placeholderTextColor="#999"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Email Preferences</Text>
-            
-            <View style={styles.preferenceRow}>
-              <Text style={styles.preferenceText}>Marketing emails</Text>
-              <Switch
-                value={emailPreferences.marketing}
-                onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, marketing: value }))}
-                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
-                thumbColor={emailPreferences.marketing ? designTokens.colors.primaryOrange : '#FFF'}
-              />
-            </View>
-
-            <View style={styles.preferenceRow}>
-              <Text style={styles.preferenceText}>Social notifications</Text>
-              <Switch
-                value={emailPreferences.social}
-                onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, social: value }))}
-                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
-                thumbColor={emailPreferences.social ? designTokens.colors.primaryOrange : '#FFF'}
-              />
-            </View>
-
-            <View style={styles.preferenceRow}>
-              <Text style={styles.preferenceText}>Activity updates</Text>
-              <Switch
-                value={emailPreferences.notifications}
-                onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, notifications: value }))}
-                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
-                thumbColor={emailPreferences.notifications ? designTokens.colors.primaryOrange : '#FFF'}
-              />
-            </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -480,17 +386,6 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: '#FF5252',
   },
-  inputWithPrefix: {
-    paddingLeft: 32,
-  },
-  inputPrefix: {
-    position: 'absolute',
-    left: 16,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    zIndex: 1,
-  },
   inputIcon: {
     position: 'absolute',
     right: 16,
@@ -512,18 +407,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     color: '#FF5252',
     marginTop: 4,
-  },
-  preferenceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  preferenceText: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#333',
   },
 });

@@ -10,6 +10,7 @@ interface OnboardingContextType {
   removeFavoriteSpot: (category: string, name: string) => void;
   updateFavoriteSpot: (category: string, oldName: string, spot: FavoriteSpot) => void;
   setCurrentStep: (step: OnboardingState['currentStep']) => void;
+  updateState: (updates: Partial<OnboardingState>) => void;
   resetOnboarding: () => void;
 }
 
@@ -68,6 +69,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, currentStep: step }));
   };
 
+  const updateState = (updates: Partial<OnboardingState>) => {
+    setState(prev => ({ ...prev, ...updates }));
+  };
+
   const resetOnboarding = () => {
     setState(initialState);
   };
@@ -83,6 +88,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         removeFavoriteSpot,
         updateFavoriteSpot,
         setCurrentStep,
+        updateState,
         resetOnboarding
       }}
     >

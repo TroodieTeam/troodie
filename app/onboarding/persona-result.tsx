@@ -55,8 +55,8 @@ export default function PersonaResultScreen() {
   }, []);
 
   const handleContinue = () => {
-    setCurrentStep('favorites');
-    router.push('/onboarding/favorite-spots');
+    setCurrentStep('profile');
+    router.push('/onboarding/profile-image');
   };
 
   if (!persona) {

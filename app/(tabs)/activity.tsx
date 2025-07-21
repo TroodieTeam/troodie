@@ -1,17 +1,15 @@
+import { EmptyActivityState } from '@/components/EmptyActivityState';
 import { designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
-import { ActivityItem, SuggestedActivity, TrendingActivity } from '@/types/core';
+import { useAuth } from '@/contexts/AuthContext';
+import { restaurantService } from '@/services/restaurantService';
+import { ActivityItem, TrendingActivity } from '@/types/core';
 import { useRouter } from 'expo-router';
 import {
-  Bell,
-  Bookmark,
-  Camera,
-  ChevronLeft,
-  UserPlus,
-  Sparkles
+  ChevronLeft
 } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   SafeAreaView,
@@ -19,11 +17,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  ActivityIndicator
+  View
 } from 'react-native';
-import { restaurantService } from '@/services/restaurantService';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function ActivityScreen() {
   const router = useRouter();
@@ -48,36 +43,6 @@ export default function ActivityScreen() {
     }
   };
 
-  // Suggested activities data
-  const suggestedActivities: SuggestedActivity[] = [
-    {
-      title: 'Save Your First Restaurant',
-      description: 'Start building your collection and get recommendations',
-      icon: Bookmark,
-      action: 'Explore Restaurants',
-      benefit: '💡 Get personalized suggestions',
-      color: 'blue',
-      onClick: () => router.push('/explore')
-    },
-    {
-      title: 'Discover Local Gems',
-      description: 'Be among the first to review Charlotte\'s hidden gems',
-      icon: Sparkles,
-      action: 'Find Gems',
-      benefit: '💡 Earn Early Reviewer badges',
-      color: 'green',
-      onClick: () => router.push('/explore')
-    },
-    {
-      title: 'Share Your Experience',
-      description: 'Post photos and reviews to help others discover',
-      icon: Camera,
-      action: 'Add Post',
-      benefit: '💡 Build your reputation',
-      color: 'purple',
-      onClick: () => {}
-    },
-  ];
 
   // Transform restaurant data to trending activities
   const transformToTrendingActivities = (restaurants: any[]): TrendingActivity[] => {
@@ -140,115 +105,26 @@ export default function ActivityScreen() {
     </View>
   );
 
+  const handleExploreRestaurants = () => {
+    router.push('/explore');
+  };
+
+  const handleDiscoverGems = () => {
+    router.push('/explore');
+  };
+
+  const handleShareExperience = () => {
+    // TODO: Implement post creation when available
+    console.log('Post creation not yet implemented');
+  };
+
   const renderEmptyState = () => (
-    <>
-      <View style={styles.emptyStateContainer}>
-        <View style={styles.emptyIconContainer}>
-          <Bell size={32} color={designTokens.colors.primaryOrange} />
-        </View>
-        <Text style={styles.emptyTitle}>Your Activity Will Appear Here</Text>
-        <Text style={styles.emptyDescription}>
-          When you start saving restaurants and connecting with other Troodies, you'll see likes, comments, and follows here.
-        </Text>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.suggestionsContainer}>
-          {suggestedActivities.map((activity, index) => {
-            const getCardColors = () => {
-              switch (activity.color) {
-                case 'blue':
-                  return {
-                    bg: '#EBF5FF',
-                    border: '#BEE3F8',
-                    iconBg: '#FFFFFF',
-                    iconColor: '#2B6CB0',
-                    titleColor: '#1A365D',
-                    descColor: '#2C5282',
-                    benefitColor: '#2B6CB0',
-                    buttonBg: '#2B6CB0',
-                    buttonHover: '#2C5282'
-                  };
-                case 'green':
-                  return {
-                    bg: '#F0FDF4',
-                    border: '#BBF7D0',
-                    iconBg: '#FFFFFF',
-                    iconColor: '#059669',
-                    titleColor: '#064E3B',
-                    descColor: '#047857',
-                    benefitColor: '#059669',
-                    buttonBg: '#059669',
-                    buttonHover: '#047857'
-                  };
-                case 'purple':
-                  return {
-                    bg: '#FAF5FF',
-                    border: '#E9D8FD',
-                    iconBg: '#FFFFFF',
-                    iconColor: '#7C3AED',
-                    titleColor: '#44337A',
-                    descColor: '#6B46C1',
-                    benefitColor: '#7C3AED',
-                    buttonBg: '#7C3AED',
-                    buttonHover: '#6B46C1'
-                  };
-                default:
-                  return {
-                    bg: '#F9FAFB',
-                    border: '#E5E7EB',
-                    iconBg: '#FFFFFF',
-                    iconColor: designTokens.colors.primaryOrange,
-                    titleColor: designTokens.colors.textDark,
-                    descColor: designTokens.colors.textMedium,
-                    benefitColor: designTokens.colors.primaryOrange,
-                    buttonBg: designTokens.colors.primaryOrange,
-                    buttonHover: designTokens.colors.primaryOrange
-                  };
-              }
-            };
-
-            const colors = getCardColors();
-
-            return (
-              <TouchableOpacity 
-                key={index} 
-                style={[
-                  styles.activityCard,
-                  { 
-                    backgroundColor: colors.bg,
-                    borderColor: colors.border
-                  }
-                ]}
-                onPress={activity.onClick}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.activityIcon, { backgroundColor: colors.iconBg }]}>
-                  <activity.icon size={20} color={colors.iconColor} />
-                </View>
-                <View style={styles.activityContent}>
-                  <Text style={[styles.activityTitle, { color: colors.titleColor }]}>
-                    {activity.title}
-                  </Text>
-                  <Text style={[styles.activityDescription, { color: colors.descColor, opacity: 0.8 }]}>
-                    {activity.description}
-                  </Text>
-                  <Text style={[styles.activityBenefit, { color: colors.benefitColor }]}>
-                    {activity.benefit}
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  style={[styles.activityCTA, { backgroundColor: colors.buttonBg }]} 
-                  onPress={activity.onClick}
-                >
-                  <Text style={styles.activityCTAText}>{activity.action}</Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-    </>
+    <EmptyActivityState
+      onExploreRestaurants={handleExploreRestaurants}
+      onSaveRestaurant={handleExploreRestaurants}
+      onDiscoverGems={handleDiscoverGems}
+      onShareExperience={handleShareExperience}
+    />
   );
 
   const renderActiveState = () => (
@@ -290,7 +166,7 @@ export default function ActivityScreen() {
     <SafeAreaView style={styles.container}>
       {renderHeader()}
       <ScrollView showsVerticalScrollIndicator={false}>
-        {userState.hasLimitedActivity ? renderEmptyState() : renderActiveState()}
+        {(userState.hasLimitedActivity ?? true) ? renderEmptyState() : renderActiveState()}
         <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
@@ -323,40 +199,9 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
-  emptyStateContainer: {
-    alignItems: 'center',
-    paddingVertical: designTokens.spacing.xxxl,
-    paddingHorizontal: designTokens.spacing.lg,
-  },
-  emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: designTokens.colors.primaryOrange + '1A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: designTokens.spacing.lg,
-  },
-  emptyTitle: {
-    ...designTokens.typography.cardTitle,
-    fontFamily: 'Poppins_600SemiBold',
-    color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.sm,
-  },
-  emptyDescription: {
-    ...designTokens.typography.detailText,
-    color: designTokens.colors.textMedium,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 352,
-    marginBottom: designTokens.spacing.xxl,
-  },
   section: {
     paddingHorizontal: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.xxxl,
-  },
-  suggestionsContainer: {
-    gap: designTokens.spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -384,61 +229,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
     color: '#FF4444',
-  },
-  activityCard: {
-    backgroundColor: designTokens.colors.white,
-    borderRadius: designTokens.borderRadius.md,
-    padding: designTokens.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: designTokens.spacing.md,
-    borderWidth: 1,
-    borderColor: designTokens.colors.borderLight,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: designTokens.spacing.md,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    ...designTokens.typography.detailText,
-    fontFamily: 'Inter_500Medium',
-    marginBottom: 2,
-  },
-  activityDescription: {
-    ...designTokens.typography.smallText,
-    marginBottom: designTokens.spacing.xs,
-  },
-  activityBenefit: {
-    ...designTokens.typography.smallText,
-    fontFamily: 'Inter_500Medium',
-    marginTop: designTokens.spacing.xs,
-  },
-  activityCTA: {
-    paddingHorizontal: designTokens.spacing.md,
-    paddingVertical: designTokens.spacing.sm,
-    borderRadius: designTokens.borderRadius.md,
-    height: 36,
-    justifyContent: 'center',
-  },
-  activityCTAText: {
-    ...designTokens.typography.smallText,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.white,
   },
   trendingCard: {
     backgroundColor: designTokens.colors.white,

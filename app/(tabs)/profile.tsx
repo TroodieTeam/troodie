@@ -1,12 +1,13 @@
-import SettingsModal from '@/components/modals/SettingsModal';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
+import SettingsModal from '@/components/modals/SettingsModal';
 import { designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
-import { profileService, Profile } from '@/services/profileService';
 import { achievementService } from '@/services/achievementService';
+import { Profile, profileService } from '@/services/profileService';
+import { PersonaType } from '@/types/onboarding';
 import { useRouter } from 'expo-router';
 import {
   Award,
@@ -20,17 +21,17 @@ import {
   Share2,
   User
 } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  ActivityIndicator,
-  RefreshControl
+  View
 } from 'react-native';
 
 type TabType = 'saves' | 'boards' | 'posts';
@@ -48,7 +49,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [achievements, setAchievements] = useState<any[]>([]);
   
-  const persona = profile?.persona ? personas[profile.persona] : 
+  const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
                  (onboardingState.persona ? personas[onboardingState.persona] : null);
 
   // Load profile data
@@ -63,7 +64,13 @@ export default function ProfileScreen() {
     if (!user?.id) return;
     
     try {
+      console.log('Loading profile for user:', user.id);
+      
+      // Test storage access first
+      await profileService.testStorageAccess();
+      
       const profileData = await profileService.getProfile(user.id);
+      console.log('Profile loaded:', profileData);
       setProfile(profileData);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -105,9 +112,9 @@ export default function ProfileScreen() {
 
   // User data with real profile
   const userData = {
-    name: profile?.email?.split('@')[0] || 'Troodie User',
+    name: profile?.name || profile?.email?.split('@')[0] || 'Troodie User',
     username: profile?.username ? `@${profile.username}` : '@user',
-    avatar: profile?.avatar_url || null,
+    avatar: profile?.avatar_url || profile?.profile_image_url || null,
     bio: profile?.bio || '',
     stats: {
       followers: profile?.followers_count || 0,
@@ -116,6 +123,11 @@ export default function ProfileScreen() {
       posts: profile?.reviews_count || 0
     }
   };
+
+  // Debug logging
+  console.log('Profile data:', profile);
+  console.log('User data:', userData);
+  console.log('Avatar URL:', userData.avatar);
 
   // Transform achievements for display
   const displayAchievements = achievements.slice(0, 3).map((achievement, index) => ({
@@ -161,7 +173,12 @@ export default function ProfileScreen() {
     <View style={styles.profileInfo}>
       <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
         {userData.avatar ? (
-          <Image source={{ uri: userData.avatar }} style={styles.avatar} />
+          <Image 
+            source={{ uri: userData.avatar }} 
+            style={styles.avatar}
+            onError={(error) => console.log('Avatar image error:', error)}
+            onLoad={() => console.log('Avatar image loaded successfully')}
+          />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder]}>
             <User size={32} color="#999" />
@@ -173,8 +190,7 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <View style={styles.userDetails}>
-        <Text style={styles.name}>{userData.name}</Text>
-        <Text style={styles.username}>{userData.username}</Text>
+        <Text style={styles.name}>{userData.username}</Text>
         
         {persona && (
           <View style={styles.personaBadge}>

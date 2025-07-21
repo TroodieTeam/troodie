@@ -16,6 +16,7 @@ export interface UserState {
   email: string;
   friendsCount: number;
   isNewUser: boolean;
+  hasLimitedActivity?: boolean;
   achievements?: Achievement[];
 }
 

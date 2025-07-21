@@ -115,27 +115,35 @@ export default function CompleteScreen() {
               </View>
             </View>
 
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryEmoji}>⭐</Text>
-              <View style={styles.summaryTextContainer}>
-                <Text style={styles.summaryLabel}>Favorite Spots</Text>
-                <Text style={styles.summaryValue}>
-                  {state.favoriteSpots.length} restaurants added
-                </Text>
+            {state.username && (
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryEmoji}>@</Text>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={styles.summaryLabel}>Username</Text>
+                  <Text style={styles.summaryValue}>@{state.username}</Text>
+                </View>
               </View>
-            </View>
+            )}
 
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryEmoji}>📱</Text>
-              <View style={styles.summaryTextContainer}>
-                <Text style={styles.summaryLabel}>Phone</Text>
-                <Text style={styles.summaryValue}>
-                  {state.phoneNumber ? 
-                    `(${state.phoneNumber.slice(0, 3)}) ${state.phoneNumber.slice(3, 6)}-${state.phoneNumber.slice(6)}` 
-                    : 'Not provided'}
-                </Text>
+            {state.profileImageUrl && (
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryEmoji}>📸</Text>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={styles.summaryLabel}>Profile Picture</Text>
+                  <Text style={styles.summaryValue}>Added</Text>
+                </View>
               </View>
-            </View>
+            )}
+
+            {state.bio && (
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryEmoji}>✍️</Text>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={styles.summaryLabel}>Bio</Text>
+                  <Text style={styles.summaryValue}>Added</Text>
+                </View>
+              </View>
+            )}
           </View>
 
           <Text style={styles.nextStepsTitle}>What&apos;s Next:</Text>
