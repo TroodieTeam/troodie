@@ -14,10 +14,10 @@
 | Task | Status | Priority | Estimate | Assignee | Notes |
 |------|--------|----------|----------|----------|-------|
 | [1.1 Supabase Backend Setup](./task-1-1-supabase-setup.md) | 🟢 | Critical | 5 days | Claude | ✅ Completed - All infrastructure in place |
-| [1.2 Email OTP Authentication](./task-1-2-email-auth.md) | 🔴 | Critical | 2 days | - | Simplified email auth vs phone |
+| [1.2 Email OTP Authentication](./task-1-2-email-auth.md) | 🟢 | Critical | 2 days | Claude | ✅ Completed - Email OTP system implemented |
 
-**Epic Status:** In Progress  
-**Epic Progress:** 1/2 tasks completed (50%)  
+**Epic Status:** Completed ✅ 
+**Epic Progress:** 2/2 tasks completed (100%)  
 **Estimated Duration:** 7 days
 
 ---
@@ -107,7 +107,7 @@
 ### Phase 1: Core Infrastructure (Weeks 1-4)
 **Priority:** Must Complete First
 - Task 1.1: Supabase Backend Setup ✅ (Critical Path) - **COMPLETED**
-- Task 1.2: Email OTP Authentication ⏳ (Critical Path) - **NEXT**
+- Task 1.2: Email OTP Authentication ✅ (Critical Path) - **COMPLETED**
 - Task 2.1: Charlotte Restaurant Seeding ✅ (High Priority)
 - Task 2.2: Restaurant Search & Discovery ✅ (High Priority)
 
@@ -145,9 +145,9 @@
 ## Overall Progress Summary
 
 **Total Tasks:** 15  
-**Completed:** 1 (6.7%)  
+**Completed:** 2 (13.3%)  
 **In Progress:** 0 (0%)  
-**Not Started:** 14 (93.3%)  
+**Not Started:** 13 (86.7%)  
 **Blocked:** 0 (0%)
 
 **Total Estimated Duration:** 61 days (~12 weeks)
@@ -197,6 +197,7 @@
 
 ### Recent Changes
 - ✅ **Jan 21**: Completed Task 1.1 - Supabase Backend Setup with full infrastructure
+- ✅ **Jan 21**: Completed Task 1.2 - Email OTP Authentication system with rate limiting
 - Switched from phone to email authentication for Sprint 1 simplicity
 - Prioritized restaurant detail screen due to multiple dependencies
 - Moved community features to later phase
