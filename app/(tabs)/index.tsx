@@ -1,4 +1,5 @@
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import { ErrorState } from '@/components/ErrorState';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
@@ -7,13 +8,13 @@ import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { InviteService } from '@/services/inviteService';
 import { restaurantService } from '@/services/restaurantService';
-import { NetworkSuggestion, TrendingContent, UserState } from '@/types/core';
+import { NetworkSuggestion, TrendingContent } from '@/types/core';
+import { getErrorType } from '@/types/errors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
   Bell,
   Bookmark,
-  Camera,
   Coffee,
   Plus,
   Search,
@@ -32,8 +33,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { ErrorState } from '@/components/ErrorState';
-import { getErrorType } from '@/types/errors';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -130,22 +129,14 @@ export default function HomeScreen() {
       benefit: 'Get personalized recommendations',
       onClick: handleInviteFriends
     },
-    {
-      action: 'Discover Local Gems',
-      description: 'Be among the first to review Charlotte\'s hidden gems',
-      icon: Sparkles,
-      cta: 'Discover Gems',
-      benefit: 'Earn Early Reviewer badges',
-      onClick: () => router.push('/discover-gems')
-    },
-    {
-      action: 'Share Your First Save',
-      description: 'Save a restaurant and share your experience',
-      icon: Camera,
-      cta: 'Add Restaurant',
-      benefit: 'Build your food profile',
-      onClick: () => router.push('/add/save-restaurant')
-    },
+    // {
+    //   action: 'Share Your First Save',
+    //   description: 'Save a restaurant and share your experience',
+    //   icon: Camera,
+    //   cta: 'Add Restaurant',
+    //   benefit: 'Build your food profile',
+    //   onClick: () => router.push('/add/save-restaurant')
+    // },
   ];
 
   const renderHeader = () => (
