@@ -1,10 +1,80 @@
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/supabase'
+import { NetworkError, ServerError, NotFoundError, TimeoutError, isNetworkError } from '@/types/errors'
 
 type Restaurant = Database['public']['Tables']['restaurants']['Row']
 type RestaurantInsert = Database['public']['Tables']['restaurants']['Insert']
 type RestaurantSave = Database['public']['Tables']['restaurant_saves']['Row']
 type RestaurantSaveInsert = Database['public']['Tables']['restaurant_saves']['Insert']
+
+// Cache for frequently accessed restaurants
+const restaurantCache = new Map<string, { data: Restaurant, timestamp: number }>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+// Retry configuration
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 second
+const TIMEOUT_DURATION = 10000 // 10 seconds
+
+// Helper function to handle retries
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries = MAX_RETRIES,
+  delay = RETRY_DELAY
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Add timeout to the operation
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new TimeoutError()), TIMEOUT_DURATION);
+      });
+      
+      const result = await Promise.race([operation(), timeoutPromise]);
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      
+      // Don't retry for certain errors
+      if (error?.code === 'PGRST116' || error?.statusCode === 404) {
+        throw new NotFoundError('Restaurant not found');
+      }
+      
+      // Check if it's a network error
+      if (isNetworkError(error)) {
+        lastError = new NetworkError();
+      }
+      
+      // Don't retry if it's the last attempt or error is not retryable
+      if (attempt === maxRetries || (error?.retry === false)) {
+        break;
+      }
+      
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+    }
+  }
+  
+  throw lastError;
+}
+
+// Helper function to transform Supabase errors
+function transformError(error: any): Error {
+  if (isNetworkError(error)) {
+    return new NetworkError();
+  }
+  
+  if (error?.code === 'PGRST116' || error?.statusCode === 404) {
+    return new NotFoundError();
+  }
+  
+  if (error?.statusCode >= 500) {
+    return new ServerError('Server error occurred', error.statusCode);
+  }
+  
+  return error;
+}
 
 export const restaurantService = {
   async searchRestaurants(query: string, filters?: {
@@ -12,60 +82,93 @@ export const restaurantService = {
     cuisineTypes?: string[]
     priceRange?: string
   }) {
-    let request = supabase
-      .from('restaurants')
-      .select('*')
-      .or(`name.ilike.%${query}%,address.ilike.%${query}%`)
-      .limit(20)
+    try {
+      return await withRetry(async () => {
+        let request = supabase
+          .from('restaurants')
+          .select('*')
+          .or(`name.ilike.%${query}%,address.ilike.%${query}%`)
+          .limit(20)
 
-    if (filters?.city) {
-      request = request.eq('city', filters.city)
-    }
+        if (filters?.city) {
+          request = request.eq('city', filters.city)
+        }
 
-    if (filters?.cuisineTypes && filters.cuisineTypes.length > 0) {
-      request = request.contains('cuisine_types', filters.cuisineTypes)
-    }
+        if (filters?.cuisineTypes && filters.cuisineTypes.length > 0) {
+          request = request.contains('cuisine_types', filters.cuisineTypes)
+        }
 
-    if (filters?.priceRange) {
-      request = request.eq('price_range', filters.priceRange)
-    }
+        if (filters?.priceRange) {
+          request = request.eq('price_range', filters.priceRange)
+        }
 
-    const { data, error } = await request
+        const { data, error } = await request
 
-    if (error) {
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
+      })
+    } catch (error) {
       console.error('Error searching restaurants:', error)
-      return []
+      throw error
     }
-    return data
   },
 
   async getRestaurantById(id: string): Promise<Restaurant | null> {
-    const { data, error } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (error) {
-      console.error('Error fetching restaurant:', error)
-      return null
+    // Check cache first
+    const cached = restaurantCache.get(id)
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data
     }
-    return data
+
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+        if (error) {
+          throw transformError(error)
+        }
+
+        // Cache the result
+        if (data) {
+          restaurantCache.set(id, { data, timestamp: Date.now() })
+        }
+
+        return data
+      })
+    } catch (error) {
+      console.error('Error fetching restaurant:', error)
+      if (error instanceof NotFoundError) {
+        return null
+      }
+      throw error
+    }
   },
 
   async getNearbyRestaurants(lat: number, lng: number, radiusInMeters: number = 5000) {
-    const { data, error } = await supabase
-      .rpc('nearby_restaurants', {
-        lat,
-        lng,
-        radius_meters: radiusInMeters
-      })
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .rpc('nearby_restaurants', {
+            lat,
+            lng,
+            radius_meters: radiusInMeters
+          })
 
-    if (error) {
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
+      })
+    } catch (error) {
       console.error('Error fetching nearby restaurants:', error)
-      return []
+      throw error
     }
-    return data
   },
 
   async saveRestaurant(saveData: RestaurantSaveInsert): Promise<RestaurantSave | null> {
@@ -208,17 +311,23 @@ export const restaurantService = {
   },
 
   async getTrendingRestaurants(city?: string) {
-    const { data, error } = await supabase
-      .rpc('get_trending_restaurants', {
-        p_city: city,
-        p_limit: 10
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .rpc('get_trending_restaurants', {
+            p_city: city,
+            p_limit: 10
+          })
+        
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
       })
-    
-    if (error) {
+    } catch (error) {
       console.error('Error fetching trending restaurants:', error)
-      return []
+      throw error
     }
-    return data
   },
 
   async getPersonaRecommendations(userId: string) {
@@ -247,5 +356,81 @@ export const restaurantService = {
       return null
     }
     return data
+  },
+
+  async getRestaurantsByLocation(lat: number, lng: number, limit: number = 20): Promise<Restaurant[]> {
+    return this.getNearbyRestaurants(lat, lng, 5000)
+  },
+
+  async getFeaturedRestaurants(limit: number = 10): Promise<Restaurant[]> {
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*')
+          .order('google_rating', { ascending: false, nullsFirst: false })
+          .limit(limit)
+
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
+      })
+    } catch (error) {
+      console.error('Error fetching featured restaurants:', error)
+      throw error
+    }
+  },
+
+  async getRestaurantsByCity(city: string, limit: number = 20): Promise<Restaurant[]> {
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*')
+          .eq('city', city)
+          .order('google_rating', { ascending: false, nullsFirst: false })
+          .limit(limit)
+
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
+      })
+    } catch (error) {
+      console.error('Error fetching restaurants by city:', error)
+      throw error
+    }
+  },
+
+  async getLocalGems(city: string = 'Charlotte', limit: number = 20): Promise<Restaurant[]> {
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*')
+          .eq('city', city)
+          .or('troodie_reviews_count.is.null,troodie_reviews_count.lt.5')
+          .order('google_rating', { ascending: false, nullsFirst: false })
+          .limit(limit)
+
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
+      })
+    } catch (error) {
+      console.error('Error fetching local gems:', error)
+      throw error
+    }
+  },
+
+  // Cache management
+  clearCache() {
+    restaurantCache.clear()
+  },
+
+  clearRestaurantFromCache(id: string) {
+    restaurantCache.delete(id)
   }
 }

@@ -5,14 +5,19 @@ export const theme = {
     background: '#FFFDF7', // Light cream background
     surface: '#FFFFFF',
     text: {
-      primary: '#333333',
-      secondary: '#666666',
-      tertiary: '#999999',
+      primary: '#1F2937', // Updated to match design tokens (was #333333)
+      secondary: '#6B7280', // Updated to match design tokens (was #666666)
+      tertiary: '#9CA3AF', // Updated to match design tokens (was #999999)
+      dark: '#111827', // New - for headers
+      mediumDark: '#374151', // New - for subheaders
     },
-    border: '#E5E5E5',
+    border: '#E5E7EB', // Updated to match design tokens (was #E5E5E5)
     error: '#E74C3C',
     success: '#2ECC71',
     info: '#3498DB',
+    // New background variations
+    backgroundLight: '#F9FAFB',
+    backgroundGray: '#F3F4F6',
     // Persona colors
     personas: {
       trendsetter: '#FF6B6B',
@@ -42,17 +47,18 @@ export const theme = {
   spacing: {
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 40,
+    md: 12, // Updated from 16
+    lg: 16, // Updated from 24
+    xl: 20, // Updated from 32
+    xxl: 24, // Updated from 40
+    xxxl: 32, // New
   },
   borderRadius: {
-    sm: 4,
-    md: 8,
-    lg: 12,
-    xl: 16,
-    xxl: 20,
+    sm: 8, // Updated from 4
+    md: 12, // Updated from 8
+    lg: 16, // Updated from 12
+    xl: 20, // Updated from 16
+    xxl: 30, // Updated from 20, for pill shapes
     full: 9999,
   },
 };

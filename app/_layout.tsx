@@ -21,6 +21,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { AppProvider } from '@/contexts/AppContext';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { NetworkStatusBanner } from '@/components/NetworkStatusBanner';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -46,10 +47,12 @@ export default function RootLayout() {
       <AppProvider>
         <OnboardingProvider>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <NetworkStatusBanner />
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="onboarding" options={{ headerShown: false }} />
               <Stack.Screen name="add" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="auto" />
