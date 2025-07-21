@@ -2,12 +2,9 @@ import { designTokens } from '@/constants/designTokens';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
-  Crown,
   FolderPlus,
   Search,
-  UserPlus,
-  Users,
-  Utensils
+  UserPlus
 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -24,15 +21,6 @@ export default function AddScreen() {
 
   const addOptions: AddOption[] = [
     {
-      id: 'restaurant',
-      title: 'Save a Restaurant',
-      description: 'Add spots from our curated database',
-      icon: Utensils,
-      color: designTokens.colors.primaryOrange,
-      navigateTo: '/add/save-restaurant',
-      beta: true
-    },
-    {
       id: 'board',
       title: 'Create a Board',
       description: 'Curate a themed collection',
@@ -40,34 +28,18 @@ export default function AddScreen() {
       color: '#3B82F6',
       navigateTo: '/add/create-board'
     },
-    {
-      id: 'community',
-      title: 'Join Communities',
-      description: 'Connect with like-minded Troodies',
-      icon: Users,
-      color: '#8B5CF6',
-      navigateTo: '/add/communities'
-    },
-    {
-      id: 'creator',
-      title: 'Creator Dashboard',
-      description: 'Manage collaborations & earnings',
-      icon: Crown,
-      color: '#10B981',
-      navigateTo: '/add/create-board' // Using existing route as placeholder
-    }
   ];
 
   const progressCard: ProgressCard = {
-    title: 'Keep exploring!',
-    description: 'You\'ve saved 3 places this week. Add one more to complete your goal.',
+    title: 'Keep creating!',
+    description: 'You\'ve created 1 board this week. Create one more to unlock achievements.',
     progress: {
-      current: 3,
-      target: 4,
-      unit: 'places'
+      current: 1,
+      target: 2,
+      unit: 'boards'
     },
     reward: '+50 points',
-    cta: 'Add Another Save'
+    cta: 'Create Another Board'
   };
 
   const renderHeader = () => (
@@ -111,14 +83,6 @@ export default function AddScreen() {
         </TouchableOpacity>
       ))}
 
-      {/* Beta Notice */}
-      <View style={styles.betaNotice}>
-        <Text style={styles.betaNoticeTitle}>🚀 Beta Testing Period</Text>
-        <Text style={styles.betaNoticeText}>
-          During beta, you can save restaurants from our curated database of Charlotte's best spots. 
-          New restaurant submissions will be available soon!
-        </Text>
-      </View>
     </View>
   );
 
@@ -143,7 +107,7 @@ export default function AddScreen() {
       <View style={styles.progressContent}>
         <Text style={styles.progressTitle}>{progressCard.title}</Text>
         <Text style={styles.progressDescription}>{progressCard.description}</Text>
-        <TouchableOpacity style={styles.progressCTA} onPress={() => router.push('/add/save-restaurant' as any)}>
+        <TouchableOpacity style={styles.progressCTA} onPress={() => router.push('/add/create-board' as any)}>
           <Text style={styles.progressCTAText}>{progressCard.cta}</Text>
         </TouchableOpacity>
       </View>
@@ -172,6 +136,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: designTokens.spacing.lg,
     paddingTop: designTokens.spacing.lg,
     paddingBottom: designTokens.spacing.xl,
+    marginBottom: designTokens.spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: designTokens.colors.borderLight,
     alignItems: 'center',
