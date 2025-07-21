@@ -1,9 +1,12 @@
 import SettingsModal from '@/components/modals/SettingsModal';
+import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import { designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
+import { profileService, Profile } from '@/services/profileService';
+import { achievementService } from '@/services/achievementService';
 import { useRouter } from 'expo-router';
 import {
   Award,
@@ -14,9 +17,10 @@ import {
   PenLine,
   Plus,
   Settings,
-  Share2
+  Share2,
+  User
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Image,
   SafeAreaView,
@@ -24,7 +28,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 
 type TabType = 'saves' | 'boards' | 'posts';
@@ -99,24 +105,24 @@ export default function ProfileScreen() {
 
   // User data with real profile
   const userData = {
-    name: 'Jordan Davis',
-    username: '@jordan_eats',
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    bio: 'Troodie exploring the best spots in the city 🍽️',
+    name: profile?.email?.split('@')[0] || 'Troodie User',
+    username: profile?.username ? `@${profile.username}` : '@user',
+    avatar: profile?.profile_image_url || null,
+    bio: profile?.bio || '',
     stats: {
-      followers: 1247,
-      following: 892,
-      saves: userState.isNewUser ? 0 : 273,
-      posts: userState.isNewUser ? 0 : 89
+      followers: profile?.followers_count || 0,
+      following: profile?.following_count || 0,
+      saves: profile?.saves_count || 0,
+      posts: profile?.reviews_count || 0
     }
   };
 
-  // Achievement badges
-  const achievements = [
-    { id: 1, name: 'First Save', icon: Award },
-    { id: 2, name: 'Local Explorer', icon: Award },
-    { id: 3, name: 'Photo Pro', icon: Award },
-  ];
+  // Transform achievements for display
+  const displayAchievements = achievements.slice(0, 3).map((achievement, index) => ({
+    id: index + 1,
+    name: achievement.title || achievement.name,
+    icon: Award
+  }));
 
   // Mock data for saved restaurants
   const savedRestaurants = userState.isNewUser ? [] : [
@@ -153,12 +159,18 @@ export default function ProfileScreen() {
 
   const renderProfileInfo = () => (
     <View style={styles.profileInfo}>
-      <View style={styles.avatarContainer}>
-        <Image source={{ uri: userData.avatar }} style={styles.avatar} />
-        <TouchableOpacity style={styles.editAvatarButton}>
+      <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
+        {userData.avatar ? (
+          <Image source={{ uri: userData.avatar }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <User size={32} color="#999" />
+          </View>
+        )}
+        <View style={styles.editAvatarButton}>
           <Camera size={12} color={designTokens.colors.white} />
-        </TouchableOpacity>
-      </View>
+        </View>
+      </TouchableOpacity>
 
       <View style={styles.userDetails}>
         <Text style={styles.name}>{userData.name}</Text>
@@ -171,17 +183,25 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      <Text style={styles.bio}>{userData.bio}</Text>
+      {userData.bio ? (
+        <Text style={styles.bio}>{userData.bio}</Text>
+      ) : (
+        <TouchableOpacity onPress={() => setShowEditModal(true)}>
+          <Text style={styles.bioPlaceholder}>Add a bio...</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Achievement Badges */}
-      <View style={styles.achievementsContainer}>
-        {achievements.map((achievement) => (
-          <View key={achievement.id} style={styles.achievementBadge}>
-            <Award size={8} color="#B45309" />
-            <Text style={styles.achievementText}>{achievement.name}</Text>
-          </View>
-        ))}
-      </View>
+      {displayAchievements.length > 0 && (
+        <View style={styles.achievementsContainer}>
+          {displayAchievements.map((achievement) => (
+            <View key={achievement.id} style={styles.achievementBadge}>
+              <Award size={8} color="#B45309" />
+              <Text style={styles.achievementText}>{achievement.name}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={styles.stats}>
         <View style={styles.statItem}>
@@ -203,11 +223,11 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.editProfileButton}>
+        <TouchableOpacity style={styles.editProfileButton} onPress={() => setShowEditModal(true)}>
           <PenLine size={12} color={designTokens.colors.primaryOrange} />
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.shareButton}>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShareProfile}>
           <Share2 size={12} color={designTokens.colors.textMedium} />
           <Text style={styles.shareButtonText}>Share</Text>
         </TouchableOpacity>
@@ -325,7 +345,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
         </View>
       </SafeAreaView>
     );
@@ -339,7 +359,7 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={theme.colors.primary}
+            tintColor={designTokens.colors.primaryOrange}
           />
         }
       >
@@ -710,9 +730,18 @@ const styles = StyleSheet.create({
     height: 100,
   },
   avatarPlaceholder: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: designTokens.colors.backgroundLight,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  bioPlaceholder: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: designTokens.colors.textMedium,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 40,
   },
   loadingContainer: {
     flex: 1,

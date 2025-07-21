@@ -9,6 +9,37 @@ export interface Achievement {
 }
 
 export const achievements: Record<string, Achievement> = {
+  // Profile Achievements
+  profile_image_added: {
+    id: 'profile_image_added',
+    title: 'Picture Perfect',
+    description: 'Added a profile picture',
+    icon: '📸',
+    points: 10
+  },
+  username_set: {
+    id: 'username_set',
+    title: 'Identity Established',
+    description: 'Set your username',
+    icon: '🏷️',
+    points: 10
+  },
+  bio_added: {
+    id: 'bio_added',
+    title: 'Story Teller',
+    description: 'Added a bio to your profile',
+    icon: '📝',
+    points: 10
+  },
+  profile_complete: {
+    id: 'profile_complete',
+    title: 'Profile Perfectionist',
+    description: 'Completed 100% of your profile',
+    icon: '✨',
+    points: 50
+  },
+  
+  // Restaurant Achievements
   first_save: {
     id: 'first_save',
     title: 'First Save',
@@ -23,16 +54,58 @@ export const achievements: Record<string, Achievement> = {
     icon: '⭐',
     points: 150
   },
+  
+  // Social Achievements
   network_builder: {
     id: 'network_builder',
     title: 'Network Builder',
     description: 'Invited your first friend',
     icon: '🤝',
     points: 100
+  },
+  first_friend: {
+    id: 'first_friend',
+    title: 'Social Butterfly',
+    description: 'Added your first friend',
+    icon: '🦋',
+    points: 20
+  },
+  five_friends: {
+    id: 'five_friends',
+    title: 'Popular',
+    description: 'Connected with 5 friends',
+    icon: '🎉',
+    points: 30
   }
 };
 
 export class AchievementService {
+  async checkAndUnlockProfileCompletion(userId: string, profile: any): Promise<void> {
+    try {
+      const requiredFields = ['username', 'bio', 'profile_image_url', 'location', 'persona'];
+      const completedFields = requiredFields.filter(field => profile[field]);
+      
+      if (completedFields.length === requiredFields.length) {
+        await this.unlockAchievement(userId, 'profile_complete');
+      }
+    } catch (error) {
+      console.error('Error checking profile completion:', error);
+    }
+  }
+
+  async getTotalPoints(userId: string): Promise<number> {
+    try {
+      const userAchievements = await this.getUserAchievements(userId);
+      return userAchievements.reduce((total, ua) => {
+        const achievement = achievements[ua.achievement_id];
+        return total + (achievement?.points || 0);
+      }, 0);
+    } catch (error) {
+      console.error('Error calculating total points:', error);
+      return 0;
+    }
+  }
+
   async unlockAchievement(userId: string, achievementId: string) {
     const achievement = achievements[achievementId];
     if (!achievement) return null;
@@ -83,4 +156,6 @@ export class AchievementService {
 
     return !!data;
   }
-} 
+}
+
+export const achievementService = new AchievementService(); 

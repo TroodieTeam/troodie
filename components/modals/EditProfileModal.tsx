@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Camera, X, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { theme } from '@/constants/theme';
+import { designTokens } from '@/constants/designTokens';
 import { profileService, Profile } from '@/services/profileService';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -249,9 +249,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             disabled={saving || !!usernameError}
           >
             {saving ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
             ) : (
-              <Check size={24} color={theme.colors.primary} />
+              <Check size={24} color={designTokens.colors.primaryOrange} />
             )}
           </TouchableOpacity>
         </View>
@@ -343,8 +343,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <Switch
                 value={emailPreferences.marketing}
                 onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, marketing: value }))}
-                trackColor={{ false: '#DDD', true: theme.colors.primary + '40' }}
-                thumbColor={emailPreferences.marketing ? theme.colors.primary : '#FFF'}
+                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
+                thumbColor={emailPreferences.marketing ? designTokens.colors.primaryOrange : '#FFF'}
               />
             </View>
 
@@ -353,8 +353,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <Switch
                 value={emailPreferences.social}
                 onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, social: value }))}
-                trackColor={{ false: '#DDD', true: theme.colors.primary + '40' }}
-                thumbColor={emailPreferences.social ? theme.colors.primary : '#FFF'}
+                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
+                thumbColor={emailPreferences.social ? designTokens.colors.primaryOrange : '#FFF'}
               />
             </View>
 
@@ -363,8 +363,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <Switch
                 value={emailPreferences.notifications}
                 onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, notifications: value }))}
-                trackColor={{ false: '#DDD', true: theme.colors.primary + '40' }}
-                thumbColor={emailPreferences.notifications ? theme.colors.primary : '#FFF'}
+                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
+                thumbColor={emailPreferences.notifications ? designTokens.colors.primaryOrange : '#FFF'}
               />
             </View>
           </View>
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: designTokens.colors.primaryOrange,
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   changePhotoText: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.primary,
+    color: designTokens.colors.primaryOrange,
   },
   section: {
     marginBottom: 24,
