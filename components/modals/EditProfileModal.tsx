@@ -1,24 +1,25 @@
-import { designTokens } from '@/constants/designTokens';
-import { useAuth } from '@/contexts/AuthContext';
-import { Profile, profileService } from '@/services/profileService';
-import * as ImagePicker from 'expo-image-picker';
-import { Camera, Check, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Image,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Switch
 } from 'react-native';
+import { Camera, X, Check } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { designTokens } from '@/constants/designTokens';
+import { profileService, Profile } from '@/services/profileService';
+import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -33,9 +34,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   onSave,
   currentProfile
 }) => {
-  console.log('EditProfileModal rendered with visible:', visible);
-  console.log('EditProfileModal currentProfile:', currentProfile);
-  
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -233,147 +231,146 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="fullScreen"
+      presentationStyle="pageSheet"
       onRequestClose={onClose}
-      transparent={false}
     >
       <KeyboardAvoidingView 
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <X size={24} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Edit Profile</Text>
-            <TouchableOpacity 
-              onPress={handleSave} 
-              style={[styles.headerButton, saving && styles.disabledButton]}
-              disabled={saving || !!usernameError}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
-              ) : (
-                <Check size={24} color={designTokens.colors.primaryOrange} />
-              )}
-            </TouchableOpacity>
-          </View>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+            <X size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <TouchableOpacity 
+            onPress={handleSave} 
+            style={[styles.headerButton, saving && styles.disabledButton]}
+            disabled={saving || !!usernameError}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+            ) : (
+              <Check size={24} color={designTokens.colors.primaryOrange} />
+            )}
+          </TouchableOpacity>
+        </View>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {renderImagePicker()}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {renderImagePicker()}
 
-            <View style={styles.section}>
-              <Text style={styles.label}>Username</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={[styles.input, usernameError && styles.inputError]}
-                  value={username}
-                  onChangeText={handleUsernameChange}
-                  placeholder="username"
-                  placeholderTextColor="#999"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {checkingUsername && (
-                  <ActivityIndicator size="small" color="#999" style={styles.inputIcon} />
-                )}
-              </View>
-              {usernameError && (
-                <Text style={styles.errorText}>{usernameError}</Text>
-              )}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>Bio</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Username</Text>
+            <View style={styles.inputContainer}>
               <TextInput
-                style={[styles.input, styles.textArea]}
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Tell us about yourself..."
-                placeholderTextColor="#999"
-                multiline
-                maxLength={150}
-              />
-              <Text style={styles.charCount}>{bio.length}/150</Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>Location</Text>
-              <TextInput
-                style={styles.input}
-                value={location}
-                onChangeText={setLocation}
-                placeholder="City, State"
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>Website</Text>
-              <TextInput
-                style={styles.input}
-                value={website}
-                onChangeText={setWebsite}
-                placeholder="https://yourwebsite.com"
+                style={[styles.input, usernameError && styles.inputError]}
+                value={username}
+                onChangeText={handleUsernameChange}
+                placeholder="username"
                 placeholderTextColor="#999"
                 autoCapitalize="none"
                 autoCorrect={false}
-                keyboardType="url"
+              />
+              {checkingUsername && (
+                <ActivityIndicator size="small" color="#999" style={styles.inputIcon} />
+              )}
+            </View>
+            {usernameError && (
+              <Text style={styles.errorText}>{usernameError}</Text>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.label}>Bio</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={bio}
+              onChangeText={setBio}
+              placeholder="Tell us about yourself..."
+              placeholderTextColor="#999"
+              multiline
+              maxLength={150}
+            />
+            <Text style={styles.charCount}>{bio.length}/150</Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.label}>Location</Text>
+            <TextInput
+              style={styles.input}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="City, State"
+              placeholderTextColor="#999"
+            />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.label}>Website</Text>
+            <TextInput
+              style={styles.input}
+              value={website}
+              onChangeText={setWebsite}
+              placeholder="https://yourwebsite.com"
+              placeholderTextColor="#999"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.label}>Instagram</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputPrefix}>@</Text>
+              <TextInput
+                style={[styles.input, styles.inputWithPrefix]}
+                value={instagramHandle}
+                onChangeText={setInstagramHandle}
+                placeholder="username"
+                placeholderTextColor="#999"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Email Preferences</Text>
+            
+            <View style={styles.preferenceRow}>
+              <Text style={styles.preferenceText}>Marketing emails</Text>
+              <Switch
+                value={emailPreferences.marketing}
+                onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, marketing: value }))}
+                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
+                thumbColor={emailPreferences.marketing ? designTokens.colors.primaryOrange : '#FFF'}
               />
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.label}>Instagram</Text>
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputPrefix}>@</Text>
-                <TextInput
-                  style={[styles.input, styles.inputWithPrefix]}
-                  value={instagramHandle}
-                  onChangeText={setInstagramHandle}
-                  placeholder="username"
-                  placeholderTextColor="#999"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
+            <View style={styles.preferenceRow}>
+              <Text style={styles.preferenceText}>Social notifications</Text>
+              <Switch
+                value={emailPreferences.social}
+                onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, social: value }))}
+                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
+                thumbColor={emailPreferences.social ? designTokens.colors.primaryOrange : '#FFF'}
+              />
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Email Preferences</Text>
-              
-              <View style={styles.preferenceRow}>
-                <Text style={styles.preferenceText}>Marketing emails</Text>
-                <Switch
-                  value={emailPreferences.marketing}
-                  onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, marketing: value }))}
-                  trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
-                  thumbColor={emailPreferences.marketing ? designTokens.colors.primaryOrange : '#FFF'}
-                />
-              </View>
-
-              <View style={styles.preferenceRow}>
-                <Text style={styles.preferenceText}>Social notifications</Text>
-                <Switch
-                  value={emailPreferences.social}
-                  onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, social: value }))}
-                  trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
-                  thumbColor={emailPreferences.social ? designTokens.colors.primaryOrange : '#FFF'}
-                />
-              </View>
-
-              <View style={styles.preferenceRow}>
-                <Text style={styles.preferenceText}>Activity updates</Text>
-                <Switch
-                  value={emailPreferences.notifications}
-                  onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, notifications: value }))}
-                  trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
-                  thumbColor={emailPreferences.notifications ? designTokens.colors.primaryOrange : '#FFF'}
-                />
-              </View>
+            <View style={styles.preferenceRow}>
+              <Text style={styles.preferenceText}>Activity updates</Text>
+              <Switch
+                value={emailPreferences.notifications}
+                onValueChange={(value) => setEmailPreferences(prev => ({ ...prev, notifications: value }))}
+                trackColor={{ false: '#DDD', true: designTokens.colors.primaryOrange + '40' }}
+                thumbColor={emailPreferences.notifications ? designTokens.colors.primaryOrange : '#FFF'}
+              />
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 };
 
