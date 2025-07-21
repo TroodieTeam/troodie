@@ -9,7 +9,6 @@ export default function AddLayout() {
         animation: 'slide_from_right',
       }}
     >
-      {/* All screens inherit headerShown: false */}
       <Stack.Screen name="save-restaurant" />
       <Stack.Screen name="restaurant-details" />
       <Stack.Screen name="board-assignment" />

@@ -1,0 +1,662 @@
+{
+  "restaurants": [
+    {
+      "name": "The Capital Grille",
+      "area": "Uptown",
+      "cuisine": ["American", "Steakhouse"],
+      "category": "Fine Dining",
+      "mustTry": "Dry Aged Steak"
+    },
+    {
+      "name": "Barcelona Wine Bar",
+      "area": "Uptown",
+      "cuisine": ["Spanish", "Tapas"],
+      "category": "Fine Dining",
+      "mustTry": "Tapas Selection"
+    },
+    {
+      "name": "Stoke Charlotte",
+      "area": "Uptown", 
+      "cuisine": ["American", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Wood-fired dishes"
+    },
+    {
+      "name": "Aria Tuscan Grille",
+      "area": "Uptown",
+      "cuisine": ["Italian"],
+      "category": "Business Lunch",
+      "mustTry": "Homemade Pasta"
+    },
+    {
+      "name": "5Church Charlotte",
+      "area": "Uptown",
+      "cuisine": ["American", "Contemporary"],
+      "category": "Trendy",
+      "mustTry": "Fried Chicken"
+    },
+    {
+      "name": "Fahrenheit",
+      "area": "Uptown",
+      "cuisine": ["Contemporary", "American"],
+      "category": "Rooftop",
+      "mustTry": "Sunset Views"
+    },
+    {
+      "name": "Queen City Q",
+      "area": "Uptown",
+      "cuisine": ["BBQ", "Southern"],
+      "category": "Casual",
+      "mustTry": "Pulled Pork"
+    },
+    {
+      "name": "Valhalla Pub & Eatery",
+      "area": "Uptown",
+      "cuisine": ["American", "Pub"],
+      "category": "Casual",
+      "mustTry": "Craft Beer Selection"
+    },
+    {
+      "name": "Yama Izakaya",
+      "area": "Uptown",
+      "cuisine": ["Japanese", "Sushi"],
+      "category": "International",
+      "mustTry": "Omakase"
+    },
+    {
+      "name": "La Belle Helene",
+      "area": "Uptown",
+      "cuisine": ["French"],
+      "category": "Fine Dining",
+      "mustTry": "French Classics"
+    },
+    {
+      "name": "O-Ku Charlotte",
+      "area": "South End",
+      "cuisine": ["Japanese", "Sushi"],
+      "category": "Trendy",
+      "mustTry": "Signature Rolls"
+    },
+    {
+      "name": "Superica",
+      "area": "South End",
+      "cuisine": ["Mexican", "Tex-Mex"],
+      "category": "Trendy",
+      "mustTry": "Margaritas"
+    },
+    {
+      "name": "Sycamore Brewing",
+      "area": "South End",
+      "cuisine": ["Brewery", "American"],
+      "category": "Brewery",
+      "mustTry": "Craft Beer"
+    },
+    {
+      "name": "Wooden Robot Brewery",
+      "area": "South End",
+      "cuisine": ["Brewery", "American"],
+      "category": "Brewery",
+      "mustTry": "Good Morning Vietnam"
+    },
+    {
+      "name": "Unknown Brewing Co",
+      "area": "South End",
+      "cuisine": ["Brewery", "American"],
+      "category": "Brewery",
+      "mustTry": "Seasonal Brews"
+    },
+    {
+      "name": "Hawkers Asian Street Food",
+      "area": "South End",
+      "cuisine": ["Asian", "Street Food"],
+      "category": "Casual",
+      "mustTry": "Roti Canai"
+    },
+    {
+      "name": "Paco's Tacos & Tequila",
+      "area": "South End",
+      "cuisine": ["Mexican"],
+      "category": "Casual",
+      "mustTry": "Street Tacos"
+    },
+    {
+      "name": "The Barcelona Wine Bar",
+      "area": "South End",
+      "cuisine": ["Spanish", "Tapas"],
+      "category": "Trendy",
+      "mustTry": "Charcuterie"
+    },
+    {
+      "name": "Haberdish",
+      "area": "NoDa",
+      "cuisine": ["Southern", "Contemporary"],
+      "category": "Local Favorite",
+      "mustTry": "Fried Chicken"
+    },
+    {
+      "name": "Reigning Doughnuts",
+      "area": "NoDa",
+      "cuisine": ["Bakery", "Cafe"],
+      "category": "Breakfast",
+      "mustTry": "Specialty Doughnuts"
+    },
+    {
+      "name": "NoDa Bodega",
+      "area": "NoDa",
+      "cuisine": ["Deli", "Sandwiches"],
+      "category": "Casual",
+      "mustTry": "Sandwiches"
+    },
+    {
+      "name": "NoDa Brewing Company",
+      "area": "NoDa",
+      "cuisine": ["Brewery", "American"],
+      "category": "Brewery",
+      "mustTry": "Hop Drop 'N Roll"
+    },
+    {
+      "name": "Birdsong Brewing Co.",
+      "area": "NoDa",
+      "cuisine": ["Brewery", "American"],
+      "category": "Brewery",
+      "mustTry": "Jalapeño Pale Ale"
+    },
+    {
+      "name": "Sabor Latin Street Grill",
+      "area": "NoDa",
+      "cuisine": ["Latin", "Mexican"],
+      "category": "Casual",
+      "mustTry": "Burritos"
+    },
+    {
+      "name": "Soul Gastrolounge",
+      "area": "Plaza Midwood",
+      "cuisine": ["Tapas", "Sushi"],
+      "category": "Trendy",
+      "mustTry": "Small Plates"
+    },
+    {
+      "name": "Midwood Smokehouse",
+      "area": "Plaza Midwood",
+      "cuisine": ["BBQ"],
+      "category": "Casual",
+      "mustTry": "Brisket"
+    },
+    {
+      "name": "Zada Jane's",
+      "area": "Plaza Midwood",
+      "cuisine": ["American", "Brunch"],
+      "category": "Brunch",
+      "mustTry": "Pancakes"
+    },
+    {
+      "name": "The People's Market",
+      "area": "Plaza Midwood",
+      "cuisine": ["Cafe", "Market"],
+      "category": "Cafe",
+      "mustTry": "Coffee & Pastries"
+    },
+    {
+      "name": "Yamazaru",
+      "area": "Plaza Midwood",
+      "cuisine": ["Japanese", "Ramen"],
+      "category": "Casual",
+      "mustTry": "Tonkotsu Ramen"
+    },
+    {
+      "name": "Legion Brewing Plaza Midwood",
+      "area": "Plaza Midwood",
+      "cuisine": ["Brewery", "American"],
+      "category": "Brewery",
+      "mustTry": "Juicy Jay IPA"
+    },
+    {
+      "name": "Good Food on Montford",
+      "area": "Montford",
+      "cuisine": ["Southern", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Shrimp & Grits"
+    },
+    {
+      "name": "Bardo",
+      "area": "South Park",
+      "cuisine": ["Contemporary", "American"],
+      "category": "Fine Dining",
+      "mustTry": "Tasting Menu"
+    },
+    {
+      "name": "Napa on Providence",
+      "area": "Myers Park",
+      "cuisine": ["American", "Wine Bar"],
+      "category": "Fine Dining",
+      "mustTry": "Wine Selection"
+    },
+    {
+      "name": "Kindred",
+      "area": "Davidson",
+      "cuisine": ["Contemporary", "American"],
+      "category": "Fine Dining",
+      "mustTry": "Milk Bread"
+    },
+    {
+      "name": "The Asbury",
+      "area": "Uptown",
+      "cuisine": ["Southern", "Contemporary"],
+      "category": "Trendy",
+      "mustTry": "Cocktails"
+    },
+    {
+      "name": "Dot Dot Dot",
+      "area": "Park Road",
+      "cuisine": ["Contemporary", "American"],
+      "category": "Fine Dining",
+      "mustTry": "Chef's Tasting"
+    },
+    {
+      "name": "The Crunkleton",
+      "area": "Elizabeth",
+      "cuisine": ["Bar", "American"],
+      "category": "Bar",
+      "mustTry": "Craft Cocktails"
+    },
+    {
+      "name": "Beef 'N Bottle",
+      "area": "South Boulevard",
+      "cuisine": ["Steakhouse"],
+      "category": "Classic",
+      "mustTry": "Prime Rib"
+    },
+    {
+      "name": "Pinky's Westside Grill",
+      "area": "Multiple Locations",
+      "cuisine": ["American", "Burgers"],
+      "category": "Casual",
+      "mustTry": "Burgers"
+    },
+    {
+      "name": "Amélie's French Bakery",
+      "area": "Multiple Locations",
+      "cuisine": ["French", "Bakery"],
+      "category": "Cafe",
+      "mustTry": "Pastries"
+    },
+    {
+      "name": "Viva Chicken",
+      "area": "Multiple Locations",
+      "cuisine": ["Peruvian"],
+      "category": "Fast Casual",
+      "mustTry": "Rotisserie Chicken"
+    },
+    {
+      "name": "Leah & Louise",
+      "area": "Camp North End",
+      "cuisine": ["Southern", "Contemporary"],
+      "category": "Trendy",
+      "mustTry": "Jerk Chicken"
+    },
+    {
+      "name": "Inizio Pizza Napoletana",
+      "area": "Barclay Downs",
+      "cuisine": ["Italian", "Pizza"],
+      "category": "Casual",
+      "mustTry": "Neapolitan Pizza"
+    },
+    {
+      "name": "Mama Ricotta's",
+      "area": "Midtown",
+      "cuisine": ["Italian"],
+      "category": "Casual",
+      "mustTry": "Ricotta Gnocchi"
+    },
+    {
+      "name": "The King's Kitchen",
+      "area": "Uptown",
+      "cuisine": ["Southern"],
+      "category": "Casual",
+      "mustTry": "She Crab Soup"
+    },
+    {
+      "name": "300 East",
+      "area": "Dilworth",
+      "cuisine": ["American", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Seasonal Menu"
+    },
+    {
+      "name": "Fin & Fino",
+      "area": "Uptown",
+      "cuisine": ["Spanish", "Seafood"],
+      "category": "Fine Dining",
+      "mustTry": "Paella"
+    },
+    {
+      "name": "Mert's Heart & Soul",
+      "area": "Uptown",
+      "cuisine": ["Soul Food", "Southern"],
+      "category": "Casual",
+      "mustTry": "Fried Catfish"
+    },
+    {
+      "name": "Price's Chicken Coop",
+      "area": "South End",
+      "cuisine": ["Southern", "Fried Chicken"],
+      "category": "Casual",
+      "mustTry": "Fried Chicken"
+    },
+    {
+      "name": "Seoul Food Meat Company",
+      "area": "Plaza Midwood",
+      "cuisine": ["Korean", "BBQ"],
+      "category": "Casual",
+      "mustTry": "Korean BBQ"
+    },
+    {
+      "name": "Optimist Hall",
+      "area": "Optimist Park",
+      "cuisine": ["Food Hall", "Various"],
+      "category": "Food Hall",
+      "mustTry": "Various Vendors"
+    },
+    {
+      "name": "7th Street Public Market",
+      "area": "Uptown",
+      "cuisine": ["Food Hall", "Various"],
+      "category": "Food Hall",
+      "mustTry": "Local Vendors"
+    },
+    {
+      "name": "Camp North End Food Hall",
+      "area": "Camp North End",
+      "cuisine": ["Food Hall", "Various"],
+      "category": "Food Hall",
+      "mustTry": "Rotating Vendors"
+    },
+    {
+      "name": "Baku",
+      "area": "South End",
+      "cuisine": ["Japanese", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Robatayaki"
+    },
+    {
+      "name": "Bossy Beulah's",
+      "area": "South End",
+      "cuisine": ["Southern", "Fried Chicken"],
+      "category": "Casual",
+      "mustTry": "Chicken Biscuit"
+    },
+    {
+      "name": "Futo Buta",
+      "area": "South End",
+      "cuisine": ["Japanese", "Ramen"],
+      "category": "Casual",
+      "mustTry": "Ramen"
+    },
+    {
+      "name": "Dot Dot Dot",
+      "area": "Park Road",
+      "cuisine": ["Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Tasting Menu"
+    },
+    {
+      "name": "The Jimmy",
+      "area": "Myers Park",
+      "cuisine": ["Mediterranean"],
+      "category": "Fine Dining",
+      "mustTry": "Lamb"
+    },
+    {
+      "name": "Hello, Sailor",
+      "area": "Camp North End",
+      "cuisine": ["Seafood", "Tropical"],
+      "category": "Trendy",
+      "mustTry": "Ceviche"
+    },
+    {
+      "name": "Supperland",
+      "area": "Park Road",
+      "cuisine": ["Southern", "Contemporary"],
+      "category": "Trendy",
+      "mustTry": "Biscuits"
+    },
+    {
+      "name": "What the Fries",
+      "area": "University",
+      "cuisine": ["American", "Comfort Food"],
+      "category": "Casual",
+      "mustTry": "Loaded Fries"
+    },
+    {
+      "name": "Dolce Ristorante",
+      "area": "Ballantyne",
+      "cuisine": ["Italian"],
+      "category": "Fine Dining",
+      "mustTry": "Osso Buco"
+    },
+    {
+      "name": "Gallery Restaurant",
+      "area": "Ballantyne Hotel",
+      "cuisine": ["American", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Brunch"
+    },
+    {
+      "name": "131 Main",
+      "area": "Blakeney",
+      "cuisine": ["American", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Steak"
+    },
+    {
+      "name": "Red Rocks Cafe",
+      "area": "Birkdale Village",
+      "cuisine": ["American", "Casual"],
+      "category": "Casual",
+      "mustTry": "Wings"
+    },
+    {
+      "name": "Dressler's Restaurant",
+      "area": "Birkdale Village",
+      "cuisine": ["American", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Seafood"
+    },
+    {
+      "name": "Pisces Sushi Bar & Lounge",
+      "area": "Uptown",
+      "cuisine": ["Japanese", "Sushi"],
+      "category": "Trendy",
+      "mustTry": "Specialty Rolls"
+    },
+    {
+      "name": "RiRa Irish Pub",
+      "area": "Uptown",
+      "cuisine": ["Irish", "Pub"],
+      "category": "Casual",
+      "mustTry": "Fish & Chips"
+    },
+    {
+      "name": "Alexander Michael's",
+      "area": "Fourth Ward",
+      "cuisine": ["American", "Pub"],
+      "category": "Casual",
+      "mustTry": "Burgers"
+    },
+    {
+      "name": "The Liberty",
+      "area": "South End",
+      "cuisine": ["American", "Gastropub"],
+      "category": "Casual",
+      "mustTry": "Craft Beer"
+    },
+    {
+      "name": "JJ's Red Hots",
+      "area": "Multiple Locations",
+      "cuisine": ["American", "Hot Dogs"],
+      "category": "Casual",
+      "mustTry": "Specialty Hot Dogs"
+    },
+    {
+      "name": "Diamond Restaurant",
+      "area": "Uptown",
+      "cuisine": ["American", "Diner"],
+      "category": "Classic",
+      "mustTry": "All-Day Breakfast"
+    },
+    {
+      "name": "Landmark Restaurant",
+      "area": "Multiple Locations",
+      "cuisine": ["Mediterranean", "Diner"],
+      "category": "Classic",
+      "mustTry": "Gyros"
+    },
+    {
+      "name": "Lupie's Cafe",
+      "area": "Dilworth",
+      "cuisine": ["American", "Vegetarian"],
+      "category": "Casual",
+      "mustTry": "Veggie Chili"
+    },
+    {
+      "name": "Crispy Banh Mi",
+      "area": "South End",
+      "cuisine": ["Vietnamese"],
+      "category": "Casual",
+      "mustTry": "Banh Mi"
+    },
+    {
+      "name": "Vana",
+      "area": "Uptown",
+      "cuisine": ["Indian", "Contemporary"],
+      "category": "Fine Dining",
+      "mustTry": "Modern Indian"
+    },
+    {
+      "name": "Copper",
+      "area": "Dilworth",
+      "cuisine": ["Indian", "Contemporary"],
+      "category": "Trendy",
+      "mustTry": "Curry"
+    },
+    {
+      "name": "Cabo Fish Taco",
+      "area": "NoDa",
+      "cuisine": ["Mexican", "Seafood"],
+      "category": "Casual",
+      "mustTry": "Fish Tacos"
+    },
+    {
+      "name": "Three Amigos Mexican Grill",
+      "area": "Multiple Locations",
+      "cuisine": ["Mexican"],
+      "category": "Casual",
+      "mustTry": "Fajitas"
+    },
+    {
+      "name": "RuRu's Tacos",
+      "area": "Multiple Locations",
+      "cuisine": ["Mexican"],
+      "category": "Casual",
+      "mustTry": "Tacos"
+    },
+    {
+      "name": "Bakersfield",
+      "area": "Dilworth",
+      "cuisine": ["Mexican", "Tacos"],
+      "category": "Casual",
+      "mustTry": "Tacos & Tequila"
+    },
+    {
+      "name": "Chopt Creative Salad Co.",
+      "area": "Multiple Locations",
+      "cuisine": ["Salads", "Healthy"],
+      "category": "Fast Casual",
+      "mustTry": "Custom Salads"
+    },
+    {
+      "name": "Flower Child",
+      "area": "South Park",
+      "cuisine": ["Healthy", "Contemporary"],
+      "category": "Fast Casual",
+      "mustTry": "Bowls"
+    },
+    {
+      "name": "True Food Kitchen",
+      "area": "SouthPark Mall",
+      "cuisine": ["Healthy", "Contemporary"],
+      "category": "Casual",
+      "mustTry": "Ancient Grains Bowl"
+    },
+    {
+      "name": "Cowbell Burger & Bar",
+      "area": "SouthPark",
+      "cuisine": ["American", "Burgers"],
+      "category": "Casual",
+      "mustTry": "Burgers"
+    },
+    {
+      "name": "Shake Shack",
+      "area": "Multiple Locations",
+      "cuisine": ["American", "Burgers"],
+      "category": "Fast Casual",
+      "mustTry": "ShackBurger"
+    },
+    {
+      "name": "Brooks' Sandwich House",
+      "area": "NoDa",
+      "cuisine": ["American", "Sandwiches"],
+      "category": "Casual",
+      "mustTry": "Burgers"
+    },
+    {
+      "name": "Rhino Market and Deli",
+      "area": "Multiple Locations",
+      "cuisine": ["Deli", "Sandwiches"],
+      "category": "Casual",
+      "mustTry": "Sandwiches"
+    },
+    {
+      "name": "Midnight Diner",
+      "area": "Uptown",
+      "cuisine": ["American", "Diner"],
+      "category": "Late Night",
+      "mustTry": "24/7 Breakfast"
+    },
+    {
+      "name": "The Dumpling Lady",
+      "area": "Uptown",
+      "cuisine": ["Chinese", "Dumplings"],
+      "category": "Casual",
+      "mustTry": "Dumplings"
+    },
+    {
+      "name": "Bardo Rose Room",
+      "area": "South End",
+      "cuisine": ["Contemporary", "Cocktails"],
+      "category": "Bar",
+      "mustTry": "Cocktails"
+    },
+    {
+      "name": "The Cellar at Duckworth's",
+      "area": "Uptown",
+      "cuisine": ["American", "Gastropub"],
+      "category": "Bar",
+      "mustTry": "Whiskey Selection"
+    },
+    {
+      "name": "Coco and the Director",
+      "area": "Wesley Heights",
+      "cuisine": ["Contemporary", "American"],
+      "category": "Fine Dining",
+      "mustTry": "Seasonal Menu"
+    },
+    {
+      "name": "The Goodyear House",
+      "area": "NODA",
+      "cuisine": ["Southern", "Contemporary"],
+      "category": "Trendy",
+      "mustTry": "Pimento Cheese"
+    }
+  ]
+}
