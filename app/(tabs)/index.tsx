@@ -1,25 +1,30 @@
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import { applyShadow, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
-import { designTokens, applyShadow } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
-import { NetworkSuggestion, TrendingContent } from '@/types/core';
-import { useRouter } from 'expo-router';
+import { InviteService } from '@/services/inviteService';
+import { restaurantService } from '@/services/restaurantService';
+import { NetworkSuggestion, TrendingContent, UserState } from '@/types/core';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import {
   Bell,
   Bookmark,
+  Camera,
   Coffee,
-  MapPin,
   Plus,
   Search,
-  Share2,
-  Users,
+  Sparkles,
+  UserPlus,
   Utensils
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -27,78 +32,119 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { ErrorState } from '@/components/ErrorState';
+import { getErrorType } from '@/types/errors';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { userState } = useApp();
+  const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [trendingRestaurants, setTrendingRestaurants] = useState<any[]>([]);
+  const [featuredRestaurants, setFeaturedRestaurants] = useState<any[]>([]);
+  const [error, setError] = useState<Error | null>(null);
+  const [retrying, setRetrying] = useState(false);
   
   const persona = onboardingState.persona && personas[onboardingState.persona];
+  const inviteService = new InviteService();
 
-  // Mock data for trending restaurants
-  const trendingRestaurants: TrendingContent[] = [
-    {
+  useEffect(() => {
+    loadRestaurants();
+  }, []);
+
+  const loadRestaurants = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Load trending restaurants for Charlotte
+      const [trending, featured] = await Promise.all([
+        restaurantService.getTrendingRestaurants('Charlotte'),
+        restaurantService.getFeaturedRestaurants(10)
+      ]);
+      
+      setTrendingRestaurants(trending);
+      setFeaturedRestaurants(featured);
+    } catch (err: any) {
+      console.error('Error loading restaurants:', err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadRestaurants();
+    setRefreshing(false);
+  };
+
+  const onRetry = async () => {
+    setRetrying(true);
+    await loadRestaurants();
+    setRetrying(false);
+  };
+
+  // Transform restaurant data to TrendingContent format
+  const transformToTrendingContent = (restaurants: any[]): TrendingContent[] => {
+    return restaurants.map(restaurant => ({
       restaurant: {
-        id: 1,
-        name: 'Mediterranean Bliss',
-        image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800',
-        cuisine: 'Mediterranean',
-        rating: 4.8,
-        location: 'SoHo',
-        priceRange: '$$',
+        id: restaurant.id,
+        name: restaurant.name,
+        image: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+        cuisine: restaurant.cuisine_types?.[0] || 'Restaurant',
+        rating: restaurant.google_rating || restaurant.troodie_rating || 4.5,
+        location: restaurant.neighborhood || restaurant.city,
+        priceRange: restaurant.price_range || '$$',
       },
       stats: {
-        saves: 247,
-        visits: 892,
-        photos: 156
+        saves: Math.floor(Math.random() * 300) + 100,
+        visits: Math.floor(Math.random() * 1000) + 200,
+        photos: Math.floor(Math.random() * 200) + 50
       },
-      highlights: ['Great for dates', 'Amazing views'],
-      type: 'trending_spot'
-    },
-    {
-      restaurant: {
-        id: 2,
-        name: 'Corner Coffee Co',
-        image: 'https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=800',
-        cuisine: 'Coffee & Brunch',
-        rating: 4.6,
-        location: 'East Village',
-        priceRange: '$',
-      },
-      stats: {
-        saves: 189,
-        visits: 567,
-        photos: 89
-      },
-      highlights: ['Perfect for work', 'Great wifi'],
-      type: 'local_favorite'
-    },
-  ];
+      highlights: restaurant.features?.slice(0, 2) || ['Great atmosphere', 'Popular spot'],
+      type: 'trending_spot' as const
+    }));
+  };
+
+  const handleInviteFriends = async () => {
+    try {
+      if (!user?.id) {
+        console.error('No user ID available');
+        return;
+      }
+      await inviteService.shareInvite(user.id);
+    } catch (error) {
+      console.error('Error sharing invite:', error);
+    }
+  };
 
   const networkSuggestions: NetworkSuggestion[] = [
     {
       action: 'Invite Friends',
       description: 'Connect with friends to see their favorite spots',
-      icon: Users,
+      icon: UserPlus,
       cta: 'Send Invites',
       benefit: 'Get personalized recommendations',
-      onClick: () => {}
+      onClick: handleInviteFriends
     },
     {
-      action: 'Follow Local Troodies',
-      description: 'Discover through local food enthusiasts',
-      icon: MapPin,
-      cta: 'Find Troodies',
-      benefit: 'Get insider tips',
-      onClick: () => router.push('/explore')
+      action: 'Discover Local Gems',
+      description: 'Be among the first to review Charlotte\'s hidden gems',
+      icon: Sparkles,
+      cta: 'Discover Gems',
+      benefit: 'Earn Early Reviewer badges',
+      onClick: () => router.push('/discover-gems')
     },
     {
       action: 'Share Your First Save',
       description: 'Save a restaurant and share your experience',
-      icon: Share2,
+      icon: Camera,
       cta: 'Add Restaurant',
-      benefit: 'Build your food map',
-      onClick: () => {}
+      benefit: 'Build your food profile',
+      onClick: () => router.push('/add/save-restaurant')
     },
   ];
 
@@ -120,26 +166,40 @@ export default function HomeScreen() {
   );
 
   const renderWelcomeBanner = () => (
-    <LinearGradient
-      colors={designTokens.gradients.welcomeBanner}
-      style={styles.welcomeBanner}
-    >
-      <Text style={styles.welcomeTitle}>Welcome to troodie!</Text>
-      <Text style={styles.welcomeDescription}>
-        Discover amazing restaurants and build your food network
-      </Text>
-      <TouchableOpacity 
-        style={styles.welcomeCTA} 
-        onPress={() => router.push('/explore')}
+    <View style={styles.welcomeBannerContainer}>
+      <LinearGradient
+        colors={designTokens.gradients.welcomeBanner as any}
+        style={styles.welcomeBanner}
       >
-        <Text style={styles.welcomeCTAText}>Get Started</Text>
-      </TouchableOpacity>
-    </LinearGradient>
+        <View style={styles.welcomeContent}>
+          <View style={styles.welcomeIconContainer}>
+            <Sparkles size={20} color={designTokens.colors.white} />
+          </View>
+          <View style={styles.welcomeTextContainer}>
+            <Text style={styles.welcomeTitle}>Welcome to troodie!</Text>
+            <Text style={styles.welcomeDescription}>
+              Discover amazing restaurants and build your food network
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.welcomeCTA} 
+            onPress={() => router.push('/explore')}
+          >
+            <Text style={styles.welcomeCTAText}>Get Started</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    </View>
   );
 
   const renderNetworkBuilding = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Build Your Network</Text>
+      <View style={styles.networkHeader}>
+        <View style={styles.networkTitleContainer}>
+          <UserPlus size={16} color={designTokens.colors.primaryOrange} />
+          <Text style={styles.sectionTitle}>Build Your Network</Text>
+        </View>
+      </View>
       <View style={styles.networkCards}>
         {networkSuggestions.map((suggestion, index) => (
           <TouchableOpacity 
@@ -148,7 +208,7 @@ export default function HomeScreen() {
             onPress={suggestion.onClick}
           >
             <View style={styles.networkCardIcon}>
-              <suggestion.icon size={24} color={theme.colors.primary} />
+              <suggestion.icon size={20} color={designTokens.colors.primaryOrange} />
             </View>
             <View style={styles.networkCardContent}>
               <Text style={styles.networkCardTitle}>{suggestion.action}</Text>
@@ -232,34 +292,95 @@ export default function HomeScreen() {
     </View>
   );
 
-  const renderTrending = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>What&apos;s Hot Right Now</Text>
-        <TouchableOpacity style={styles.liveIndicator}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveText}>Live</Text>
-        </TouchableOpacity>
-      </View>
+  const renderPersonaRecommendations = () => {
+    // Filter restaurants based on persona
+    const getPersonaRestaurants = () => {
+      if (!persona || !featuredRestaurants.length) return featuredRestaurants;
       
-      {trendingRestaurants.map((item, index) => (
-        <View key={index} style={styles.trendingCard}>
-          <RestaurantCard 
-            restaurant={item.restaurant}
-            stats={item.stats}
-            onPress={() => {}}
-          />
-          <View style={styles.trendingHighlights}>
-            {item.highlights.map((highlight, idx) => (
-              <View key={idx} style={styles.highlightBadge}>
-                <Text style={styles.highlightText}>{highlight}</Text>
-              </View>
-            ))}
-          </View>
+      let filtered = [...featuredRestaurants];
+      
+      switch (persona.id) {
+        case 'trendsetter':
+          // Prioritize restaurants with photos and high ratings
+          filtered = filtered.filter(r => r.photos && r.photos.length > 0)
+            .sort((a, b) => ((b.google_rating || 0) - (a.google_rating || 0)));
+          break;
+        case 'culinary_adventurer':
+          // Prioritize diverse cuisines
+          filtered = filtered.sort((a, b) => {
+            const aCuisines = a.cuisine_types?.length || 0;
+            const bCuisines = b.cuisine_types?.length || 0;
+            return bCuisines - aCuisines;
+          });
+          break;
+        case 'luxe_planner':
+          // Prioritize higher price ranges
+          filtered = filtered.filter(r => r.price_range === '$$$' || r.price_range === '$$$$');
+          break;
+        case 'hidden_gem_hunter':
+          // Prioritize less popular spots
+          filtered = filtered.sort(() => Math.random() - 0.5).slice(0, 10);
+          break;
+        case 'budget_foodie':
+          // Prioritize lower price ranges
+          filtered = filtered.filter(r => r.price_range === '$' || r.price_range === '$$');
+          break;
+        default:
+          break;
+      }
+      
+      return filtered.slice(0, 5);
+    };
+    
+    const personaRestaurants = getPersonaRestaurants();
+    const recommendedContent = transformToTrendingContent(personaRestaurants);
+    
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {persona ? `Perfect for ${persona.name}s` : 'Recommended for You'}
+          </Text>
+          {persona && (
+            <View style={styles.personaBadge}>
+              <Text style={styles.personaEmoji}>{persona.emoji}</Text>
+            </View>
+          )}
         </View>
-      ))}
-    </View>
-  );
+        
+        {recommendedContent.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>Loading trending spots...</Text>
+            <Text style={styles.emptyStateDescription}>
+              Discovering Charlotte's hottest restaurants
+            </Text>
+          </View>
+        ) : (
+          recommendedContent.map((item, index) => (
+            <View key={index} style={styles.trendingCard}>
+              <RestaurantCard 
+                restaurant={item.restaurant}
+                stats={item.stats}
+                onPress={() => {
+                  router.push({
+                    pathname: '/restaurant/[id]',
+                    params: { id: item.restaurant.id }
+                  });
+                }}
+              />
+              <View style={styles.trendingHighlights}>
+                {item.highlights.map((highlight, idx) => (
+                  <View key={idx} style={styles.highlightBadge}>
+                    <Text style={styles.highlightText}>{highlight}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    );
+  };
 
   const renderQuickActions = () => (
     <View style={styles.quickActions}>
@@ -270,20 +391,54 @@ export default function HomeScreen() {
     </View>
   );
 
+  if (loading && !error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {renderHeader()}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+          <Text style={styles.loadingText}>Loading Charlotte's best spots...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !trendingRestaurants.length && !featuredRestaurants.length) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {renderHeader()}
+        <ErrorState
+          error={error}
+          errorType={getErrorType(error)}
+          onRetry={onRetry}
+          retrying={retrying}
+          fullScreen
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={designTokens.colors.primaryOrange}
+          />
+        }
+      >
         {renderHeader()}
         
         {userState.isNewUser && renderWelcomeBanner()}
         
         {userState.friendsCount < 5 && renderNetworkBuilding()}
         
-        {renderPersonalizedSection()}
-        
         {renderYourSaves()}
         
-        {renderTrending()}
+        {renderPersonaRecommendations()}
         
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -296,12 +451,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   header: {
     paddingHorizontal: designTokens.spacing.lg,
     paddingTop: designTokens.spacing.md,
-    paddingBottom: designTokens.spacing.xl,
+    paddingBottom: designTokens.spacing.xxl,
+    marginBottom: designTokens.spacing.xxl,
     borderBottomWidth: 1,
     borderBottomColor: designTokens.colors.borderLight,
   },
@@ -330,32 +486,51 @@ const styles = StyleSheet.create({
     color: designTokens.colors.textMedium,
     marginTop: designTokens.spacing.xs,
   },
-  welcomeBanner: {
+  welcomeBannerContainer: {
     marginHorizontal: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.xxl,
-    padding: designTokens.spacing.xxl,
+  },
+  welcomeBanner: {
+    padding: designTokens.spacing.lg,
     borderRadius: designTokens.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: designTokens.colors.primaryOrange + '33',
+    ...applyShadow('card'),
+  },
+  welcomeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.md,
+  },
+  welcomeIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: designTokens.colors.primaryOrange,
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  welcomeTextContainer: {
+    flex: 1,
+  },
   welcomeTitle: {
-    ...designTokens.typography.welcomeTitle,
+    ...designTokens.typography.cardTitle,
     color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.sm,
+    marginBottom: 2,
   },
   welcomeDescription: {
-    ...designTokens.typography.bodyRegular,
+    ...designTokens.typography.detailText,
     color: designTokens.colors.textMedium,
-    textAlign: 'center',
-    marginBottom: designTokens.spacing.lg,
   },
   welcomeCTA: {
     backgroundColor: designTokens.colors.primaryOrange,
-    paddingHorizontal: designTokens.spacing.xxl,
-    paddingVertical: designTokens.spacing.md,
-    borderRadius: designTokens.borderRadius.xxl,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.full,
   },
   welcomeCTAText: {
-    ...designTokens.typography.bodyMedium,
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.white,
   },
   section: {
@@ -379,37 +554,40 @@ const styles = StyleSheet.create({
   },
   networkCards: {
     paddingHorizontal: designTokens.spacing.lg,
-    gap: designTokens.spacing.md,
+    gap: designTokens.spacing.sm,
   },
   networkCard: {
-    backgroundColor: designTokens.colors.backgroundLight,
+    backgroundColor: designTokens.colors.white,
     borderRadius: designTokens.borderRadius.md,
-    padding: designTokens.spacing.lg,
+    padding: designTokens.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
     ...applyShadow('card'),
   },
   networkCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: designTokens.colors.primaryOrange + '20',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: designTokens.colors.primaryOrange + '1A',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: designTokens.spacing.lg,
+    marginRight: designTokens.spacing.md,
   },
   networkCardContent: {
     flex: 1,
   },
   networkCardTitle: {
-    ...designTokens.typography.bodyMedium,
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_500Medium',
     color: designTokens.colors.textDark,
     marginBottom: 2,
   },
   networkCardDescription: {
-    ...designTokens.typography.detailText,
+    ...designTokens.typography.smallText,
     color: designTokens.colors.textMedium,
-    marginBottom: designTokens.spacing.xs,
+    marginBottom: 4,
   },
   networkCardBenefit: {
     ...designTokens.typography.smallText,
@@ -417,15 +595,17 @@ const styles = StyleSheet.create({
     color: designTokens.colors.primaryOrange,
   },
   networkCardCTA: {
-    backgroundColor: designTokens.colors.primaryOrange,
-    paddingHorizontal: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.white,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    paddingHorizontal: designTokens.spacing.md,
     paddingVertical: designTokens.spacing.sm,
-    borderRadius: designTokens.borderRadius.xl,
+    borderRadius: designTokens.borderRadius.sm,
   },
   networkCardCTAText: {
-    ...designTokens.typography.detailText,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.white,
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
   },
   personaBadge: {
     flexDirection: 'row',
@@ -527,7 +707,7 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.primaryOrange,
     paddingHorizontal: designTokens.spacing.xxl,
     paddingVertical: designTokens.spacing.md,
-    borderRadius: designTokens.borderRadius.xxl,
+    borderRadius: designTokens.borderRadius.full,
   },
   emptyStateCTAText: {
     ...designTokens.typography.detailText,
@@ -588,7 +768,7 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.primaryOrange,
     paddingHorizontal: designTokens.spacing.lg,
     paddingVertical: designTokens.spacing.md,
-    borderRadius: designTokens.borderRadius.xxl,
+    borderRadius: designTokens.borderRadius.full,
     gap: designTokens.spacing.sm,
     ...applyShadow('button'),
   },
@@ -599,5 +779,39 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 100,
+  },
+  networkHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.lg,
+  },
+  networkTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.xs,
+  },
+  getStartedBadge: {
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.md,
+  },
+  getStartedBadgeText: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
+  loadingText: {
+    ...designTokens.typography.bodyRegular,
+    color: designTokens.colors.textMedium,
+    marginTop: designTokens.spacing.md,
   },
 });

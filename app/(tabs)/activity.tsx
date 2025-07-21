@@ -1,34 +1,54 @@
-import { theme } from '@/constants/theme';
 import { designTokens } from '@/constants/designTokens';
+import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
 import { ActivityItem, SuggestedActivity, TrendingActivity } from '@/types/core';
 import { useRouter } from 'expo-router';
 import {
-    Bell,
-    Bookmark,
-    Camera,
-    ChevronLeft,
-    MessageCircle,
-    TrendingUp,
-    UserPlus,
-    Users
+  Bell,
+  Bookmark,
+  Camera,
+  ChevronLeft,
+  UserPlus,
+  Sparkles
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator
 } from 'react-native';
+import { restaurantService } from '@/services/restaurantService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ActivityScreen() {
   const router = useRouter();
   const { userState } = useApp();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [trendingRestaurants, setTrendingRestaurants] = useState<any[]>([]);
 
-  // Mock data for suggested activities
+  useEffect(() => {
+    loadTrendingRestaurants();
+  }, []);
+
+  const loadTrendingRestaurants = async () => {
+    try {
+      setLoading(true);
+      const trending = await restaurantService.getTrendingRestaurants('Charlotte');
+      setTrendingRestaurants(trending.slice(0, 3)); // Get top 3 for activity screen
+    } catch (error) {
+      console.error('Error loading trending restaurants:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Suggested activities data
   const suggestedActivities: SuggestedActivity[] = [
     {
       title: 'Save Your First Restaurant',
@@ -40,11 +60,11 @@ export default function ActivityScreen() {
       onClick: () => router.push('/explore')
     },
     {
-      title: 'Follow Local Troodies',
-      description: 'Connect with food enthusiasts in your area',
-      icon: UserPlus,
-      action: 'Find Troodies',
-      benefit: '💡 See what\'s trending nearby',
+      title: 'Discover Local Gems',
+      description: 'Be among the first to review Charlotte\'s hidden gems',
+      icon: Sparkles,
+      action: 'Find Gems',
+      benefit: '💡 Earn Early Reviewer badges',
       color: 'green',
       onClick: () => router.push('/explore')
     },
@@ -59,30 +79,18 @@ export default function ActivityScreen() {
     },
   ];
 
-  // Mock data for trending activity
-  const trendingActivities: TrendingActivity[] = [
-    {
-      type: 'trending_save',
-      restaurant: 'RoofTop Garden',
-      image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
-      stats: '247 saves today',
-      description: 'Mediterranean restaurant trending in SoHo'
-    },
-    {
-      type: 'new_opening',
-      restaurant: 'Corner Coffee Co',
-      image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800',
-      stats: '189 early visits',
-      description: 'New coffee shop getting great reviews'
-    },
-    {
-      type: 'local_favorite',
-      restaurant: 'Sakura Omakase',
-      image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800',
-      stats: '195 saves this week',
-      description: 'Local favorite for authentic Japanese cuisine'
-    },
-  ];
+  // Transform restaurant data to trending activities
+  const transformToTrendingActivities = (restaurants: any[]): TrendingActivity[] => {
+    const activityTypes: Array<'trending_save' | 'new_opening' | 'local_favorite'> = ['trending_save', 'new_opening', 'local_favorite'];
+    
+    return restaurants.map((restaurant, index) => ({
+      type: activityTypes[index % activityTypes.length],
+      restaurant: restaurant.name,
+      image: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+      stats: `${Math.floor(Math.random() * 300) + 100} saves this week`,
+      description: `${restaurant.cuisine_types?.[0] || 'Restaurant'} in ${restaurant.neighborhood || 'Charlotte'}`
+    }));
+  };
 
   // Mock data for activity items (when user has activity)
   const activityItems: ActivityItem[] = [
@@ -239,33 +247,6 @@ export default function ActivityScreen() {
             );
           })}
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>What&apos;s Happening</Text>
-          <View style={styles.liveIndicator}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>Live</Text>
-          </View>
-        </View>
-        
-        {trendingActivities.map((trending, index) => (
-          <TouchableOpacity key={index} style={styles.trendingCard}>
-            <Image source={{ uri: trending.image }} style={styles.trendingImage} />
-            <View style={styles.trendingContent}>
-              <Text style={styles.trendingRestaurant}>{trending.restaurant}</Text>
-              <Text style={styles.trendingDescription}>{trending.description}</Text>
-              <View style={styles.trendingStats}>
-                <TrendingUp size={14} color={theme.colors.primary} />
-                <Text style={styles.trendingStatsText}>{trending.stats}</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.trendingButton}>
-              <Text style={styles.trendingButtonText}>Save</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
       </View>
     </>
   );

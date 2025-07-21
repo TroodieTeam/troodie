@@ -1,4 +1,5 @@
 import { theme } from '@/constants/theme';
+import { designTokens } from '@/constants/designTokens';
 import { RestaurantSearchResult } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
@@ -9,7 +10,7 @@ import {
     Search,
     Star
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Image,
@@ -21,61 +22,62 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { restaurantService } from '@/services/restaurantService';
+import { BetaRestaurantNotice } from '@/components/BetaRestaurantNotice';
 
 export default function SaveRestaurantScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMethod, setSearchMethod] = useState<'text' | 'location' | 'photo' | 'manual'>('text');
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<RestaurantSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [allRestaurants, setAllRestaurants] = useState<any[]>([]);
 
-  // Mock search results
-  const mockSearchResults: RestaurantSearchResult[] = [
-    {
-      id: '1',
-      name: 'Sakura Omakase',
-      address: '123 East Village St, New York, NY 10003',
-      cuisine: ['Japanese', 'Sushi'],
-      rating: 4.9,
-      photos: ['https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800'],
-      verified: true,
-      distance: 0.5,
-      priceRange: '$$$$'
-    },
-    {
-      id: '2',
-      name: 'RoofTop Garden',
-      address: '456 SoHo Ave, New York, NY 10013',
-      cuisine: ['Mediterranean', 'Greek'],
-      rating: 4.7,
-      photos: ['https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800'],
-      verified: true,
-      distance: 1.2,
-      priceRange: '$$$'
-    },
-    {
-      id: '3',
-      name: 'Corner Coffee Co',
-      address: '789 Brooklyn St, Brooklyn, NY 11201',
-      cuisine: ['Coffee', 'Brunch', 'American'],
-      rating: 4.5,
-      photos: ['https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800'],
-      verified: false,
-      distance: 2.8,
-      priceRange: '$'
+  useEffect(() => {
+    loadRestaurants();
+  }, []);
+
+  const loadRestaurants = async () => {
+    try {
+      const restaurants = await restaurantService.getRestaurantsByCity('Charlotte', 100);
+      setAllRestaurants(restaurants);
+    } catch (error) {
+      console.error('Error loading restaurants:', error);
     }
-  ];
+  };
 
-  const handleSearch = () => {
+  // Transform restaurant data to match RestaurantSearchResult format
+  const transformRestaurant = (restaurant: any): RestaurantSearchResult => {
+    return {
+      id: restaurant.id,
+      name: restaurant.name,
+      address: restaurant.address || 'Charlotte, NC',
+      cuisine: restaurant.cuisine_types || ['Restaurant'],
+      rating: restaurant.google_rating || restaurant.troodie_rating || 4.5,
+      photos: restaurant.photos || ['https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800'],
+      verified: restaurant.verified || false,
+      distance: Math.random() * 5, // Mock distance for now
+      priceRange: restaurant.price_range || '$$'
+    };
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
     setIsSearching(true);
-    // Simulate search delay
-    setTimeout(() => {
-      setSearchResults(mockSearchResults.filter(restaurant =>
-        restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        restaurant.cuisine.some(c => c.toLowerCase().includes(searchQuery.toLowerCase()))
-      ));
+    try {
+      const results = await restaurantService.searchRestaurants(searchQuery, {
+        city: 'Charlotte'
+      });
+      setSearchResults(results.map(transformRestaurant));
+    } catch (error) {
+      console.error('Error searching restaurants:', error);
+    } finally {
       setIsSearching(false);
-    }, 500);
+    }
   };
 
   const handleSelectRestaurant = (restaurant: RestaurantSearchResult) => {
@@ -139,20 +141,35 @@ export default function SaveRestaurantScreen() {
     </View>
   );
 
-  const renderSearchBar = () => (
-    <View style={styles.searchContainer}>
-      <Search size={20} color="#999" style={styles.searchIcon} />
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search restaurant name or cuisine..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        onSubmitEditing={handleSearch}
-        placeholderTextColor="#999"
-        returnKeyType="search"
-      />
-    </View>
-  );
+  const renderSearchBar = () => {
+    // Auto-search as user types
+    React.useEffect(() => {
+      const delayDebounceFn = setTimeout(() => {
+        if (searchQuery) {
+          handleSearch();
+        } else {
+          setSearchResults([]);
+        }
+      }, 300);
+
+      return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
+
+    return (
+      <View style={styles.searchContainer}>
+        <Search size={20} color="#999" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search Charlotte restaurants..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearch}
+          placeholderTextColor="#999"
+          returnKeyType="search"
+        />
+      </View>
+    );
+  };
 
   const renderSearchResults = () => (
     <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
@@ -234,6 +251,7 @@ export default function SaveRestaurantScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
+      <BetaRestaurantNotice />
       <View style={styles.content}>
         {renderSearchMethods()}
         {searchMethod === 'text' && (

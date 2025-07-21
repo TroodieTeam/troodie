@@ -9,11 +9,11 @@ interface AppContextType {
 }
 
 const defaultUserState: UserState = {
-  hasLimitedActivity: true,
+  id: '',
+  email: '',
   friendsCount: 0,
-  isRestaurant: false,
-  profileCompletion: 30,
   isNewUser: true,
+  achievements: [],
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);

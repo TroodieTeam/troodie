@@ -5,10 +5,10 @@ export interface AddOption {
   id: string;
   title: string;
   description: string;
-  icon: LucideIcon;
+  icon: any;
   color: string;
   navigateTo: string;
-  badge?: string;
+  beta?: boolean;
 }
 
 export interface ProgressCard {
