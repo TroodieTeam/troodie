@@ -26,8 +26,8 @@
 
 | Task | Status | Priority | Estimate | Assignee | Notes |
 |------|--------|----------|----------|----------|-------|
-| [2.1 Charlotte Restaurant Seeding](./task-2-1-restaurant-seeding.md) | 🔴 | High | 4 days | - | Depends on 1.1 completion |
-| [2.2 Restaurant Search & Discovery](./task-2-2-restaurant-search.md) | 🔴 | High | 5 days | - | Depends on 2.1 completion |
+| [2.1 Charlotte Restaurant Seeding](./task-2-1-restaurant-seeding.md) | 🟢 | High | 4 days | - | Completed |
+| [2.2 Restaurant Search & Discovery](./task-2-2-restaurant-search.md) | 🔴 | High | 5 days | - | Ready to start - depends on 2.1 |
 
 **Epic Status:** Not Started  
 **Epic Progress:** 0/2 tasks completed  
@@ -39,9 +39,9 @@
 
 | Task | Status | Priority | Estimate | Assignee | Notes |
 |------|--------|----------|----------|----------|-------|
-| [3.1 Restaurant Save Functionality](./task-3-1-restaurant-save.md) | 🔴 | Critical | 4 days | - | Core user feature |
-| [3.2 User Profiles & Social Network](./task-3-2-user-profiles.md) | 🔴 | High | 4 days | - | Social foundation |
-| [3.3 Activity Feed & Interactions](./task-3-3-activity-feed.md) | 🔴 | High | 5 days | - | Depends on 3.1, 3.2 |
+| [3.1 Restaurant Save Functionality](./task-3-1-restaurant-save.md) | 🔴 | High | 4 days | - | Depends on 2.2 |
+| [3.2 Network Building Implementation](./task-3-2-network-building.md) | 🔴 | High | 3 days | - | Ready to start - replaces "Follow Local Troodies" with "Discover Local Gems" |
+| [3.3 Activity Feed & Interactions](./task-3-3-activity-feed.md) | 🔴 | Medium | 5 days | - | Depends on 3.1 and 3.2 |
 
 **Epic Status:** Not Started  
 **Epic Progress:** 0/3 tasks completed  

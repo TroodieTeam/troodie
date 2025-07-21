@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
-import { Heart, MessageCircle, Bookmark, MoreVertical } from 'lucide-react-native';
+import { applyShadow, designTokens } from '@/constants/designTokens';
 import { ExplorePost } from '@/types/core';
-import { theme } from '@/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Bookmark, CheckCircle, Heart, MapPin, MessageCircle, Star, TrendingUp } from 'lucide-react-native';
+import React from 'react';
+import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ExplorePostCardProps {
   post: ExplorePost;
@@ -13,7 +14,7 @@ interface ExplorePostCardProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - 36) / 2; // 2 columns with padding
+const CARD_WIDTH = SCREEN_WIDTH - 32; // Full width with padding
 
 export function ExplorePostCard({ 
   post, 
@@ -30,93 +31,141 @@ export function ExplorePostCard({
       onPress={onPress}
       activeOpacity={0.9}
     >
-      <Image 
-        source={{ uri: post.photos[0] }} 
-        style={[styles.image, { height: imageHeight }]} 
-      />
-      
-      {post.trending && (
-        <View style={styles.trendingBadge}>
-          <Text style={styles.trendingText}>Trending</Text>
+      <View style={styles.imageContainer}>
+        <Image 
+          source={{ uri: post.photos[0] }} 
+          style={[styles.image, { height: imageHeight }]} 
+        />
+        
+        {/* Gradient overlay */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.6)']}
+          style={styles.imageOverlay}
+        />
+        
+        {/* Top badges */}
+        <View style={styles.topBadges}>
+          <View style={styles.leftBadges}>
+            <View style={styles.cuisineBadge}>
+              <Text style={styles.cuisineBadgeText}>{post.restaurant.cuisine}</Text>
+            </View>
+            {post.trending && (
+              <View style={styles.trendingBadge}>
+                <TrendingUp size={8} color={designTokens.colors.white} />
+                <Text style={styles.trendingText}>Hot</Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Rating badge */}
+          <View style={styles.ratingBadge}>
+            <Star size={10} color={designTokens.colors.primaryOrange} fill={designTokens.colors.primaryOrange} />
+            <Text style={styles.ratingText}>{post.restaurant.rating}</Text>
+          </View>
         </View>
-      )}
+        
+        {/* Bottom overlay content */}
+        <View style={styles.imageBottomContent}>
+          <Text style={styles.restaurantName} numberOfLines={1}>
+            {post.restaurant.name}
+          </Text>
+          <View style={styles.locationContainer}>
+            <MapPin size={8} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.locationText}>{post.restaurant.location}</Text>
+          </View>
+        </View>
+      </View>
 
       <View style={styles.content}>
+        {/* Enhanced user info */}
         <View style={styles.userInfo}>
           <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
           <View style={styles.userDetails}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {post.user.name}
-            </Text>
-            <Text style={styles.userPersona} numberOfLines={1}>
-              {post.user.persona}
-            </Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {post.user.name}
+              </Text>
+              <CheckCircle size={10} color={designTokens.colors.primaryOrange} />
+            </View>
+            <View style={styles.userMetaRow}>
+              <View style={styles.personaBadge}>
+                <Text style={styles.personaText}>{post.user.persona}</Text>
+              </View>
+              <Text style={styles.followerCount}>2.4K followers</Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.moreButton}>
-            <MoreVertical size={16} color="#666" />
-          </TouchableOpacity>
+          <Text style={styles.timeStamp}>2h ago</Text>
         </View>
 
-        <Text style={styles.restaurantName} numberOfLines={2}>
-          {post.restaurant.name}
-        </Text>
-        
         <Text style={styles.caption} numberOfLines={2}>
           {post.caption}
         </Text>
 
+        {/* Enhanced social proof */}
         {post.socialProof.totalFriendVisits > 0 && (
           <View style={styles.socialProof}>
             <View style={styles.friendAvatars}>
-              {post.socialProof.friendsVisited.slice(0, 3).map((friend, index) => (
-                <View 
-                  key={index} 
-                  style={[
-                    styles.friendAvatar, 
-                    { marginLeft: index > 0 ? -8 : 0, zIndex: 3 - index }
-                  ]}
-                >
-                  <Image 
-                    source={{ uri: `https://i.pravatar.cc/150?img=${index + 1}` }} 
-                    style={styles.friendAvatarImage} 
-                  />
-                </View>
+              {post.socialProof.friendsVisited.slice(0, 2).map((friend, index) => (
+                <Image 
+                  key={index}
+                  source={{ uri: `https://i.pravatar.cc/150?img=${index + 1}` }} 
+                  style={[styles.friendAvatar, { marginLeft: index > 0 ? -6 : 0 }]}
+                />
               ))}
             </View>
-            <Text style={styles.socialProofText}>
-              {post.socialProof.totalFriendVisits} friends visited
-            </Text>
+            <View style={styles.socialProofText}>
+              <Text style={styles.friendNames}>Sarah Chen, Mike Rodriguez</Text>
+              <Text style={styles.friendVisits}>
+                {post.socialProof.totalFriendVisits} friend visits • 3 mutual friends
+              </Text>
+            </View>
           </View>
         )}
 
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.action} onPress={onLike}>
-            <Heart 
-              size={20} 
-              color={post.engagement.likes > 0 ? '#FF4444' : '#666'} 
-              fill={post.engagement.likes > 0 ? '#FF4444' : 'none'}
-            />
-            <Text style={styles.actionCount}>{post.engagement.likes}</Text>
-          </TouchableOpacity>
+        {/* Photo grid */}
+        {post.photos.length > 1 && (
+          <View style={styles.photoGrid}>
+            {post.photos.slice(1, 4).map((photo, index) => (
+              <Image 
+                key={index}
+                source={{ uri: photo }} 
+                style={styles.gridPhoto}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Actions and save button */}
+        <View style={styles.actionsContainer}>
+          <View style={styles.actions}>
+            <TouchableOpacity style={styles.action} onPress={onLike}>
+              <Heart 
+                size={12} 
+                color={post.engagement.likes > 0 ? '#FF4444' : '#666'} 
+                fill={post.engagement.likes > 0 ? '#FF4444' : 'none'}
+              />
+              <Text style={styles.actionCount}>{post.engagement.likes}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.action} onPress={onComment}>
+              <MessageCircle size={12} color="#666" />
+              <Text style={styles.actionCount}>{post.engagement.comments}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.action} onPress={onSave}>
+              <Bookmark 
+                size={12} 
+                color={post.engagement.saves > 0 ? designTokens.colors.primaryOrange : '#666'}
+                fill={post.engagement.saves > 0 ? designTokens.colors.primaryOrange : 'none'}
+              />
+              <Text style={styles.actionCount}>{post.engagement.saves}</Text>
+            </TouchableOpacity>
+          </View>
           
-          <TouchableOpacity style={styles.action} onPress={onComment}>
-            <MessageCircle size={20} color="#666" />
-            <Text style={styles.actionCount}>{post.engagement.comments}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.action} onPress={onSave}>
-            <Bookmark 
-              size={20} 
-              color={post.engagement.saves > 0 ? theme.colors.primary : '#666'}
-              fill={post.engagement.saves > 0 ? theme.colors.primary : 'none'}
-            />
-            <Text style={styles.actionCount}>{post.engagement.saves}</Text>
+          <TouchableOpacity style={styles.saveButton} onPress={onSave}>
+            <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.saveButton} onPress={onSave}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -124,113 +173,217 @@ export function ExplorePostCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.lg,
     overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    marginBottom: designTokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    ...applyShadow('card'),
+  },
+  imageContainer: {
+    position: 'relative',
+    width: '100%',
   },
   image: {
     width: '100%',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: designTokens.colors.backgroundLight,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  topBadges: {
+    position: 'absolute',
+    top: designTokens.spacing.sm,
+    left: designTokens.spacing.sm,
+    right: designTokens.spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    zIndex: 2,
+  },
+  leftBadges: {
+    gap: designTokens.spacing.xs,
+  },
+  cuisineBadge: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: designTokens.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: designTokens.borderRadius.sm,
+  },
+  cuisineBadgeText: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
   },
   trendingBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: '#FF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: designTokens.borderRadius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   trendingText: {
-    fontSize: 10,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
+  },
+  ratingBadge: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: designTokens.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: designTokens.borderRadius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  ratingText: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.white,
+  },
+  imageBottomContent: {
+    position: 'absolute',
+    bottom: designTokens.spacing.sm,
+    left: designTokens.spacing.sm,
+    right: designTokens.spacing.sm,
+    zIndex: 2,
+  },
+  restaurantName: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Poppins_600SemiBold',
+    color: designTokens.colors.white,
+    marginBottom: 2,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  locationText: {
+    ...designTokens.typography.smallText,
+    color: 'rgba(255,255,255,0.8)',
   },
   content: {
-    padding: 12,
+    padding: designTokens.spacing.md,
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: designTokens.spacing.sm,
   },
   avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    marginRight: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: designTokens.spacing.sm,
   },
   userDetails: {
     flex: 1,
   },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
   userName: {
-    fontSize: 12,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#333',
+    color: designTokens.colors.textDark,
+    marginRight: 4,
   },
-  userPersona: {
-    fontSize: 10,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+  userMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.sm,
   },
-  moreButton: {
-    padding: 4,
+  personaBadge: {
+    backgroundColor: designTokens.colors.primaryOrange + '1A',
+    borderWidth: 1,
+    borderColor: designTokens.colors.primaryOrange + '33',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: designTokens.borderRadius.sm,
   },
-  restaurantName: {
-    fontSize: 14,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 4,
+  personaText: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.primaryOrange,
+  },
+  followerCount: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+  },
+  timeStamp: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
   },
   caption: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 8,
-    lineHeight: 16,
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.sm,
+    lineHeight: 18,
   },
   socialProof: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E3F2FD',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 8,
+    padding: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.sm,
+    marginBottom: designTokens.spacing.sm,
   },
   friendAvatars: {
     flexDirection: 'row',
-    marginRight: 8,
+    marginRight: designTokens.spacing.sm,
   },
   friendAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  friendAvatarImage: {
-    width: '100%',
-    height: '100%',
+    width: 16,
+    height: 16,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: designTokens.colors.white,
   },
   socialProofText: {
-    fontSize: 11,
+    flex: 1,
+  },
+  friendNames: {
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
     color: '#1976D2',
+    marginBottom: 1,
+  },
+  friendVisits: {
+    ...designTokens.typography.smallText,
+    color: '#1565C0',
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    gap: 2,
+    marginBottom: designTokens.spacing.sm,
+  },
+  gridPhoto: {
+    width: (CARD_WIDTH - 32) / 3 - 4,
+    height: 48,
+    borderRadius: designTokens.borderRadius.sm,
+    backgroundColor: designTokens.colors.backgroundLight,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: designTokens.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: designTokens.colors.borderLight,
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: designTokens.spacing.lg,
   },
   action: {
     flexDirection: 'row',
@@ -238,19 +391,19 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionCount: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: '#666',
+    color: designTokens.colors.textMedium,
   },
   saveButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: 4,
+    borderRadius: designTokens.borderRadius.full,
   },
   saveButtonText: {
-    fontSize: 14,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
 });

@@ -1,22 +1,22 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  ScrollView
-} from 'react-native';
+import { designTokens } from '@/constants/designTokens';
+import { BoardType } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
+  Check,
   ChevronLeft,
-  Globe,
-  Lock,
   Crown,
-  Check
+  Globe,
+  Lock
 } from 'lucide-react-native';
-import { theme } from '@/constants/theme';
-import { BoardType } from '@/types/add-flow';
+import React from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function CreateBoardScreen() {
   const router = useRouter();
@@ -45,17 +45,26 @@ export default function CreateBoardScreen() {
     }
   ];
 
+  const getBoardColor = (type: string) => {
+    switch (type) {
+      case 'free': return designTokens.colors.primaryOrange;
+      case 'private': return '#6B46C1';
+      case 'paid': return '#10B981';
+      default: return designTokens.colors.primaryOrange;
+    }
+  };
+
   const handleSelectType = (type: 'free' | 'private' | 'paid') => {
     router.push({
       pathname: '/add/board-details',
       params: { boardType: type }
-    });
+    } as any);
   };
 
   const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={24} color="#333" />
+        <ChevronLeft size={24} color={designTokens.colors.textDark} />
       </TouchableOpacity>
       <Text style={styles.title}>Create Board</Text>
       <View style={styles.placeholder} />
@@ -64,7 +73,7 @@ export default function CreateBoardScreen() {
 
   const renderBoardTypes = () => (
     <View style={styles.content}>
-      <Text style={styles.subtitle}>Board Type</Text>
+      <Text style={styles.subtitle}>Choose Board Type</Text>
       
       {boardTypes.map((board) => (
         <TouchableOpacity
@@ -75,39 +84,34 @@ export default function CreateBoardScreen() {
           ]}
           onPress={() => handleSelectType(board.type)}
         >
-          <View style={[
-            styles.iconContainer,
-            board.type === 'paid' && styles.iconContainerPremium
-          ]}>
-            <board.icon size={24} color={board.type === 'paid' ? '#FFD700' : theme.colors.primary} />
-          </View>
-          
-          <View style={styles.boardInfo}>
-            <View style={styles.boardHeader}>
-              <Text style={styles.boardTitle}>{board.title}</Text>
-              {board.type === 'paid' && (
-                <View style={styles.premiumBadge}>
-                  <Text style={styles.premiumText}>Premium</Text>
-                </View>
-              )}
+          <View style={styles.cardContent}>
+            <View style={[styles.iconContainer, { backgroundColor: getBoardColor(board.type) }]}>
+              <board.icon size={20} color={designTokens.colors.white} />
             </View>
-            <Text style={styles.boardDescription}>{board.description}</Text>
             
-            <View style={styles.features}>
-              {board.features.map((feature, index) => (
-                <View key={index} style={styles.featureItem}>
-                  <Check size={14} color="#4CAF50" />
-                  <Text style={styles.featureText}>{feature}</Text>
-                </View>
-              ))}
+            <View style={styles.boardInfo}>
+              <View style={styles.boardHeader}>
+                <Text style={styles.boardTitle}>{board.title}</Text>
+                {board.type === 'paid' && (
+                  <View style={styles.premiumBadge}>
+                    <Text style={styles.premiumText}>Premium</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.boardDescription}>{board.description}</Text>
+              
+              <View style={styles.features}>
+                {board.features.slice(0, 2).map((feature, index) => (
+                  <View key={index} style={styles.featureItem}>
+                    <Check size={12} color="#4CAF50" />
+                    <Text style={styles.featureText}>{feature}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
+            
+            <View style={styles.cardIndicator} />
           </View>
-          
-          <ChevronLeft 
-            size={20} 
-            color="#999" 
-            style={{ transform: [{ rotate: '180deg' }] }} 
-          />
         </TouchableOpacity>
       ))}
       
@@ -134,7 +138,7 @@ export default function CreateBoardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: designTokens.colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -143,7 +147,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: designTokens.colors.borderLight,
   },
   backButton: {
     width: 40,
@@ -153,7 +157,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    color: designTokens.colors.textDark,
   },
   placeholder: {
     width: 40,
@@ -164,40 +168,33 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
-    color: '#666',
+    color: designTokens.colors.textMedium,
     marginBottom: 16,
   },
   boardTypeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: designTokens.colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    ...designTokens.shadows.card,
   },
   boardTypeCardPremium: {
     borderWidth: 1,
-    borderColor: '#FFD700',
+    borderColor: designTokens.colors.primaryOrange,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primary + '20',
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-  },
-  iconContainerPremium: {
-    backgroundColor: '#FFD700' + '20',
+    marginRight: 12,
   },
   boardInfo: {
     flex: 1,
@@ -210,11 +207,11 @@ const styles = StyleSheet.create({
   boardTitle: {
     fontSize: 18,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    color: designTokens.colors.textDark,
   },
   premiumBadge: {
     marginLeft: 8,
-    backgroundColor: '#FFD700',
+    backgroundColor: designTokens.colors.primaryOrange,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -222,12 +219,12 @@ const styles = StyleSheet.create({
   premiumText: {
     fontSize: 10,
     fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   boardDescription: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
+    color: designTokens.colors.textMedium,
     marginBottom: 12,
   },
   features: {
@@ -241,10 +238,16 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
+    color: designTokens.colors.textMedium,
+  },
+  cardIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: designTokens.colors.primaryOrange,
   },
   note: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: designTokens.colors.backgroundLight,
     borderRadius: 8,
     padding: 16,
     marginTop: 24,
@@ -252,13 +255,13 @@ const styles = StyleSheet.create({
   noteTitle: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
-    color: '#333',
+    color: designTokens.colors.textDark,
     marginBottom: 8,
   },
   noteText: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
+    color: designTokens.colors.textMedium,
     lineHeight: 20,
   },
 });

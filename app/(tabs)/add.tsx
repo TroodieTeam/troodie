@@ -1,22 +1,23 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  ScrollView, 
-  TouchableOpacity 
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { 
-  Utensils, 
-  FolderPlus, 
-  Users,
-  Search,
-  UserPlus
-} from 'lucide-react-native';
-import { theme } from '@/constants/theme';
+import { designTokens } from '@/constants/designTokens';
 import { AddOption, ProgressCard } from '@/types/add-flow';
+import { useRouter } from 'expo-router';
+import {
+  Crown,
+  FolderPlus,
+  Search,
+  UserPlus,
+  Users,
+  Utensils
+} from 'lucide-react-native';
+import React from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function AddScreen() {
   const router = useRouter();
@@ -25,10 +26,11 @@ export default function AddScreen() {
     {
       id: 'restaurant',
       title: 'Save a Restaurant',
-      description: 'Add a new spot to your collection',
+      description: 'Add spots from our curated database',
       icon: Utensils,
-      color: '#FFAD27',
-      navigateTo: '/add/save-restaurant'
+      color: designTokens.colors.primaryOrange,
+      navigateTo: '/add/save-restaurant',
+      beta: true
     },
     {
       id: 'board',
@@ -46,15 +48,14 @@ export default function AddScreen() {
       color: '#8B5CF6',
       navigateTo: '/add/communities'
     },
-    // Creator Dashboard is hidden for now as per PRD
-    // {
-    //   id: 'creator',
-    //   title: 'Creator Dashboard',
-    //   description: 'Manage collaborations & earnings',
-    //   icon: Crown,
-    //   color: '#10B981',
-    //   navigateTo: '/add/creator-dashboard'
-    // }
+    {
+      id: 'creator',
+      title: 'Creator Dashboard',
+      description: 'Manage collaborations & earnings',
+      icon: Crown,
+      color: '#10B981',
+      navigateTo: '/add/create-board' // Using existing route as placeholder
+    }
   ];
 
   const progressCard: ProgressCard = {
@@ -66,7 +67,7 @@ export default function AddScreen() {
       unit: 'places'
     },
     reward: '+50 points',
-    cta: 'Add Another Spot'
+    cta: 'Add Another Save'
   };
 
   const renderHeader = () => (
@@ -81,17 +82,43 @@ export default function AddScreen() {
       {addOptions.map((option) => (
         <TouchableOpacity
           key={option.id}
-          style={styles.optionCard}
-          onPress={() => router.push(option.navigateTo)}
+          style={[
+            styles.optionCard,
+            option.beta && styles.optionCardBeta
+          ]}
+          onPress={() => router.push(option.navigateTo as any)}
           activeOpacity={0.8}
         >
-          <View style={[styles.optionIcon, { backgroundColor: option.color + '20' }]}>
-            <option.icon size={24} color={option.color} />
+          <View style={styles.optionContent}>
+            <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
+              <option.icon size={20} color={designTokens.colors.white} />
+            </View>
+            
+            <View style={styles.optionTextContent}>
+              <View style={styles.optionHeader}>
+                <Text style={styles.optionTitle}>{option.title}</Text>
+                {option.beta && (
+                  <View style={styles.betaBadge}>
+                    <Text style={styles.betaText}>Beta</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.optionDescription}>{option.description}</Text>
+            </View>
+            
+            <View style={styles.optionIndicator} />
           </View>
-          <Text style={styles.optionTitle}>{option.title}</Text>
-          <Text style={styles.optionDescription}>{option.description}</Text>
         </TouchableOpacity>
       ))}
+
+      {/* Beta Notice */}
+      <View style={styles.betaNotice}>
+        <Text style={styles.betaNoticeTitle}>🚀 Beta Testing Period</Text>
+        <Text style={styles.betaNoticeText}>
+          During beta, you can save restaurants from our curated database of Charlotte's best spots. 
+          New restaurant submissions will be available soon!
+        </Text>
+      </View>
     </View>
   );
 
@@ -99,12 +126,12 @@ export default function AddScreen() {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Quick Actions</Text>
       <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/add/search-places')}>
-          <Search size={20} color="#666" />
+        <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/explore')}>
+          <Search size={16} color={designTokens.colors.textMedium} />
           <Text style={styles.quickActionText}>Search Places</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/add/find-friends')}>
-          <UserPlus size={20} color="#666" />
+        <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/explore')}>
+          <UserPlus size={16} color={designTokens.colors.textMedium} />
           <Text style={styles.quickActionText}>Find Friends</Text>
         </TouchableOpacity>
       </View>
@@ -113,29 +140,13 @@ export default function AddScreen() {
 
   const renderProgressGamification = () => (
     <View style={styles.progressCard}>
-      <View style={styles.progressHeader}>
+      <View style={styles.progressContent}>
         <Text style={styles.progressTitle}>{progressCard.title}</Text>
-        <Text style={styles.progressReward}>{progressCard.reward}</Text>
+        <Text style={styles.progressDescription}>{progressCard.description}</Text>
+        <TouchableOpacity style={styles.progressCTA} onPress={() => router.push('/add/save-restaurant' as any)}>
+          <Text style={styles.progressCTAText}>{progressCard.cta}</Text>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.progressDescription}>{progressCard.description}</Text>
-      
-      <View style={styles.progressBarContainer}>
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { width: `${(progressCard.progress.current / progressCard.progress.target) * 100}%` }
-            ]} 
-          />
-        </View>
-        <Text style={styles.progressText}>
-          {progressCard.progress.current}/{progressCard.progress.target} {progressCard.progress.unit}
-        </Text>
-      </View>
-      
-      <TouchableOpacity style={styles.progressCTA} onPress={() => router.push('/add/save-restaurant')}>
-        <Text style={styles.progressCTAText}>{progressCard.cta}</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -155,168 +166,175 @@ export default function AddScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: designTokens.colors.white,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 24,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.lg,
+    paddingBottom: designTokens.spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.colors.borderLight,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    fontFamily: 'Poppins_700Bold',
-    color: '#333',
+    ...designTokens.typography.sectionTitle,
+    color: designTokens.colors.textDark,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textMedium,
   },
   primaryActions: {
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 32,
+    paddingHorizontal: designTokens.spacing.lg,
+    gap: designTokens.spacing.sm,
+    marginBottom: designTokens.spacing.xxl,
   },
   optionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.lg,
+    padding: designTokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    ...designTokens.shadows.card,
+  },
+  optionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.md,
   },
   optionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: designTokens.borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+  },
+  optionTextContent: {
+    flex: 1,
   },
   optionTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 4,
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+    marginBottom: 2,
   },
   optionDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+  },
+  optionIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: designTokens.colors.primaryOrange,
   },
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
+    paddingHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.xxl,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 16,
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.lg,
   },
   quickActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: designTokens.spacing.sm,
   },
-  quickActionCard: {
+  quickActionButton: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.md,
+    padding: designTokens.spacing.md,
     alignItems: 'center',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    gap: designTokens.spacing.sm,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    ...designTokens.shadows.card,
   },
   quickActionText: {
-    fontSize: 14,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: '#333',
+    color: designTokens.colors.textDark,
   },
   progressCard: {
-    marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    marginHorizontal: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.primaryOrange + '0D',
+    borderRadius: designTokens.borderRadius.lg,
+    padding: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.xxl,
+    borderWidth: 1,
+    borderColor: designTokens.colors.primaryOrange + '33',
+    ...designTokens.shadows.card,
   },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  progressContent: {
     alignItems: 'center',
-    marginBottom: 8,
   },
   progressTitle: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-  },
-  progressReward: {
-    fontSize: 14,
-    fontFamily: 'Inter_700Bold',
-    color: theme.colors.primary,
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.sm,
   },
   progressDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  progressBarContainer: {
-    marginBottom: 16,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: theme.colors.primary,
-  },
-  progressText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: '#666',
-    textAlign: 'right',
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+    marginBottom: designTokens.spacing.lg,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   progressCTA: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.sm,
   },
   progressCTAText: {
-    fontSize: 14,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   bottomPadding: {
     height: 100,
+  },
+  optionCardBeta: {
+    borderColor: designTokens.colors.primaryOrange + '33',
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  betaBadge: {
+    marginLeft: 8,
+    backgroundColor: designTokens.colors.primaryOrange + '1A',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  betaText: {
+    fontSize: 10,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.primaryOrange,
+  },
+  betaNotice: {
+    marginTop: designTokens.spacing.lg,
+    padding: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderRadius: designTokens.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+  },
+  betaNoticeTitle: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.xs,
+  },
+  betaNoticeText: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+    lineHeight: 18,
   },
 });

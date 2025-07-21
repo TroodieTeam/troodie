@@ -12,11 +12,20 @@ export interface UserInfo {
 }
 
 export interface UserState {
-  hasLimitedActivity: boolean;
+  id: string;
+  email: string;
   friendsCount: number;
-  isRestaurant: boolean;
-  profileCompletion: number;
   isNewUser: boolean;
+  achievements?: Achievement[];
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  points: number;
+  unlocked_at?: string;
 }
 
 // Restaurant related types
@@ -42,7 +51,7 @@ export interface WelcomeBanner {
 export interface NetworkSuggestion {
   action: string;
   description: string;
-  icon: LucideIcon;
+  icon: any;
   cta: string;
   benefit: string;
   onClick: () => void;
