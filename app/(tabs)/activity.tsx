@@ -1,12 +1,16 @@
 import { theme } from '@/constants/theme';
+import { designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { ActivityItem, SuggestedActivity, TrendingActivity } from '@/types/core';
 import { useRouter } from 'expo-router';
 import {
+    Bell,
     Bookmark,
+    Camera,
     ChevronLeft,
     MessageCircle,
     TrendingUp,
+    UserPlus,
     Users
 } from 'lucide-react-native';
 import React from 'react';
@@ -31,26 +35,26 @@ export default function ActivityScreen() {
       description: 'Start building your collection and get recommendations',
       icon: Bookmark,
       action: 'Explore Restaurants',
-      benefit: 'Get personalized suggestions',
-      color: 'bg-blue-50 border-blue-200',
+      benefit: '💡 Get personalized suggestions',
+      color: 'blue',
       onClick: () => router.push('/explore')
     },
     {
       title: 'Follow Local Troodies',
-      description: 'Connect with local food enthusiasts',
-      icon: Users,
+      description: 'Connect with food enthusiasts in your area',
+      icon: UserPlus,
       action: 'Find Troodies',
-      benefit: 'Discover hidden gems',
-      color: 'bg-green-50 border-green-200',
+      benefit: '💡 See what\'s trending nearby',
+      color: 'green',
       onClick: () => router.push('/explore')
     },
     {
       title: 'Share Your Experience',
-      description: 'Post about your recent restaurant visit',
-      icon: MessageCircle,
+      description: 'Post photos and reviews to help others discover',
+      icon: Camera,
       action: 'Add Post',
-      benefit: 'Build your reputation',
-      color: 'bg-purple-50 border-purple-200',
+      benefit: '💡 Build your reputation',
+      color: 'purple',
       onClick: () => {}
     },
   ];
@@ -131,34 +135,110 @@ export default function ActivityScreen() {
   const renderEmptyState = () => (
     <>
       <View style={styles.emptyStateContainer}>
+        <View style={styles.emptyIconContainer}>
+          <Bell size={32} color={designTokens.colors.primaryOrange} />
+        </View>
         <Text style={styles.emptyTitle}>Your Activity Will Appear Here</Text>
         <Text style={styles.emptyDescription}>
-          When you start saving restaurants and connecting with troodies,{'\n'}
-          you&apos;ll see likes, comments, and new followers here.
+          When you start saving restaurants and connecting with other Troodies, you'll see likes, comments, and follows here.
         </Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Get Started</Text>
-        {suggestedActivities.map((activity, index) => (
-          <TouchableOpacity 
-            key={index} 
-            style={[styles.activityCard, { borderColor: '#E5E5E5' }]}
-            onPress={activity.onClick}
-          >
-            <View style={[styles.activityIcon, { backgroundColor: theme.colors.primary + '20' }]}>
-              <activity.icon size={24} color={theme.colors.primary} />
-            </View>
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>{activity.title}</Text>
-              <Text style={styles.activityDescription}>{activity.description}</Text>
-              <Text style={styles.activityBenefit}>{activity.benefit}</Text>
-            </View>
-            <TouchableOpacity style={styles.activityCTA} onPress={activity.onClick}>
-              <Text style={styles.activityCTAText}>{activity.action}</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.suggestionsContainer}>
+          {suggestedActivities.map((activity, index) => {
+            const getCardColors = () => {
+              switch (activity.color) {
+                case 'blue':
+                  return {
+                    bg: '#EBF5FF',
+                    border: '#BEE3F8',
+                    iconBg: '#FFFFFF',
+                    iconColor: '#2B6CB0',
+                    titleColor: '#1A365D',
+                    descColor: '#2C5282',
+                    benefitColor: '#2B6CB0',
+                    buttonBg: '#2B6CB0',
+                    buttonHover: '#2C5282'
+                  };
+                case 'green':
+                  return {
+                    bg: '#F0FDF4',
+                    border: '#BBF7D0',
+                    iconBg: '#FFFFFF',
+                    iconColor: '#059669',
+                    titleColor: '#064E3B',
+                    descColor: '#047857',
+                    benefitColor: '#059669',
+                    buttonBg: '#059669',
+                    buttonHover: '#047857'
+                  };
+                case 'purple':
+                  return {
+                    bg: '#FAF5FF',
+                    border: '#E9D8FD',
+                    iconBg: '#FFFFFF',
+                    iconColor: '#7C3AED',
+                    titleColor: '#44337A',
+                    descColor: '#6B46C1',
+                    benefitColor: '#7C3AED',
+                    buttonBg: '#7C3AED',
+                    buttonHover: '#6B46C1'
+                  };
+                default:
+                  return {
+                    bg: '#F9FAFB',
+                    border: '#E5E7EB',
+                    iconBg: '#FFFFFF',
+                    iconColor: designTokens.colors.primaryOrange,
+                    titleColor: designTokens.colors.textDark,
+                    descColor: designTokens.colors.textMedium,
+                    benefitColor: designTokens.colors.primaryOrange,
+                    buttonBg: designTokens.colors.primaryOrange,
+                    buttonHover: designTokens.colors.primaryOrange
+                  };
+              }
+            };
+
+            const colors = getCardColors();
+
+            return (
+              <TouchableOpacity 
+                key={index} 
+                style={[
+                  styles.activityCard,
+                  { 
+                    backgroundColor: colors.bg,
+                    borderColor: colors.border
+                  }
+                ]}
+                onPress={activity.onClick}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.activityIcon, { backgroundColor: colors.iconBg }]}>
+                  <activity.icon size={20} color={colors.iconColor} />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={[styles.activityTitle, { color: colors.titleColor }]}>
+                    {activity.title}
+                  </Text>
+                  <Text style={[styles.activityDescription, { color: colors.descColor, opacity: 0.8 }]}>
+                    {activity.description}
+                  </Text>
+                  <Text style={[styles.activityBenefit, { color: colors.benefitColor }]}>
+                    {activity.benefit}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.activityCTA, { backgroundColor: colors.buttonBg }]} 
+                  onPress={activity.onClick}
+                >
+                  <Text style={styles.activityCTAText}>{activity.action}</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -245,10 +325,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: designTokens.colors.borderLight,
   },
   backButton: {
     width: 40,
@@ -256,34 +336,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    ...designTokens.typography.sectionTitle,
+    color: designTokens.colors.textDark,
   },
   placeholder: {
     width: 40,
   },
   emptyStateContainer: {
     alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 40,
+    paddingVertical: designTokens.spacing.xxxl,
+    paddingHorizontal: designTokens.spacing.lg,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: designTokens.colors.primaryOrange + '1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: designTokens.spacing.lg,
   },
   emptyTitle: {
-    fontSize: 20,
+    ...designTokens.typography.cardTitle,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 8,
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.sm,
   },
   emptyDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textMedium,
     textAlign: 'center',
     lineHeight: 20,
+    maxWidth: 352,
+    marginBottom: designTokens.spacing.xxl,
   },
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 32,
+    paddingHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.xxxl,
+  },
+  suggestionsContainer: {
+    gap: designTokens.spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -292,9 +384,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    ...designTokens.typography.cardTitle,
     fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    color: designTokens.colors.textDark,
   },
   liveIndicator: {
     flexDirection: 'row',
@@ -313,61 +405,67 @@ const styles = StyleSheet.create({
     color: '#FF4444',
   },
   activityCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.md,
+    padding: designTokens.spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: designTokens.spacing.md,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: designTokens.colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   activityIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: designTokens.spacing.md,
   },
   activityContent: {
     flex: 1,
   },
   activityTitle: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_500Medium',
     marginBottom: 2,
   },
   activityDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 4,
+    ...designTokens.typography.smallText,
+    marginBottom: designTokens.spacing.xs,
   },
   activityBenefit: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
+    marginTop: designTokens.spacing.xs,
   },
   activityCTA: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.md,
+    height: 36,
+    justifyContent: 'center',
   },
   activityCTAText: {
-    fontSize: 14,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   trendingCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.md,
+    padding: designTokens.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: designTokens.spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -409,15 +507,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
   trendingButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.md,
   },
   trendingButtonText: {
-    fontSize: 14,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    color: designTokens.colors.white,
   },
   activityItem: {
     flexDirection: 'row',
@@ -453,10 +551,10 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   followBackButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.md,
   },
   followBackText: {
     fontSize: 12,
