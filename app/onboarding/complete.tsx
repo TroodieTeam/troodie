@@ -11,11 +11,14 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { personas } from '@/data/personas';
+import { profileService } from '@/services/profileService';
 
 export default function CompleteScreen() {
   const router = useRouter();
   const { state } = useOnboarding();
+  const { user } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const checkAnim = useRef(new Animated.Value(0)).current;
@@ -53,9 +56,16 @@ export default function CompleteScreen() {
   const saveOnboardingComplete = async () => {
     try {
       await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
-      // In a real app, you would also save the user's data to your backend
+      
+      // Save persona to user profile
+      if (user?.id && state.persona) {
+        await profileService.setPersona(user.id, state.persona);
+      }
+      
+      // TODO: Save favorite spots to user's saved restaurants
+      // This would require a restaurant save service
     } catch (error) {
-      console.error('Error saving onboarding status:', error);
+      console.error('Error saving onboarding data:', error);
     }
   };
 
@@ -105,27 +115,35 @@ export default function CompleteScreen() {
               </View>
             </View>
 
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryEmoji}>⭐</Text>
-              <View style={styles.summaryTextContainer}>
-                <Text style={styles.summaryLabel}>Favorite Spots</Text>
-                <Text style={styles.summaryValue}>
-                  {state.favoriteSpots.length} restaurants added
-                </Text>
+            {state.username && (
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryEmoji}>@</Text>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={styles.summaryLabel}>Username</Text>
+                  <Text style={styles.summaryValue}>@{state.username}</Text>
+                </View>
               </View>
-            </View>
+            )}
 
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryEmoji}>📱</Text>
-              <View style={styles.summaryTextContainer}>
-                <Text style={styles.summaryLabel}>Phone</Text>
-                <Text style={styles.summaryValue}>
-                  {state.phoneNumber ? 
-                    `(${state.phoneNumber.slice(0, 3)}) ${state.phoneNumber.slice(3, 6)}-${state.phoneNumber.slice(6)}` 
-                    : 'Not provided'}
-                </Text>
+            {state.profileImageUrl && (
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryEmoji}>📸</Text>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={styles.summaryLabel}>Profile Picture</Text>
+                  <Text style={styles.summaryValue}>Added</Text>
+                </View>
               </View>
-            </View>
+            )}
+
+            {state.bio && (
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryEmoji}>✍️</Text>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={styles.summaryLabel}>Bio</Text>
+                  <Text style={styles.summaryValue}>Added</Text>
+                </View>
+              </View>
+            )}
           </View>
 
           <Text style={styles.nextStepsTitle}>What&apos;s Next:</Text>

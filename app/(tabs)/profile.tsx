@@ -1,8 +1,13 @@
+import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
 import { designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
+import { achievementService } from '@/services/achievementService';
+import { Profile, profileService } from '@/services/profileService';
+import { PersonaType } from '@/types/onboarding';
 import { useRouter } from 'expo-router';
 import {
   Award,
@@ -13,11 +18,14 @@ import {
   PenLine,
   Plus,
   Settings,
-  Share2
+  Share2,
+  User
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -31,32 +39,102 @@ type TabType = 'saves' | 'boards' | 'posts';
 export default function ProfileScreen() {
   const router = useRouter();
   const { userState } = useApp();
+  const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
   const [activeTab, setActiveTab] = useState<TabType>('saves');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [achievements, setAchievements] = useState<any[]>([]);
   
-  const persona = onboardingState.persona && personas[onboardingState.persona];
+  const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
+                 (onboardingState.persona ? personas[onboardingState.persona] : null);
 
-  // Mock user data
-  const userData = {
-    name: 'Jordan Davis',
-    username: '@jordan_eats',
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    bio: 'Troodie exploring the best spots in the city 🍽️',
-    stats: {
-      followers: 1247,
-      following: 892,
-      saves: userState.isNewUser ? 0 : 273,
-      posts: userState.isNewUser ? 0 : 89
+  // Load profile data
+  useEffect(() => {
+    if (user?.id) {
+      loadProfile();
+      loadAchievements();
+    }
+  }, [user?.id]);
+
+  const loadProfile = async () => {
+    if (!user?.id) return;
+    
+    try {
+      console.log('Loading profile for user:', user.id);
+      
+      // Test storage access first
+      await profileService.testStorageAccess();
+      
+      const profileData = await profileService.getProfile(user.id);
+      console.log('Profile loaded:', profileData);
+      setProfile(profileData);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Achievement badges
-  const achievements = [
-    { id: 1, name: 'First Save', icon: Award },
-    { id: 2, name: 'Local Explorer', icon: Award },
-    { id: 3, name: 'Photo Pro', icon: Award },
-  ];
+  const loadAchievements = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const userAchievements = await achievementService.getUserAchievements(user.id);
+      setAchievements(userAchievements);
+    } catch (error) {
+      console.error('Error loading achievements:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      loadProfile(),
+      loadAchievements()
+    ]);
+    setRefreshing(false);
+  };
+
+  const handleProfileSave = (updatedProfile: Profile) => {
+    setProfile(updatedProfile);
+    loadAchievements(); // Reload achievements in case new ones were unlocked
+  };
+
+  const handleShareProfile = async () => {
+    if (profile?.username) {
+      await profileService.shareProfile(profile.username);
+    }
+  };
+
+  // User data with real profile
+  const userData = {
+    name: profile?.name || profile?.email?.split('@')[0] || 'Troodie User',
+    username: profile?.username ? `@${profile.username}` : '@user',
+    avatar: profile?.avatar_url || profile?.profile_image_url || null,
+    bio: profile?.bio || '',
+    stats: {
+      followers: profile?.followers_count || 0,
+      following: profile?.following_count || 0,
+      saves: profile?.saves_count || 0,
+      posts: profile?.reviews_count || 0
+    }
+  };
+
+  // Debug logging
+  console.log('Profile data:', profile);
+  console.log('User data:', userData);
+  console.log('Avatar URL:', userData.avatar);
+
+  // Transform achievements for display
+  const displayAchievements = achievements.slice(0, 3).map((achievement, index) => ({
+    id: index + 1,
+    name: achievement.title || achievement.name,
+    icon: Award
+  }));
 
   // Mock data for saved restaurants
   const savedRestaurants = userState.isNewUser ? [] : [
@@ -93,16 +171,26 @@ export default function ProfileScreen() {
 
   const renderProfileInfo = () => (
     <View style={styles.profileInfo}>
-      <View style={styles.avatarContainer}>
-        <Image source={{ uri: userData.avatar }} style={styles.avatar} />
-        <TouchableOpacity style={styles.editAvatarButton}>
+      <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
+        {userData.avatar ? (
+          <Image 
+            source={{ uri: userData.avatar }} 
+            style={styles.avatar}
+            onError={(error) => console.log('Avatar image error:', error)}
+            onLoad={() => console.log('Avatar image loaded successfully')}
+          />
+        ) : (
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <User size={32} color="#999" />
+          </View>
+        )}
+        <View style={styles.editAvatarButton}>
           <Camera size={12} color={designTokens.colors.white} />
-        </TouchableOpacity>
-      </View>
+        </View>
+      </TouchableOpacity>
 
       <View style={styles.userDetails}>
-        <Text style={styles.name}>{userData.name}</Text>
-        <Text style={styles.username}>{userData.username}</Text>
+        <Text style={styles.name}>{userData.username}</Text>
         
         {persona && (
           <View style={styles.personaBadge}>
@@ -111,17 +199,25 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      <Text style={styles.bio}>{userData.bio}</Text>
+      {userData.bio ? (
+        <Text style={styles.bio}>{userData.bio}</Text>
+      ) : (
+        <TouchableOpacity onPress={() => setShowEditModal(true)}>
+          <Text style={styles.bioPlaceholder}>Add a bio...</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Achievement Badges */}
-      <View style={styles.achievementsContainer}>
-        {achievements.map((achievement) => (
-          <View key={achievement.id} style={styles.achievementBadge}>
-            <Award size={8} color="#B45309" />
-            <Text style={styles.achievementText}>{achievement.name}</Text>
-          </View>
-        ))}
-      </View>
+      {displayAchievements.length > 0 && (
+        <View style={styles.achievementsContainer}>
+          {displayAchievements.map((achievement) => (
+            <View key={achievement.id} style={styles.achievementBadge}>
+              <Award size={8} color="#B45309" />
+              <Text style={styles.achievementText}>{achievement.name}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={styles.stats}>
         <View style={styles.statItem}>
@@ -143,11 +239,11 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.editProfileButton}>
+        <TouchableOpacity style={styles.editProfileButton} onPress={() => setShowEditModal(true)}>
           <PenLine size={12} color={designTokens.colors.primaryOrange} />
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.shareButton}>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShareProfile}>
           <Share2 size={12} color={designTokens.colors.textMedium} />
           <Text style={styles.shareButtonText}>Share</Text>
         </TouchableOpacity>
@@ -261,9 +357,28 @@ export default function ProfileScreen() {
     </View>
   );
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={designTokens.colors.primaryOrange}
+          />
+        }
+      >
         {renderHeader()}
         {renderProfileInfo()}
         {renderTabs()}
@@ -278,6 +393,13 @@ export default function ProfileScreen() {
       <SettingsModal 
         visible={showSettingsModal} 
         onClose={() => setShowSettingsModal(false)} 
+      />
+      
+      <EditProfileModal
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleProfileSave}
+        currentProfile={profile}
       />
     </SafeAreaView>
   );
@@ -622,5 +744,24 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 100,
+  },
+  avatarPlaceholder: {
+    backgroundColor: designTokens.colors.backgroundLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bioPlaceholder: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: designTokens.colors.textMedium,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
