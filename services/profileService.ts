@@ -1,5 +1,4 @@
-import { supabase } from '@/config/supabase';
-import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '@/lib/supabase';
 import { Share } from 'react-native';
 import { achievementService } from './achievementService';
 
