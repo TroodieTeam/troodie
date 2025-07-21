@@ -53,12 +53,13 @@
 
 | Task | Status | Priority | Estimate | Assignee | Notes |
 |------|--------|----------|----------|----------|-------|
-| [4.1 Board Creation & Management](./task-4-1-board-creation.md) | 🔴 | Medium | 4 days | - | Collection organization |
-| [4.2 Community Features](./task-4-2-community-features.md) | 🔴 | Medium | 5 days | - | Social groups |
+| [4.1 Implement Create a Board Flow & Board-Based Save System](./task-4-1-implement-board-save-flow.md) | 🔴 | Critical | 8 days | - | Complete board creation flow and update all save functionality to use boards |
+| [4.2 Board Creation & Management](./task-4-1-board-creation.md) | 🔴 | Medium | 4 days | - | Collection organization |
+| [4.3 Community Features](./task-4-2-community-features.md) | 🔴 | Medium | 5 days | - | Social groups |
 
 **Epic Status:** Not Started  
-**Epic Progress:** 0/2 tasks completed  
-**Estimated Duration:** 9 days
+**Epic Progress:** 0/3 tasks completed  
+**Estimated Duration:** 17 days
 
 ---
 
