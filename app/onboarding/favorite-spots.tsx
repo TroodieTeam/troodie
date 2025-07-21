@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView,
-  ScrollView,
-  TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  Alert
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { favoriteSpotCategories } from '@/data/favoriteSpotCategories';
-import { FavoriteSpotCategory, FavoriteSpot } from '@/types/onboarding';
+import { FavoriteSpot, FavoriteSpotCategory } from '@/types/onboarding';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function FavoriteSpotsScreen() {
   const router = useRouter();
@@ -182,7 +182,7 @@ export default function FavoriteSpotsScreen() {
         ))}
 
         <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
-          <Ionicons name="add-circle" size={24} color="#5B4CCC" />
+          <Ionicons name="add-circle" size={24} color="#FFAD27" />
           <Text style={styles.addButtonText}>Add to {categoryInfo?.name}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
-    color: '#5B4CCC',
+    color: '#FFAD27',
   },
   subtitle: {
     fontSize: 14,
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   activeTab: {
-    backgroundColor: '#5B4CCC',
+    backgroundColor: '#FFAD27',
   },
   tabEmoji: {
     fontSize: 24,
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 16,
     fontFamily: 'Inter_500Medium',
-    color: '#5B4CCC',
+    color: '#FFAD27',
     marginLeft: 8,
   },
   bottomContent: {
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalAddButton: {
-    backgroundColor: '#5B4CCC',
+    backgroundColor: '#FFAD27',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

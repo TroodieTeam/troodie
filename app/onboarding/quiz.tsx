@@ -1,20 +1,20 @@
-import React, { useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView,
-  ScrollView,
-  Dimensions,
-  Animated
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { quizQuestions } from '@/data/quizQuestions';
 import { calculatePersona } from '@/utils/personaCalculator';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#5B4CCC',
+    backgroundColor: '#FFAD27',
     borderRadius: 4,
   },
   progressText: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
-    color: '#5B4CCC',
+    color: '#FFAD27',
   },
   questionContainer: {
     width: SCREEN_WIDTH,

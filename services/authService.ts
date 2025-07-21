@@ -10,7 +10,7 @@ export interface AuthResponse {
 export interface OtpResponse {
   success: boolean
   error?: string
-  messageId?: string
+  messageId?: string | null
 }
 
 export const authService = {

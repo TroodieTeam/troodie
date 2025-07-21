@@ -1,4 +1,5 @@
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import SettingsModal from '@/components/modals/SettingsModal';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
@@ -35,6 +36,7 @@ export default function ProfileScreen() {
   const { userState } = useApp();
   const { state: onboardingState } = useOnboarding();
   const [activeTab, setActiveTab] = useState<TabType>('saves');
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   
   const persona = onboardingState.persona && personas[onboardingState.persona];
 
@@ -139,7 +141,10 @@ export default function ProfileScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity style={styles.headerButton}>
+      <TouchableOpacity 
+        style={styles.headerButton} 
+        onPress={() => setShowSettingsModal(true)}
+      >
         <Settings size={24} color="#333" />
       </TouchableOpacity>
     </View>
@@ -385,6 +390,11 @@ export default function ProfileScreen() {
         
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      <SettingsModal 
+        visible={showSettingsModal} 
+        onClose={() => setShowSettingsModal(false)} 
+      />
     </SafeAreaView>
   );
 }
