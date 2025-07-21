@@ -1,10 +1,14 @@
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import SettingsModal from '@/components/modals/SettingsModal';
+import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { Board, CompletionSuggestion } from '@/types/core';
+import { profileService, Profile } from '@/services/profileService';
+import { achievementService } from '@/services/achievementService';
 import { useRouter } from 'expo-router';
 import {
     Award,
@@ -16,9 +20,10 @@ import {
     Grid3X3,
     Plus,
     Settings,
-    Share2
+    Share2,
+    User
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Image,
     SafeAreaView,
@@ -26,7 +31,9 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    ActivityIndicator,
+    RefreshControl
 } from 'react-native';
 
 type TabType = 'saves' | 'boards' | 'posts';
@@ -34,23 +41,82 @@ type TabType = 'saves' | 'boards' | 'posts';
 export default function ProfileScreen() {
   const router = useRouter();
   const { userState } = useApp();
+  const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
   const [activeTab, setActiveTab] = useState<TabType>('saves');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [achievements, setAchievements] = useState<any[]>([]);
   
-  const persona = onboardingState.persona && personas[onboardingState.persona];
+  const persona = profile?.persona ? personas[profile.persona] : 
+                 (onboardingState.persona ? personas[onboardingState.persona] : null);
 
-  // Mock user data
+  // Load profile data
+  useEffect(() => {
+    if (user?.id) {
+      loadProfile();
+      loadAchievements();
+    }
+  }, [user?.id]);
+
+  const loadProfile = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const profileData = await profileService.getProfile(user.id);
+      setProfile(profileData);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAchievements = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const userAchievements = await achievementService.getUserAchievements(user.id);
+      setAchievements(userAchievements);
+    } catch (error) {
+      console.error('Error loading achievements:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      loadProfile(),
+      loadAchievements()
+    ]);
+    setRefreshing(false);
+  };
+
+  const handleProfileSave = (updatedProfile: Profile) => {
+    setProfile(updatedProfile);
+    loadAchievements(); // Reload achievements in case new ones were unlocked
+  };
+
+  const handleShareProfile = async () => {
+    if (profile?.username) {
+      await profileService.shareProfile(profile.username);
+    }
+  };
+
+  // User data with real profile
   const userData = {
-    name: 'Jordan Davis',
-    username: '@jordan_eats',
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    bio: '',
+    name: profile?.email?.split('@')[0] || 'Troodie User',
+    username: profile?.username ? `@${profile.username}` : '@user',
+    avatar: profile?.profile_image_url || null,
+    bio: profile?.bio || '',
     stats: {
-      followers: userState.friendsCount,
-      following: 12,
-      saves: userState.isNewUser ? 0 : 24,
-      posts: userState.isNewUser ? 0 : 3
+      followers: profile?.followers_count || 0,
+      following: profile?.following_count || 0,
+      saves: profile?.saves_count || 0,
+      posts: profile?.reviews_count || 0
     }
   };
 
@@ -61,21 +127,30 @@ export default function ProfileScreen() {
       action: 'Add Profile Photo',
       description: 'Help others recognize you',
       icon: Camera,
-      completed: false,
+      completed: !!profile?.profile_image_url,
       points: 20,
-      onClick: () => {}
+      onClick: () => setShowEditModal(true)
     },
     {
       id: 2,
-      action: 'Write Bio',
-      description: 'Tell others about yourself',
-      icon: Edit3,
-      completed: false,
+      action: 'Set Username',
+      description: 'Create your unique handle',
+      icon: User,
+      completed: !!profile?.username,
       points: 15,
-      onClick: () => {}
+      onClick: () => setShowEditModal(true)
     },
     {
       id: 3,
+      action: 'Write Bio',
+      description: 'Tell others about yourself',
+      icon: Edit3,
+      completed: !!profile?.bio && profile.bio.length > 0,
+      points: 15,
+      onClick: () => setShowEditModal(true)
+    },
+    {
+      id: 4,
       action: 'Save 5 Restaurants',
       description: `${userData.stats.saves}/5 completed`,
       icon: Bookmark,
@@ -84,7 +159,7 @@ export default function ProfileScreen() {
       onClick: () => router.push('/explore')
     },
     {
-      id: 4,
+      id: 5,
       action: 'Follow 10 Troodies',
       description: `${userData.stats.following}/10 completed`,
       icon: Award,
@@ -152,8 +227,14 @@ export default function ProfileScreen() {
 
   const renderProfileInfo = () => (
     <View style={styles.profileInfo}>
-      <TouchableOpacity style={styles.avatarContainer}>
-        <Image source={{ uri: userData.avatar }} style={styles.avatar} />
+      <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
+        {userData.avatar ? (
+          <Image source={{ uri: userData.avatar }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <User size={40} color="#999" />
+          </View>
+        )}
         <View style={styles.editAvatarButton}>
           <Camera size={16} color="#FFFFFF" />
         </View>
@@ -172,7 +253,7 @@ export default function ProfileScreen() {
       {userData.bio ? (
         <Text style={styles.bio}>{userData.bio}</Text>
       ) : (
-        <TouchableOpacity style={styles.addBioButton}>
+        <TouchableOpacity style={styles.addBioButton} onPress={() => setShowEditModal(true)}>
           <Text style={styles.addBioText}>Add bio</Text>
         </TouchableOpacity>
       )}
@@ -197,10 +278,10 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.editProfileButton}>
+        <TouchableOpacity style={styles.editProfileButton} onPress={() => setShowEditModal(true)}>
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.shareButton}>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShareProfile}>
           <Share2 size={20} color="#333" />
         </TouchableOpacity>
       </View>
@@ -208,7 +289,7 @@ export default function ProfileScreen() {
   );
 
   const renderProfileCompletion = () => (
-    userState.isNewUser && (
+    profile && profile.profile_completion_percentage < 100 && (
       <View style={styles.completionSection}>
         <View style={styles.completionHeader}>
           <Text style={styles.completionTitle}>Complete Your Profile</Text>
@@ -376,9 +457,28 @@ export default function ProfileScreen() {
     </View>
   );
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
         {renderHeader()}
         {renderProfileInfo()}
         {renderProfileCompletion()}
@@ -394,6 +494,13 @@ export default function ProfileScreen() {
       <SettingsModal 
         visible={showSettingsModal} 
         onClose={() => setShowSettingsModal(false)} 
+      />
+      
+      <EditProfileModal
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleProfileSave}
+        currentProfile={profile}
       />
     </SafeAreaView>
   );
@@ -754,5 +861,15 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 100,
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

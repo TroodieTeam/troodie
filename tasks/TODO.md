@@ -26,8 +26,8 @@
 
 | Task | Status | Priority | Estimate | Assignee | Notes |
 |------|--------|----------|----------|----------|-------|
-| [2.1 Charlotte Restaurant Seeding](./task-2-1-restaurant-seeding.md) | 🔴 | High | 4 days | - | Depends on 1.1 completion |
-| [2.2 Restaurant Search & Discovery](./task-2-2-restaurant-search.md) | 🔴 | High | 5 days | - | Depends on 2.1 completion |
+| [2.1 Charlotte Restaurant Seeding](./task-2-1-restaurant-seeding.md) | 🟢 | High | 4 days | - | Completed |
+| [2.2 Restaurant Search & Discovery](./task-2-2-restaurant-search.md) | 🔴 | High | 5 days | - | App logic partially complete, see task file for details |
 
 **Epic Status:** Not Started  
 **Epic Progress:** 0/2 tasks completed  
