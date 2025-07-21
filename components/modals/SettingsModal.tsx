@@ -132,16 +132,6 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
       title: 'Account',
       items: [
         {
-          icon: User,
-          label: 'Edit Profile',
-          onPress: () => {
-            onClose();
-            // TODO: Navigate to edit profile screen
-            Alert.alert('Coming Soon', 'Profile editing will be available soon!');
-          },
-          showArrow: true,
-        } as SettingItemWithArrow,
-        {
           icon: Bell,
           label: 'Notifications',
           onPress: () => setNotificationsEnabled(!notificationsEnabled),

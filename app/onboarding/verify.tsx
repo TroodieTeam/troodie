@@ -1,22 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  SafeAreaView,
+import { useAuth } from '@/contexts/AuthContext';
+import { useOnboarding } from '@/contexts/OnboardingContext';
+import { authService } from '@/services/authService';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  ActivityIndicator
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
-import { useOnboarding } from '@/contexts/OnboardingContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { authService } from '@/services/authService';
 
 export default function VerifyScreen() {
   const router = useRouter();
@@ -200,7 +200,7 @@ export default function VerifyScreen() {
             disabled={resending || resendCountdown > 0}
           >
             {resending ? (
-              <ActivityIndicator size="small" color="#5B4CCC" />
+              <ActivityIndicator size="small" color="#FFAD27" />
             ) : (
               <Text style={[
                 styles.resendText,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   codeInputFilled: {
-    borderColor: '#5B4CCC',
+    borderColor: '#FFAD27',
     backgroundColor: '#F8F6FF',
   },
   resendButton: {
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   resendText: {
     fontSize: 16,
     fontFamily: 'Inter_500Medium',
-    color: '#5B4CCC',
+    color: '#FFAD27',
     textDecorationLine: 'underline',
   },
   resendTextDisabled: {
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   nextButton: {
-    backgroundColor: '#5B4CCC',
+    backgroundColor: '#FFAD27',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

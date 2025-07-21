@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { UserState, Screen } from '@/types/core';
+import { Screen, UserState } from '@/types/core';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 
 interface AppContextType {
   userState: UserState;
@@ -13,6 +13,7 @@ const defaultUserState: UserState = {
   email: '',
   friendsCount: 0,
   isNewUser: true,
+  hasLimitedActivity: true,
   achievements: [],
 };
 

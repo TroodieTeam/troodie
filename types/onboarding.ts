@@ -77,10 +77,13 @@ export interface FavoriteSpotCategoryInfo {
 }
 
 export interface OnboardingState {
-  currentStep: 'welcome' | 'signup' | 'verify' | 'quiz' | 'favorites' | 'complete';
+  currentStep: 'welcome' | 'signup' | 'verify' | 'quiz' | 'profile' | 'favorites' | 'complete';
   phoneNumber?: string;
   quizAnswers: QuizAnswer[];
   persona?: PersonaType;
   personaScores?: PersonaScores;
   favoriteSpots: FavoriteSpot[];
+  profileImageUrl?: string;
+  username?: string;
+  bio?: string;
 }

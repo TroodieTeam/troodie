@@ -11,11 +11,14 @@ import {
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { personas } from '@/data/personas';
+import { profileService } from '@/services/profileService';
 
 export default function PersonaResultScreen() {
   const router = useRouter();
   const { state, setCurrentStep } = useOnboarding();
+  const { user } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -42,12 +45,18 @@ export default function PersonaResultScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+    
+    // Save persona to profile immediately
+    if (user?.id && state.persona) {
+      profileService.setPersona(user.id, state.persona)
+        .catch(error => console.error('Error saving persona:', error));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleContinue = () => {
-    setCurrentStep('favorites');
-    router.push('/onboarding/favorite-spots');
+    setCurrentStep('profile');
+    router.push('/onboarding/profile-image');
   };
 
   if (!persona) {
