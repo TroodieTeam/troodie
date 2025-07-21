@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,54 +8,82 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/authService';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { setPhoneNumber, setCurrentStep } = useOnboarding();
-  const [phone, setPhone] = useState('');
-  const [isValidPhone, setIsValidPhone] = useState(false);
-  const phoneInputRef = useRef<TextInput>(null);
+  const { setCurrentStep } = useOnboarding();
+  const { signUpWithEmail } = useAuth();
+  const [email, setEmail] = useState('');
+  const [isValidEmail, setIsValidEmail] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [lastRequestTime, setLastRequestTime] = useState<number | null>(null);
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+  const emailInputRef = useRef<TextInput>(null);
 
-  const formatPhoneNumber = (text: string) => {
-    // Remove all non-numeric characters
-    const cleaned = text.replace(/\D/g, '');
-    
-    // Apply US phone format (XXX) XXX-XXXX
-    let formatted = cleaned;
-    if (cleaned.length >= 6) {
-      formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-    } else if (cleaned.length >= 3) {
-      formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+  // Check rate limit status
+  useEffect(() => {
+    if (lastRequestTime) {
+      const interval = setInterval(() => {
+        const { limited, secondsRemaining } = authService.shouldShowRateLimit(lastRequestTime);
+        setRateLimitCountdown(secondsRemaining);
+        if (!limited) {
+          clearInterval(interval);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
     }
-    
-    return formatted;
+  }, [lastRequestTime]);
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text.trim());
+    setIsValidEmail(authService.isValidEmail(text.trim()));
   };
 
-  const handlePhoneChange = (text: string) => {
-    const formatted = formatPhoneNumber(text);
-    setPhone(formatted);
-    
-    // Check if we have a valid 10-digit phone number
-    const digitsOnly = formatted.replace(/\D/g, '');
-    setIsValidPhone(digitsOnly.length === 10);
-  };
-
-  const handleNext = () => {
-    if (!isValidPhone) {
-      Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
+  const handleNext = async () => {
+    if (!isValidEmail) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
-    const digitsOnly = phone.replace(/\D/g, '');
-    setPhoneNumber(digitsOnly);
-    setCurrentStep('verify');
-    router.push('/onboarding/verify');
+    // Check rate limit
+    const { limited, secondsRemaining } = authService.shouldShowRateLimit(lastRequestTime);
+    if (limited) {
+      Alert.alert(
+        'Please Wait',
+        `You need to wait ${secondsRemaining} seconds before requesting another code.`
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signUpWithEmail(email);
+      
+      if (result.success) {
+        setLastRequestTime(Date.now());
+        // Store email in context for verification screen
+        setCurrentStep('verify');
+        router.push({
+          pathname: '/onboarding/verify',
+          params: { email, type: 'signup' }
+        });
+      } else {
+        Alert.alert('Error', result.error || 'Failed to send verification code');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -77,32 +105,48 @@ export default function SignupScreen() {
 
         <View style={styles.content}>
           <Text style={styles.title}>What&apos;s your</Text>
-          <Text style={styles.title}>phone number?</Text>
+          <Text style={styles.title}>email address?</Text>
           
           <TextInput
-            ref={phoneInputRef}
+            ref={emailInputRef}
             style={styles.input}
-            value={phone}
-            onChangeText={handlePhoneChange}
-            placeholder="(628) 267-9041"
+            value={email}
+            onChangeText={handleEmailChange}
+            placeholder="user@example.com"
             placeholderTextColor="#999"
-            keyboardType="phone-pad"
-            maxLength={14}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
             autoFocus
           />
 
           <Text style={styles.disclaimer}>
             By tapping next you&apos;re creating an account and you agree to the Buyer Account terms and Supplier Terms and acknowledge Troodie&apos;s Privacy Policy
           </Text>
+
+          {rateLimitCountdown > 0 && (
+            <View style={styles.rateLimitContainer}>
+              <Text style={styles.rateLimitText}>
+                Please wait {rateLimitCountdown} seconds before requesting another code
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.bottomContent}>
           <TouchableOpacity 
-            style={[styles.nextButton, !isValidPhone && styles.nextButtonDisabled]} 
+            style={[
+              styles.nextButton, 
+              (!isValidEmail || loading || rateLimitCountdown > 0) && styles.nextButtonDisabled
+            ]} 
             onPress={handleNext}
-            disabled={!isValidPhone}
+            disabled={!isValidEmail || loading || rateLimitCountdown > 0}
           >
-            <Text style={styles.nextButtonText}>Next</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.nextButtonText}>Next</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -172,5 +216,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
+  },
+  rateLimitContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#FFF3CD',
+    borderRadius: 8,
+  },
+  rateLimitText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#856404',
+    textAlign: 'center',
   },
 });

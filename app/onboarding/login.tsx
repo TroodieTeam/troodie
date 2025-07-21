@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,46 +8,93 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/authService';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
-  const [isValidPhone, setIsValidPhone] = useState(false);
+  const { signInWithEmail } = useAuth();
+  const [email, setEmail] = useState('');
+  const [isValidEmail, setIsValidEmail] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [lastRequestTime, setLastRequestTime] = useState<number | null>(null);
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
 
-  const formatPhoneNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    let formatted = cleaned;
-    if (cleaned.length >= 6) {
-      formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-    } else if (cleaned.length >= 3) {
-      formatted = `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+  // Check rate limit status
+  useEffect(() => {
+    if (lastRequestTime) {
+      const interval = setInterval(() => {
+        const { limited, secondsRemaining } = authService.shouldShowRateLimit(lastRequestTime);
+        setRateLimitCountdown(secondsRemaining);
+        if (!limited) {
+          clearInterval(interval);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
     }
-    return formatted;
-  };
+  }, [lastRequestTime]);
 
-  const handlePhoneChange = (text: string) => {
-    const formatted = formatPhoneNumber(text);
-    setPhone(formatted);
-    const digitsOnly = formatted.replace(/\D/g, '');
-    setIsValidPhone(digitsOnly.length === 10);
+  const handleEmailChange = (text: string) => {
+    setEmail(text.trim());
+    setIsValidEmail(authService.isValidEmail(text.trim()));
   };
 
   const handleLogin = async () => {
-    if (!isValidPhone) {
-      Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
+    if (!isValidEmail) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
-    // In a real app, you would verify credentials with your backend
-    // For demo purposes, we'll just mark as logged in
-    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
-    router.replace('/(tabs)');
+    // Check rate limit
+    const { limited, secondsRemaining } = authService.shouldShowRateLimit(lastRequestTime);
+    if (limited) {
+      Alert.alert(
+        'Please Wait',
+        `You need to wait ${secondsRemaining} seconds before requesting another code.`
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signInWithEmail(email);
+      
+      if (result.success) {
+        setLastRequestTime(Date.now());
+        // Navigate to verification screen
+        router.push({
+          pathname: '/onboarding/verify',
+          params: { email, type: 'login' }
+        });
+      } else {
+        // If user doesn't exist, show appropriate message
+        if (result.error?.includes('not found') || result.error?.includes('not exist')) {
+          Alert.alert(
+            'Account Not Found',
+            'No account found with this email. Would you like to sign up?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Sign Up', 
+                onPress: () => router.push('/onboarding/signup')
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Error', result.error || 'Failed to send verification code');
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -69,28 +116,55 @@ export default function LoginScreen() {
 
         <View style={styles.content}>
           <Text style={styles.title}>Welcome back!</Text>
-          <Text style={styles.subtitle}>Enter your phone number to continue</Text>
+          <Text style={styles.subtitle}>Enter your email to continue</Text>
           
           <TextInput
             style={styles.input}
-            value={phone}
-            onChangeText={handlePhoneChange}
-            placeholder="(628) 267-9041"
+            value={email}
+            onChangeText={handleEmailChange}
+            placeholder="user@example.com"
             placeholderTextColor="#999"
-            keyboardType="phone-pad"
-            maxLength={14}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
             autoFocus
           />
+
+          {rateLimitCountdown > 0 && (
+            <View style={styles.rateLimitContainer}>
+              <Text style={styles.rateLimitText}>
+                Please wait {rateLimitCountdown} seconds before requesting another code
+              </Text>
+            </View>
+          )}
+
+          <Text style={styles.helperText}>
+            We'll send you a verification code to log in
+          </Text>
         </View>
 
         <View style={styles.bottomContent}>
           <TouchableOpacity 
-            style={[styles.loginButton, !isValidPhone && styles.loginButtonDisabled]} 
+            style={[
+              styles.loginButton, 
+              (!isValidEmail || loading || rateLimitCountdown > 0) && styles.loginButtonDisabled
+            ]} 
             onPress={handleLogin}
-            disabled={!isValidPhone}
+            disabled={!isValidEmail || loading || rateLimitCountdown > 0}
           >
-            <Text style={styles.loginButtonText}>Log In</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.loginButtonText}>Send Code</Text>
+            )}
           </TouchableOpacity>
+
+          <View style={styles.signupContainer}>
+            <Text style={styles.signupText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/onboarding/signup')}>
+              <Text style={styles.signupLink}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -133,12 +207,30 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   input: {
-    fontSize: 24,
+    fontSize: 20,
     fontFamily: 'Inter_500Medium',
     color: '#333',
     paddingVertical: 16,
     borderBottomWidth: 2,
     borderBottomColor: '#E5E5E5',
+  },
+  helperText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+    marginTop: 16,
+  },
+  rateLimitContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#FFF3CD',
+    borderRadius: 8,
+  },
+  rateLimitText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#856404',
+    textAlign: 'center',
   },
   bottomContent: {
     paddingHorizontal: 24,
@@ -157,5 +249,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
+  },
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  signupText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+  },
+  signupLink: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#5B4CCC',
+    textDecorationLine: 'underline',
   },
 });

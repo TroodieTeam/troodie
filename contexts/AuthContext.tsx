@@ -2,16 +2,20 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { userService } from '@/services/userService'
+import { authService } from '@/services/authService'
 
 type AuthContextType = {
   user: User | null
   session: Session | null
   profile: any | null
-  signInWithPhone: (phone: string) => Promise<void>
-  verifyOtp: (phone: string, token: string) => Promise<void>
+  signUpWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>
+  signInWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>
+  verifyOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>
+  resendOtp: (email: string, type: 'signup' | 'login') => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   loading: boolean
   isAuthenticated: boolean
+  error: string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -21,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Check for existing session
@@ -63,32 +68,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signInWithPhone = async (phone: string) => {
+  const signUpWithEmail = async (email: string) => {
+    setError(null)
+    const result = await authService.signUpWithEmail(email)
+    if (!result.success && result.error) {
+      setError(result.error)
+    }
+    return result
+  }
+
+  const signInWithEmail = async (email: string) => {
+    setError(null)
+    const result = await authService.signInWithEmail(email)
+    if (!result.success && result.error) {
+      setError(result.error)
+    }
+    return result
+  }
+
+  const verifyOtp = async (email: string, token: string) => {
+    setError(null)
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone,
-      })
-      if (error) throw error
+      const result = await authService.verifyOtp(email, token)
+      if (!result.success && result.error) {
+        setError(result.error)
+      }
+      // Profile will be loaded via the auth state change listener
+      return result
     } finally {
       setLoading(false)
     }
   }
 
-  const verifyOtp = async (phone: string, token: string) => {
-    setLoading(true)
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone,
-        token,
-        type: 'sms',
-      })
-      if (error) throw error
-      
-      // Profile will be loaded via the auth state change listener
-    } finally {
-      setLoading(false)
+  const resendOtp = async (email: string, type: 'signup' | 'login' = 'login') => {
+    setError(null)
+    const result = await authService.resendOtp(email, type)
+    if (!result.success && result.error) {
+      setError(result.error)
     }
+    return result
   }
 
   const signOut = async () => {
@@ -106,11 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     profile,
-    signInWithPhone,
+    signUpWithEmail,
+    signInWithEmail,
     verifyOtp,
+    resendOtp,
     signOut,
     loading,
     isAuthenticated: !!session,
+    error,
   }
 
   return (

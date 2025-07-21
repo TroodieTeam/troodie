@@ -8,26 +8,55 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/authService';
 
 export default function VerifyScreen() {
   const router = useRouter();
-  const { state, setCurrentStep } = useOnboarding();
+  const params = useLocalSearchParams<{ email: string; type: 'signup' | 'login' }>();
+  const { setCurrentStep } = useOnboarding();
+  const { verifyOtp, resendOtp } = useAuth();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isValid, setIsValid] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [lastResendTime, setLastResendTime] = useState<number | null>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
   const inputRefs = useRef<(TextInput | null)[]>([]);
+
+  const email = params.email || '';
+  const verificationType = params.type || 'signup';
 
   useEffect(() => {
     // Focus first input on mount
     inputRefs.current[0]?.focus();
   }, []);
 
+  // Check resend rate limit
+  useEffect(() => {
+    if (lastResendTime) {
+      const interval = setInterval(() => {
+        const { limited, secondsRemaining } = authService.shouldShowRateLimit(lastResendTime);
+        setResendCountdown(secondsRemaining);
+        if (!limited) {
+          clearInterval(interval);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [lastResendTime]);
+
   const handleCodeChange = (value: string, index: number) => {
+    // Only allow numeric input
+    if (value && !/^\d$/.test(value)) return;
+
     const newCode = [...code];
     newCode[index] = value;
     setCode(newCode);
@@ -40,6 +69,11 @@ export default function VerifyScreen() {
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
+
+    // Auto-submit if code is complete
+    if (fullCode.length === 6) {
+      handleVerify(fullCode);
+    }
   };
 
   const handleKeyPress = (key: string, index: number) => {
@@ -48,31 +82,79 @@ export default function VerifyScreen() {
     }
   };
 
-  const handleVerify = () => {
-    const fullCode = code.join('');
+  const handleVerify = async (fullCode?: string) => {
+    const verificationCode = fullCode || code.join('');
     
-    // In a real app, you would verify this code with your backend
-    // For demo purposes, let's accept any 6-digit code
-    if (fullCode.length === 6) {
-      setCurrentStep('quiz');
-      router.push('/onboarding/quiz');
-    } else {
-      Alert.alert('Invalid Code', 'Please enter the 6-digit code sent to your phone');
+    if (verificationCode.length !== 6) {
+      Alert.alert('Invalid Code', 'Please enter the 6-digit code sent to your email');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await verifyOtp(email, verificationCode);
+      
+      if (result.success) {
+        setCurrentStep('quiz');
+        router.push('/onboarding/quiz');
+      } else {
+        Alert.alert('Verification Failed', result.error || 'Invalid verification code');
+        // Clear the code on error
+        setCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleResend = () => {
-    Alert.alert('Code Resent', 'A new verification code has been sent to your phone');
-    // In a real app, you would call your API to resend the code
+  const handleResend = async () => {
+    // Check rate limit
+    const { limited, secondsRemaining } = authService.shouldShowRateLimit(lastResendTime);
+    if (limited) {
+      Alert.alert(
+        'Please Wait',
+        `You need to wait ${secondsRemaining} seconds before requesting another code.`
+      );
+      return;
+    }
+
+    setResending(true);
+    try {
+      const result = await resendOtp(email, verificationType);
+      
+      if (result.success) {
+        setLastResendTime(Date.now());
+        Alert.alert('Code Resent', 'A new verification code has been sent to your email');
+        // Clear the old code
+        setCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to resend code');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to resend code. Please try again.');
+    } finally {
+      setResending(false);
+    }
   };
 
   const handleBack = () => {
     router.back();
   };
 
-  const formatPhone = (phone: string) => {
-    if (!phone) return '';
-    return `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
+  const maskEmail = (email: string) => {
+    if (!email) return '';
+    const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) return email;
+    
+    const visibleLength = Math.min(3, Math.floor(localPart.length / 2));
+    const masked = localPart.substring(0, visibleLength) + 
+                  '*'.repeat(localPart.length - visibleLength) + 
+                  '@' + domain;
+    return masked;
   };
 
   return (
@@ -90,36 +172,64 @@ export default function VerifyScreen() {
 
         <View style={styles.content}>
           <Text style={styles.title}>Enter the code sent</Text>
-          <Text style={styles.title}>to {formatPhone(state.phoneNumber || '')}</Text>
+          <Text style={styles.title}>to {maskEmail(email)}</Text>
           
           <View style={styles.codeContainer}>
             {code.map((digit, index) => (
               <TextInput
                 key={index}
                 ref={(ref) => inputRefs.current[index] = ref}
-                style={styles.codeInput}
+                style={[
+                  styles.codeInput,
+                  digit ? styles.codeInputFilled : null
+                ]}
                 value={digit}
                 onChangeText={(value) => handleCodeChange(value, index)}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
                 keyboardType="number-pad"
                 maxLength={1}
                 textAlign="center"
+                editable={!loading}
               />
             ))}
           </View>
 
-          <TouchableOpacity onPress={handleResend} style={styles.resendButton}>
-            <Text style={styles.resendText}>Resend</Text>
+          <TouchableOpacity 
+            onPress={handleResend} 
+            style={styles.resendButton}
+            disabled={resending || resendCountdown > 0}
+          >
+            {resending ? (
+              <ActivityIndicator size="small" color="#5B4CCC" />
+            ) : (
+              <Text style={[
+                styles.resendText,
+                resendCountdown > 0 && styles.resendTextDisabled
+              ]}>
+                {resendCountdown > 0 
+                  ? `Resend in ${resendCountdown}s` 
+                  : 'Resend code'
+                }
+              </Text>
+            )}
           </TouchableOpacity>
+
+          <Text style={styles.helperText}>
+            Didn't receive the code? Check your spam folder
+          </Text>
         </View>
 
         <View style={styles.bottomContent}>
           <TouchableOpacity 
-            style={[styles.nextButton, !isValid && styles.nextButtonDisabled]} 
-            onPress={handleVerify}
-            disabled={!isValid}
+            style={[styles.nextButton, (!isValid || loading) && styles.nextButtonDisabled]} 
+            onPress={() => handleVerify()}
+            disabled={!isValid || loading}
           >
-            <Text style={styles.nextButtonText}>Next</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.nextButtonText}>Verify</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -171,16 +281,33 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: 'Inter_600SemiBold',
     color: '#333',
+    backgroundColor: '#FFFFFF',
+  },
+  codeInputFilled: {
+    borderColor: '#5B4CCC',
+    backgroundColor: '#F8F6FF',
   },
   resendButton: {
     alignSelf: 'flex-start',
     paddingVertical: 8,
+    minHeight: 32,
+    justifyContent: 'center',
   },
   resendText: {
     fontSize: 16,
     fontFamily: 'Inter_500Medium',
     color: '#5B4CCC',
     textDecorationLine: 'underline',
+  },
+  resendTextDisabled: {
+    color: '#999',
+    textDecorationLine: 'none',
+  },
+  helperText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+    marginTop: 16,
   },
   bottomContent: {
     paddingHorizontal: 24,
