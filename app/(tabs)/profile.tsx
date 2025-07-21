@@ -107,7 +107,7 @@ export default function ProfileScreen() {
   const userData = {
     name: profile?.email?.split('@')[0] || 'Troodie User',
     username: profile?.username ? `@${profile.username}` : '@user',
-    avatar: profile?.profile_image_url || null,
+    avatar: profile?.avatar_url || null,
     bio: profile?.bio || '',
     stats: {
       followers: profile?.followers_count || 0,

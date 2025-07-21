@@ -4,33 +4,40 @@ import { achievementService } from './achievementService';
 
 export interface Profile {
   id: string;
-  email: string;
-  persona?: string;
+  phone?: string;
   username?: string;
+  name?: string;
   bio?: string;
-  profile_image_url?: string;
+  avatar_url?: string;
+  persona?: string;
+  is_verified?: boolean;
+  is_restaurant?: boolean;
+  is_creator?: boolean;
+  profile_completion?: number;
+  created_at?: string;
+  updated_at?: string;
+  // These will come from the user_stats view or joins
+  followers_count?: number;
+  following_count?: number;
+  saves_count?: number;
+  boards_count?: number;
+  // Additional fields we can add later
+  email?: string;
+  location?: string;
+  website?: string;
+  instagram_handle?: string;
   email_preferences?: {
     marketing: boolean;
     social: boolean;
     notifications: boolean;
   };
-  location?: string;
-  website?: string;
-  instagram_handle?: string;
-  profile_completion_percentage?: number;
-  saves_count?: number;
-  reviews_count?: number;
-  followers_count?: number;
-  following_count?: number;
-  created_at?: string;
-  updated_at?: string;
 }
 
 class ProfileService {
   async getProfile(userId: string): Promise<Profile | null> {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', userId)
         .single();
@@ -50,7 +57,7 @@ class ProfileService {
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile | null> {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .update(updates)
         .eq('id', userId)
         .select()
@@ -79,7 +86,7 @@ class ProfileService {
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
-        .from('profiles')
+        .from('avatars')
         .upload(fileName, blob, {
           contentType: 'image/jpeg',
           upsert: true
@@ -92,12 +99,12 @@ class ProfileService {
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('profiles')
+        .from('avatars')
         .getPublicUrl(fileName);
 
       // Update profile with new image URL
       await this.updateProfile(userId, {
-        profile_image_url: publicUrl
+        avatar_url: publicUrl
       });
 
       // Unlock achievement for adding profile image
@@ -118,7 +125,7 @@ class ProfileService {
     try {
       // Check if username is already taken
       const { data: existing, error: checkError } = await supabase
-        .from('profiles')
+        .from('users')
         .select('id')
         .eq('username', username.toLowerCase())
         .neq('id', userId)
@@ -219,7 +226,7 @@ class ProfileService {
   async checkUsernameAvailability(username: string): Promise<boolean> {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .select('id')
         .eq('username', username.toLowerCase())
         .single();
