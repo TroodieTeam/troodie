@@ -22,7 +22,7 @@ export default function VerifyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email: string; type: 'signup' | 'login' }>();
   const { setCurrentStep } = useOnboarding();
-  const { verifyOtp, resendOtp } = useAuth();
+  const { verifyOtp, resendOtp, profile } = useAuth();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isValid, setIsValid] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -95,8 +95,22 @@ export default function VerifyScreen() {
       const result = await verifyOtp(email, verificationCode);
       
       if (result.success) {
-        setCurrentStep('quiz');
-        router.push('/onboarding/quiz');
+        // Check if this is a login or signup flow
+        if (verificationType === 'login') {
+          // For login, check if user has a persona (indicating they've completed onboarding)
+          if (profile?.persona) {
+            // User has completed onboarding (has persona), go to main app
+            router.replace('/(tabs)');
+          } else {
+            // User hasn't completed onboarding (no persona), continue with onboarding flow
+            setCurrentStep('quiz');
+            router.push('/onboarding/quiz');
+          }
+        } else {
+          // For signup, continue with onboarding flow
+          setCurrentStep('quiz');
+          router.push('/onboarding/quiz');
+        }
       } else {
         Alert.alert('Verification Failed', result.error || 'Invalid verification code');
         // Clear the code on error
@@ -178,7 +192,9 @@ export default function VerifyScreen() {
             {code.map((digit, index) => (
               <TextInput
                 key={index}
-                ref={(ref) => inputRefs.current[index] = ref}
+                ref={(ref) => {
+                  inputRefs.current[index] = ref;
+                }}
                 style={[
                   styles.codeInput,
                   digit ? styles.codeInputFilled : null
