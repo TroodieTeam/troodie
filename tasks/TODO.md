@@ -89,10 +89,11 @@
 | [6.1 Restaurant Detail Screen](./task-6-1-restaurant-detail.md) | 🔴 | Critical | 4 days | - | Referenced throughout app |
 | [6.2 Post Creation & Management](./task-6-2-post-creation.md) | 🔴 | High | 3 days | - | Content creation |
 | [6.3 Notifications System](./task-6-3-notifications.md) | 🔴 | Medium | 3 days | - | User engagement |
+| [6.4 Fix Bottom Navigation Positioning](./task-6-4-fix-restaurant-detail-bottom-nav.md) | 🔴 | Medium | 1 day | - | Fix bottom nav positioning on restaurant detail screen |
 
 **Epic Status:** Not Started  
-**Epic Progress:** 0/3 tasks completed  
-**Estimated Duration:** 10 days
+**Epic Progress:** 0/4 tasks completed  
+**Estimated Duration:** 11 days
 
 ---
 
