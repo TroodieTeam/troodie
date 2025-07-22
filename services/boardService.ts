@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase'
-import { 
-  Board, 
-  BoardCreationForm, 
-  BoardWithRestaurants,
-  BoardMember,
-  BoardRestaurant
+import {
+    Board,
+    BoardCreationForm,
+    BoardMember,
+    BoardRestaurant,
+    BoardWithRestaurants
 } from '@/types/board'
 
 export const boardService = {
@@ -13,23 +13,33 @@ export const boardService = {
    */
   async createBoard(userId: string, boardData: BoardCreationForm): Promise<Board | null> {
     try {
+      // Use the simple function to create board (without board_members for now)
       const { data, error } = await supabase
-        .from('boards')
-        .insert({
-          user_id: userId,
-          ...boardData
+        .rpc('create_simple_board', {
+          p_user_id: userId,
+          p_title: boardData.title,
+          p_description: boardData.description || null,
+          p_type: boardData.type,
+          p_category: boardData.category || null,
+          p_location: boardData.location || null,
+          p_is_private: boardData.is_private,
+          p_allow_comments: boardData.allow_comments,
+          p_allow_saves: boardData.allow_saves,
+          p_price: boardData.price || null
         })
-        .select()
-        .single()
 
       if (error) throw error
 
-      // If it's a private board, add the creator as owner
-      if (boardData.is_private || boardData.type === 'private') {
-        await this.addMemberToBoard(data.id, userId, 'owner')
-      }
+      // Fetch the created board
+      const { data: board, error: fetchError } = await supabase
+        .from('boards')
+        .select('*')
+        .eq('id', data)
+        .single()
 
-      return data
+      if (fetchError) throw fetchError
+
+      return board
     } catch (error: any) {
       console.error('Error creating board:', error)
       return null
@@ -41,17 +51,30 @@ export const boardService = {
    */
   async getUserBoards(userId: string): Promise<Board[]> {
     try {
+      // Use the user_boards view which handles all the complex permissions
       const { data, error } = await supabase
-        .from('boards')
+        .from('user_boards')
         .select('*')
-        .or(`user_id.eq.${userId},id.in.(select board_id from board_members where user_id='${userId}')`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
       return data || []
     } catch (error: any) {
       console.error('Error fetching user boards:', error)
-      return []
+      // Fallback to direct query if view doesn't exist yet
+      try {
+        const { data, error } = await supabase
+          .from('boards')
+          .select('*')
+          .or(`user_id.eq.${userId},id.in.(select board_id from board_members where user_id='${userId}')`)
+          .order('created_at', { ascending: false })
+        
+        if (error) throw error
+        return data || []
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError)
+        return []
+      }
     }
   },
 

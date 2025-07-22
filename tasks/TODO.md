@@ -40,17 +40,17 @@
 | Task | Status | Priority | Estimate | Assignee | Notes |
 |------|--------|----------|----------|----------|-------|
 | [3.1 Restaurant Save Functionality](./task-3-1-restaurant-save.md) | 🔴 | High | 4 days | - | Depends on 2.2 |
-| [3.2 Network Building Implementation](./task-3-2-network-building.md) | 🔴 | High | 3 days | - | Ready to start - replaces "Follow Local Troodies" with "Discover Local Gems" |
+| [3.2 Network Building Implementation](./task-3-2-network-building.md) | 🟢 | High | 3 days | - | ✅ Completed - replaces "Follow Local Troodies" with "Discover Local Gems" |
 | [3.3 Activity Feed & Interactions](./task-3-3-activity-feed.md) | 🔴 | Medium | 5 days | - | Depends on 3.1 and 3.2 |
-| [3.4 User Profile Implementation](./task-3-4-profile-implementation.md) | 🔴 | High | 4 days | - | Persona storage, profile CRUD, achievements, edit modal, sharing |
-| [3.5 Fix Edit Profile Modal Bug](./task-3-5-edit-profile-modal-bug.md) | 🔴 | High | 1 day | - | Settings screen modal not rendering |
+| [3.4 User Profile Implementation](./task-3-4-profile-implementation.md) | 🟢 | High | 4 days | - | ✅ Completed - Persona storage, profile CRUD, achievements, edit modal, sharing |
+| [3.5 Fix Edit Profile Modal Bug](./task-3-5-edit-profile-modal-bug.md) | 🟢 | High | 1 day | - | ✅ Completed - Settings screen modal not rendering |
 | [3.6 Profile Data Shape Updates & Onboarding Flow](./task-3-6-profile-onboarding-flow.md) | 🟢 | High | 3 days | Claude | ✅ Completed - Removed unnecessary fields, added profile onboarding screens |
 | [3.7 Empty Activity State Experience](./task-3-7-empty-activity-state.md) | 🟢 | Medium | 2 days | Claude | ✅ Completed - Created reusable EmptyActivityState component |
 | [3.8 Remove Discover Local Gems CTA](./task-3-8-remove-discover-local-gems.md) | 🟢 | Medium | 1 day | Claude | ✅ Completed - Removed from Build Your Network section |
 | [3.9 Simplify Add Content Screen](./task-3-9-simplify-add-content-screen.md) | 🟢 | Medium | 1 day | Claude | ✅ Completed - Simplified to show only Create a Board |
 
 **Epic Status:** In Progress  
-**Epic Progress:** 4/9 tasks completed (44.4%)  
+**Epic Progress:** 7/9 tasks completed (77.8%)  
 **Estimated Duration:** 24 days
 
 ---
@@ -153,9 +153,9 @@
 ## Overall Progress Summary
 
 **Total Tasks:** 15  
-**Completed:** 6 (40%)  
+**Completed:** 9 (60%)  
 **In Progress:** 0 (0%)  
-**Not Started:** 9 (60%)  
+**Not Started:** 6 (40%)  
 **Blocked:** 0 (0%)
 
 **Total Estimated Duration:** 61 days (~12 weeks)
@@ -204,6 +204,9 @@
 **Next Review:** January 23, 2025
 
 ### Recent Changes
+- ✅ **Jan 22**: Completed Task 3.5 - Fix Edit Profile Modal Bug
+- ✅ **Jan 22**: Completed Task 3.4 - User Profile Implementation
+- ✅ **Jan 22**: Completed Task 3.2 - Network Building Implementation
 - ✅ **Jan 22**: Completed Task 3.8 - Remove Discover Local Gems CTA from Build Your Network
 - ✅ **Jan 22**: Completed Task 3.9 - Simplify Add Content Screen to show only Create a Board
 - ✅ **Jan 22**: Completed Task 6.4 - Fix Bottom Navigation Positioning on Restaurant Detail

@@ -1,4 +1,4 @@
-import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import { RestaurantCardWithSave } from '@/components/cards/RestaurantCardWithSave';
 import { ErrorState } from '@/components/ErrorState';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
@@ -6,8 +6,10 @@ import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
+import { boardService } from '@/services/boardService';
 import { InviteService } from '@/services/inviteService';
 import { restaurantService } from '@/services/restaurantService';
+import { Board } from '@/types/board';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
 import { getErrorType } from '@/types/errors';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +18,8 @@ import {
   Bell,
   Bookmark,
   Coffee,
+  Globe,
+  Lock,
   Plus,
   Search,
   Sparkles,
@@ -43,6 +47,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [trendingRestaurants, setTrendingRestaurants] = useState<any[]>([]);
   const [featuredRestaurants, setFeaturedRestaurants] = useState<any[]>([]);
+  const [userBoards, setUserBoards] = useState<Board[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [retrying, setRetrying] = useState(false);
   
@@ -66,6 +71,20 @@ export default function HomeScreen() {
       
       setTrendingRestaurants(trending);
       setFeaturedRestaurants(featured);
+      
+      // Load user boards separately with proper error handling
+      if (user?.id) {
+        try {
+          const boards = await boardService.getUserBoards(user.id);
+          console.log('Loaded boards:', boards); // Debug log
+          setUserBoards(boards);
+        } catch (boardError) {
+          console.error('Error loading boards:', boardError);
+          setUserBoards([]); // Set empty array on error
+        }
+      } else {
+        setUserBoards([]);
+      }
     } catch (err: any) {
       console.error('Error loading restaurants:', err);
       setError(err);
@@ -255,30 +274,62 @@ export default function HomeScreen() {
     </View>
   );
 
-  const renderYourSaves = () => (
+  const renderYourBoards = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Your Saves</Text>
-        <TouchableOpacity>
+        <Text style={styles.sectionTitle}>Your Boards</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
       </View>
       
-      {userState.isNewUser ? (
+      {userBoards.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyStateIcon}>
             <Bookmark size={32} color="#DDD" />
           </View>
-          <Text style={styles.emptyStateTitle}>Start Building Your Collection</Text>
+          <Text style={styles.emptyStateTitle}>Create Your First Board</Text>
           <Text style={styles.emptyStateDescription}>
-            Save restaurants you love or want to try
+            Organize your favorite restaurants into collections
           </Text>
-          <TouchableOpacity style={styles.emptyStateCTA} onPress={() => router.push('/explore')}>
-            <Text style={styles.emptyStateCTAText}>Discover Restaurants</Text>
+          <TouchableOpacity style={styles.emptyStateCTA} onPress={() => router.push('/add/create-board')}>
+            <Text style={styles.emptyStateCTAText}>Create Board</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <Text style={styles.placeholderText}>Saved restaurants will appear here</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+          {userBoards.slice(0, 5).map((board) => (
+            <TouchableOpacity 
+              key={board.id} 
+              style={styles.boardCard}
+              onPress={() => router.push(`/boards/${board.id}`)}
+            >
+              <View style={styles.boardCardHeader}>
+                <View style={styles.boardCardIcon}>
+                  <Bookmark size={20} color={designTokens.colors.primaryOrange} />
+                </View>
+                <Text style={styles.boardCardTitle} numberOfLines={1}>
+                  {board.title}
+                </Text>
+              </View>
+              <Text style={styles.boardCardDescription} numberOfLines={2}>
+                {board.description || 'No description'}
+              </Text>
+              <View style={styles.boardCardFooter}>
+                <Text style={styles.boardCardCount}>
+                  {board.restaurant_count || 0} restaurants
+                </Text>
+                <View style={styles.boardCardPrivacy}>
+                  {board.is_private ? (
+                    <Lock size={12} color={designTokens.colors.textMedium} />
+                  ) : (
+                    <Globe size={12} color={designTokens.colors.textMedium} />
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
     </View>
   );
@@ -343,13 +394,13 @@ export default function HomeScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateTitle}>Loading trending spots...</Text>
             <Text style={styles.emptyStateDescription}>
-              Discovering Charlotte's hottest restaurants
+              Discovering Charlotte&apos;s hottest restaurants
             </Text>
           </View>
         ) : (
           recommendedContent.map((item, index) => (
             <View key={index} style={styles.trendingCard}>
-              <RestaurantCard 
+              <RestaurantCardWithSave 
                 restaurant={item.restaurant}
                 stats={item.stats}
                 onPress={() => {
@@ -388,7 +439,7 @@ export default function HomeScreen() {
         {renderHeader()}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
-          <Text style={styles.loadingText}>Loading Charlotte's best spots...</Text>
+          <Text style={styles.loadingText}>Loading Charlotte&apos;s best spots...</Text>
         </View>
       </SafeAreaView>
     );
@@ -427,7 +478,7 @@ export default function HomeScreen() {
         
         {userState.friendsCount < 5 && renderNetworkBuilding()}
         
-        {renderYourSaves()}
+        {renderYourBoards()}
         
         {renderPersonaRecommendations()}
         
@@ -804,5 +855,54 @@ const styles = StyleSheet.create({
     ...designTokens.typography.bodyRegular,
     color: designTokens.colors.textMedium,
     marginTop: designTokens.spacing.md,
+  },
+  boardCard: {
+    width: 200,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.md,
+    padding: designTokens.spacing.md,
+    marginRight: designTokens.spacing.md,
+    ...applyShadow('card'),
+  },
+  boardCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: designTokens.spacing.sm,
+  },
+  boardCardIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: designTokens.colors.primaryOrange + '1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: designTokens.spacing.sm,
+  },
+  boardCardTitle: {
+    ...designTokens.typography.bodyMedium,
+    fontFamily: 'Poppins_600SemiBold',
+    color: designTokens.colors.textDark,
+    flex: 1,
+  },
+  boardCardDescription: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+    marginBottom: designTokens.spacing.sm,
+  },
+  boardCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  boardCardCount: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.primaryOrange,
+  },
+  boardCardPrivacy: {
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

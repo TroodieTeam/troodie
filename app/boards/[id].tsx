@@ -1,31 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  Alert
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  ChevronLeft,
-  MoreVertical,
-  Plus,
-  Lock,
-  Globe,
-  Users,
-  MapPin,
-  Star
-} from 'lucide-react-native';
 import { theme } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { boardService } from '@/services/boardService';
 import { restaurantService } from '@/services/restaurantService';
-import { useAuth } from '@/contexts/AuthContext';
-import { BoardWithRestaurants, BoardRestaurant } from '@/types/board';
+import { BoardRestaurant, BoardWithRestaurants } from '@/types/board';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  ChevronLeft,
+  Edit,
+  Globe,
+  Home,
+  Lock,
+  MapPin,
+  MoreVertical,
+  Plus,
+  Share,
+  Star,
+  Trash2,
+  Users
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function BoardDetailScreen() {
   const router = useRouter();
@@ -37,6 +41,7 @@ export default function BoardDetailScreen() {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   useEffect(() => {
     loadBoardDetails();
@@ -85,6 +90,45 @@ export default function BoardDetailScreen() {
     });
   };
 
+  const handleGoHome = () => {
+    router.push('/(tabs)');
+  };
+
+  const handleShareBoard = () => {
+    // TODO: Implement board sharing
+    Alert.alert('Share Board', 'Sharing feature coming soon!');
+  };
+
+  const handleEditBoard = () => {
+    // TODO: Navigate to edit board screen
+    Alert.alert('Edit Board', 'Edit feature coming soon!');
+  };
+
+  const handleDeleteBoard = () => {
+    if (!isOwner) return;
+
+    Alert.alert(
+      'Delete Board',
+      'Are you sure you want to delete this board? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await boardService.deleteBoard(boardId);
+              Alert.alert('Success', 'Board deleted successfully');
+              router.push('/(tabs)');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete board');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleRemoveRestaurant = async (restaurantId: string) => {
     if (!isOwner) return;
 
@@ -116,12 +160,36 @@ export default function BoardDetailScreen() {
       </TouchableOpacity>
       <Text style={styles.title}>Board</Text>
       {isOwner && (
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity 
+          style={styles.moreButton}
+          onPress={() => setShowMoreMenu(!showMoreMenu)}
+        >
           <MoreVertical size={24} color="#333" />
         </TouchableOpacity>
       )}
     </View>
   );
+
+  const renderMoreMenu = () => {
+    if (!showMoreMenu || !isOwner) return null;
+
+    return (
+      <View style={styles.moreMenu}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleShareBoard}>
+          <Share size={16} color="#333" />
+          <Text style={styles.menuText}>Share Board</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuItem} onPress={handleEditBoard}>
+          <Edit size={16} color="#333" />
+          <Text style={styles.menuText}>Edit Board</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuItem} onPress={handleDeleteBoard}>
+          <Trash2 size={16} color="#FF4444" />
+          <Text style={[styles.menuText, { color: '#FF4444' }]}>Delete Board</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderBoardInfo = () => (
     <View style={styles.boardInfo}>
@@ -171,11 +239,20 @@ export default function BoardDetailScreen() {
     </View>
   );
 
-  const renderAddButton = () => isOwner && (
-    <TouchableOpacity style={styles.addButton} onPress={handleAddRestaurants}>
-      <Plus size={20} color="#FFFFFF" />
-      <Text style={styles.addButtonText}>Add Restaurants</Text>
-    </TouchableOpacity>
+  const renderActionButtons = () => (
+    <View style={styles.actionButtons}>
+      {isOwner && (
+        <TouchableOpacity style={styles.addButton} onPress={handleAddRestaurants}>
+          <Plus size={20} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add Restaurants</Text>
+        </TouchableOpacity>
+      )}
+      
+      <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
+        <Home size={20} color={theme.colors.primary} />
+        <Text style={styles.homeButtonText}>Go Home</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   const renderRestaurants = () => {
@@ -194,6 +271,10 @@ export default function BoardDetailScreen() {
               <Text style={styles.emptyButtonText}>Add Restaurants</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={styles.emptyHomeButton} onPress={handleGoHome}>
+            <Home size={16} color={theme.colors.primary} />
+            <Text style={styles.emptyHomeButtonText}>Go Home</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -252,9 +333,10 @@ export default function BoardDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
+      {renderMoreMenu()}
       <ScrollView showsVerticalScrollIndicator={false}>
         {renderBoardInfo()}
-        {renderAddButton()}
+        {renderActionButtons()}
         {renderRestaurants()}
       </ScrollView>
     </SafeAreaView>
@@ -290,6 +372,33 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'flex-end',
+  },
+  moreMenu: {
+    position: 'absolute',
+    top: 80,
+    right: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  menuText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#333',
+    marginLeft: 8,
   },
   boardInfo: {
     backgroundColor: '#FFFFFF',
@@ -352,6 +461,18 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 2,
   },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -359,15 +480,32 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    marginHorizontal: 20,
-    marginVertical: 16,
     borderRadius: 8,
     gap: 8,
+    flex: 1,
+    marginRight: 8,
   },
   addButtonText: {
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
+  },
+  homeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8F8F8',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    gap: 8,
+    flex: 1,
+    marginLeft: 8,
+  },
+  homeButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -406,11 +544,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     gap: 8,
+    marginBottom: 16,
   },
   emptyButtonText: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
+  },
+  emptyHomeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 8,
+  },
+  emptyHomeButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.primary,
   },
   restaurantsList: {
     paddingHorizontal: 20,

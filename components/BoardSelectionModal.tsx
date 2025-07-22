@@ -108,7 +108,7 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
         <View style={styles.boardInfo}>
           <Text style={styles.boardTitle}>{board.title}</Text>
           <Text style={styles.boardMeta}>
-            {board.restaurant_count} restaurants • {board.is_private ? 'Private' : 'Public'}
+            {board.restaurant_count} restaurants • {(board.is_private || board.type === 'private') ? 'Private' : 'Public'}
           </Text>
         </View>
         {hasRestaurant ? (
