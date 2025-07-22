@@ -8,12 +8,12 @@ export default {
     orientation: "portrait",
     icon: "./assets/images/troodie_icon_logo.jpg",
     scheme: "troodie",
-    userInterfaceStyle: "automatic",
+    userInterfaceStyle: "light",
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.troodie.troodie.com",
-      buildNumber: "1",
+      buildNumber: "2",
       infoPlist: {
         NSLocationWhenInUseUsageDescription: "Troodie uses your location to show nearby restaurants and recommendations.",
         NSCameraUsageDescription: "Troodie uses your camera to take photos of restaurants and food.",

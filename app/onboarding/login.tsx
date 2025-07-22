@@ -19,12 +19,20 @@ import {
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [isValidEmail, setIsValidEmail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastRequestTime, setLastRequestTime] = useState<number | null>(null);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+
+  // Check if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('[Login] User is already authenticated, redirecting to main app');
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, router]);
 
   // Check rate limit status
   useEffect(() => {

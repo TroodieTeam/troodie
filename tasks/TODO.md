@@ -91,10 +91,12 @@
 | [6.2 Post Creation & Management](./task-6-2-post-creation.md) | 🔴 | High | 3 days | - | Content creation |
 | [6.3 Notifications System](./task-6-3-notifications.md) | 🔴 | Medium | 3 days | - | User engagement |
 | [6.4 Fix Bottom Navigation Positioning](./task-6-4-fix-restaurant-detail-bottom-nav.md) | 🟢 | Medium | 1 day | Claude | ✅ Completed - Removed custom bottom nav |
+| [6.5 Fix Authentication Session Persistence](./task-6-5-auth-session-persistence.md) | 🔴 | Critical | 2 days | - | Users lose login state on app refresh/reload |
+| [6.6 Fix RestaurantCardWithSave Text Rendering Error](./task-6-6-fix-restaurant-card-text-error.md) | 🔴 | High | 1 day | - | Text strings must be rendered within a <Text> component error |
 
 **Epic Status:** Not Started  
-**Epic Progress:** 1/4 tasks completed (25%)  
-**Estimated Duration:** 11 days
+**Epic Progress:** 1/5 tasks completed (20%)  
+**Estimated Duration:** 12 days
 
 ---
 
@@ -153,13 +155,13 @@
 
 ## Overall Progress Summary
 
-**Total Tasks:** 15  
-**Completed:** 9 (60%)  
+**Total Tasks:** 16  
+**Completed:** 9 (56%)  
 **In Progress:** 0 (0%)  
-**Not Started:** 6 (40%)  
+**Not Started:** 7 (44%)  
 **Blocked:** 0 (0%)
 
-**Total Estimated Duration:** 61 days (~12 weeks)
+**Total Estimated Duration:** 62 days (~12 weeks)
 
 ---
 

@@ -2,13 +2,22 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { Animated, Image, StyleSheet, View } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.8);
 
   useEffect(() => {
+    // Check if user is authenticated
+    if (isAuthenticated) {
+      console.log('[Splash] User is authenticated, redirecting to main app');
+      router.replace('/(tabs)');
+      return;
+    }
+
     // Animate logo appearance
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -30,7 +39,7 @@ export default function SplashScreen() {
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <View style={styles.container}>

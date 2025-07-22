@@ -195,7 +195,7 @@ export default function RestaurantDetailScreen() {
         
         <View style={styles.restaurantMeta}>
           <View style={styles.rating}>
-            <Star size={14} fill={designTokens.colors.primaryOrange} color={designTokens.colors.primaryOrange} />
+                            <Star size={14} color={designTokens.colors.primaryOrange} />
             <Text style={styles.ratingText}>{restaurant.google_rating || restaurant.troodie_rating || '4.5'}</Text>
             <Text style={styles.reviewCount}>({restaurant.google_reviews_count || 0})</Text>
           </View>
@@ -214,7 +214,7 @@ export default function RestaurantDetailScreen() {
         style={[styles.actionButton, styles.saveButton]} 
         onPress={handleSave}
       >
-        <Bookmark size={18} color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textDark} fill={isSaved ? designTokens.colors.primaryOrange : 'transparent'} />
+        <Bookmark size={18} color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textDark} />
         <Text style={styles.actionButtonText}>Save</Text>
       </TouchableOpacity>
       

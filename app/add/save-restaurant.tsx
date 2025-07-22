@@ -210,7 +210,7 @@ export default function SaveRestaurantScreen() {
               <View style={styles.resultFooter}>
                 {restaurant.rating && (
                   <View style={styles.rating}>
-                    <Star size={14} color="#FFD700" fill="#FFD700" />
+                    <Star size={14} color="#FFD700" />
                     <Text style={styles.ratingText}>{restaurant.rating}</Text>
                   </View>
                 )}
