@@ -40,17 +40,17 @@
 | Task | Status | Priority | Estimate | Assignee | Notes |
 |------|--------|----------|----------|----------|-------|
 | [3.1 Restaurant Save Functionality](./task-3-1-restaurant-save.md) | 🔴 | High | 4 days | - | Depends on 2.2 |
-| [3.2 Network Building Implementation](./task-3-2-network-building.md) | 🔴 | High | 3 days | - | Ready to start - replaces "Follow Local Troodies" with "Discover Local Gems" |
+| [3.2 Network Building Implementation](./task-3-2-network-building.md) | 🟢 | High | 3 days | - | ✅ Completed - replaces "Follow Local Troodies" with "Discover Local Gems" |
 | [3.3 Activity Feed & Interactions](./task-3-3-activity-feed.md) | 🔴 | Medium | 5 days | - | Depends on 3.1 and 3.2 |
-| [3.4 User Profile Implementation](./task-3-4-profile-implementation.md) | 🔴 | High | 4 days | - | Persona storage, profile CRUD, achievements, edit modal, sharing |
-| [3.5 Fix Edit Profile Modal Bug](./task-3-5-edit-profile-modal-bug.md) | 🔴 | High | 1 day | - | Settings screen modal not rendering |
+| [3.4 User Profile Implementation](./task-3-4-profile-implementation.md) | 🟢 | High | 4 days | - | ✅ Completed - Persona storage, profile CRUD, achievements, edit modal, sharing |
+| [3.5 Fix Edit Profile Modal Bug](./task-3-5-edit-profile-modal-bug.md) | 🟢 | High | 1 day | - | ✅ Completed - Settings screen modal not rendering |
 | [3.6 Profile Data Shape Updates & Onboarding Flow](./task-3-6-profile-onboarding-flow.md) | 🟢 | High | 3 days | Claude | ✅ Completed - Removed unnecessary fields, added profile onboarding screens |
 | [3.7 Empty Activity State Experience](./task-3-7-empty-activity-state.md) | 🟢 | Medium | 2 days | Claude | ✅ Completed - Created reusable EmptyActivityState component |
-| [3.8 Remove Discover Local Gems CTA](./task-3-8-remove-discover-local-gems.md) | 🔴 | Medium | 1 day | - | UI simplification - remove from Build Your Network section |
-| [3.9 Simplify Add Content Screen](./task-3-9-simplify-add-content-screen.md) | 🔴 | Medium | 1 day | - | Show only Create a Board option, hide other features |
+| [3.8 Remove Discover Local Gems CTA](./task-3-8-remove-discover-local-gems.md) | 🟢 | Medium | 1 day | Claude | ✅ Completed - Removed from Build Your Network section |
+| [3.9 Simplify Add Content Screen](./task-3-9-simplify-add-content-screen.md) | 🟢 | Medium | 1 day | Claude | ✅ Completed - Simplified to show only Create a Board |
 
 **Epic Status:** In Progress  
-**Epic Progress:** 2/9 tasks completed (22.2%)  
+**Epic Progress:** 7/9 tasks completed (77.8%)  
 **Estimated Duration:** 24 days
 
 ---
@@ -89,10 +89,10 @@
 | [6.1 Restaurant Detail Screen](./task-6-1-restaurant-detail.md) | 🔴 | Critical | 4 days | - | Referenced throughout app |
 | [6.2 Post Creation & Management](./task-6-2-post-creation.md) | 🔴 | High | 3 days | - | Content creation |
 | [6.3 Notifications System](./task-6-3-notifications.md) | 🔴 | Medium | 3 days | - | User engagement |
-| [6.4 Fix Bottom Navigation Positioning](./task-6-4-fix-restaurant-detail-bottom-nav.md) | 🔴 | Medium | 1 day | - | Fix bottom nav positioning on restaurant detail screen |
+| [6.4 Fix Bottom Navigation Positioning](./task-6-4-fix-restaurant-detail-bottom-nav.md) | 🟢 | Medium | 1 day | Claude | ✅ Completed - Removed custom bottom nav |
 
 **Epic Status:** Not Started  
-**Epic Progress:** 0/4 tasks completed  
+**Epic Progress:** 1/4 tasks completed (25%)  
 **Estimated Duration:** 11 days
 
 ---
@@ -153,9 +153,9 @@
 ## Overall Progress Summary
 
 **Total Tasks:** 15  
-**Completed:** 3 (20%)  
+**Completed:** 9 (60%)  
 **In Progress:** 0 (0%)  
-**Not Started:** 12 (80%)  
+**Not Started:** 6 (40%)  
 **Blocked:** 0 (0%)
 
 **Total Estimated Duration:** 61 days (~12 weeks)
@@ -200,15 +200,20 @@
 
 ## Notes & Updates
 
-**Last Updated:** January 21, 2025  
+**Last Updated:** January 22, 2025  
 **Next Review:** January 23, 2025
 
 ### Recent Changes
+- ✅ **Jan 22**: Completed Task 3.5 - Fix Edit Profile Modal Bug
+- ✅ **Jan 22**: Completed Task 3.4 - User Profile Implementation
+- ✅ **Jan 22**: Completed Task 3.2 - Network Building Implementation
+- ✅ **Jan 22**: Completed Task 3.8 - Remove Discover Local Gems CTA from Build Your Network
+- ✅ **Jan 22**: Completed Task 3.9 - Simplify Add Content Screen to show only Create a Board
+- ✅ **Jan 22**: Completed Task 6.4 - Fix Bottom Navigation Positioning on Restaurant Detail
+- ✅ **Jan 21**: Completed Task 3.6 - Profile Data Shape Updates & Onboarding Flow
+- ✅ **Jan 21**: Completed Task 3.7 - Empty Activity State Experience
 - ✅ **Jan 21**: Completed Task 1.1 - Supabase Backend Setup with full infrastructure
 - ✅ **Jan 21**: Completed Task 1.2 - Email OTP Authentication system with rate limiting
-- Switched from phone to email authentication for Sprint 1 simplicity
-- Prioritized restaurant detail screen due to multiple dependencies
-- Moved community features to later phase
 
 ### Upcoming Decisions
 - [ ] Finalize Sprint 1 team assignments

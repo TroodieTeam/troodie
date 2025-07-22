@@ -7,11 +7,13 @@ import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { achievementService } from '@/services/achievementService';
 import { Profile, profileService } from '@/services/profileService';
+import { boardService } from '@/services/boardService';
 import { PersonaType } from '@/types/onboarding';
+import { Board } from '@/types/board';
+import { BoardCard } from '@/components/BoardCard';
 import { useRouter } from 'expo-router';
 import {
   Award,
-  Bookmark,
   Camera,
   Grid3X3,
   MessageSquare,
@@ -34,20 +36,22 @@ import {
   View
 } from 'react-native';
 
-type TabType = 'saves' | 'boards' | 'posts';
+type TabType = 'boards' | 'posts';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { userState } = useApp();
   const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
-  const [activeTab, setActiveTab] = useState<TabType>('saves');
+  const [activeTab, setActiveTab] = useState<TabType>('boards');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [achievements, setAchievements] = useState<any[]>([]);
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [loadingBoards, setLoadingBoards] = useState(true);
   
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
                  (onboardingState.persona ? personas[onboardingState.persona] : null);
@@ -57,6 +61,7 @@ export default function ProfileScreen() {
     if (user?.id) {
       loadProfile();
       loadAchievements();
+      loadBoards();
     }
   }, [user?.id]);
 
@@ -90,11 +95,26 @@ export default function ProfileScreen() {
     }
   };
 
+  const loadBoards = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoadingBoards(true);
+      const userBoards = await boardService.getUserBoards(user.id);
+      setBoards(userBoards);
+    } catch (error) {
+      console.error('Error loading boards:', error);
+    } finally {
+      setLoadingBoards(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       loadProfile(),
-      loadAchievements()
+      loadAchievements(),
+      loadBoards()
     ]);
     setRefreshing(false);
   };
@@ -119,7 +139,6 @@ export default function ProfileScreen() {
     stats: {
       followers: profile?.followers_count || 0,
       following: profile?.following_count || 0,
-      saves: profile?.saves_count || 0,
       posts: profile?.reviews_count || 0
     }
   };
@@ -135,28 +154,6 @@ export default function ProfileScreen() {
     name: achievement.title || achievement.name,
     icon: Award
   }));
-
-  // Mock data for saved restaurants
-  const savedRestaurants = userState.isNewUser ? [] : [
-    {
-      id: 1,
-      name: 'The Farm Cart',
-      image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800',
-      cuisine: 'Farm-to-Table',
-      rating: 4.8,
-      location: 'Downtown',
-      priceRange: '$$$'
-    },
-    {
-      id: 2,
-      name: 'Sakura Omakase',
-      image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800',
-      cuisine: 'Japanese',
-      rating: 4.9,
-      location: 'East Village',
-      priceRange: '$$$$'
-    }
-  ];
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -229,8 +226,8 @@ export default function ProfileScreen() {
           <Text style={styles.statLabel}>Following</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.saves}</Text>
-          <Text style={styles.statLabel}>Saves</Text>
+          <Text style={styles.statValue}>{boards.length}</Text>
+          <Text style={styles.statLabel}>Boards</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{userData.stats.posts}</Text>
@@ -255,22 +252,12 @@ export default function ProfileScreen() {
     <View style={styles.tabsContainer}>
       <View style={styles.tabs}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'saves' && styles.activeTab]}
-          onPress={() => setActiveTab('saves')}
-        >
-          <Bookmark size={12} color={activeTab === 'saves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
-          <Text style={[styles.tabText, activeTab === 'saves' && styles.activeTabText]}>
-            Saves ({userData.stats.saves})
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
           style={[styles.tab, activeTab === 'boards' && styles.activeTab]}
           onPress={() => setActiveTab('boards')}
         >
           <Grid3X3 size={12} color={activeTab === 'boards' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'boards' && styles.activeTabText]}>
-            Boards
+            Boards ({boards.length})
           </Text>
         </TouchableOpacity>
         
@@ -287,55 +274,48 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const renderSavesTab = () => (
+
+  const renderBoardsTab = () => (
     <View style={styles.tabContent}>
-      {savedRestaurants.length > 0 ? (
-        <View style={styles.savesGrid}>
-          {savedRestaurants.map((restaurant) => (
-            <View key={restaurant.id} style={styles.saveItem}>
-              <Image source={{ uri: restaurant.image }} style={styles.saveImage} />
-              <View style={styles.cuisineBadge}>
-                <Text style={styles.cuisineBadgeText}>{restaurant.cuisine}</Text>
-              </View>
-              <View style={styles.saveInfo}>
-                <Text style={styles.saveTitle} numberOfLines={1}>{restaurant.name}</Text>
-                <Text style={styles.saveLocation}>{restaurant.location}</Text>
-              </View>
-            </View>
+      {loadingBoards ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+        </View>
+      ) : boards.length > 0 ? (
+        <View style={styles.boardsList}>
+          {boards.map((board) => (
+            <BoardCard 
+              key={board.id} 
+              board={board} 
+              onPress={() => router.push(`/boards/${board.id}`)}
+            />
           ))}
+          <TouchableOpacity 
+            style={styles.addBoardButton} 
+            onPress={() => router.push('/add/create-board')}
+          >
+            <Plus size={20} color={designTokens.colors.primaryOrange} />
+            <Text style={styles.addBoardText}>Create New Board</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
-            <Bookmark size={32} color="#DDD" />
+            <Grid3X3 size={32} color="#DDD" />
           </View>
-          <Text style={styles.emptyTitle}>No Saves Yet</Text>
+          <Text style={styles.emptyTitle}>Create Your First Board</Text>
           <Text style={styles.emptyDescription}>
-            Start building your collection of favorite restaurants
+            Organize your saved restaurants into collections
           </Text>
-          <TouchableOpacity style={styles.emptyCTA} onPress={() => router.push('/explore')}>
-            <Text style={styles.emptyCTAText}>Explore Restaurants</Text>
+          <TouchableOpacity 
+            style={styles.emptyCTA}
+            onPress={() => router.push('/add/create-board')}
+          >
+            <Plus size={20} color={designTokens.colors.white} />
+            <Text style={styles.emptyCTAText}>Create Board</Text>
           </TouchableOpacity>
         </View>
       )}
-    </View>
-  );
-
-  const renderBoardsTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.emptyState}>
-        <View style={styles.emptyIcon}>
-          <Grid3X3 size={32} color="#DDD" />
-        </View>
-        <Text style={styles.emptyTitle}>Create Your First Board</Text>
-        <Text style={styles.emptyDescription}>
-          Organize your saved restaurants into collections
-        </Text>
-        <TouchableOpacity style={styles.emptyCTA}>
-          <Plus size={20} color={designTokens.colors.white} />
-          <Text style={styles.emptyCTAText}>Create Board</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 
@@ -383,7 +363,6 @@ export default function ProfileScreen() {
         {renderProfileInfo()}
         {renderTabs()}
         
-        {activeTab === 'saves' && renderSavesTab()}
         {activeTab === 'boards' && renderBoardsTab()}
         {activeTab === 'posts' && renderPostsTab()}
         
@@ -763,5 +742,27 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  boardsList: {
+    paddingHorizontal: 20,
+  },
+  addBoardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: designTokens.colors.primaryOrange + '33',
+    borderStyle: 'dashed',
+  },
+  addBoardText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.primaryOrange,
   },
 });

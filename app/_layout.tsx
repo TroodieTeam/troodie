@@ -18,10 +18,10 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 
-import { AppProvider } from '@/contexts/AppContext';
-import { OnboardingProvider } from '@/contexts/OnboardingContext';
-import { AuthProvider } from '@/contexts/AuthContext';
 import { NetworkStatusBanner } from '@/components/NetworkStatusBanner';
+import { AppProvider } from '@/contexts/AppContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { OnboardingProvider } from '@/contexts/OnboardingContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -53,6 +53,7 @@ export default function RootLayout() {
               <Stack.Screen name="onboarding" options={{ headerShown: false }} />
               <Stack.Screen name="add" options={{ headerShown: false }} />
               <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="auto" />

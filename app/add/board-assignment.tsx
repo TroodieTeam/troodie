@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
+  Alert,
   TextInput
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -14,254 +16,225 @@ import {
   ChevronLeft,
   Plus,
   Check,
-  Lock,
-  Globe,
+  Search
 } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
-import { RestaurantSaveForm, Board } from '@/types/add-flow';
+import { boardService } from '@/services/boardService';
+import { restaurantService } from '@/services/restaurantService';
+import { useAuth } from '@/contexts/AuthContext';
+import { Board } from '@/types/board';
 
 export default function BoardAssignmentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const saveForm: RestaurantSaveForm = JSON.parse(params.saveForm as string);
+  const { user } = useAuth();
+  
+  const boardId = params.boardId as string;
+  const boardTitle = params.boardTitle as string;
+  
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [selectedRestaurants, setSelectedRestaurants] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  const [selectedBoards, setSelectedBoards] = useState<string[]>([]);
-  const [showCreateBoard, setShowCreateBoard] = useState(false);
-  const [newBoardName, setNewBoardName] = useState('');
-  const [newBoardDescription, setNewBoardDescription] = useState('');
-  const [newBoardPrivacy, setNewBoardPrivacy] = useState<'public' | 'private'>('public');
+  useEffect(() => {
+    loadRestaurants();
+  }, []);
 
-  // Mock user boards
-  const mockBoards: Board[] = [
-    {
-      id: '1',
-      title: 'Date Night Spots',
-      description: 'Romantic restaurants for special occasions',
-      type: 'free',
-      coverImage: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
-      category: 'Romance',
-      restaurantCount: 8,
-      createdAt: new Date(),
-      isPrivate: false
-    },
-    {
-      id: '2',
-      title: 'Quick Lunch Spots',
-      description: 'Fast and delicious lunch options',
-      type: 'free',
-      coverImage: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800',
-      category: 'Casual',
-      restaurantCount: 12,
-      createdAt: new Date(),
-      isPrivate: false
-    },
-    {
-      id: '3',
-      title: 'My Private Collection',
-      description: 'Personal favorites',
-      type: 'private',
-      coverImage: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=800',
-      category: 'Personal',
-      restaurantCount: 5,
-      createdAt: new Date(),
-      isPrivate: true
+  const loadRestaurants = async () => {
+    try {
+      setLoading(true);
+      // Load featured restaurants for Charlotte
+      const data = await restaurantService.getFeaturedRestaurants(20);
+      setRestaurants(data);
+    } catch (error) {
+      console.error('Error loading restaurants:', error);
+      Alert.alert('Error', 'Failed to load restaurants');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const handleBoardToggle = (boardId: string) => {
-    if (selectedBoards.includes(boardId)) {
-      setSelectedBoards(selectedBoards.filter(id => id !== boardId));
+  const handleToggleRestaurant = (restaurantId: string) => {
+    if (selectedRestaurants.includes(restaurantId)) {
+      setSelectedRestaurants(selectedRestaurants.filter(id => id !== restaurantId));
     } else {
-      setSelectedBoards([...selectedBoards, boardId]);
+      setSelectedRestaurants([...selectedRestaurants, restaurantId]);
     }
   };
 
-  const handleCreateBoard = () => {
-    // In a real app, this would create the board
-    setShowCreateBoard(false);
-    setNewBoardName('');
-    setNewBoardDescription('');
-    setNewBoardPrivacy('public');
+  const handleAddToBoard = async () => {
+    if (!user || selectedRestaurants.length === 0) return;
+
+    setSaving(true);
+    try {
+      // Add each selected restaurant to the board
+      const promises = selectedRestaurants.map(restaurantId =>
+        boardService.addRestaurantToBoard(boardId, restaurantId, user.id)
+      );
+
+      await Promise.all(promises);
+
+      Alert.alert(
+        'Success',
+        `Added ${selectedRestaurants.length} restaurant${selectedRestaurants.length > 1 ? 's' : ''} to your board!`,
+        [
+          {
+            text: 'View Board',
+            onPress: () => router.push(`/boards/${boardId}`)
+          },
+          {
+            text: 'Add More',
+            style: 'cancel',
+            onPress: () => setSelectedRestaurants([])
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding restaurants to board:', error);
+      Alert.alert('Error', 'Failed to add restaurants to board');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleNext = () => {
-    router.push({
-      pathname: '/add/share-restaurant',
-      params: { 
-        saveForm: params.saveForm,
-        selectedBoards: JSON.stringify(selectedBoards)
-      }
-    });
+  const handleSkip = () => {
+    Alert.alert(
+      'Skip Adding Restaurants?',
+      'You can always add restaurants to your board later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Skip',
+          onPress: () => router.push(`/boards/${boardId}`)
+        }
+      ]
+    );
   };
+
+  const filteredRestaurants = restaurants.filter(restaurant =>
+    restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    restaurant.cuisine_types?.some((cuisine: string) =>
+      cuisine.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
 
   const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <ChevronLeft size={24} color="#333" />
       </TouchableOpacity>
-      <Text style={styles.title}>Add to Boards</Text>
-      <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-        <Text style={styles.nextText}>Next</Text>
+      <Text style={styles.title}>Add Restaurants</Text>
+      <TouchableOpacity 
+        style={styles.skipButton} 
+        onPress={handleSkip}
+      >
+        <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
     </View>
   );
 
-  const renderRestaurantPreview = () => (
-    <View style={styles.restaurantPreview}>
-      <Image 
-        source={{ uri: saveForm.restaurant.photos[0] }} 
-        style={styles.previewImage} 
-      />
-      <View style={styles.previewInfo}>
-        <Text style={styles.previewName}>{saveForm.restaurant.name}</Text>
-        <Text style={styles.previewDetails}>
-          {saveForm.restaurant.cuisine.join(' • ')} • {saveForm.userInput.priceRange}
-        </Text>
-      </View>
+  const renderBoardInfo = () => (
+    <View style={styles.boardInfo}>
+      <Text style={styles.boardInfoText}>Adding to</Text>
+      <Text style={styles.boardTitle}>{boardTitle}</Text>
     </View>
   );
 
-  const renderBoards = () => (
-    <View style={styles.boardsSection}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Select Boards</Text>
-        <TouchableOpacity 
-          style={styles.createButton}
-          onPress={() => setShowCreateBoard(true)}
-        >
-          <Plus size={20} color={theme.colors.primary} />
-          <Text style={styles.createButtonText}>Create New</Text>
-        </TouchableOpacity>
-      </View>
+  const renderSearchBar = () => (
+    <View style={styles.searchContainer}>
+      <Search size={20} color="#999" />
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search restaurants..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholderTextColor="#999"
+      />
+    </View>
+  );
 
-      <ScrollView style={styles.boardsList} showsVerticalScrollIndicator={false}>
-        {mockBoards.map((board) => (
+  const renderRestaurants = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading restaurants...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView style={styles.restaurantsList} showsVerticalScrollIndicator={false}>
+        {filteredRestaurants.map((restaurant) => (
           <TouchableOpacity
-            key={board.id}
+            key={restaurant.id}
             style={[
-              styles.boardCard,
-              selectedBoards.includes(board.id) && styles.boardCardSelected
+              styles.restaurantCard,
+              selectedRestaurants.includes(restaurant.id) && styles.restaurantCardSelected
             ]}
-            onPress={() => handleBoardToggle(board.id)}
+            onPress={() => handleToggleRestaurant(restaurant.id)}
           >
-            <Image source={{ uri: board.coverImage }} style={styles.boardImage} />
-            <View style={styles.boardInfo}>
-              <View style={styles.boardHeader}>
-                <Text style={styles.boardTitle}>{board.title}</Text>
-                {board.isPrivate ? (
-                  <Lock size={16} color="#666" />
-                ) : (
-                  <Globe size={16} color="#666" />
-                )}
-              </View>
-              <Text style={styles.boardDescription}>{board.description}</Text>
-              <Text style={styles.boardStats}>
-                {board.restaurantCount} restaurants • {board.category}
+            <Image 
+              source={{ uri: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800' }} 
+              style={styles.restaurantImage} 
+            />
+            <View style={styles.restaurantInfo}>
+              <Text style={styles.restaurantName}>{restaurant.name}</Text>
+              <Text style={styles.restaurantDetails}>
+                {restaurant.cuisine_types?.join(' • ') || 'Restaurant'} • {restaurant.price_range || '$$'}
+              </Text>
+              <Text style={styles.restaurantLocation}>
+                {restaurant.neighborhood || 'Charlotte'}
               </Text>
             </View>
             <View style={[
               styles.checkbox,
-              selectedBoards.includes(board.id) && styles.checkboxSelected
+              selectedRestaurants.includes(restaurant.id) && styles.checkboxSelected
             ]}>
-              {selectedBoards.includes(board.id) && (
+              {selectedRestaurants.includes(restaurant.id) && (
                 <Check size={16} color="#FFFFFF" />
               )}
             </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
+    );
+  };
 
-      {selectedBoards.length === 0 && (
-        <Text style={styles.helperText}>
-          Select at least one board or create a new one
-        </Text>
-      )}
-    </View>
-  );
-
-  const renderCreateBoardModal = () => showCreateBoard && (
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        <Text style={styles.modalTitle}>Create New Board</Text>
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Board Name"
-          value={newBoardName}
-          onChangeText={setNewBoardName}
-          placeholderTextColor="#999"
-        />
-        
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Description (optional)"
-          value={newBoardDescription}
-          onChangeText={setNewBoardDescription}
-          multiline
-          numberOfLines={3}
-          placeholderTextColor="#999"
-        />
-        
-        <View style={styles.privacyOptions}>
-          <TouchableOpacity
-            style={[
-              styles.privacyOption,
-              newBoardPrivacy === 'public' && styles.privacyOptionActive
-            ]}
-            onPress={() => setNewBoardPrivacy('public')}
-          >
-            <Globe size={20} color={newBoardPrivacy === 'public' ? theme.colors.primary : '#666'} />
-            <Text style={[
-              styles.privacyText,
-              newBoardPrivacy === 'public' && styles.privacyTextActive
-            ]}>
-              Public
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.privacyOption,
-              newBoardPrivacy === 'private' && styles.privacyOptionActive
-            ]}
-            onPress={() => setNewBoardPrivacy('private')}
-          >
-            <Lock size={20} color={newBoardPrivacy === 'private' ? theme.colors.primary : '#666'} />
-            <Text style={[
-              styles.privacyText,
-              newBoardPrivacy === 'private' && styles.privacyTextActive
-            ]}>
-              Private
-            </Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.modalActions}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => setShowCreateBoard(false)}
-          >
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.createBoardButton, !newBoardName && styles.createBoardButtonDisabled]}
-            onPress={handleCreateBoard}
-            disabled={!newBoardName}
-          >
-            <Text style={styles.createBoardText}>Create Board</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+  const renderFooter = () => (
+    <View style={styles.footer}>
+      <Text style={styles.selectionCount}>
+        {selectedRestaurants.length} restaurant{selectedRestaurants.length !== 1 ? 's' : ''} selected
+      </Text>
+      <TouchableOpacity
+        style={[
+          styles.addButton,
+          (selectedRestaurants.length === 0 || saving) && styles.addButtonDisabled
+        ]}
+        onPress={handleAddToBoard}
+        disabled={selectedRestaurants.length === 0 || saving}
+      >
+        {saving ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <>
+            <Plus size={20} color="#FFFFFF" />
+            <Text style={styles.addButtonText}>Add to Board</Text>
+          </>
+        )}
+      </TouchableOpacity>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
-      {renderRestaurantPreview()}
-      {renderBoards()}
-      {renderCreateBoardModal()}
+      {renderBoardInfo()}
+      {renderSearchBar()}
+      {renderRestaurants()}
+      {renderFooter()}
     </SafeAreaView>
   );
 }
@@ -290,115 +263,101 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     color: '#333',
   },
-  nextButton: {
+  skipButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  nextText: {
+  skipText: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.primary,
+    fontFamily: 'Inter_500Medium',
+    color: '#666',
   },
-  restaurantPreview: {
-    flexDirection: 'row',
+  boardInfo: {
     padding: 20,
     backgroundColor: '#FFFFFF',
-    marginBottom: 8,
+    alignItems: 'center',
   },
-  previewImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  previewInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  previewName: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  previewDetails: {
+  boardInfoText: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
     color: '#666',
+    marginBottom: 4,
   },
-  boardsSection: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingTop: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  sectionTitle: {
+  boardTitle: {
     fontSize: 18,
     fontFamily: 'Poppins_600SemiBold',
     color: '#333',
   },
-  createButton: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    margin: 20,
   },
-  createButtonText: {
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingLeft: 12,
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    color: '#333',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 100,
+  },
+  loadingText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.primary,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+    marginTop: 12,
   },
-  boardsList: {
+  restaurantsList: {
     flex: 1,
     paddingHorizontal: 20,
   },
-  boardCard: {
+  restaurantCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FFFFFF',
     marginBottom: 12,
-  },
-  boardCardSelected: {
-    backgroundColor: theme.colors.primary + '10',
     borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  restaurantCardSelected: {
+    backgroundColor: theme.colors.primary + '10',
     borderColor: theme.colors.primary,
   },
-  boardImage: {
+  restaurantImage: {
     width: 60,
     height: 60,
     borderRadius: 8,
     marginRight: 12,
   },
-  boardInfo: {
+  restaurantInfo: {
     flex: 1,
   },
-  boardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  boardTitle: {
+  restaurantName: {
     fontSize: 16,
     fontFamily: 'Poppins_600SemiBold',
     color: '#333',
+    marginBottom: 2,
   },
-  boardDescription: {
+  restaurantDetails: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  boardStats: {
+  restaurantLocation: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Inter_400Regular',
     color: '#999',
   },
   checkbox: {
@@ -414,104 +373,33 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
-  helperText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 20,
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+  footer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 20,
-  },
-  modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#333',
-    marginBottom: 16,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  privacyOptions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  privacyOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#F0F0F0',
-  },
-  privacyOptionActive: {
-    backgroundColor: theme.colors.primary + '20',
-  },
-  privacyText: {
+  selectionCount: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
     color: '#666',
   },
-  privacyTextActive: {
-    color: theme.colors.primary,
-  },
-  modalActions: {
+  addButton: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
     alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#666',
-  },
-  createBoardButton: {
-    flex: 1,
     backgroundColor: theme.colors.primary,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    gap: 8,
   },
-  createBoardButtonDisabled: {
+  addButtonDisabled: {
     opacity: 0.5,
   },
-  createBoardText: {
+  addButtonText: {
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',

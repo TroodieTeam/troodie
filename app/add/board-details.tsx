@@ -21,18 +21,23 @@ import {
   Crown
 } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
-import { BoardCreationForm } from '@/types/add-flow';
+import { BoardCreationForm } from '@/types/board';
+import { boardService } from '@/services/boardService';
+import { useAuth } from '@/contexts/AuthContext';
+import { Alert, ActivityIndicator } from 'react-native';
 
 export default function BoardDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const boardType = params.boardType as 'free' | 'private' | 'paid';
+  const { user } = useAuth();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const categories = [
     'Date Night',
@@ -60,37 +65,45 @@ export default function BoardDetailsScreen() {
     'modern'
   ];
 
-  const handleNext = () => {
-    const boardForm: BoardCreationForm = {
-      basicInfo: {
+  const handleNext = async () => {
+    if (!user) {
+      Alert.alert('Error', 'Please sign in to create a board');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const boardData: BoardCreationForm = {
         title,
         description,
+        type: boardType,
         category,
-        location
-      },
-      settings: {
-        allowComments: true,
-        allowSaves: true,
-        tags: selectedTags
-      }
-    };
+        location,
+        is_private: boardType === 'private',
+        allow_comments: true,
+        allow_saves: true,
+        price: boardType === 'paid' ? 0 : undefined
+      };
 
-    if (boardType === 'paid') {
-      router.push({
-        pathname: '/add/board-monetization',
-        params: { 
-          boardType,
-          boardForm: JSON.stringify(boardForm)
-        }
-      });
-    } else {
-      router.push({
-        pathname: '/add/board-restaurants',
-        params: { 
-          boardType,
-          boardForm: JSON.stringify(boardForm)
-        }
-      });
+      const board = await boardService.createBoard(user.id, boardData);
+
+      if (board) {
+        // Navigate to board assignment screen
+        router.push({
+          pathname: '/add/board-assignment',
+          params: { 
+            boardId: board.id,
+            boardTitle: board.title
+          }
+        });
+      } else {
+        Alert.alert('Error', 'Failed to create board. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating board:', error);
+      Alert.alert('Error', 'Failed to create board. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -103,13 +116,17 @@ export default function BoardDetailsScreen() {
       </TouchableOpacity>
       <Text style={styles.title}>Board Details</Text>
       <TouchableOpacity 
-        style={[styles.nextButton, !isFormValid && styles.nextButtonDisabled]}
+        style={[styles.nextButton, (!isFormValid || loading) && styles.nextButtonDisabled]}
         onPress={handleNext}
-        disabled={!isFormValid}
+        disabled={!isFormValid || loading}
       >
-        <Text style={[styles.nextText, !isFormValid && styles.nextTextDisabled]}>
-          {boardType === 'paid' ? 'Pricing' : 'Next'}
-        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        ) : (
+          <Text style={[styles.nextText, !isFormValid && styles.nextTextDisabled]}>
+            Create Board
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );
