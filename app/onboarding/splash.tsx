@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React, { useEffect } from 'react';
+import { Animated, Image, StyleSheet, View } from 'react-native';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -44,10 +44,11 @@ export default function SplashScreen() {
           },
         ]}
       >
-        <Text style={styles.logoText}>Troodie</Text>
-        <View style={styles.logoEmoji}>
-          <Text style={styles.emojiText}>🍕</Text>
-        </View>
+        <Image 
+          source={require('../../assets/images/trodie_logo_gray.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </Animated.View>
     </View>
   );
@@ -61,24 +62,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
-  logoText: {
-    fontSize: 48,
-    fontFamily: 'Poppins_700Bold',
-    color: '#333',
-  },
-  logoEmoji: {
-    backgroundColor: '#FFAD27',
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-  emojiText: {
-    fontSize: 36,
+  logoImage: {
+    width: 200,
+    height: 80,
   },
 });

@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { useOnboarding } from '@/contexts/OnboardingContext';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useOnboarding } from '@/contexts/OnboardingContext';
+import React from 'react';
+import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -22,10 +22,11 @@ export default function WelcomeScreen() {
       <StatusBar style="dark" />
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>Troodie</Text>
-          <View style={styles.logoEmoji}>
-            <Text style={styles.emojiText}>🍕</Text>
-          </View>
+          <Image 
+            source={require('../../assets/images/trodie_logo_gray.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
         <View style={styles.middleContent}>
@@ -61,26 +62,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   logoContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     marginTop: 60,
   },
-  logoText: {
-    fontSize: 32,
-    fontFamily: 'Poppins_700Bold',
-    color: '#333',
-  },
-  logoEmoji: {
-    backgroundColor: '#FFAD27',
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  emojiText: {
-    fontSize: 24,
+  logoImage: {
+    width: 160,
+    height: 64,
   },
   middleContent: {
     alignItems: 'center',

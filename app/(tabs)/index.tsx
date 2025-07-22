@@ -1,5 +1,7 @@
 import { RestaurantCardWithSave } from '@/components/cards/RestaurantCardWithSave';
 import { ErrorState } from '@/components/ErrorState';
+import { NotificationBadge } from '@/components/NotificationBadge';
+import { NotificationCenter } from '@/components/NotificationCenter';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
@@ -8,10 +10,12 @@ import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { boardService } from '@/services/boardService';
 import { InviteService } from '@/services/inviteService';
+import { notificationService } from '@/services/notificationService';
 import { restaurantService } from '@/services/restaurantService';
 import { Board } from '@/types/board';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
 import { getErrorType } from '@/types/errors';
+import { Notification } from '@/types/notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -50,13 +54,27 @@ export default function HomeScreen() {
   const [userBoards, setUserBoards] = useState<Board[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   
   const persona = onboardingState.persona && personas[onboardingState.persona];
   const inviteService = new InviteService();
 
   useEffect(() => {
     loadRestaurants();
-  }, []);
+    if (user?.id) {
+      loadUnreadCount();
+    }
+  }, [user?.id]);
+
+  const loadUnreadCount = async () => {
+    try {
+      const count = await notificationService.getUnreadCount(user!.id);
+      setUnreadCount(count);
+    } catch (error) {
+      console.error('Error loading notification count:', error);
+    }
+  };
 
   const loadRestaurants = async () => {
     try {
@@ -96,6 +114,9 @@ export default function HomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadRestaurants();
+    if (user?.id) {
+      await loadUnreadCount();
+    }
     setRefreshing(false);
   };
 
@@ -105,37 +126,43 @@ export default function HomeScreen() {
     setRetrying(false);
   };
 
-  // Transform restaurant data to TrendingContent format
+  const handleNotificationPress = (notification: Notification) => {
+    setShowNotificationCenter(false);
+    // The notification center will handle navigation
+  };
+
   const transformToTrendingContent = (restaurants: any[]): TrendingContent[] => {
     return restaurants.map(restaurant => ({
       restaurant: {
         id: restaurant.id,
         name: restaurant.name,
-        image: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+        image: restaurant.cover_photo_url || restaurant.photos?.[0] || '',
         cuisine: restaurant.cuisine_types?.[0] || 'Restaurant',
-        rating: restaurant.google_rating || restaurant.troodie_rating || 4.5,
-        location: restaurant.neighborhood || restaurant.city,
-        priceRange: restaurant.price_range || '$$',
+        rating: restaurant.troodie_rating || restaurant.google_rating || 0,
+        location: restaurant.city || 'Charlotte',
+        priceRange: restaurant.price_range || '$$'
       },
       stats: {
-        saves: Math.floor(Math.random() * 300) + 100,
-        visits: Math.floor(Math.random() * 1000) + 200,
-        photos: Math.floor(Math.random() * 200) + 50
+        saves: restaurant.troodie_reviews_count || 0,
+        visits: Math.floor(Math.random() * 50) + 10,
+        photos: restaurant.photos?.length || 0
       },
-      highlights: restaurant.features?.slice(0, 2) || ['Great atmosphere', 'Popular spot'],
+      highlights: [
+        restaurant.cuisine_types?.[0] || 'Popular',
+        restaurant.price_range || 'Affordable',
+        'Local Favorite'
+      ],
       type: 'trending_spot' as const
     }));
   };
 
   const handleInviteFriends = async () => {
     try {
-      if (!user?.id) {
-        console.error('No user ID available');
-        return;
-      }
-      await inviteService.shareInvite(user.id);
+      const inviteLink = await inviteService.generateInviteLink(user!.id);
+      // Handle invite link sharing
+      console.log('Invite link created:', inviteLink);
     } catch (error) {
-      console.error('Error sharing invite:', error);
+      console.error('Error creating invite link:', error);
     }
   };
 
@@ -166,8 +193,14 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/explore')}>
             <Search size={24} color={designTokens.colors.textDark} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Bell size={24} color={designTokens.colors.textDark} />
+          <TouchableOpacity 
+            style={styles.headerButton} 
+            onPress={() => setShowNotificationCenter(true)}
+          >
+            <View style={styles.notificationContainer}>
+              <Bell size={24} color={designTokens.colors.textDark} />
+              <NotificationBadge count={unreadCount} size="small" />
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -486,6 +519,13 @@ export default function HomeScreen() {
       </ScrollView>
       
       {renderQuickActions()}
+
+      {showNotificationCenter && (
+        <NotificationCenter
+          onClose={() => setShowNotificationCenter(false)}
+          onNotificationPress={handleNotificationPress}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -905,4 +945,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  notificationContainer: {
+    position: 'relative'
+  }
 });

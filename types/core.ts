@@ -2,7 +2,7 @@ import { LucideIcon } from 'lucide-react-native';
 
 // User related types
 export interface UserInfo {
-  id: number;
+  id: string; // Changed to string for UUID
   name: string;
   username: string;
   avatar: string;
@@ -31,7 +31,7 @@ export interface Achievement {
 
 // Restaurant related types
 export interface RestaurantInfo {
-  id: number;
+  id: string; // Changed to string for consistency
   name: string;
   image: string;
   cuisine: string;
@@ -71,7 +71,7 @@ export interface TrendingContent {
 
 // Explore Screen types
 export interface ExplorePost {
-  id: number;
+  id: string;
   restaurant: RestaurantInfo;
   user: UserInfo & {
     persona: string;
@@ -117,7 +117,7 @@ export interface TrendingActivity {
 }
 
 export interface ActivityItem {
-  id: number;
+  id: string;
   type: 'like' | 'comment' | 'save' | 'follow';
   user: UserInfo;
   action: string;
@@ -133,7 +133,7 @@ export interface ProfileCompletion {
 }
 
 export interface CompletionSuggestion {
-  id: number;
+  id: string;
   action: string;
   description: string;
   icon: LucideIcon;
@@ -160,7 +160,7 @@ export interface EmptyStateCard {
 }
 
 export interface Board {
-  id: number;
+  id: string;
   title: string;
   count: number;
   isPrivate: boolean;
@@ -170,7 +170,7 @@ export interface Board {
 }
 
 export interface Post {
-  id: number;
+  id: string;
   image: string;
   caption: string;
   restaurant: RestaurantInfo;

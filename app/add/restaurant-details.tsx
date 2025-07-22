@@ -1,32 +1,33 @@
+import { theme } from '@/constants/theme';
+import { RestaurantSaveForm, RestaurantSearchResult } from '@/types/add-flow';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+    Camera,
+    Car,
+    ChevronLeft,
+    Coffee,
+    ShoppingBag,
+    Star
+} from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  ChevronLeft,
-  Star,
-  Camera,
-  Coffee,
-  ShoppingBag,
-  Car
-} from 'lucide-react-native';
-import { theme } from '@/constants/theme';
-import { RestaurantSearchResult, RestaurantSaveForm } from '@/types/add-flow';
 
 export default function RestaurantDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const restaurant: RestaurantSearchResult = JSON.parse(params.restaurant as string);
+  const flow = params.flow as string || 'save'; // 'save' or 'create-post'
 
   const [rating, setRating] = useState(0);
   const [notes, setNotes] = useState('');
@@ -59,25 +60,41 @@ export default function RestaurantDetailsScreen() {
   };
 
   const handleNext = () => {
-    const saveForm: RestaurantSaveForm = {
-      restaurant,
-      userInput: {
-        personalRating: rating,
-        visitDate: new Date(),
-        photos: [],
-        notes,
-        tags: selectedTags,
-        wouldRecommend: wouldRecommend || false,
-        priceRange,
-        visitType
-      },
-      privacy: 'public'
-    };
+    if (flow === 'create-post') {
+      // For create post flow, return to create-post with selected restaurant
+      router.push({
+        pathname: '/add/create-post',
+        params: { 
+          selectedRestaurant: JSON.stringify(restaurant),
+          rating: rating.toString(),
+          notes,
+          tags: JSON.stringify(selectedTags),
+          priceRange,
+          visitType
+        }
+      });
+    } else {
+      // For save restaurant flow, continue to board assignment
+      const saveForm: RestaurantSaveForm = {
+        restaurant,
+        userInput: {
+          personalRating: rating,
+          visitDate: new Date(),
+          photos: [],
+          notes,
+          tags: selectedTags,
+          wouldRecommend: wouldRecommend || false,
+          priceRange,
+          visitType
+        },
+        privacy: 'public'
+      };
 
-    router.push({
-      pathname: '/add/board-assignment',
-      params: { saveForm: JSON.stringify(saveForm) }
-    });
+      router.push({
+        pathname: '/add/board-assignment',
+        params: { saveForm: JSON.stringify(saveForm) }
+      });
+    }
   };
 
   const renderHeader = () => (

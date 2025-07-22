@@ -22,6 +22,7 @@ export const designTokens = {
     overlayBlack: 'rgba(0, 0, 0, 0.3)', // Image overlays
     welcomeBannerStart: 'rgba(255, 173, 39, 0.1)', // Gradient start
     welcomeBannerEnd: 'rgba(255, 173, 39, 0.05)', // Gradient end
+    error: '#EF4444', // Error states, delete buttons
   },
   
   typography: {
@@ -84,6 +85,11 @@ export const designTokens = {
       fontSize: 16,
       fontFamily: 'Inter_400Regular',
       fontWeight: '400' as const,
+    },
+    buttonText: {
+      fontSize: 16,
+      fontFamily: 'Inter_600SemiBold',
+      fontWeight: '600' as const,
     },
   },
   
