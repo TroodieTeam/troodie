@@ -1,7 +1,8 @@
+import { BetaRestaurantNotice } from '@/components/BetaRestaurantNotice';
 import { theme } from '@/constants/theme';
-import { designTokens } from '@/constants/designTokens';
+import { restaurantService } from '@/services/restaurantService';
 import { RestaurantSearchResult } from '@/types/add-flow';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
     Camera,
     ChevronLeft,
@@ -10,7 +11,7 @@ import {
     Search,
     Star
 } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
@@ -22,8 +23,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { restaurantService } from '@/services/restaurantService';
-import { BetaRestaurantNotice } from '@/components/BetaRestaurantNotice';
 
 export default function SaveRestaurantScreen() {
   const router = useRouter();
@@ -81,9 +80,15 @@ export default function SaveRestaurantScreen() {
   };
 
   const handleSelectRestaurant = (restaurant: RestaurantSearchResult) => {
+    const params = useLocalSearchParams();
+    const flow = params.flow as string || 'save';
+    
     router.push({
       pathname: '/add/restaurant-details',
-      params: { restaurant: JSON.stringify(restaurant) }
+      params: { 
+        restaurant: JSON.stringify(restaurant),
+        flow
+      }
     });
   };
 

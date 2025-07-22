@@ -2,6 +2,7 @@ import { designTokens } from '@/constants/designTokens';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
+  Camera,
   FolderPlus,
   Search,
   UserPlus
@@ -20,6 +21,14 @@ export default function AddScreen() {
   const router = useRouter();
 
   const addOptions: AddOption[] = [
+    {
+      id: 'post',
+      title: 'Create a Post',
+      description: 'Share your restaurant experience',
+      icon: Camera,
+      color: designTokens.colors.primaryOrange,
+      navigateTo: '/add/create-post'
+    },
     {
       id: 'board',
       title: 'Create a Board',

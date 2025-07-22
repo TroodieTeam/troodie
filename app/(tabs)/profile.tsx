@@ -1,17 +1,20 @@
+import { BoardCard } from '@/components/BoardCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
+import { PostCard } from '@/components/PostCard';
 import { designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { achievementService } from '@/services/achievementService';
-import { Profile, profileService } from '@/services/profileService';
 import { boardService } from '@/services/boardService';
-import { PersonaType } from '@/types/onboarding';
+import { postService } from '@/services/postService';
+import { Profile, profileService } from '@/services/profileService';
 import { Board } from '@/types/board';
-import { BoardCard } from '@/components/BoardCard';
-import { useRouter } from 'expo-router';
+import { PersonaType } from '@/types/onboarding';
+import { PostWithUser } from '@/types/post';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   Award,
   Camera,
@@ -26,10 +29,9 @@ import {
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Image,
-  RefreshControl,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -52,6 +54,8 @@ export default function ProfileScreen() {
   const [achievements, setAchievements] = useState<any[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loadingBoards, setLoadingBoards] = useState(true);
+  const [posts, setPosts] = useState<PostWithUser[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
                  (onboardingState.persona ? personas[onboardingState.persona] : null);
@@ -62,8 +66,18 @@ export default function ProfileScreen() {
       loadProfile();
       loadAchievements();
       loadBoards();
+      loadPosts();
     }
   }, [user?.id]);
+
+  // Refresh posts when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user?.id) {
+        loadPosts(); // Refresh posts when screen is focused
+      }
+    }, [user?.id])
+  );
 
   const loadProfile = async () => {
     if (!user?.id) return;
@@ -109,25 +123,86 @@ export default function ProfileScreen() {
     }
   };
 
+  const loadPosts = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoadingPosts(true);
+      const userPosts = await postService.getUserPosts(user.id, 50);
+      console.log('Loaded posts:', userPosts.length);
+      setPosts(userPosts);
+    } catch (error) {
+      console.error('Error loading posts:', error);
+      setPosts([]); // Set empty array on error
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       loadProfile(),
       loadAchievements(),
-      loadBoards()
+      loadBoards(),
+      loadPosts(),
     ]);
     setRefreshing(false);
   };
 
   const handleProfileSave = (updatedProfile: Profile) => {
     setProfile(updatedProfile);
-    loadAchievements(); // Reload achievements in case new ones were unlocked
+    setShowEditModal(false);
   };
 
   const handleShareProfile = async () => {
-    if (profile?.username) {
-      await profileService.shareProfile(profile.username);
+    if (!profile) return;
+    
+    try {
+      // TODO: Implement share functionality
+      console.log('Share profile:', profile);
+    } catch (error) {
+      console.error('Error sharing profile:', error);
     }
+  };
+
+  const handlePostPress = (postId: string) => {
+    router.push({
+      pathname: '/posts/[id]',
+      params: { id: postId }
+    });
+  };
+
+  const handleEditPost = (postId: string) => {
+    router.push({
+      pathname: '/posts/edit/[id]',
+      params: { id: postId }
+    });
+  };
+
+  const handleLike = (postId: string, liked: boolean) => {
+    // Update local state to reflect like change
+    setPosts(posts.map(post => 
+      post.id === postId 
+        ? { ...post, likes_count: liked ? post.likes_count + 1 : post.likes_count - 1 }
+        : post
+    ));
+  };
+
+  const handleComment = (postId: string) => {
+    router.push({
+      pathname: '/posts/[id]',
+      params: { id: postId }
+    });
+  };
+
+  const handleSave = (postId: string) => {
+    // Update local state to reflect save change
+    setPosts(posts.map(post => 
+      post.id === postId 
+        ? { ...post, saves_count: post.saves_count + 1 }
+        : post
+    ));
   };
 
   // User data with real profile
@@ -139,7 +214,7 @@ export default function ProfileScreen() {
     stats: {
       followers: profile?.followers_count || 0,
       following: profile?.following_count || 0,
-      posts: profile?.reviews_count || 0
+      posts: posts.length // Use actual posts count instead of reviews_count
     }
   };
 
@@ -267,7 +342,7 @@ export default function ProfileScreen() {
         >
           <MessageSquare size={12} color={activeTab === 'posts' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'posts' && styles.activeTabText]}>
-            Posts ({userData.stats.posts})
+            Posts ({posts.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -282,22 +357,28 @@ export default function ProfileScreen() {
           <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
         </View>
       ) : boards.length > 0 ? (
-        <View style={styles.boardsList}>
-          {boards.map((board) => (
+        <FlatList
+          data={boards}
+          renderItem={({ item }: { item: Board }) => (
             <BoardCard 
-              key={board.id} 
-              board={board} 
-              onPress={() => router.push(`/boards/${board.id}`)}
+              key={item.id} 
+              board={item} 
+              onPress={() => router.push(`/boards/${item.id}`)}
             />
-          ))}
-          <TouchableOpacity 
-            style={styles.addBoardButton} 
-            onPress={() => router.push('/add/create-board')}
-          >
-            <Plus size={20} color={designTokens.colors.primaryOrange} />
-            <Text style={styles.addBoardText}>Create New Board</Text>
-          </TouchableOpacity>
-        </View>
+          )}
+          keyExtractor={(item: Board) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.boardsList}
+          ListFooterComponent={() => (
+            <TouchableOpacity 
+              style={styles.addBoardButton} 
+              onPress={() => router.push('/add/create-board')}
+            >
+              <Plus size={20} color={designTokens.colors.primaryOrange} />
+              <Text style={styles.addBoardText}>Create New Board</Text>
+            </TouchableOpacity>
+          )}
+        />
       ) : (
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
@@ -319,23 +400,71 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const renderPostsTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.emptyState}>
-        <View style={styles.emptyIcon}>
-          <MessageSquare size={32} color="#DDD" />
+  const renderPostsTab = () => {
+    if (loadingPosts) {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+            <Text style={styles.loadingText}>Loading posts...</Text>
+          </View>
         </View>
-        <Text style={styles.emptyTitle}>Share Your First Experience</Text>
-        <Text style={styles.emptyDescription}>
-          Post about your restaurant visits and build your foodie reputation
-        </Text>
-        <TouchableOpacity style={styles.emptyCTA}>
-          <Plus size={20} color={designTokens.colors.white} />
-          <Text style={styles.emptyCTAText}>Create Post</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+      );
+    }
+
+    if (posts.length === 0) {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <MessageSquare size={32} color="#DDD" />
+            </View>
+            <Text style={styles.emptyTitle}>Share Your First Experience</Text>
+            <Text style={styles.emptyDescription}>
+              Post about your restaurant visits and build your foodie reputation
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyCTA}
+              onPress={() => router.push('/add/create-post')}
+            >
+              <Plus size={20} color={designTokens.colors.white} />
+              <Text style={styles.emptyCTAText}>Create Post</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={posts}
+        renderItem={({ item }: { item: PostWithUser }) => (
+          <View style={styles.postContainer}>
+            <PostCard
+              post={item}
+              onPress={() => handlePostPress(item.id)}
+              onLike={handleLike}
+              onComment={handleComment}
+              onSave={handleSave}
+              showActions={true}
+            />
+            <View style={styles.postActions}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleEditPost(item.id)}
+              >
+                <PenLine size={16} color={designTokens.colors.primaryOrange} />
+                <Text style={styles.actionText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        keyExtractor={(item: PostWithUser) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.postsList}
+      />
+    );
+  };
 
   if (loading) {
     return (
@@ -349,25 +478,18 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={designTokens.colors.primaryOrange}
-          />
-        }
-      >
+      {/* Header and Profile Info - Fixed Content */}
+      <View style={styles.fixedContent}>
         {renderHeader()}
         {renderProfileInfo()}
         {renderTabs()}
-        
+      </View>
+
+      {/* Tab Content - Scrollable */}
+      <View style={styles.tabContentContainer}>
         {activeTab === 'boards' && renderBoardsTab()}
         {activeTab === 'posts' && renderPostsTab()}
-        
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+      </View>
 
       <SettingsModal 
         visible={showSettingsModal} 
@@ -764,5 +886,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.primaryOrange,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: designTokens.colors.textMedium,
+    marginTop: 8,
+  },
+  postContainer: {
+    marginBottom: 16,
+  },
+  postActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderTopWidth: 1,
+    borderTopColor: designTokens.colors.borderLight,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    gap: 4,
+  },
+  actionText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.primaryOrange,
+  },
+  postsList: {
+    paddingBottom: 20,
+  },
+  fixedContent: {
+    flex: 0, // Do not take up space in the main scrollable area
+  },
+  tabContentContainer: {
+    flex: 1, // Take up available space for the scrollable content
   },
 });

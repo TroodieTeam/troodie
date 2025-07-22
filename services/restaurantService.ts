@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/lib/supabase'
-import { NetworkError, ServerError, NotFoundError, TimeoutError, isNetworkError } from '@/types/errors'
+import { Database, supabase } from '@/lib/supabase'
+import { RestaurantInfo } from '@/types/core'
+import { NetworkError, NotFoundError, ServerError, TimeoutError, isNetworkError } from '@/types/errors'
 
 type Restaurant = Database['public']['Tables']['restaurants']['Row']
 type RestaurantInsert = Database['public']['Tables']['restaurants']['Insert']
@@ -77,11 +77,24 @@ function transformError(error: any): Error {
 }
 
 export const restaurantService = {
+  // Helper function to transform database restaurant to RestaurantInfo
+  transformRestaurantData(restaurant: any): RestaurantInfo {
+    return {
+      id: restaurant.id,
+      name: restaurant.name,
+      image: restaurant.cover_photo_url || restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+      cuisine: restaurant.cuisine_types?.[0] || 'Restaurant',
+      rating: restaurant.troodie_rating || restaurant.google_rating || 0,
+      location: restaurant.address || `${restaurant.city}, ${restaurant.state}` || 'Location',
+      priceRange: restaurant.price_range || '$$',
+    };
+  },
+
   async searchRestaurants(query: string, filters?: {
     city?: string
     cuisineTypes?: string[]
     priceRange?: string
-  }) {
+  }): Promise<RestaurantInfo[]> {
     try {
       return await withRetry(async () => {
         let request = supabase
@@ -107,7 +120,9 @@ export const restaurantService = {
         if (error) {
           throw transformError(error)
         }
-        return data || []
+        
+        // Transform the data to RestaurantInfo format
+        return (data || []).map(restaurant => this.transformRestaurantData(restaurant))
       })
     } catch (error) {
       console.error('Error searching restaurants:', error)
@@ -115,11 +130,11 @@ export const restaurantService = {
     }
   },
 
-  async getRestaurantById(id: string): Promise<Restaurant | null> {
+  async getRestaurantById(id: string): Promise<RestaurantInfo | null> {
     // Check cache first
     const cached = restaurantCache.get(id)
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.data
+      return this.transformRestaurantData(cached.data)
     }
 
     try {
@@ -139,7 +154,7 @@ export const restaurantService = {
           restaurantCache.set(id, { data, timestamp: Date.now() })
         }
 
-        return data
+        return data ? this.transformRestaurantData(data) : null
       })
     } catch (error) {
       console.error('Error fetching restaurant:', error)

@@ -1,7 +1,7 @@
-import 'react-native-url-polyfill/auto'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient } from '@supabase/supabase-js'
 import Constants from 'expo-constants'
+import 'react-native-url-polyfill/auto'
 
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey
@@ -272,6 +272,283 @@ export type Database = {
           is_active?: boolean
           created_at?: string
           updated_at?: string
+        }
+      }
+      posts: {
+        Row: {
+          id: string
+          user_id: string
+          restaurant_id: string
+          caption: string | null
+          photos: string[] | null
+          rating: number | null
+          visit_date: string | null
+          price_range: string | null
+          visit_type: 'dine_in' | 'takeout' | 'delivery' | null
+          tags: string[] | null
+          privacy: 'public' | 'friends' | 'private'
+          location_lat: number | null
+          location_lng: number | null
+          likes_count: number
+          comments_count: number
+          saves_count: number
+          shares_count: number
+          is_trending: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          restaurant_id: string
+          caption?: string | null
+          photos?: string[] | null
+          rating?: number | null
+          visit_date?: string | null
+          price_range?: string | null
+          visit_type?: 'dine_in' | 'takeout' | 'delivery' | null
+          tags?: string[] | null
+          privacy?: 'public' | 'friends' | 'private'
+          location_lat?: number | null
+          location_lng?: number | null
+          likes_count?: number
+          comments_count?: number
+          saves_count?: number
+          shares_count?: number
+          is_trending?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          restaurant_id?: string
+          caption?: string | null
+          photos?: string[] | null
+          rating?: number | null
+          visit_date?: string | null
+          price_range?: string | null
+          visit_type?: 'dine_in' | 'takeout' | 'delivery' | null
+          tags?: string[] | null
+          privacy?: 'public' | 'friends' | 'private'
+          location_lat?: number | null
+          location_lng?: number | null
+          likes_count?: number
+          comments_count?: number
+          saves_count?: number
+          shares_count?: number
+          is_trending?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      post_likes: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          created_at?: string
+        }
+      }
+      post_comments: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          parent_comment_id: string | null
+          content: string
+          likes_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          parent_comment_id?: string | null
+          content: string
+          likes_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          parent_comment_id?: string | null
+          content?: string
+          likes_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      post_saves: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          board_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          board_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          board_id?: string | null
+          created_at?: string
+        }
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system'
+          title: string
+          message: string
+          data: unknown | null
+          related_id: string | null
+          related_type: string | null
+          is_read: boolean
+          is_actioned: boolean
+          created_at: string
+          expires_at: string | null
+          priority: number
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system'
+          title: string
+          message: string
+          data?: unknown | null
+          related_id?: string | null
+          related_type?: string | null
+          is_read?: boolean
+          is_actioned?: boolean
+          created_at?: string
+          expires_at?: string | null
+          priority?: number
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system'
+          title?: string
+          message?: string
+          data?: unknown | null
+          related_id?: string | null
+          related_type?: string | null
+          is_read?: boolean
+          is_actioned?: boolean
+          created_at?: string
+          expires_at?: string | null
+          priority?: number
+        }
+      }
+      notification_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          category: string
+          push_enabled: boolean
+          in_app_enabled: boolean
+          email_enabled: boolean
+          frequency: 'immediate' | 'daily' | 'weekly'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category: string
+          push_enabled?: boolean
+          in_app_enabled?: boolean
+          email_enabled?: boolean
+          frequency?: 'immediate' | 'daily' | 'weekly'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category?: string
+          push_enabled?: boolean
+          in_app_enabled?: boolean
+          email_enabled?: boolean
+          frequency?: 'immediate' | 'daily' | 'weekly'
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      push_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          token: string
+          platform: 'ios' | 'android' | 'web'
+          device_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token: string
+          platform: 'ios' | 'android' | 'web'
+          device_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          token?: string
+          platform?: 'ios' | 'android' | 'web'
+          device_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_relationships: {
+        Row: {
+          id: string
+          follower_id: string | null
+          following_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          follower_id?: string | null
+          following_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          follower_id?: string | null
+          following_id?: string | null
+          created_at?: string
         }
       }
     }
