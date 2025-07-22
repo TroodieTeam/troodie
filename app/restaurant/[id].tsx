@@ -9,19 +9,15 @@ import {
   Bookmark,
   Camera,
   Clock,
-  Compass,
   ExternalLink,
   Globe,
   Heart,
-  Home,
   MapPin,
   MessageCircle,
   Phone,
-  Plus,
   Share,
   Star,
   TrendingUp,
-  User,
   Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -30,7 +26,6 @@ import {
   Dimensions,
   Image,
   Linking,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -120,18 +115,18 @@ export default function RestaurantDetailScreen() {
 
   if (loading && !error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
           <Text style={styles.loadingText}>Loading restaurant details...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error || !restaurant) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
             <ArrowLeft size={20} color={designTokens.colors.textDark} />
@@ -148,7 +143,7 @@ export default function RestaurantDetailScreen() {
             onPress: () => router.back()
           }}
         />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -455,37 +450,7 @@ export default function RestaurantDetailScreen() {
         {renderActionButtons()}
         {renderTabs()}
         {renderTabContent()}
-        <View style={styles.bottomPadding} />
       </ScrollView>
-      
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/')}>
-          <Home size={20} color={designTokens.colors.textMedium} />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/explore')}>
-          <Compass size={20} color={designTokens.colors.textMedium} />
-          <Text style={styles.navText}>Explore</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/add')}>
-          <View style={styles.addButton}>
-            <Plus size={20} color="white" />
-          </View>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/activity')}>
-          <Heart size={20} color={designTokens.colors.textMedium} />
-          <Text style={styles.navText}>Activity</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/profile')}>
-          <User size={20} color={designTokens.colors.textMedium} />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -528,8 +493,9 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   headerImage: {
-    height: 200,
+    height: 350,
     position: 'relative',
+    marginTop: -1, // Extend to top of screen
   },
   image: {
     width: '100%',
@@ -544,7 +510,7 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     position: 'absolute',
-    top: 44,
+    top: 60, // Account for status bar
     left: 16,
     right: 16,
     flexDirection: 'row',
@@ -808,39 +774,5 @@ const styles = StyleSheet.create({
   emptyPhotosSubtext: {
     ...designTokens.typography.detailText,
     color: designTokens.colors.textMedium,
-  },
-  bottomPadding: {
-    height: 100,
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: designTokens.colors.borderLight,
-    flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    justifyContent: 'space-around',
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 8,
-  },
-  navText: {
-    ...designTokens.typography.smallText,
-    color: designTokens.colors.textMedium,
-  },
-  addButton: {
-    backgroundColor: designTokens.colors.primaryOrange,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
