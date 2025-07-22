@@ -17,12 +17,13 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function VerifyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email: string; type: 'signup' | 'login' }>();
   const { setCurrentStep } = useOnboarding();
-  const { verifyOtp, resendOtp, profile } = useAuth();
+  const { verifyOtp, resendOtp, user } = useAuth();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isValid, setIsValid] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -91,23 +92,27 @@ export default function VerifyScreen() {
     }
 
     setLoading(true);
+    
     try {
       const result = await verifyOtp(email, verificationCode);
       
-      if (result.success) {
+      if (result.success && result.session) {
+        // Get the user ID directly from the result
+        const userId = result.session.user.id;
+        console.log('[Verify] OTP verified successfully for user:', userId);
+        
+        // Give a moment for the auth context to update
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Check if this is a login or signup flow
         if (verificationType === 'login') {
-          // For login, check if user has a persona (indicating they've completed onboarding)
-          if (profile?.persona) {
-            // User has completed onboarding (has persona), go to main app
-            router.replace('/(tabs)');
-          } else {
-            // User hasn't completed onboarding (no persona), continue with onboarding flow
-            setCurrentStep('quiz');
-            router.push('/onboarding/quiz');
-          }
+          // For login, existing users go straight to the main app
+          console.log('[Verify] Login successful, going to main app');
+          await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+          router.replace('/(tabs)');
         } else {
-          // For signup, continue with onboarding flow
+          // For signup, always continue with onboarding flow
+          console.log('[Verify] Signup successful, starting onboarding');
           setCurrentStep('quiz');
           router.push('/onboarding/quiz');
         }
@@ -118,6 +123,7 @@ export default function VerifyScreen() {
         inputRefs.current[0]?.focus();
       }
     } catch (error) {
+      console.error('[Verify] Unexpected error:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);

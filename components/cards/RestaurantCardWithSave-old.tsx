@@ -1,16 +1,9 @@
-import React, { useCallback, useState } from 'react';
-import { 
-  Image, 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
-  View,
-  ActivityIndicator 
-} from 'react-native';
-import { Bookmark, MapPin, Star } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { RestaurantInfo } from '@/types/core';
+import { Bookmark, MapPin, Star } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BoardSelectionModal } from '../BoardSelectionModal';
 
 interface RestaurantCardWithSaveProps {
@@ -24,65 +17,6 @@ interface RestaurantCardWithSaveProps {
   showSaveButton?: boolean;
 }
 
-// Separate components for better modularity
-const SaveButton = ({ 
-  onPress, 
-  isSaved, 
-  isLoading 
-}: { 
-  onPress: (e: any) => void; 
-  isSaved: boolean; 
-  isLoading?: boolean;
-}) => (
-  <TouchableOpacity 
-    style={styles.saveButton} 
-    onPress={onPress}
-    activeOpacity={0.8}
-    disabled={isLoading}
-  >
-    {isLoading ? (
-      <ActivityIndicator size="small" color="#FFFFFF" />
-    ) : (
-      <Bookmark 
-        size={20} 
-        color={isSaved ? theme.colors.primary : '#FFFFFF'}
-        fill={isSaved ? theme.colors.primary : 'transparent'}
-      />
-    )}
-  </TouchableOpacity>
-);
-
-const RatingSection = ({ rating }: { rating: number }) => (
-  <View style={styles.rating}>
-    <Star size={14} color="#FFB800" fill="#FFB800" />
-    <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-  </View>
-);
-
-const LocationSection = ({ location }: { location: string }) => (
-  <View style={styles.location}>
-    <MapPin size={14} color="#666" />
-    <Text style={styles.locationText} numberOfLines={1}>
-      {location}
-    </Text>
-  </View>
-);
-
-const StatsSection = ({ stats }: { stats: { saves?: number; visits?: number } }) => {
-  if (!stats.saves && !stats.visits) return null;
-  
-  return (
-    <View style={styles.stats}>
-      {stats.saves !== undefined && stats.saves > 0 && (
-        <Text style={styles.statText}>{stats.saves} saves</Text>
-      )}
-      {stats.visits !== undefined && stats.visits > 0 && (
-        <Text style={styles.statText}>{stats.visits} visits</Text>
-      )}
-    </View>
-  );
-};
-
 export function RestaurantCardWithSave({ 
   restaurant, 
   onPress, 
@@ -93,81 +27,88 @@ export function RestaurantCardWithSave({
   const { user } = useAuth();
   const [showBoardModal, setShowBoardModal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = useCallback((e: any) => {
+  const handleSave = (e: any) => {
     e.stopPropagation();
     if (!user) {
       // TODO: Show auth modal or redirect to login
-      console.log('User not authenticated');
       return;
     }
     setShowBoardModal(true);
-  }, [user]);
+  };
 
-  const handleSaveSuccess = useCallback(() => {
+  const handleSaveSuccess = () => {
     setIsSaved(true);
-    setShowBoardModal(false);
-  }, []);
-
-  const handleCardPress = useCallback(() => {
-    if (onPress) {
-      onPress();
-    }
-  }, [onPress]);
-
-  // Construct cuisine and price range text safely
-  const cuisineText = restaurant.cuisine || 'Restaurant';
-  const priceRange = restaurant.priceRange || '$';
-  const detailsText = `${cuisineText} • ${priceRange}`;
+  };
 
   return (
     <>
       <TouchableOpacity 
         style={[styles.container, compact && styles.compactContainer]} 
-        onPress={handleCardPress}
+        onPress={onPress}
         activeOpacity={0.7}
       >
         <View style={styles.imageContainer}>
           <Image 
-            source={{ uri: restaurant.image || 'https://via.placeholder.com/300x200' }} 
+            source={{ uri: restaurant.image }} 
             style={[styles.image, compact && styles.compactImage]} 
           />
           {showSaveButton && (
-            <SaveButton 
-              onPress={handleSave} 
-              isSaved={isSaved} 
-              isLoading={isSaving}
-            />
+            <TouchableOpacity 
+              style={styles.saveButton} 
+              onPress={handleSave}
+              activeOpacity={0.8}
+            >
+              <Bookmark 
+                size={20} 
+                color={isSaved ? theme.colors.primary : '#FFFFFF'} 
+              />
+            </TouchableOpacity>
           )}
         </View>
         
         <View style={styles.content}>
           <Text style={styles.name} numberOfLines={1}>
-            {restaurant.name || 'Restaurant'}
+            {restaurant.name}
           </Text>
           <Text style={styles.cuisine} numberOfLines={1}>
-            {detailsText}
+            {`${restaurant.cuisine} • ${restaurant.priceRange}`}
           </Text>
           
           <View style={styles.details}>
-            <RatingSection rating={restaurant.rating || 0} />
-            <LocationSection location={restaurant.location || 'Unknown'} />
+            <View style={styles.rating}>
+              <Star size={14} color="#FFB800" />
+              <Text style={styles.ratingText}>{restaurant.rating}</Text>
+            </View>
+            
+            <View style={styles.location}>
+              <MapPin size={14} color="#666" />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {restaurant.location}
+              </Text>
+            </View>
           </View>
 
-          {stats && <StatsSection stats={stats} />}
+          {stats && (
+            <View style={styles.stats}>
+              {stats.saves && (
+                <Text style={styles.statText}>{stats.saves} saves</Text>
+              )}
+              {stats.visits && (
+                <Text style={styles.statText}>{stats.visits} visits</Text>
+              )}
+            </View>
+          )}
         </View>
       </TouchableOpacity>
 
-      {showBoardModal && (
-        <BoardSelectionModal
-          visible={showBoardModal}
-          onClose={() => setShowBoardModal(false)}
-          restaurantId={restaurant.id}
-          restaurantName={restaurant.name}
-          onSuccess={handleSaveSuccess}
-        />
-      )}
+      <BoardSelectionModal
+        visible={showBoardModal}
+        onClose={() => setShowBoardModal(false)}
+        restaurantId={restaurant.id}
+        restaurantName={restaurant.name}
+        onSuccess={handleSaveSuccess}
+      />
     </>
   );
 }

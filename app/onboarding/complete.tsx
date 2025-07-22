@@ -57,9 +57,12 @@ export default function CompleteScreen() {
     try {
       await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
       
-      // Save persona to user profile
+      // Save persona and update profile completion to 100%
       if (user?.id && state.persona) {
-        await profileService.setPersona(user.id, state.persona);
+        await profileService.updateProfile(user.id, {
+          persona: state.persona,
+          profile_completion: 100
+        });
       }
       
       // TODO: Save favorite spots to user's saved restaurants

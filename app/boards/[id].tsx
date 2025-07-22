@@ -303,7 +303,7 @@ export default function BoardDetailScreen() {
                 </Text>
                 {restaurant.google_rating && (
                   <View style={styles.rating}>
-                    <Star size={12} fill="#FFD700" color="#FFD700" />
+                    <Star size={12} color="#FFD700" />
                     <Text style={styles.ratingText}>{restaurant.google_rating}</Text>
                   </View>
                 )}

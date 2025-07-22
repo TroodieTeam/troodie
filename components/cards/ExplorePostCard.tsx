@@ -59,7 +59,7 @@ export function ExplorePostCard({
           
           {/* Rating badge */}
           <View style={styles.ratingBadge}>
-            <Star size={10} color={designTokens.colors.primaryOrange} fill={designTokens.colors.primaryOrange} />
+            <Star size={10} color={designTokens.colors.primaryOrange} />
             <Text style={styles.ratingText}>{post.restaurant.rating}</Text>
           </View>
         </View>
@@ -142,7 +142,6 @@ export function ExplorePostCard({
               <Heart 
                 size={12} 
                 color={post.engagement.likes > 0 ? '#FF4444' : '#666'} 
-                fill={post.engagement.likes > 0 ? '#FF4444' : 'none'}
               />
               <Text style={styles.actionCount}>{post.engagement.likes}</Text>
             </TouchableOpacity>
@@ -156,7 +155,6 @@ export function ExplorePostCard({
               <Bookmark 
                 size={12} 
                 color={post.engagement.saves > 0 ? designTokens.colors.primaryOrange : '#666'}
-                fill={post.engagement.saves > 0 ? designTokens.colors.primaryOrange : 'none'}
               />
               <Text style={styles.actionCount}>{post.engagement.saves}</Text>
             </TouchableOpacity>

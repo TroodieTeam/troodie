@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { MapPin, Star } from 'lucide-react-native';
-import { RestaurantInfo } from '@/types/core';
 import { theme } from '@/constants/theme';
+import { RestaurantInfo } from '@/types/core';
+import { MapPin, Star } from 'lucide-react-native';
+import React from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface RestaurantCardProps {
   restaurant: RestaurantInfo;
@@ -35,7 +35,7 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false }: 
         
         <View style={styles.details}>
           <View style={styles.rating}>
-            <Star size={14} color="#FFB800" fill="#FFB800" />
+                          <Star size={14} color="#FFB800" />
             <Text style={styles.ratingText}>{restaurant.rating}</Text>
           </View>
           

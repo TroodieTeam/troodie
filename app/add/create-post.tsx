@@ -1,5 +1,4 @@
 import { designTokens } from '@/constants/designTokens';
-import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { postMediaService } from '@/services/postMediaService';
 import { postService } from '@/services/postService';
@@ -505,7 +504,7 @@ export default function CreatePostScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'white',
   },
   header: {
     flexDirection: 'row',
@@ -578,7 +577,7 @@ const styles = StyleSheet.create({
   },
   addPhotoButton: {
     width: 80,
-    height: 80,
+    height: 80, 
     borderWidth: 1,
     borderColor: designTokens.colors.borderLight,
     borderStyle: 'dashed',

@@ -21,13 +21,21 @@ import {
 export default function SignupScreen() {
   const router = useRouter();
   const { setCurrentStep } = useOnboarding();
-  const { signUpWithEmail } = useAuth();
+  const { signUpWithEmail, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [isValidEmail, setIsValidEmail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastRequestTime, setLastRequestTime] = useState<number | null>(null);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
   const emailInputRef = useRef<TextInput>(null);
+
+  // Check if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('[Signup] User is already authenticated, redirecting to main app');
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, router]);
 
   // Check rate limit status
   useEffect(() => {

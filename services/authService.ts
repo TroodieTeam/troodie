@@ -83,6 +83,7 @@ export const authService = {
    */
   async verifyOtp(email: string, token: string): Promise<AuthResponse> {
     try {
+      console.log('[AuthService] Verifying OTP...')
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token,
@@ -90,17 +91,33 @@ export const authService = {
       })
       
       if (error) {
+        console.error('[AuthService] OTP verification error:', error)
         return {
           success: false,
           error: this.getErrorMessage(error),
         }
       }
       
+      if (!data.session) {
+        console.error('[AuthService] No session returned from OTP verification')
+        return {
+          success: false,
+          error: 'Verification failed. Please try again.',
+        }
+      }
+      
+      console.log('[AuthService] OTP verified, session created:', {
+        userId: data.session.user.id,
+        email: data.session.user.email,
+        expiresAt: data.session.expires_at
+      })
+      
       return {
         success: true,
         session: data.session,
       }
     } catch (error) {
+      console.error('[AuthService] Unexpected error:', error)
       return {
         success: false,
         error: 'An unexpected error occurred. Please try again.',

@@ -137,7 +137,6 @@ export default function RestaurantDetailsScreen() {
             <Star
               size={32}
               color={star <= rating ? '#FFD700' : '#DDD'}
-              fill={star <= rating ? '#FFD700' : 'none'}
             />
           </TouchableOpacity>
         ))}

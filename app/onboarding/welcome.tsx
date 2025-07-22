@@ -1,12 +1,22 @@
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { setCurrentStep } = useOnboarding();
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    if (isAuthenticated) {
+      console.log('[Welcome] User is authenticated, redirecting to main app');
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, router]);
 
   const handleGetStarted = () => {
     setCurrentStep('signup');

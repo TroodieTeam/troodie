@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { userService } from '@/services/userService'
 import { authService } from '@/services/authService'
+import { userService } from '@/services/userService'
+import { Session, User } from '@supabase/supabase-js'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
 type AuthContextType = {
   user: User | null
@@ -10,12 +10,13 @@ type AuthContextType = {
   profile: any | null
   signUpWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>
   signInWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>
-  verifyOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>
+  verifyOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string; session?: Session | null }>
   resendOtp: (email: string, type: 'signup' | 'login') => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   loading: boolean
   isAuthenticated: boolean
   error: string | null
+  refreshAuth: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -27,46 +28,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        loadUserProfile(session.user.id)
-      }
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      
-      if (session?.user) {
-        loadUserProfile(session.user.id)
+  const loadUserProfile = async (userId: string) => {
+    try {
+      console.log('[AuthContext] Loading profile for user:', userId)
+      const profile = await userService.getProfile(userId)
+      if (!profile) {
+        console.log('[AuthContext] No profile found, creating new profile')
+        const newProfile = await userService.createProfile({
+          id: userId,
+          phone: null,
+          profile_completion: 0
+        })
+        setProfile(newProfile)
       } else {
+        console.log('[AuthContext] Profile loaded successfully')
+        setProfile(profile)
+      }
+    } catch (error) {
+      console.error('[AuthContext] Error loading profile:', error)
+    }
+  }
+
+  const refreshAuth = async () => {
+    try {
+      console.log('[AuthContext] Refreshing auth state...')
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        console.log('[AuthContext] Session found during refresh')
+        setSession(session)
+        setUser(session.user)
+        await loadUserProfile(session.user.id)
+      } else {
+        console.log('[AuthContext] No session found during refresh')
+        setSession(null)
+        setUser(null)
         setProfile(null)
       }
+    } catch (error) {
+      console.error('[AuthContext] Error refreshing auth:', error)
+    }
+  }
+
+  useEffect(() => {
+    // Initial auth check
+    const initAuth = async () => {
+      try {
+        await refreshAuth()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initAuth()
+
+    // Simple listener - only handle TOKEN_REFRESHED and user-initiated SIGNED_OUT
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[AuthContext] Auth event:', event)
+      
+      // Only handle specific events we care about
+      if (event === 'TOKEN_REFRESHED' && session) {
+        console.log('[AuthContext] Token refreshed')
+        setSession(session)
+        setUser(session.user)
+      }
+      // Don't handle SIGNED_IN or SIGNED_OUT here - we'll manage those manually
     })
 
     return () => subscription.unsubscribe()
   }, [])
-
-  const loadUserProfile = async (userId: string) => {
-    const profile = await userService.getProfile(userId)
-    if (!profile) {
-      // Create profile if it doesn't exist
-      const newProfile = await userService.createProfile({
-        id: userId,
-        phone: user?.phone || null,
-        profile_completion: 0
-      })
-      setProfile(newProfile)
-    } else {
-      setProfile(profile)
-    }
-  }
 
   const signUpWithEmail = async (email: string) => {
     setError(null)
@@ -89,13 +119,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const verifyOtp = async (email: string, token: string) => {
     setError(null)
     setLoading(true)
+    
     try {
+      console.log('[AuthContext] Verifying OTP for:', email)
       const result = await authService.verifyOtp(email, token)
-      if (!result.success && result.error) {
-        setError(result.error)
+      
+      if (result.success && result.session) {
+        console.log('[AuthContext] OTP verified successfully, setting session')
+        
+        // Directly set our state - don't rely on auth state changes
+        setSession(result.session)
+        setUser(result.session.user)
+        
+        // Load profile
+        await loadUserProfile(result.session.user.id)
+        
+        return { ...result, session: result.session }
+      } else {
+        console.log('[AuthContext] OTP verification failed:', result.error)
+        setError(result.error || 'Verification failed')
+        return result
       }
-      // Profile will be loaded via the auth state change listener
-      return result
     } finally {
       setLoading(false)
     }
@@ -115,6 +159,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      
+      // Clear our state
+      setSession(null)
+      setUser(null)
       setProfile(null)
     } finally {
       setLoading(false)
@@ -133,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     isAuthenticated: !!session,
     error,
+    refreshAuth,
   }
 
   return (
