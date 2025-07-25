@@ -1,11 +1,14 @@
 import { designTokens } from '@/constants/designTokens';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Camera,
   FolderPlus,
   Search,
-  UserPlus
+  UserPlus,
+  Users2,
+  Sparkles
 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -19,6 +22,7 @@ import {
 
 export default function AddScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const addOptions: AddOption[] = [
     {
@@ -111,6 +115,68 @@ export default function AddScreen() {
     </View>
   );
 
+  const renderJoinCommunityCTA = () => {
+    // Show different content based on authentication status
+    const isAuthenticated = !!user;
+    
+    return (
+      <View style={styles.communitySection}>
+        <View style={styles.communityCTA}>
+          <View style={styles.communityIcon}>
+            <Users2 size={32} color={designTokens.colors.primaryOrange} />
+          </View>
+          
+          <View style={styles.communityContent}>
+            <View style={styles.communityHeader}>
+              <Text style={styles.communityTitle}>
+                {isAuthenticated ? 'Explore the Community' : 'Join the Troodie Community'}
+              </Text>
+              <View style={styles.communityBadge}>
+                <Sparkles size={12} color="#FFB800" />
+                <Text style={styles.communityBadgeText}>New</Text>
+              </View>
+            </View>
+            
+            <Text style={styles.communityDescription}>
+              Connect with fellow food lovers, share recommendations, and discover hidden gems together.
+            </Text>
+            
+            <View style={styles.communityBenefits}>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitDot} />
+                <Text style={styles.benefitText}>Follow friends and foodies</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitDot} />
+                <Text style={styles.benefitText}>Share your favorite spots</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitDot} />
+                <Text style={styles.benefitText}>Get personalized recommendations</Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.communityButton} 
+              onPress={() => {
+                if (isAuthenticated) {
+                  router.push('/explore');
+                } else {
+                  router.push('/onboarding');
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.communityButtonText}>
+                {isAuthenticated ? 'Explore Community' : 'Join Now'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderProgressGamification = () => (
     <View style={styles.progressCard}>
       <View style={styles.progressContent}>
@@ -129,6 +195,7 @@ export default function AddScreen() {
         {renderHeader()}
         {renderPrimaryActions()}
         {renderQuickActions()}
+        {renderJoinCommunityCTA()}
         {renderProgressGamification()}
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -310,5 +377,91 @@ const styles = StyleSheet.create({
     ...designTokens.typography.smallText,
     color: designTokens.colors.textMedium,
     lineHeight: 18,
+  },
+  communitySection: {
+    paddingHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.xxl,
+  },
+  communityCTA: {
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.lg,
+    padding: designTokens.spacing.xl,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    ...designTokens.shadows.card,
+    flexDirection: 'row',
+    gap: designTokens.spacing.lg,
+  },
+  communityIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: designTokens.borderRadius.full,
+    backgroundColor: designTokens.colors.primaryOrange + '1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  communityContent: {
+    flex: 1,
+  },
+  communityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.sm,
+    marginBottom: designTokens.spacing.sm,
+  },
+  communityTitle: {
+    ...designTokens.typography.cardTitle,
+    color: designTokens.colors.textDark,
+  },
+  communityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFB800' + '1A',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: designTokens.borderRadius.full,
+  },
+  communityBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFB800',
+  },
+  communityDescription: {
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textMedium,
+    marginBottom: designTokens.spacing.lg,
+    lineHeight: 20,
+  },
+  communityBenefits: {
+    gap: designTokens.spacing.sm,
+    marginBottom: designTokens.spacing.lg,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.sm,
+  },
+  benefitDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: designTokens.colors.primaryOrange,
+  },
+  benefitText: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textDark,
+  },
+  communityButton: {
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingVertical: designTokens.spacing.md,
+    paddingHorizontal: designTokens.spacing.xl,
+    borderRadius: designTokens.borderRadius.md,
+    alignItems: 'center',
+  },
+  communityButtonText: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.white,
   },
 });
