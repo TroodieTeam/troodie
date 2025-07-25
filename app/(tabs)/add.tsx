@@ -42,11 +42,11 @@ export default function AddScreen() {
     },
     {
       id: 'community',
-      title: user ? 'Create Community' : 'Join Communities',
-      description: user ? 'Build your Troodie network' : 'Connect with like-minded Troodies',
+      title: 'Join Communities',
+      description: 'Connect with like-minded Troodies',
       icon: Users2,
       color: '#7C3AED',
-      navigateTo: user ? '/add/create-community' : '/onboarding'
+      navigateTo: '/add/communities'
     }
   ];
 

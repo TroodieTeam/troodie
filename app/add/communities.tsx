@@ -22,9 +22,11 @@ import {
 } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { Community } from '@/types/add-flow';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CommunitiesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'discover' | 'joined'>('discover');
 
@@ -139,7 +141,16 @@ export default function CommunitiesScreen() {
         <ChevronLeft size={24} color="#333" />
       </TouchableOpacity>
       <Text style={styles.title}>Communities</Text>
-      <TouchableOpacity style={styles.addButton}>
+      <TouchableOpacity 
+        style={styles.addButton} 
+        onPress={() => {
+          if (user) {
+            router.push('/add/create-community' as any);
+          } else {
+            router.push('/login' as any);
+          }
+        }}
+      >
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
     </View>
