@@ -188,7 +188,7 @@ export default function HomeScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerTop}>
-        <Text style={styles.brandName}>troodie</Text>
+        <Text style={styles.brandName}>Troodie</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/explore')}>
             <Search size={24} color={designTokens.colors.textDark} />
@@ -204,7 +204,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={styles.tagline}>Social Commerce Platform</Text>
     </View>
   );
 

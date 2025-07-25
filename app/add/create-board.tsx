@@ -24,7 +24,7 @@ export default function CreateBoardScreen() {
   const boardTypes: BoardType[] = [
     {
       type: 'free',
-      title: 'Free Board',
+      title: 'Public Board',
       description: 'Anyone can view and save your recommendations',
       icon: Globe,
       features: ['Public visibility', 'Social sharing', 'Basic analytics']

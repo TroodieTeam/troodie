@@ -38,3 +38,13 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# tasks
+tasks/
+
+# docs
+docs/
+
+# documentation files
+README.md
+TODO.md

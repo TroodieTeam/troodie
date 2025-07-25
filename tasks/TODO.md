@@ -93,10 +93,15 @@
 | [6.4 Fix Bottom Navigation Positioning](./task-6-4-fix-restaurant-detail-bottom-nav.md) | 🟢 | Medium | 1 day | Claude | ✅ Completed - Removed custom bottom nav |
 | [6.5 Fix Authentication Session Persistence](./task-6-5-auth-session-persistence.md) | 🔴 | Critical | 2 days | - | Users lose login state on app refresh/reload |
 | [6.6 Fix RestaurantCardWithSave Text Rendering Error](./task-6-6-fix-restaurant-card-text-error.md) | 🔴 | High | 1 day | - | Text strings must be rendered within a <Text> component error |
+| [6.7 Implement Quick Saves Board System](./task-6-7-quick-saves-board.md) | 🔴 | High | 3 days | - | Private default board for all saves, profile tab, homepage display |
+| [6.8 Define Trending Restaurant Algorithm](./task-6-8-trending-restaurant-algorithm.md) | 🔴 | Medium | 2 days | - | Backend algorithm for trending restaurants |
+| [6.9 Implement Traffic Light Rating System](./task-6-9-traffic-light-rating.md) | 🔴 | High | 4 days | - | Red/Yellow/Green rating system for restaurants |
+| [6.10 Enhance Post Functionality for External Content](./task-6-10-external-content-posts.md) | 🔴 | Medium | 3 days | - | Support for saving posts from external sites |
+| [6.11 Implement Perfect for You Section](./task-6-11-perfect-for-you-section.md) | 🔴 | High | 5 days | - | Personalized recommendations on homepage |
 
 **Epic Status:** Not Started  
-**Epic Progress:** 1/5 tasks completed (20%)  
-**Estimated Duration:** 12 days
+**Epic Progress:** 1/11 tasks completed (9%)  
+**Estimated Duration:** 28 days
 
 ---
 
@@ -155,13 +160,13 @@
 
 ## Overall Progress Summary
 
-**Total Tasks:** 16  
-**Completed:** 9 (56%)  
+**Total Tasks:** 21  
+**Completed:** 9 (43%)  
 **In Progress:** 0 (0%)  
-**Not Started:** 7 (44%)  
+**Not Started:** 12 (57%)  
 **Blocked:** 0 (0%)
 
-**Total Estimated Duration:** 62 days (~12 weeks)
+**Total Estimated Duration:** 74 days (~15 weeks)
 
 ---
 

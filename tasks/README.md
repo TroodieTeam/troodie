@@ -13,6 +13,11 @@ tasks/
 ├── task-2-1-restaurant-seeding.md
 ├── task-6-1-restaurant-detail.md
 └── ... (additional task files)
+
+docs/
+├── backend-design.md                   # Living database schema documentation
+├── frontend-design-language.md         # Living UI/UX design system
+└── ... (additional documentation)
 ```
 
 ## 🎯 Task Naming Convention
@@ -233,8 +238,41 @@ If a task becomes blocked:
 
 ### For Task Clarification
 - Review the **PRD documents** in `/prd` folder
-- Check **Backend Design** in `/docs` folder
+- Check **Backend Design** in `/docs/backend-design.md` for database schema and architecture
 - Consult **Acceptance Criteria** in task files
+
+### Backend Design Documentation
+The **`/docs/backend-design.md`** file serves as the living documentation for Troodie's database schema and backend architecture. It includes:
+
+- **Complete database schema** with all tables and relationships
+- **Row Level Security (RLS) policies** for data protection
+- **API design patterns** and RESTful endpoints
+- **Real-time subscription** configurations
+- **Performance optimization** strategies
+- **Security considerations** and best practices
+
+**Always reference this document when:**
+- Creating new engineering tasks that involve database changes
+- Implementing new features that require backend integration
+- Debugging data-related issues
+- Planning API endpoints and data flows
+
+### Frontend Design Language Documentation
+The **`/docs/frontend-design-language.md`** file serves as the living design system for Troodie's UI/UX implementation. It includes:
+
+- **Complete color palette** and semantic color system
+- **Typography hierarchy** and font families
+- **Component patterns** for buttons, inputs, cards, and navigation
+- **Screen layout patterns** and common structures
+- **Animation patterns** and performance guidelines
+- **Accessibility standards** and responsive design principles
+
+**Always reference this document when:**
+- Creating new screens without specific design requirements
+- Implementing UI components that need to match existing patterns
+- Ensuring consistent styling across the application
+- Planning user interactions and animations
+- Maintaining accessibility and performance standards
 
 ### For Technical Issues
 - Reference **Technical Implementation** sections

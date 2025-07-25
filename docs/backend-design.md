@@ -1,1032 +1,822 @@
-# Troodie Backend Architecture & Supabase Integration Guide
-
-## Table of Contents
-1. [Overview](#overview)
-2. [Technology Stack](#technology-stack)
-3. [Database Schema](#database-schema)
-4. [Authentication & Authorization](#authentication--authorization)
-5. [Real-time Features](#real-time-features)
-6. [API Design](#api-design)
-7. [Supabase Setup Guide](#supabase-setup-guide)
-8. [Security & Performance](#security--performance)
-9. [Deployment Strategy](#deployment-strategy)
+# Troodie Backend Design & Database Schema
 
 ## Overview
 
-Troodie is a social restaurant discovery platform that connects food enthusiasts through personalized recommendations, curated boards, and communities. The backend architecture supports:
+This document serves as the living documentation for Troodie's backend architecture, database schema, and API design. It should be updated whenever the database schema changes or new features are added.
 
-- **User personas and personalization**
-- **Social networking features**
-- **Content creation and curation**
-- **Monetization through paid boards and communities**
-- **Creator economy with campaigns**
-- **Real-time activity feeds and notifications**
+## Database Architecture
 
-## Technology Stack
-
-### Core Technologies
-- **Backend-as-a-Service**: Supabase
+### Technology Stack
 - **Database**: PostgreSQL (via Supabase)
-- **Authentication**: Supabase Auth with phone verification
-- **Real-time**: Supabase Realtime
-- **Storage**: Supabase Storage for images/videos
-- **Edge Functions**: Supabase Edge Functions for complex business logic
-- **Frontend**: React Native with Expo
+- **Authentication**: Supabase Auth with email OTP
+- **Real-time**: Supabase Realtime subscriptions
+- **Storage**: Supabase Storage for images and media
+- **Edge Functions**: Supabase Edge Functions for serverless logic
 
-### External Services
-- **SMS Provider**: Twilio (for phone verification)
-- **Payment Processing**: Stripe
-- **Maps/Places**: Google Places API
-- **Image Processing**: Cloudinary (optional)
-- **Push Notifications**: Expo Push Notifications
+## Core Schema Design
 
-## Database Schema
+### User Management
 
-### Core Tables
+#### `users` Table
+Primary user profile information extending Supabase Auth.
 
 ```sql
--- Users table
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    username VARCHAR(50) UNIQUE,
-    name VARCHAR(100),
-    bio TEXT,
-    avatar_url TEXT,
-    persona VARCHAR(50),
-    is_verified BOOLEAN DEFAULT FALSE,
-    is_restaurant BOOLEAN DEFAULT FALSE,
-    is_creator BOOLEAN DEFAULT FALSE,
-    profile_completion INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.users (
+  id uuid NOT NULL,                    -- Links to auth.users
+  phone character varying UNIQUE,       -- Primary contact method
+  username character varying UNIQUE,    -- @username for mentions
+  name character varying,               -- Display name
+  bio text,                           -- User bio
+  avatar_url text,                     -- Profile image
+  persona character varying,           -- User persona type
+  is_verified boolean DEFAULT false,   -- Verified user status
+  is_restaurant boolean DEFAULT false, -- Restaurant owner flag
+  is_creator boolean DEFAULT false,    -- Content creator flag
+  profile_completion integer DEFAULT 0, -- Profile completion percentage
+  email text,                         -- Email address
+  profile_image_url text,             -- Alternative profile image
+  location text,                      -- User location
+  saves_count integer DEFAULT 0,      -- Cached count
+  reviews_count integer DEFAULT 0,    -- Cached count
+  followers_count integer DEFAULT 0,  -- Cached count
+  following_count integer DEFAULT 0,  -- Cached count
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
+```
+
+#### `user_onboarding` Table
+Stores onboarding quiz responses and persona assignment.
+
+```sql
+CREATE TABLE public.user_onboarding (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  quiz_answers jsonb,                 -- Quiz response data
+  persona character varying,           -- Assigned persona
+  completed_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_onboarding_pkey PRIMARY KEY (id),
+  CONSTRAINT user_onboarding_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+```
+
+#### `user_preferences` Table
+User notification and privacy preferences.
+
+```sql
+CREATE TABLE public.user_preferences (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  notification_likes boolean DEFAULT true,
+  notification_comments boolean DEFAULT true,
+  notification_follows boolean DEFAULT true,
+  notification_community boolean DEFAULT true,
+  notification_campaigns boolean DEFAULT true,
+  email_notifications boolean DEFAULT false,
+  push_notifications boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_preferences_pkey PRIMARY KEY (id),
+  CONSTRAINT user_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+```
+
+### Restaurant Management
+
+#### `restaurants` Table
+Core restaurant data with Google Places integration.
+
+```sql
+CREATE TABLE public.restaurants (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  google_place_id character varying UNIQUE,  -- Google Places ID
+  name character varying NOT NULL,
+  address text,
+  city character varying,
+  state character varying,
+  zip_code character varying,
+  location USER-DEFINED,              -- PostGIS geometry
+  cuisine_types ARRAY,                -- Array of cuisine types
+  price_range character varying,      -- $, $$, $$$, $$$$
+  phone character varying,
+  website text,
+  hours jsonb,                       -- Operating hours
+  photos ARRAY,                      -- Photo URLs
+  cover_photo_url text,
+  google_rating numeric,              -- Google rating
+  google_reviews_count integer,       -- Google review count
+  troodie_rating numeric,             -- Troodie community rating
+  troodie_reviews_count integer DEFAULT 0,
+  features ARRAY,                     -- Restaurant features
+  dietary_options ARRAY,              -- Dietary restrictions
+  is_verified boolean DEFAULT false,  -- Verified restaurant
+  is_claimed boolean DEFAULT false,   -- Claimed by owner
+  owner_id uuid,                      -- Restaurant owner
+  data_source character varying CHECK (data_source::text = ANY (ARRAY['seed'::character varying, 'google'::character varying, 'user'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  last_google_sync timestamp with time zone,
+  CONSTRAINT restaurants_pkey PRIMARY KEY (id),
+  CONSTRAINT restaurants_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
+);
+```
+
+### Social Features
+
+#### `restaurant_saves` Table
+User saves/bookmarks of restaurants.
+
+```sql
+CREATE TABLE public.restaurant_saves (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  restaurant_id uuid,
+  personal_rating integer CHECK (personal_rating >= 1 AND personal_rating <= 5),
+  visit_date date,
+  photos ARRAY,                      -- User photos
+  notes text,                        -- Personal notes
+  tags ARRAY,                        -- User tags
+  would_recommend boolean,
+  price_range character varying,
+  visit_type character varying CHECK (visit_type::text = ANY (ARRAY['dine_in'::character varying, 'takeout'::character varying, 'delivery'::character varying]::text[])),
+  privacy character varying CHECK (privacy::text = ANY (ARRAY['public'::character varying, 'friends'::character varying, 'private'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT restaurant_saves_pkey PRIMARY KEY (id),
+  CONSTRAINT restaurant_saves_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT restaurant_saves_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
+);
+```
+
+#### `posts` Table
+Social media-style posts about restaurant visits.
+
+```sql
+CREATE TABLE public.posts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  restaurant_id character varying NOT NULL,
+  caption text,
+  photos ARRAY,
+  rating integer CHECK (rating >= 1 AND rating <= 5),
+  visit_date date,
+  price_range character varying,
+  visit_type character varying CHECK (visit_type::text = ANY (ARRAY['dine_in'::character varying, 'takeout'::character varying, 'delivery'::character varying]::text[])),
+  tags ARRAY,
+  privacy character varying DEFAULT 'public'::character varying CHECK (privacy::text = ANY (ARRAY['public'::character varying, 'friends'::character varying, 'private'::character varying]::text[])),
+  location_lat numeric,
+  location_lng numeric,
+  likes_count integer DEFAULT 0,
+  comments_count integer DEFAULT 0,
+  saves_count integer DEFAULT 0,
+  shares_count integer DEFAULT 0,
+  is_trending boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT posts_pkey PRIMARY KEY (id),
+  CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+#### `user_relationships` Table
+Follow/unfollow relationships between users.
+
+```sql
+CREATE TABLE public.user_relationships (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  follower_id uuid,
+  following_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_relationships_pkey PRIMARY KEY (id),
+  CONSTRAINT user_relationships_following_id_fkey FOREIGN KEY (following_id) REFERENCES public.users(id),
+  CONSTRAINT user_relationships_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id)
+);
+```
+
+### Board System
+
+#### `boards` Table
+Collections of restaurants created by users.
+
+```sql
+CREATE TABLE public.boards (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,                      -- Board creator
+  title character varying NOT NULL,
+  description text,
+  cover_image_url text,
+  type character varying CHECK (type::text = ANY (ARRAY['free'::character varying, 'private'::character varying, 'paid'::character varying]::text[])),
+  category character varying,
+  location character varying,
+  tags ARRAY,
+  price numeric,                      -- For paid boards
+  currency character varying DEFAULT 'USD'::character varying,
+  billing_type character varying,
+  allow_comments boolean DEFAULT true,
+  allow_saves boolean DEFAULT true,
+  member_count integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  is_private boolean DEFAULT false,
+  restaurant_count integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT boards_pkey PRIMARY KEY (id),
+  CONSTRAINT boards_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+```
+
+#### `board_members` Table
+Board membership and roles.
+
+```sql
+CREATE TABLE public.board_members (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  board_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role character varying DEFAULT 'member'::character varying CHECK (role::text = ANY (ARRAY['owner'::character varying, 'admin'::character varying, 'member'::character varying]::text[])),
+  joined_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT board_members_pkey PRIMARY KEY (id),
+  CONSTRAINT board_members_board_id_fkey FOREIGN KEY (board_id) REFERENCES public.boards(id),
+  CONSTRAINT board_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+#### `board_restaurants` Table
+Restaurants added to boards.
+
+```sql
+CREATE TABLE public.board_restaurants (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  board_id uuid,
+  restaurant_id uuid,
+  added_by uuid,
+  order_position integer,
+  notes text,
+  position integer DEFAULT 0,
+  added_at timestamp with time zone DEFAULT now(),
+  rating integer CHECK (rating >= 1 AND rating <= 5),
+  visit_date date,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT board_restaurants_pkey PRIMARY KEY (id),
+  CONSTRAINT board_restaurants_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
+  CONSTRAINT board_restaurants_board_id_fkey FOREIGN KEY (board_id) REFERENCES public.boards(id),
+  CONSTRAINT board_restaurants_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id)
+);
+```
+
+### Community Features
+
+#### `communities` Table
+User-created communities around food interests.
+
+```sql
+CREATE TABLE public.communities (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name character varying NOT NULL,
+  description text,
+  cover_image_url text,
+  category character varying,
+  location character varying,
+  admin_id uuid,
+  type character varying CHECK (type::text = ANY (ARRAY['public'::character varying, 'private'::character varying, 'paid'::character varying]::text[])),
+  price numeric,
+  currency character varying DEFAULT 'USD'::character varying,
+  billing_cycle character varying,
+  member_count integer DEFAULT 0,
+  activity_level integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT communities_pkey PRIMARY KEY (id),
+  CONSTRAINT communities_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.users(id)
+);
+```
+
+#### `community_members` Table
+Community membership management.
+
+```sql
+CREATE TABLE public.community_members (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  community_id uuid,
+  user_id uuid,
+  role character varying DEFAULT 'member'::character varying,
+  status character varying DEFAULT 'active'::character varying,
+  joined_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT community_members_pkey PRIMARY KEY (id),
+  CONSTRAINT community_members_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id),
+  CONSTRAINT community_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+```
+
+#### `community_posts` Table
+Posts within communities.
+
+```sql
+CREATE TABLE public.community_posts (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  community_id uuid,
+  user_id uuid,
+  content text NOT NULL,
+  images ARRAY,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT community_posts_pkey PRIMARY KEY (id),
+  CONSTRAINT community_posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT community_posts_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id)
+);
+```
+
+### Engagement & Interactions
+
+#### `post_likes` Table
+Likes on posts.
+
+```sql
+CREATE TABLE public.post_likes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  post_id uuid,
+  user_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT post_likes_pkey PRIMARY KEY (id),
+  CONSTRAINT post_likes_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id),
+  CONSTRAINT post_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+#### `post_comments` Table
+Comments on posts with nested replies.
+
+```sql
+CREATE TABLE public.post_comments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  post_id uuid,
+  user_id uuid,
+  parent_comment_id uuid,             -- For nested replies
+  content text NOT NULL,
+  likes_count integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT post_comments_pkey PRIMARY KEY (id),
+  CONSTRAINT post_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT post_comments_parent_comment_id_fkey FOREIGN KEY (parent_comment_id) REFERENCES public.post_comments(id),
+  CONSTRAINT post_comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id)
+);
+```
+
+#### `post_saves` Table
+Saving posts to boards.
+
+```sql
+CREATE TABLE public.post_saves (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  post_id uuid,
+  user_id uuid,
+  board_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT post_saves_pkey PRIMARY KEY (id),
+  CONSTRAINT post_saves_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT post_saves_board_id_fkey FOREIGN KEY (board_id) REFERENCES public.boards(id),
+  CONSTRAINT post_saves_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id)
+);
+```
+
+### Notifications System
+
+#### `notifications` Table
+In-app notifications.
+
+```sql
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  type character varying CHECK (type::text = ANY (ARRAY['like'::character varying, 'comment'::character varying, 'follow'::character varying, 'achievement'::character varying, 'restaurant_recommendation'::character varying, 'board_invite'::character varying, 'post_mention'::character varying, 'milestone'::character varying, 'system'::character varying]::text[])),
+  title character varying,
+  body text,
+  data jsonb,                        -- Additional notification data
+  is_read boolean DEFAULT false,
+  message text,
+  related_id character varying,       -- Related entity ID
+  related_type character varying,     -- Related entity type
+  is_actioned boolean DEFAULT false,
+  expires_at timestamp with time zone,
+  priority integer DEFAULT 1 CHECK (priority >= 1 AND priority <= 5),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+```
+
+#### `notification_preferences` Table
+User notification settings.
+
+```sql
+CREATE TABLE public.notification_preferences (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  category character varying NOT NULL,
+  push_enabled boolean DEFAULT true,
+  in_app_enabled boolean DEFAULT true,
+  email_enabled boolean DEFAULT false,
+  frequency character varying DEFAULT 'immediate'::character varying CHECK (frequency::text = ANY (ARRAY['immediate'::character varying, 'daily'::character varying, 'weekly'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notification_preferences_pkey PRIMARY KEY (id),
+  CONSTRAINT notification_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+#### `push_tokens` Table
+Push notification tokens for mobile devices.
+
+```sql
+CREATE TABLE public.push_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  token character varying NOT NULL,
+  platform character varying NOT NULL CHECK (platform::text = ANY (ARRAY['ios'::character varying, 'android'::character varying, 'web'::character varying]::text[])),
+  device_id character varying,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT push_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+### Achievement & Gamification
+
+#### `user_achievements` Table
+User achievement unlocks.
+
+```sql
+CREATE TABLE public.user_achievements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  achievement_id character varying NOT NULL,
+  unlocked_at timestamp with time zone DEFAULT now(),
+  points integer DEFAULT 0,
+  CONSTRAINT user_achievements_pkey PRIMARY KEY (id),
+  CONSTRAINT user_achievements_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+#### `user_events` Table
+User activity tracking for achievements.
+
+```sql
+CREATE TABLE public.user_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  event_type character varying NOT NULL,
+  event_data jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_events_pkey PRIMARY KEY (id),
+  CONSTRAINT user_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+### Referral System
+
+#### `user_referrals` Table
+User referral codes.
+
+```sql
+CREATE TABLE public.user_referrals (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  referral_code character varying NOT NULL UNIQUE,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_referrals_pkey PRIMARY KEY (id),
+  CONSTRAINT user_referrals_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+#### `user_referral_conversions` Table
+Referral conversion tracking.
+
+```sql
+CREATE TABLE public.user_referral_conversions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  referrer_id uuid NOT NULL,
+  referred_user_id uuid NOT NULL,
+  converted_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_referral_conversions_pkey PRIMARY KEY (id),
+  CONSTRAINT user_referral_conversions_referrer_id_fkey FOREIGN KEY (referrer_id) REFERENCES auth.users(id),
+  CONSTRAINT user_referral_conversions_referred_user_id_fkey FOREIGN KEY (referred_user_id) REFERENCES auth.users(id)
+);
+```
+
+#### `user_invite_shares` Table
+Track invite sharing activity.
+
+```sql
+CREATE TABLE public.user_invite_shares (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  shared_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_invite_shares_pkey PRIMARY KEY (id),
+  CONSTRAINT user_invite_shares_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+```
+
+### Campaign System
+
+#### `campaigns` Table
+Restaurant marketing campaigns.
+
+```sql
+CREATE TABLE public.campaigns (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  restaurant_id uuid,
+  creator_id uuid,
+  title character varying NOT NULL,
+  description text,
+  requirements ARRAY,
+  budget numeric,
+  deadline timestamp with time zone,
+  status character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'review'::character varying, 'completed'::character varying, 'cancelled'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT campaigns_pkey PRIMARY KEY (id),
+  CONSTRAINT campaigns_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id),
+  CONSTRAINT campaigns_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.users(id)
+);
+```
+
+#### `campaign_deliverables` Table
+Campaign deliverables tracking.
+
+```sql
+CREATE TABLE public.campaign_deliverables (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  campaign_id uuid,
+  type character varying,
+  description text,
+  status character varying,
+  submitted_at timestamp with time zone,
+  approved_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT campaign_deliverables_pkey PRIMARY KEY (id),
+  CONSTRAINT campaign_deliverables_campaign_id_fkey FOREIGN KEY (campaign_id) REFERENCES public.campaigns(id)
+);
+```
+
+### Legacy Tables (Deprecated)
+
+#### `board_collaborators` Table
+**DEPRECATED** - Replaced by `board_members`
+
+#### `board_subscriptions` Table
+**DEPRECATED** - Subscription management moved to external system
+
+#### `comments` Table
+**DEPRECATED** - Replaced by `post_comments`
+
+#### `favorite_spots` Table
+**DEPRECATED** - Replaced by `restaurant_saves`
+
+#### `save_boards` Table
+**DEPRECATED** - Replaced by `post_saves`
+
+#### `save_interactions` Table
+**DEPRECATED** - Replaced by `post_likes` and `post_saves`
+
+## Row Level Security (RLS) Policies
+
+### Core Principles
+- Users can only access their own data
+- Public data (restaurants, public posts) is readable by all
+- Private data requires explicit permissions
+- Board/community access controlled by membership
+
+### Key Policies
+
+#### Users Table
+```sql
+-- Users can read their own profile
+CREATE POLICY "Users can view own profile" ON public.users
+  FOR SELECT USING (auth.uid() = id);
+
+-- Users can update their own profile
+CREATE POLICY "Users can update own profile" ON public.users
+  FOR UPDATE USING (auth.uid() = id);
+```
+
+#### Posts Table
+```sql
+-- Public posts visible to all
+CREATE POLICY "Public posts are viewable by all" ON public.posts
+  FOR SELECT USING (privacy = 'public');
+
+-- Friends posts visible to followers
+CREATE POLICY "Friends posts visible to followers" ON public.posts
+  FOR SELECT USING (
+    privacy = 'friends' AND 
+    EXISTS (
+      SELECT 1 FROM public.user_relationships 
+      WHERE follower_id = auth.uid() AND following_id = user_id
+    )
+  );
+
+-- Private posts only visible to author
+CREATE POLICY "Private posts only visible to author" ON public.posts
+  FOR SELECT USING (privacy = 'private' AND user_id = auth.uid());
+```
+
+#### Boards Table
+```sql
+-- Public boards visible to all
+CREATE POLICY "Public boards are viewable by all" ON public.boards
+  FOR SELECT USING (is_private = false);
+
+-- Private boards only visible to members
+CREATE POLICY "Private boards only visible to members" ON public.boards
+  FOR SELECT USING (
+    is_private = true AND 
+    EXISTS (
+      SELECT 1 FROM public.board_members 
+      WHERE board_id = id AND user_id = auth.uid()
+    )
+  );
+```
+
+## Indexes for Performance
+
+### Critical Indexes
+```sql
+-- Restaurant search optimization
+CREATE INDEX idx_restaurants_location ON restaurants USING GIST (location);
+CREATE INDEX idx_restaurants_cuisine_types ON restaurants USING GIN (cuisine_types);
+CREATE INDEX idx_restaurants_google_place_id ON restaurants (google_place_id);
+
+-- Post feed optimization
+CREATE INDEX idx_posts_created_at ON posts (created_at DESC);
+CREATE INDEX idx_posts_user_id ON posts (user_id);
+CREATE INDEX idx_posts_restaurant_id ON posts (restaurant_id);
 
 -- User relationships
-CREATE TABLE user_relationships (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    follower_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    following_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(follower_id, following_id)
-);
+CREATE INDEX idx_user_relationships_follower ON user_relationships (follower_id);
+CREATE INDEX idx_user_relationships_following ON user_relationships (following_id);
 
--- Restaurants table
-CREATE TABLE restaurants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    google_place_id VARCHAR(255) UNIQUE,
-    name VARCHAR(255) NOT NULL,
-    address TEXT,
-    location GEOGRAPHY(POINT),
-    cuisine TEXT[],
-    price_range VARCHAR(4),
-    phone VARCHAR(20),
-    website TEXT,
-    hours JSONB,
-    photos TEXT[],
-    rating DECIMAL(2,1),
-    is_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Boards table
-CREATE TABLE boards (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    cover_image_url TEXT,
-    type VARCHAR(20) CHECK (type IN ('free', 'private', 'paid')),
-    category VARCHAR(50),
-    location VARCHAR(255),
-    tags TEXT[],
-    price DECIMAL(10,2),
-    currency VARCHAR(3) DEFAULT 'USD',
-    billing_type VARCHAR(20),
-    allow_comments BOOLEAN DEFAULT TRUE,
-    allow_saves BOOLEAN DEFAULT TRUE,
-    member_count INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Board collaborators
-CREATE TABLE board_collaborators (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    board_id UUID REFERENCES boards(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(20) DEFAULT 'member',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(board_id, user_id)
-);
-
--- Board restaurants
-CREATE TABLE board_restaurants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    board_id UUID REFERENCES boards(id) ON DELETE CASCADE,
-    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
-    added_by UUID REFERENCES users(id),
-    order_position INTEGER,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(board_id, restaurant_id)
-);
-
--- Board subscriptions (for paid boards)
-CREATE TABLE board_subscriptions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    board_id UUID REFERENCES boards(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    stripe_subscription_id VARCHAR(255),
-    status VARCHAR(20),
-    expires_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(board_id, user_id)
-);
-
--- Restaurant saves/posts
-CREATE TABLE restaurant_saves (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
-    personal_rating INTEGER CHECK (personal_rating >= 1 AND personal_rating <= 5),
-    visit_date DATE,
-    photos TEXT[],
-    notes TEXT,
-    tags TEXT[],
-    would_recommend BOOLEAN,
-    price_range VARCHAR(4),
-    visit_type VARCHAR(20) CHECK (visit_type IN ('dine_in', 'takeout', 'delivery')),
-    privacy VARCHAR(20) CHECK (privacy IN ('public', 'friends', 'private')),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Save board associations
-CREATE TABLE save_boards (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    save_id UUID REFERENCES restaurant_saves(id) ON DELETE CASCADE,
-    board_id UUID REFERENCES boards(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(save_id, board_id)
-);
-
--- Social interactions
-CREATE TABLE save_interactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    save_id UUID REFERENCES restaurant_saves(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    interaction_type VARCHAR(20) CHECK (interaction_type IN ('like', 'save', 'share')),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(save_id, user_id, interaction_type)
-);
-
--- Comments
-CREATE TABLE comments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    save_id UUID REFERENCES restaurant_saves(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    parent_id UUID REFERENCES comments(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Communities
-CREATE TABLE communities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    cover_image_url TEXT,
-    category VARCHAR(50),
-    location VARCHAR(255),
-    admin_id UUID REFERENCES users(id),
-    type VARCHAR(20) CHECK (type IN ('public', 'private', 'paid')),
-    price DECIMAL(10,2),
-    currency VARCHAR(3) DEFAULT 'USD',
-    billing_cycle VARCHAR(20),
-    member_count INTEGER DEFAULT 0,
-    activity_level INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Community members
-CREATE TABLE community_members (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(20) DEFAULT 'member',
-    status VARCHAR(20) DEFAULT 'active',
-    joined_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(community_id, user_id)
-);
-
--- Community posts
-CREATE TABLE community_posts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    images TEXT[],
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Creator campaigns
-CREATE TABLE campaigns (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    restaurant_id UUID REFERENCES restaurants(id),
-    creator_id UUID REFERENCES users(id),
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    requirements TEXT[],
-    budget DECIMAL(10,2),
-    deadline TIMESTAMPTZ,
-    status VARCHAR(20) CHECK (status IN ('pending', 'active', 'review', 'completed', 'cancelled')),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Campaign deliverables
-CREATE TABLE campaign_deliverables (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
-    type VARCHAR(50),
-    description TEXT,
-    status VARCHAR(20),
-    submitted_at TIMESTAMPTZ,
-    approved_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Board membership
+CREATE INDEX idx_board_members_user_id ON board_members (user_id);
+CREATE INDEX idx_board_members_board_id ON board_members (board_id);
 
 -- Notifications
-CREATE TABLE notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50),
-    title VARCHAR(255),
-    body TEXT,
-    data JSONB,
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- User preferences
-CREATE TABLE user_preferences (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    notification_likes BOOLEAN DEFAULT TRUE,
-    notification_comments BOOLEAN DEFAULT TRUE,
-    notification_follows BOOLEAN DEFAULT TRUE,
-    notification_community BOOLEAN DEFAULT TRUE,
-    notification_campaigns BOOLEAN DEFAULT TRUE,
-    email_notifications BOOLEAN DEFAULT FALSE,
-    push_notifications BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Onboarding data
-CREATE TABLE user_onboarding (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    quiz_answers JSONB,
-    favorite_spots JSONB,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Create indexes for performance
-CREATE INDEX idx_restaurants_location ON restaurants USING GIST(location);
-CREATE INDEX idx_restaurant_saves_user_id ON restaurant_saves(user_id);
-CREATE INDEX idx_restaurant_saves_restaurant_id ON restaurant_saves(restaurant_id);
-CREATE INDEX idx_boards_user_id ON boards(user_id);
-CREATE INDEX idx_communities_location ON communities(location);
-CREATE INDEX idx_notifications_user_id ON notifications(user_id, is_read);
-CREATE INDEX idx_user_relationships_follower ON user_relationships(follower_id);
-CREATE INDEX idx_user_relationships_following ON user_relationships(following_id);
+CREATE INDEX idx_notifications_user_id ON notifications (user_id, created_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications (user_id, is_read) WHERE is_read = false;
 ```
 
-### Views for Common Queries
+## API Design Patterns
 
-```sql
--- User stats view
-CREATE VIEW user_stats AS
-SELECT 
-    u.id,
-    COUNT(DISTINCT f1.follower_id) as followers_count,
-    COUNT(DISTINCT f2.following_id) as following_count,
-    COUNT(DISTINCT rs.id) as saves_count,
-    COUNT(DISTINCT b.id) as boards_count
-FROM users u
-LEFT JOIN user_relationships f1 ON u.id = f1.following_id
-LEFT JOIN user_relationships f2 ON u.id = f2.follower_id
-LEFT JOIN restaurant_saves rs ON u.id = rs.user_id
-LEFT JOIN boards b ON u.id = b.user_id
-GROUP BY u.id;
+### RESTful Endpoints
+```
+GET    /api/restaurants          # List restaurants
+GET    /api/restaurants/:id      # Get restaurant details
+POST   /api/restaurants/:id/save # Save restaurant
+DELETE /api/restaurants/:id/save # Unsave restaurant
 
--- Restaurant popularity view
-CREATE VIEW restaurant_popularity AS
-SELECT 
-    r.id,
-    r.name,
-    COUNT(DISTINCT rs.id) as total_saves,
-    AVG(rs.personal_rating) as avg_rating,
-    COUNT(DISTINCT rs.user_id) as unique_savers
-FROM restaurants r
-LEFT JOIN restaurant_saves rs ON r.id = rs.restaurant_id
-GROUP BY r.id;
+GET    /api/posts               # List posts
+POST   /api/posts              # Create post
+GET    /api/posts/:id          # Get post details
+PUT    /api/posts/:id          # Update post
+DELETE /api/posts/:id          # Delete post
+
+GET    /api/boards             # List boards
+POST   /api/boards            # Create board
+GET    /api/boards/:id        # Get board details
+PUT    /api/boards/:id        # Update board
+DELETE /api/boards/:id        # Delete board
+
+GET    /api/users/:id          # Get user profile
+PUT    /api/users/:id          # Update user profile
+POST   /api/users/:id/follow   # Follow user
+DELETE /api/users/:id/follow   # Unfollow user
 ```
 
-## Authentication & Authorization
-
-### Supabase Auth Configuration
-
-1. **Phone Authentication Setup**
-```javascript
-// Initialize Supabase client
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-// Phone sign up
-const { data, error } = await supabase.auth.signUp({
-  phone: '+1234567890',
-  password: 'temporary-password', // Optional, can use OTP only
-})
-
-// Verify OTP
-const { data, error } = await supabase.auth.verifyOtp({
-  phone: '+1234567890',
-  token: '123456',
-  type: 'sms'
-})
-```
-
-2. **Row Level Security (RLS) Policies**
-
-```sql
--- Enable RLS on all tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE restaurant_saves ENABLE ROW LEVEL SECURITY;
-ALTER TABLE boards ENABLE ROW LEVEL SECURITY;
--- ... (enable for all tables)
-
--- Users table policies
-CREATE POLICY "Users can view public profiles" ON users
-    FOR SELECT USING (true);
-
-CREATE POLICY "Users can update own profile" ON users
-    FOR UPDATE USING (auth.uid() = id);
-
--- Restaurant saves policies
-CREATE POLICY "Public saves are viewable by all" ON restaurant_saves
-    FOR SELECT USING (privacy = 'public');
-
-CREATE POLICY "Friends can view friends-only saves" ON restaurant_saves
-    FOR SELECT USING (
-        privacy = 'friends' AND 
-        EXISTS (
-            SELECT 1 FROM user_relationships 
-            WHERE follower_id = auth.uid() 
-            AND following_id = user_id
-        )
-    );
-
-CREATE POLICY "Users can view own saves" ON restaurant_saves
-    FOR SELECT USING (user_id = auth.uid());
-
-CREATE POLICY "Users can create own saves" ON restaurant_saves
-    FOR INSERT WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own saves" ON restaurant_saves
-    FOR UPDATE USING (user_id = auth.uid());
-
--- Boards policies
-CREATE POLICY "Public boards are viewable by all" ON boards
-    FOR SELECT USING (type = 'free');
-
-CREATE POLICY "Private boards viewable by members" ON boards
-    FOR SELECT USING (
-        type = 'private' AND (
-            user_id = auth.uid() OR
-            EXISTS (
-                SELECT 1 FROM board_collaborators
-                WHERE board_id = boards.id
-                AND user_id = auth.uid()
-            )
-        )
-    );
-
-CREATE POLICY "Paid boards viewable by subscribers" ON boards
-    FOR SELECT USING (
-        type = 'paid' AND (
-            user_id = auth.uid() OR
-            EXISTS (
-                SELECT 1 FROM board_subscriptions
-                WHERE board_id = boards.id
-                AND user_id = auth.uid()
-                AND status = 'active'
-                AND expires_at > NOW()
-            )
-        )
-    );
-
--- Communities policies
-CREATE POLICY "Public communities viewable by all" ON communities
-    FOR SELECT USING (type = 'public');
-
-CREATE POLICY "Community members can view private communities" ON communities
-    FOR SELECT USING (
-        type IN ('private', 'paid') AND
-        EXISTS (
-            SELECT 1 FROM community_members
-            WHERE community_id = communities.id
-            AND user_id = auth.uid()
-            AND status = 'active'
-        )
-    );
-```
-
-### User Roles and Permissions
-
-```sql
--- Create custom roles enum
-CREATE TYPE user_role AS ENUM ('user', 'creator', 'restaurant', 'admin');
-
--- Add role to users table
-ALTER TABLE users ADD COLUMN role user_role DEFAULT 'user';
-
--- Function to check user permissions
-CREATE OR REPLACE FUNCTION has_permission(user_id UUID, resource TEXT, action TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
-    user_role user_role;
-BEGIN
-    SELECT role INTO user_role FROM users WHERE id = user_id;
-    
-    -- Define permission logic
-    CASE
-        WHEN resource = 'campaign' AND action = 'create' THEN
-            RETURN user_role IN ('creator', 'restaurant');
-        WHEN resource = 'board' AND action = 'monetize' THEN
-            RETURN user_role IN ('creator', 'user');
-        ELSE
-            RETURN TRUE; -- Default allow for basic actions
-    END CASE;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-## Real-time Features
-
-### Supabase Realtime Configuration
-
-1. **Enable Realtime for Tables**
-```sql
--- Enable realtime for specific tables
-ALTER PUBLICATION supabase_realtime ADD TABLE restaurant_saves;
-ALTER PUBLICATION supabase_realtime ADD TABLE save_interactions;
-ALTER PUBLICATION supabase_realtime ADD TABLE comments;
-ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
-ALTER PUBLICATION supabase_realtime ADD TABLE community_posts;
-```
-
-2. **Client-side Subscriptions**
-```javascript
-// Subscribe to new saves from friends
-const savesSubscription = supabase
-  .channel('friend-saves')
-  .on(
-    'postgres_changes',
-    {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'restaurant_saves',
-      filter: `user_id=in.(${friendIds.join(',')})`
-    },
-    (payload) => {
-      console.log('New save from friend:', payload.new)
-      // Update UI with new save
-    }
-  )
-  .subscribe()
-
-// Subscribe to notifications
-const notificationsSubscription = supabase
-  .channel('user-notifications')
-  .on(
-    'postgres_changes',
-    {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'notifications',
-      filter: `user_id=eq.${userId}`
-    },
-    (payload) => {
-      console.log('New notification:', payload.new)
-      // Show notification to user
-    }
-  )
-  .subscribe()
-
-// Subscribe to community posts
-const communitySubscription = supabase
-  .channel('community-posts')
-  .on(
-    'postgres_changes',
-    {
-      event: '*',
-      schema: 'public',
-      table: 'community_posts',
-      filter: `community_id=eq.${communityId}`
-    },
-    (payload) => {
-      console.log('Community update:', payload)
-      // Update community feed
-    }
-  )
-  .subscribe()
-```
-
-### Notification System
-
-```sql
--- Function to create notifications
-CREATE OR REPLACE FUNCTION create_notification(
-    p_user_id UUID,
-    p_type VARCHAR,
-    p_title VARCHAR,
-    p_body TEXT,
-    p_data JSONB
-) RETURNS UUID AS $$
-DECLARE
-    notification_id UUID;
-BEGIN
-    INSERT INTO notifications (user_id, type, title, body, data)
-    VALUES (p_user_id, p_type, p_title, p_body, p_data)
-    RETURNING id INTO notification_id;
-    
-    -- Trigger push notification if enabled
-    PERFORM send_push_notification(p_user_id, p_title, p_body);
-    
-    RETURN notification_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger for like notifications
-CREATE OR REPLACE FUNCTION notify_on_like() RETURNS TRIGGER AS $$
-BEGIN
-    -- Don't notify for self-likes
-    IF NEW.user_id != (SELECT user_id FROM restaurant_saves WHERE id = NEW.save_id) THEN
-        PERFORM create_notification(
-            (SELECT user_id FROM restaurant_saves WHERE id = NEW.save_id),
-            'like',
-            'New Like',
-            (SELECT name FROM users WHERE id = NEW.user_id) || ' liked your save',
-            jsonb_build_object('save_id', NEW.save_id, 'user_id', NEW.user_id)
-        );
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_like_notification
-AFTER INSERT ON save_interactions
-FOR EACH ROW
-WHEN (NEW.interaction_type = 'like')
-EXECUTE FUNCTION notify_on_like();
-```
-
-## API Design
-
-### Edge Functions for Complex Operations
-
-1. **Persona Assignment**
+### Real-time Subscriptions
 ```typescript
-// supabase/functions/assign-persona/index.ts
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-interface QuizAnswer {
-  questionId: number
-  answer: string
-}
-
-const personaWeights = {
-  trendsetter: { dining_frequency: 2, cuisine_adventure: 3, ... },
-  culinary_adventurer: { cuisine_adventure: 5, price_sensitivity: 1, ... },
-  // ... other personas
-}
-
-serve(async (req) => {
-  const { answers, userId } = await req.json()
-  
-  // Calculate persona scores
-  const scores = calculatePersonaScores(answers)
-  const assignedPersona = getTopPersona(scores)
-  
-  // Update user profile
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+// Post feed updates
+supabase
+  .channel('posts')
+  .on('postgres_changes', 
+    { event: 'INSERT', schema: 'public', table: 'posts' },
+    (payload) => handleNewPost(payload)
   )
-  
-  const { error } = await supabase
-    .from('users')
-    .update({ persona: assignedPersona })
-    .eq('id', userId)
-  
-  return new Response(
-    JSON.stringify({ persona: assignedPersona }),
-    { headers: { 'Content-Type': 'application/json' } }
+  .subscribe();
+
+// Notification updates
+supabase
+  .channel('notifications')
+  .on('postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+    (payload) => handleNewNotification(payload)
   )
-})
+  .subscribe();
 ```
 
-2. **Restaurant Search and Import**
-```typescript
-// supabase/functions/search-restaurants/index.ts
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+## Data Flow Patterns
 
-serve(async (req) => {
-  const { query, location, method } = await req.json()
-  
-  if (method === 'text') {
-    // Search in database first
-    const supabase = createClient(...)
-    const { data: dbResults } = await supabase
-      .from('restaurants')
-      .select('*')
-      .textSearch('name', query)
-      .limit(10)
-    
-    // If not enough results, search Google Places
-    if (dbResults.length < 5) {
-      const googleResults = await searchGooglePlaces(query, location)
-      // Import new restaurants to database
-      for (const place of googleResults) {
-        await importRestaurant(place)
-      }
-    }
-  }
-  
-  return new Response(JSON.stringify({ results }))
-})
-```
+### Restaurant Discovery
+1. **Search**: User searches restaurants via Google Places API
+2. **Cache**: Results cached in `restaurants` table
+3. **Enrich**: Additional data added from Troodie community
+4. **Rank**: Results ranked by relevance and community activity
 
-3. **Feed Algorithm**
-```typescript
-// supabase/functions/generate-feed/index.ts
-serve(async (req) => {
-  const { userId, page = 1, limit = 20 } = await req.json()
-  
-  // Get user data
-  const user = await getUser(userId)
-  const friendIds = await getFriendIds(userId)
-  
-  // Build personalized feed
-  const feedItems = await supabase
-    .from('restaurant_saves')
-    .select(`
-      *,
-      restaurant:restaurants(*),
-      user:users(*),
-      interactions:save_interactions(count)
-    `)
-    .or(`
-      user_id.in.(${friendIds.join(',')}),
-      and(privacy.eq.public,restaurant.cuisine.cs.{${user.persona}})
-    `)
-    .order('created_at', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
-  
-  // Apply persona-based ranking
-  const rankedItems = rankByPersona(feedItems, user.persona)
-  
-  return new Response(JSON.stringify({ feed: rankedItems }))
-})
-```
+### Post Creation Flow
+1. **Validation**: Check user permissions and content
+2. **Creation**: Insert into `posts` table
+3. **Media**: Upload images to Supabase Storage
+4. **Notifications**: Trigger notifications to followers
+5. **Feed**: Update real-time feeds
 
-### RESTful Endpoints via PostgREST
+### Board Management
+1. **Creation**: User creates board with settings
+2. **Membership**: Add/remove members with roles
+3. **Content**: Add restaurants to board
+4. **Sharing**: Share board with community
+5. **Monetization**: Handle paid board subscriptions
 
-Supabase automatically generates RESTful APIs for your tables. Examples:
+## Security Considerations
 
-```bash
-# Get user profile
-GET /rest/v1/users?id=eq.{userId}
+### Authentication
+- Email OTP via Supabase Auth
+- Session management with refresh tokens
+- Device fingerprinting for security
 
-# Get restaurant saves with related data
-GET /rest/v1/restaurant_saves?select=*,restaurant:restaurants(*),user:users(*)&user_id=eq.{userId}
+### Authorization
+- Row Level Security (RLS) policies
+- Role-based access control
+- Content privacy controls
 
-# Create a new save
-POST /rest/v1/restaurant_saves
-{
-  "user_id": "...",
-  "restaurant_id": "...",
-  "personal_rating": 5,
-  "notes": "Amazing experience!"
-}
+### Data Protection
+- PII encryption for sensitive data
+- GDPR compliance for user data
+- Data retention policies
 
-# Search restaurants by location
-GET /rest/v1/restaurants?select=*&location=near.{lat,lng,radius}
+## Performance Optimization
 
-# Get trending restaurants
-GET /rest/v1/restaurants?select=*,saves:restaurant_saves(count)&order=saves.count.desc&limit=10
-```
+### Caching Strategy
+- Redis for session data
+- CDN for static assets
+- Database query result caching
 
-## Supabase Setup Guide
+### Database Optimization
+- Connection pooling
+- Query optimization
+- Index maintenance
 
-### Step 1: Create Supabase Project
+### Mobile Optimization
+- Image compression and resizing
+- Lazy loading for feeds
+- Offline data synchronization
 
-1. Go to [app.supabase.com](https://app.supabase.com)
-2. Create a new project
-3. Save your project URL and anon key
+## Monitoring & Analytics
 
-### Step 2: Database Setup
+### Key Metrics
+- User engagement (posts, saves, follows)
+- Restaurant discovery and saves
+- Board creation and sharing
+- Notification delivery rates
 
-1. Run the schema SQL in Supabase SQL editor
-2. Enable Row Level Security on all tables
-3. Create RLS policies
-4. Enable Realtime for required tables
+### Error Tracking
+- Database query performance
+- API response times
+- Real-time subscription health
+- Push notification delivery
 
-### Step 3: Authentication Setup
+## Migration Strategy
 
-1. Enable Phone Auth in Authentication settings
-2. Configure SMS provider (Twilio):
-   ```
-   - Add Twilio Account SID
-   - Add Twilio Auth Token
-   - Add Twilio Message Service SID
-   - Set SMS template
-   ```
+### Schema Changes
+1. **Development**: Test changes in development environment
+2. **Staging**: Validate in staging with production data
+3. **Production**: Deploy with zero-downtime migrations
+4. **Rollback**: Maintain rollback procedures
 
-### Step 4: Storage Setup
+### Data Migration
+- Preserve existing data during schema changes
+- Validate data integrity after migrations
+- Monitor performance impact
 
-```sql
--- Create storage buckets
-INSERT INTO storage.buckets (id, name, public) VALUES
-  ('avatars', 'avatars', true),
-  ('restaurant-photos', 'restaurant-photos', true),
-  ('board-covers', 'board-covers', true),
-  ('community-images', 'community-images', true);
+## Future Considerations
 
--- Storage policies
-CREATE POLICY "Avatar images are publicly accessible"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'avatars');
+### Scalability
+- Horizontal scaling with read replicas
+- Microservices architecture for specific features
+- Edge computing for global performance
 
-CREATE POLICY "Users can upload their own avatar"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+### Feature Additions
+- Advanced search and filtering
+- AI-powered recommendations
+- Social commerce features
+- Creator marketplace expansion
 
-CREATE POLICY "Users can update their own avatar"
-ON storage.objects FOR UPDATE
-USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-```
+---
 
-### Step 5: Edge Functions Deployment
-
-```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Login to Supabase
-supabase login
-
-# Initialize functions
-supabase functions new assign-persona
-supabase functions new search-restaurants
-supabase functions new generate-feed
-supabase functions new process-payment
-
-# Deploy functions
-supabase functions deploy assign-persona
-supabase functions deploy search-restaurants
-# ... deploy all functions
-```
-
-### Step 6: Environment Variables
-
-Set these in your Expo app:
-
-```javascript
-// .env
-SUPABASE_URL=your-project-url
-SUPABASE_ANON_KEY=your-anon-key
-GOOGLE_PLACES_API_KEY=your-google-key
-STRIPE_PUBLISHABLE_KEY=your-stripe-key
-```
-
-### Step 7: Client Integration
-
-```javascript
-// lib/supabase.ts
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-})
-```
-
-## Security & Performance
-
-### Security Best Practices
-
-1. **API Key Management**
-   - Never expose service role key in client
-   - Use environment variables
-   - Rotate keys regularly
-
-2. **Data Validation**
-   ```sql
-   -- Add constraints
-   ALTER TABLE restaurant_saves 
-   ADD CONSTRAINT valid_rating CHECK (personal_rating >= 1 AND personal_rating <= 5);
-   
-   ALTER TABLE users 
-   ADD CONSTRAINT valid_username CHECK (username ~ '^[a-zA-Z0-9_]{3,30}$');
-   ```
-
-3. **Rate Limiting**
-   ```sql
-   -- Function to check rate limits
-   CREATE OR REPLACE FUNCTION check_rate_limit(
-       p_user_id UUID,
-       p_action VARCHAR,
-       p_limit INTEGER,
-       p_window INTERVAL
-   ) RETURNS BOOLEAN AS $$
-   DECLARE
-       action_count INTEGER;
-   BEGIN
-       SELECT COUNT(*) INTO action_count
-       FROM user_actions
-       WHERE user_id = p_user_id
-       AND action = p_action
-       AND created_at > NOW() - p_window;
-       
-       RETURN action_count < p_limit;
-   END;
-   $$ LANGUAGE plpgsql;
-   ```
-
-### Performance Optimization
-
-1. **Database Indexes**
-   ```sql
-   -- Composite indexes for common queries
-   CREATE INDEX idx_saves_user_created ON restaurant_saves(user_id, created_at DESC);
-   CREATE INDEX idx_saves_restaurant_rating ON restaurant_saves(restaurant_id, personal_rating);
-   CREATE INDEX idx_boards_type_created ON boards(type, created_at DESC);
-   ```
-
-2. **Materialized Views**
-   ```sql
-   -- Trending restaurants materialized view
-   CREATE MATERIALIZED VIEW trending_restaurants AS
-   SELECT 
-       r.*,
-       COUNT(DISTINCT rs.user_id) as saves_last_week,
-       AVG(rs.personal_rating) as avg_rating_last_week
-   FROM restaurants r
-   JOIN restaurant_saves rs ON r.id = rs.restaurant_id
-   WHERE rs.created_at > NOW() - INTERVAL '7 days'
-   GROUP BY r.id
-   ORDER BY saves_last_week DESC;
-   
-   -- Refresh periodically
-   CREATE OR REPLACE FUNCTION refresh_trending()
-   RETURNS void AS $$
-   BEGIN
-       REFRESH MATERIALIZED VIEW trending_restaurants;
-   END;
-   $$ LANGUAGE plpgsql;
-   ```
-
-3. **Caching Strategy**
-   - Use Supabase CDN for images
-   - Cache restaurant data locally
-   - Implement pagination for feeds
-   - Use connection pooling
-
-## Deployment Strategy
-
-### Development Workflow
-
-1. **Local Development**
-   ```bash
-   # Use Supabase CLI for local development
-   supabase start
-   supabase db reset
-   ```
-
-2. **Staging Environment**
-   - Create separate Supabase project for staging
-   - Mirror production schema
-   - Use test data
-
-3. **Production Deployment**
-   ```bash
-   # Database migrations
-   supabase db push
-   
-   # Deploy edge functions
-   supabase functions deploy --project-ref your-project-ref
-   
-   # Update environment variables
-   supabase secrets set STRIPE_SECRET_KEY=your-key
-   ```
-
-### Monitoring & Analytics
-
-1. **Database Monitoring**
-   - Enable Supabase dashboard metrics
-   - Set up alerts for slow queries
-   - Monitor storage usage
-
-2. **Application Monitoring**
-   ```javascript
-   // Track user events
-   const trackEvent = async (event: string, properties: any) => {
-     await supabase.from('analytics_events').insert({
-       user_id: userId,
-       event,
-       properties,
-       created_at: new Date()
-     })
-   }
-   ```
-
-3. **Error Tracking**
-   - Integrate Sentry for error monitoring
-   - Log Edge Function errors
-   - Monitor API response times
-
-### Backup Strategy
-
-1. **Automated Backups**
-   - Enable Point-in-Time Recovery (PITR)
-   - Daily automated backups
-   - Test restore procedures
-
-2. **Data Export**
-   ```sql
-   -- Regular exports of critical data
-   COPY (SELECT * FROM users) TO 'users_backup.csv' CSV HEADER;
-   COPY (SELECT * FROM restaurants) TO 'restaurants_backup.csv' CSV HEADER;
-   ```
-
-## Next Steps
-
-1. **Phase 1: Core Features (Months 1-2)**
-   - User authentication and profiles
-   - Restaurant database and saves
-   - Basic social features
-   - Free boards
-
-2. **Phase 2: Social & Discovery (Months 3-4)**
-   - Friend network
-   - Activity feeds
-   - Explore with recommendations
-   - Communities
-
-3. **Phase 3: Monetization (Months 5-6)**
-   - Paid boards
-   - Premium communities
-   - Creator dashboard
-   - Payment processing
-
-4. **Phase 4: Advanced Features (Months 7+)**
-   - AI-powered recommendations
-   - Advanced search
-   - Analytics dashboard
-   - Third-party integrations
-
-## Conclusion
-
-This backend architecture provides a scalable foundation for Troodie using Supabase's powerful features. The combination of PostgreSQL's robustness, real-time subscriptions, built-in authentication, and edge functions creates a modern, performant backend that can grow with your user base.
-
-Key advantages of this architecture:
-- **Rapid development** with Supabase's auto-generated APIs
-- **Real-time features** out of the box
-- **Scalability** with PostgreSQL and CDN
-- **Security** with RLS and authentication
-- **Cost-effective** with usage-based pricing
-
-Remember to regularly review and optimize your database queries, monitor performance metrics, and gather user feedback to continuously improve the platform.
+**Last Updated**: [Current Date]
+**Version**: 1.0
+**Maintainer**: Engineering Team
