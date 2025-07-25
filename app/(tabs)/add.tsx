@@ -119,60 +119,31 @@ export default function AddScreen() {
     // Show different content based on authentication status
     const isAuthenticated = !!user;
     
+    if (isAuthenticated) {
+      // Don't show CTA for authenticated users
+      return null;
+    }
+    
     return (
       <View style={styles.communitySection}>
-        <View style={styles.communityCTA}>
+        <TouchableOpacity 
+          style={styles.communityCTA}
+          onPress={() => router.push('/onboarding')}
+          activeOpacity={0.8}
+        >
           <View style={styles.communityIcon}>
-            <Users2 size={32} color={designTokens.colors.primaryOrange} />
+            <Users2 size={24} color="#FFFFFF" />
           </View>
           
           <View style={styles.communityContent}>
-            <View style={styles.communityHeader}>
-              <Text style={styles.communityTitle}>
-                {isAuthenticated ? 'Explore the Community' : 'Join the Troodie Community'}
-              </Text>
-              <View style={styles.communityBadge}>
-                <Sparkles size={12} color="#FFB800" />
-                <Text style={styles.communityBadgeText}>New</Text>
-              </View>
-            </View>
-            
+            <Text style={styles.communityTitle}>Join Communities</Text>
             <Text style={styles.communityDescription}>
-              Connect with fellow food lovers, share recommendations, and discover hidden gems together.
+              Connect with like-minded Troodies
             </Text>
-            
-            <View style={styles.communityBenefits}>
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>Follow friends and foodies</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>Share your favorite spots</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>Get personalized recommendations</Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.communityButton} 
-              onPress={() => {
-                if (isAuthenticated) {
-                  router.push('/explore');
-                } else {
-                  router.push('/onboarding');
-                }
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.communityButtonText}>
-                {isAuthenticated ? 'Explore Community' : 'Join Now'}
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
+          
+          <View style={styles.communityIndicator} />
+        </TouchableOpacity>
       </View>
     );
   };
@@ -380,88 +351,44 @@ const styles = StyleSheet.create({
   },
   communitySection: {
     paddingHorizontal: designTokens.spacing.lg,
-    marginBottom: designTokens.spacing.xxl,
+    marginBottom: designTokens.spacing.xl,
   },
   communityCTA: {
     backgroundColor: designTokens.colors.white,
     borderRadius: designTokens.borderRadius.lg,
-    padding: designTokens.spacing.xl,
+    padding: designTokens.spacing.lg,
     borderWidth: 1,
     borderColor: designTokens.colors.borderLight,
     ...designTokens.shadows.card,
     flexDirection: 'row',
-    gap: designTokens.spacing.lg,
+    alignItems: 'center',
+    gap: designTokens.spacing.md,
   },
   communityIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: designTokens.borderRadius.full,
-    backgroundColor: designTokens.colors.primaryOrange + '1A',
+    width: 48,
+    height: 48,
+    borderRadius: designTokens.borderRadius.md,
+    backgroundColor: '#7C3AED',
     justifyContent: 'center',
     alignItems: 'center',
   },
   communityContent: {
     flex: 1,
   },
-  communityHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: designTokens.spacing.sm,
-    marginBottom: designTokens.spacing.sm,
-  },
   communityTitle: {
-    ...designTokens.typography.cardTitle,
-    color: designTokens.colors.textDark,
-  },
-  communityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFB800' + '1A',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: designTokens.borderRadius.full,
-  },
-  communityBadgeText: {
-    fontSize: 11,
+    ...designTokens.typography.detailText,
     fontFamily: 'Inter_600SemiBold',
-    color: '#FFB800',
+    color: designTokens.colors.textDark,
+    marginBottom: 2,
   },
   communityDescription: {
-    ...designTokens.typography.detailText,
-    color: designTokens.colors.textMedium,
-    marginBottom: designTokens.spacing.lg,
-    lineHeight: 20,
-  },
-  communityBenefits: {
-    gap: designTokens.spacing.sm,
-    marginBottom: designTokens.spacing.lg,
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: designTokens.spacing.sm,
-  },
-  benefitDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: designTokens.colors.primaryOrange,
-  },
-  benefitText: {
     ...designTokens.typography.smallText,
-    color: designTokens.colors.textDark,
+    color: designTokens.colors.textMedium,
   },
-  communityButton: {
+  communityIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: designTokens.colors.primaryOrange,
-    paddingVertical: designTokens.spacing.md,
-    paddingHorizontal: designTokens.spacing.xl,
-    borderRadius: designTokens.borderRadius.md,
-    alignItems: 'center',
-  },
-  communityButtonText: {
-    ...designTokens.typography.detailText,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.white,
   },
 });
