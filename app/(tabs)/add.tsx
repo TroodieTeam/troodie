@@ -7,8 +7,7 @@ import {
   FolderPlus,
   Search,
   UserPlus,
-  Users2,
-  Sparkles
+  Users2
 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -42,6 +41,18 @@ export default function AddScreen() {
       navigateTo: '/add/create-board'
     },
   ];
+
+  // Add Join Communities option for non-authenticated users
+  if (!user) {
+    addOptions.push({
+      id: 'community',
+      title: 'Join Communities',
+      description: 'Connect with like-minded Troodies',
+      icon: Users2,
+      color: '#7C3AED',
+      navigateTo: '/onboarding'
+    });
+  }
 
   const progressCard: ProgressCard = {
     title: 'Keep creating!',
@@ -115,38 +126,6 @@ export default function AddScreen() {
     </View>
   );
 
-  const renderJoinCommunityCTA = () => {
-    // Show different content based on authentication status
-    const isAuthenticated = !!user;
-    
-    if (isAuthenticated) {
-      // Don't show CTA for authenticated users
-      return null;
-    }
-    
-    return (
-      <View style={styles.communitySection}>
-        <TouchableOpacity 
-          style={styles.communityCTA}
-          onPress={() => router.push('/onboarding')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.communityIcon}>
-            <Users2 size={24} color="#FFFFFF" />
-          </View>
-          
-          <View style={styles.communityContent}>
-            <Text style={styles.communityTitle}>Join Communities</Text>
-            <Text style={styles.communityDescription}>
-              Connect with like-minded Troodies
-            </Text>
-          </View>
-          
-          <View style={styles.communityIndicator} />
-        </TouchableOpacity>
-      </View>
-    );
-  };
 
   const renderProgressGamification = () => (
     <View style={styles.progressCard}>
@@ -166,7 +145,6 @@ export default function AddScreen() {
         {renderHeader()}
         {renderPrimaryActions()}
         {renderQuickActions()}
-        {renderJoinCommunityCTA()}
         {renderProgressGamification()}
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -348,47 +326,5 @@ const styles = StyleSheet.create({
     ...designTokens.typography.smallText,
     color: designTokens.colors.textMedium,
     lineHeight: 18,
-  },
-  communitySection: {
-    paddingHorizontal: designTokens.spacing.lg,
-    marginBottom: designTokens.spacing.xl,
-  },
-  communityCTA: {
-    backgroundColor: designTokens.colors.white,
-    borderRadius: designTokens.borderRadius.lg,
-    padding: designTokens.spacing.lg,
-    borderWidth: 1,
-    borderColor: designTokens.colors.borderLight,
-    ...designTokens.shadows.card,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: designTokens.spacing.md,
-  },
-  communityIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: designTokens.borderRadius.md,
-    backgroundColor: '#7C3AED',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  communityContent: {
-    flex: 1,
-  },
-  communityTitle: {
-    ...designTokens.typography.detailText,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.textDark,
-    marginBottom: 2,
-  },
-  communityDescription: {
-    ...designTokens.typography.smallText,
-    color: designTokens.colors.textMedium,
-  },
-  communityIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: designTokens.colors.primaryOrange,
   },
 });
