@@ -38,6 +38,8 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [boardsWithRestaurant, setBoardsWithRestaurant] = useState<string[]>([]);
+  const [quickSavesBoard, setQuickSavesBoard] = useState<Board | null>(null);
+  const [saveToQuickSaves, setSaveToQuickSaves] = useState(true);
 
   useEffect(() => {
     if (visible && user) {
@@ -50,13 +52,22 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
     
     try {
       setLoading(true);
-      const [userBoards, restaurantBoards] = await Promise.all([
+      const [userBoards, restaurantBoards, quickSaves] = await Promise.all([
         boardService.getUserBoards(user.id),
-        boardService.getBoardsForRestaurant(restaurantId, user.id)
+        boardService.getBoardsForRestaurant(restaurantId, user.id),
+        boardService.getUserQuickSavesBoard(user.id)
       ]);
       
-      setBoards(userBoards);
+      // Filter out Quick Saves board from regular boards
+      const regularBoards = userBoards.filter(b => b.title !== 'Quick Saves');
+      setBoards(regularBoards);
       setBoardsWithRestaurant(restaurantBoards.map(b => b.id));
+      setQuickSavesBoard(quickSaves);
+      
+      // Check if Quick Saves already has this restaurant
+      if (quickSaves && restaurantBoards.some(b => b.id === quickSaves.id)) {
+        setSaveToQuickSaves(false);
+      }
     } catch (error) {
       console.error('Error loading boards:', error);
       Alert.alert('Error', 'Failed to load boards');
@@ -66,19 +77,44 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
   };
 
   const handleSaveToBoard = async () => {
-    if (!selectedBoardId || !user) return;
+    if (!user) return;
 
     setSaving(true);
     try {
-      await boardService.addRestaurantToBoard(selectedBoardId, restaurantId, user.id);
-      Alert.alert('Success', `Added ${restaurantName} to your board!`);
+      const saves = [];
+      
+      // Save to Quick Saves if selected
+      if (saveToQuickSaves) {
+        saves.push(boardService.saveRestaurantToQuickSaves(user.id, restaurantId));
+      }
+      
+      // Save to selected board if any
+      if (selectedBoardId) {
+        saves.push(boardService.addRestaurantToBoard(selectedBoardId, restaurantId, user.id));
+      }
+      
+      if (saves.length === 0) {
+        Alert.alert('Info', 'Please select at least one board');
+        setSaving(false);
+        return;
+      }
+      
+      await Promise.all(saves);
+      
+      const message = saves.length > 1 
+        ? `Added ${restaurantName} to Quick Saves and your board!`
+        : saveToQuickSaves 
+          ? `Added ${restaurantName} to Quick Saves!`
+          : `Added ${restaurantName} to your board!`;
+      
+      Alert.alert('Success', message);
       onSuccess?.();
       onClose();
     } catch (error: any) {
       if (error.message?.includes('already exists')) {
-        Alert.alert('Info', 'This restaurant is already in the selected board');
+        Alert.alert('Info', 'This restaurant is already saved to one of the selected boards');
       } else {
-        Alert.alert('Error', 'Failed to add restaurant to board');
+        Alert.alert('Error', 'Failed to save restaurant');
       }
     } finally {
       setSaving(false);
@@ -152,7 +188,40 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
           ) : (
             <>
               <ScrollView style={styles.boardsList} showsVerticalScrollIndicator={false}>
-                {boards.map(renderBoard)}
+                {/* Quick Saves option */}
+                {quickSavesBoard && (
+                  <TouchableOpacity
+                    style={[
+                      styles.quickSavesItem,
+                      saveToQuickSaves && styles.quickSavesItemSelected,
+                      boardsWithRestaurant.includes(quickSavesBoard.id) && styles.boardItemDisabled
+                    ]}
+                    onPress={() => !boardsWithRestaurant.includes(quickSavesBoard.id) && setSaveToQuickSaves(!saveToQuickSaves)}
+                    disabled={boardsWithRestaurant.includes(quickSavesBoard.id)}
+                  >
+                    <View style={styles.boardInfo}>
+                      <Text style={styles.quickSavesTitle}>Quick Saves</Text>
+                      <Text style={styles.quickSavesMeta}>Your default saved restaurants</Text>
+                    </View>
+                    {boardsWithRestaurant.includes(quickSavesBoard.id) ? (
+                      <View style={styles.checkmark}>
+                        <Check size={16} color="#10B981" />
+                      </View>
+                    ) : (
+                      <View style={[styles.checkbox, saveToQuickSaves && styles.checkboxSelected]}>
+                        {saveToQuickSaves && <Check size={14} color="#FFFFFF" />}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
+                
+                {/* Other boards section */}
+                {boards.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Your Boards</Text>
+                    {boards.map(renderBoard)}
+                  </>
+                )}
                 
                 <TouchableOpacity style={styles.createBoardButton} onPress={handleCreateNewBoard}>
                   <Plus size={20} color={theme.colors.primary} />
@@ -164,10 +233,11 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.saveButton,
-                    (!selectedBoardId || saving) && styles.saveButtonDisabled
+                    (!selectedBoardId && !saveToQuickSaves) && styles.saveButtonDisabled,
+                    saving && styles.saveButtonDisabled
                   ]}
                   onPress={handleSaveToBoard}
-                  disabled={!selectedBoardId || saving}
+                  disabled={(!selectedBoardId && !saveToQuickSaves) || saving}
                 >
                   {saving ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
@@ -321,5 +391,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
+  },
+  quickSavesItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginHorizontal: -20,
+    backgroundColor: '#F8F9FA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 16,
+  },
+  quickSavesItemSelected: {
+    backgroundColor: theme.colors.primary + '10',
+  },
+  quickSavesTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  quickSavesMeta: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#CCC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: 8,
   },
 });
