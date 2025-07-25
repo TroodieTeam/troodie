@@ -1,7 +1,7 @@
 import { designTokens } from '@/constants/designTokens';
+import { useAuth } from '@/contexts/AuthContext';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   Camera,
   FolderPlus,
@@ -40,19 +40,15 @@ export default function AddScreen() {
       color: '#3B82F6',
       navigateTo: '/add/create-board'
     },
-  ];
-
-  // Add Join Communities option for non-authenticated users
-  if (!user) {
-    addOptions.push({
+    {
       id: 'community',
-      title: 'Join Communities',
-      description: 'Connect with like-minded Troodies',
+      title: user ? 'Create Community' : 'Join Communities',
+      description: user ? 'Build your Troodie network' : 'Connect with like-minded Troodies',
       icon: Users2,
       color: '#7C3AED',
-      navigateTo: '/onboarding'
-    });
-  }
+      navigateTo: user ? '/add/create-community' : '/onboarding'
+    }
+  ];
 
   const progressCard: ProgressCard = {
     title: 'Keep creating!',

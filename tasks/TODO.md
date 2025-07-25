@@ -98,10 +98,11 @@
 | [6.9 Implement Traffic Light Rating System](./task-6-9-traffic-light-rating.md) | 🔴 | High | 4 days | - | Red/Yellow/Green rating system for restaurants |
 | [6.10 Enhance Post Functionality for External Content](./task-6-10-external-content-posts.md) | 🔴 | Medium | 3 days | - | Support for saving posts from external sites |
 | [6.11 Implement Perfect for You Section](./task-6-11-perfect-for-you-section.md) | 🔴 | High | 5 days | - | Personalized recommendations on homepage |
+| [6.12 Update Build Your Network Section](./task-6-12-update-build-your-network-section.md) | 🔴 | Medium | 2 days | - | Create Board, Create Post, Join Community CTAs |
 
 **Epic Status:** Not Started  
-**Epic Progress:** 1/11 tasks completed (9%)  
-**Estimated Duration:** 28 days
+**Epic Progress:** 1/12 tasks completed (8%)  
+**Estimated Duration:** 30 days
 
 ---
 
@@ -160,13 +161,13 @@
 
 ## Overall Progress Summary
 
-**Total Tasks:** 21  
-**Completed:** 9 (43%)  
+**Total Tasks:** 22  
+**Completed:** 9 (41%)  
 **In Progress:** 0 (0%)  
-**Not Started:** 12 (57%)  
+**Not Started:** 13 (59%)  
 **Blocked:** 0 (0%)
 
-**Total Estimated Duration:** 74 days (~15 weeks)
+**Total Estimated Duration:** 76 days (~15 weeks)
 
 ---
 
