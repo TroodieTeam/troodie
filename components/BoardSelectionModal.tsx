@@ -15,6 +15,8 @@ import { boardService } from '@/services/boardService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Board } from '@/types/board';
 import { useRouter } from 'expo-router';
+import { TrafficLightRating } from '@/components/TrafficLightRating';
+import { TrafficLightRating as TLRating } from '@/services/ratingService';
 
 interface BoardSelectionModalProps {
   visible: boolean;
@@ -40,6 +42,7 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
   const [boardsWithRestaurant, setBoardsWithRestaurant] = useState<string[]>([]);
   const [quickSavesBoard, setQuickSavesBoard] = useState<Board | null>(null);
   const [saveToQuickSaves, setSaveToQuickSaves] = useState(true);
+  const [selectedRating, setSelectedRating] = useState<TLRating | undefined>();
 
   useEffect(() => {
     if (visible && user) {
@@ -178,7 +181,17 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
 
           <View style={styles.restaurantInfo}>
             <Text style={styles.restaurantName}>{restaurantName}</Text>
-            <Text style={styles.subtitle}>Select a board to save this restaurant</Text>
+            <Text style={styles.subtitle}>Rate and save this restaurant</Text>
+          </View>
+
+          <View style={styles.ratingSection}>
+            <Text style={styles.ratingTitle}>How was it?</Text>
+            <TrafficLightRating
+              restaurantId={restaurantId}
+              onRatingChange={setSelectedRating}
+              showSummary={false}
+              size="medium"
+            />
           </View>
 
           {loading ? (
@@ -438,5 +451,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
     marginTop: 8,
+  },
+  ratingSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  ratingTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
   },
 });
