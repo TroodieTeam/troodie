@@ -2,6 +2,7 @@ import { BoardCard } from '@/components/BoardCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
 import { PostCard } from '@/components/PostCard';
+import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,9 +12,11 @@ import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
-import { Board } from '@/types/board';
+import { restaurantService } from '@/services/restaurantService';
+import { Board, BoardRestaurant } from '@/types/board';
 import { PersonaType } from '@/types/onboarding';
 import { PostWithUser } from '@/types/post';
+import { RestaurantInfo } from '@/types/core';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   Award,
@@ -31,6 +34,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  RefreshControl,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -38,14 +42,14 @@ import {
   View
 } from 'react-native';
 
-type TabType = 'boards' | 'posts';
+type TabType = 'boards' | 'posts' | 'quicksaves';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { userState } = useApp();
   const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
-  const [activeTab, setActiveTab] = useState<TabType>('boards');
+  const [activeTab, setActiveTab] = useState<TabType>('quicksaves');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -56,6 +60,9 @@ export default function ProfileScreen() {
   const [loadingBoards, setLoadingBoards] = useState(true);
   const [posts, setPosts] = useState<PostWithUser[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [quickSaves, setQuickSaves] = useState<Array<BoardRestaurant & { restaurant?: RestaurantInfo }>>([]);
+  const [loadingQuickSaves, setLoadingQuickSaves] = useState(true);
+  const [refreshingQuickSaves, setRefreshingQuickSaves] = useState(false);
   
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
                  (onboardingState.persona ? personas[onboardingState.persona] : null);
@@ -67,16 +74,24 @@ export default function ProfileScreen() {
       loadAchievements();
       loadBoards();
       loadPosts();
+      loadQuickSaves();
     }
   }, [user?.id]);
 
-  // Refresh posts when screen comes into focus
+  // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       if (user?.id) {
-        loadPosts(); // Refresh posts when screen is focused
+        // Refresh Quick Saves if it's the active tab
+        if (activeTab === 'quicksaves') {
+          loadQuickSaves();
+        } else if (activeTab === 'posts') {
+          loadPosts();
+        } else if (activeTab === 'boards') {
+          loadBoards();
+        }
       }
-    }, [user?.id])
+    }, [user?.id, activeTab])
   );
 
   const loadProfile = async () => {
@@ -121,6 +136,40 @@ export default function ProfileScreen() {
     } finally {
       setLoadingBoards(false);
     }
+  };
+
+  const loadQuickSaves = async (isRefreshing = false) => {
+    if (!user?.id) return;
+    
+    try {
+      if (!isRefreshing) {
+        setLoadingQuickSaves(true);
+      }
+      const saves = await boardService.getQuickSavesRestaurants(user.id);
+      
+      // Load restaurant details for each save
+      const savesWithRestaurants = await Promise.all(
+        saves.map(async (save) => {
+          const restaurant = await restaurantService.getRestaurantById(save.restaurant_id);
+          return {
+            ...save,
+            restaurant: restaurant || undefined
+          };
+        })
+      );
+      
+      setQuickSaves(savesWithRestaurants.filter(save => save.restaurant));
+    } catch (error) {
+      console.error('Error loading quick saves:', error);
+    } finally {
+      setLoadingQuickSaves(false);
+      setRefreshingQuickSaves(false);
+    }
+  };
+
+  const onRefreshQuickSaves = async () => {
+    setRefreshingQuickSaves(true);
+    await loadQuickSaves(true);
   };
 
   const loadPosts = async () => {
@@ -327,6 +376,16 @@ export default function ProfileScreen() {
     <View style={styles.tabsContainer}>
       <View style={styles.tabs}>
         <TouchableOpacity
+          style={[styles.tab, activeTab === 'quicksaves' && styles.activeTab]}
+          onPress={() => setActiveTab('quicksaves')}
+        >
+          <Grid3X3 size={12} color={activeTab === 'quicksaves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <Text style={[styles.tabText, activeTab === 'quicksaves' && styles.activeTabText]}>
+            Quick Saves
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'boards' && styles.activeTab]}
           onPress={() => setActiveTab('boards')}
         >
@@ -349,6 +408,56 @@ export default function ProfileScreen() {
     </View>
   );
 
+
+  const renderQuickSavesTab = () => (
+    <View style={styles.tabContent}>
+      {loadingQuickSaves ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+        </View>
+      ) : quickSaves.length > 0 ? (
+        <FlatList
+          data={quickSaves}
+          renderItem={({ item }: { item: BoardRestaurant & { restaurant?: RestaurantInfo } }) => (
+            item.restaurant && (
+              <View style={styles.quickSaveItem}>
+                <RestaurantCard 
+                  restaurant={item.restaurant} 
+                  onPress={() => router.push(`/restaurant/${item.restaurant_id}`)}
+                />
+              </View>
+            )
+          )}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.quickSavesList}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshingQuickSaves}
+              onRefresh={onRefreshQuickSaves}
+              tintColor={designTokens.colors.primaryOrange}
+            />
+          }
+        />
+      ) : (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon}>
+            <Grid3X3 size={32} color="#DDD" />
+          </View>
+          <Text style={styles.emptyTitle}>No Quick Saves Yet</Text>
+          <Text style={styles.emptyDescription}>
+            Tap the save button on any restaurant to add it here
+          </Text>
+          <TouchableOpacity 
+            style={styles.emptyCTA}
+            onPress={() => router.push('/explore')}
+          >
+            <Text style={styles.emptyCTAText}>Explore Restaurants</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
 
   const renderBoardsTab = () => (
     <View style={styles.tabContent}>
@@ -487,6 +596,7 @@ export default function ProfileScreen() {
 
       {/* Tab Content - Scrollable */}
       <View style={styles.tabContentContainer}>
+        {activeTab === 'quicksaves' && renderQuickSavesTab()}
         {activeTab === 'boards' && renderBoardsTab()}
         {activeTab === 'posts' && renderPostsTab()}
       </View>
@@ -867,6 +977,12 @@ const styles = StyleSheet.create({
   },
   boardsList: {
     paddingHorizontal: 20,
+  },
+  quickSavesList: {
+    paddingHorizontal: 20,
+  },
+  quickSaveItem: {
+    marginBottom: 16,
   },
   addBoardButton: {
     flexDirection: 'row',

@@ -2,6 +2,7 @@ import { RestaurantCardWithSave } from '@/components/cards/RestaurantCardWithSav
 import { ErrorState } from '@/components/ErrorState';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import QuickSavesBoard from '@/components/home/QuickSavesBoard';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
@@ -509,6 +510,8 @@ export default function HomeScreen() {
         {userState.isNewUser && renderWelcomeBanner()}
         
         {userState.friendsCount < 5 && renderNetworkBuilding()}
+        
+        {user && <QuickSavesBoard />}
         
         {renderYourBoards()}
         

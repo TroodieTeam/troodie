@@ -63,14 +63,47 @@ export const boardService = {
       console.error('Error fetching user boards:', error)
       // Fallback to direct query if view doesn't exist yet
       try {
-        const { data, error } = await supabase
+        // Get boards owned by user
+        const { data: ownedBoards, error: ownedError } = await supabase
           .from('boards')
           .select('*')
-          .or(`user_id.eq.${userId},id.in.(select board_id from board_members where user_id='${userId}')`)
+          .eq('user_id', userId)
           .order('created_at', { ascending: false })
         
-        if (error) throw error
-        return data || []
+        if (ownedError) throw ownedError
+
+        // Get boards where user is a member
+        const { data: membershipData, error: memberError } = await supabase
+          .from('board_members')
+          .select('board_id')
+          .eq('user_id', userId)
+        
+        if (memberError) throw memberError
+
+        const memberBoardIds = membershipData?.map(m => m.board_id) || []
+
+        // Get member boards details
+        let memberBoards: Board[] = []
+        if (memberBoardIds.length > 0) {
+          const { data, error } = await supabase
+            .from('boards')
+            .select('*')
+            .in('id', memberBoardIds)
+          
+          if (!error && data) {
+            memberBoards = data
+          }
+        }
+
+        // Combine and deduplicate
+        const allBoards = [...(ownedBoards || []), ...memberBoards]
+        const uniqueBoards = allBoards.filter((board, index, self) =>
+          index === self.findIndex((b) => b.id === board.id)
+        )
+        
+        return uniqueBoards.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
       } catch (fallbackError) {
         console.error('Fallback error:', fallbackError)
         return []
@@ -239,17 +272,46 @@ export const boardService = {
    */
   async getBoardsForRestaurant(restaurantId: string, userId: string): Promise<Board[]> {
     try {
+      // First get boards that contain this restaurant
+      const { data: boardsWithRestaurant, error: restaurantError } = await supabase
+        .from('board_restaurants')
+        .select('board_id')
+        .eq('restaurant_id', restaurantId)
+
+      if (restaurantError) throw restaurantError
+
+      const boardIds = boardsWithRestaurant?.map(br => br.board_id) || []
+
+      if (boardIds.length === 0) {
+        return []
+      }
+
+      // Now get the boards that the user has access to
       const { data, error } = await supabase
         .from('boards')
-        .select(`
-          *,
-          board_restaurants!inner(restaurant_id)
-        `)
-        .eq('board_restaurants.restaurant_id', restaurantId)
-        .or(`user_id.eq.${userId},id.in.(select board_id from board_members where user_id='${userId}')`)
+        .select('*')
+        .in('id', boardIds)
+        .or(`user_id.eq.${userId},is_private.eq.false`)
 
       if (error) throw error
-      return data || []
+      
+      // Additionally check for boards where user is a member
+      const { data: memberBoards } = await supabase
+        .from('board_members')
+        .select('board_id')
+        .eq('user_id', userId)
+        .in('board_id', boardIds)
+
+      const memberBoardIds = memberBoards?.map(mb => mb.board_id) || []
+      
+      // Filter to include private boards where user is a member
+      const accessibleBoards = data?.filter(board => 
+        !board.is_private || 
+        board.user_id === userId || 
+        memberBoardIds.includes(board.id)
+      ) || []
+
+      return accessibleBoards
     } catch (error: any) {
       console.error('Error fetching boards for restaurant:', error)
       return []
@@ -421,6 +483,106 @@ export const boardService = {
     } catch (error: any) {
       console.error('Error fetching default board:', error)
       return null
+    }
+  },
+
+  /**
+   * Get user's Quick Saves board
+   */
+  async getUserQuickSavesBoard(userId: string): Promise<Board | null> {
+    try {
+      const { data, error } = await supabase
+        .from('boards')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('title', 'Quick Saves')
+        .eq('type', 'free')
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching Quick Saves board:', error)
+        return null
+      }
+      return data
+    } catch (error: any) {
+      console.error('Error fetching Quick Saves board:', error)
+      return null
+    }
+  },
+
+  /**
+   * Get or create user's Quick Saves board
+   */
+  async ensureQuickSavesBoard(userId: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .rpc('ensure_quick_saves_board', { p_user_id: userId })
+
+      if (error) {
+        console.error('Error ensuring Quick Saves board:', error)
+        return null
+      }
+      return data
+    } catch (error: any) {
+      console.error('Error ensuring Quick Saves board:', error)
+      return null
+    }
+  },
+
+  /**
+   * Save restaurant to Quick Saves board
+   */
+  async saveRestaurantToQuickSaves(
+    userId: string, 
+    restaurantId: string,
+    notes?: string,
+    rating?: number
+  ): Promise<void> {
+    try {
+      // Get or create Quick Saves board
+      const boardId = await this.ensureQuickSavesBoard(userId)
+      
+      if (!boardId) {
+        throw new Error('Failed to get Quick Saves board')
+      }
+
+      // Add restaurant to Quick Saves board
+      await this.addRestaurantToBoard(boardId, restaurantId, userId, notes, rating)
+    } catch (error: any) {
+      console.error('Error saving to Quick Saves:', error)
+      throw error
+    }
+  },
+
+  /**
+   * Get Quick Saves restaurants for a user
+   */
+  async getQuickSavesRestaurants(userId: string, limit?: number): Promise<BoardRestaurant[]> {
+    try {
+      // First get the Quick Saves board
+      const board = await this.getUserQuickSavesBoard(userId)
+      
+      if (!board) {
+        return []
+      }
+
+      let request = supabase
+        .from('board_restaurants')
+        .select('*')
+        .eq('board_id', board.id)
+        .order('added_at', { ascending: false })
+
+      if (limit) {
+        request = request.limit(limit)
+      }
+
+      const { data, error } = await request
+
+      if (error) throw error
+      return data || []
+    } catch (error: any) {
+      console.error('Error fetching Quick Saves restaurants:', error)
+      return []
     }
   }
 }

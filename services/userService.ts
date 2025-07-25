@@ -31,6 +31,21 @@ export const userService = {
       console.error('Error creating user profile:', error)
       return null
     }
+
+    // Ensure Quick Saves board is created for new user
+    if (data) {
+      try {
+        const { data: boardId } = await supabase
+          .rpc('ensure_quick_saves_board', { p_user_id: data.id })
+        
+        if (boardId) {
+          console.log('Quick Saves board created:', boardId)
+        }
+      } catch (error) {
+        console.error('Error creating Quick Saves board:', error)
+      }
+    }
+
     return data
   },
 
@@ -170,6 +185,17 @@ export const userService = {
     if (error) {
       console.error('Error searching users:', error)
       return []
+    }
+    return data
+  },
+
+  async getQuickSavesBoard(userId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .rpc('get_quick_saves_board', { p_user_id: userId })
+    
+    if (error) {
+      console.error('Error getting Quick Saves board:', error)
+      return null
     }
     return data
   }
