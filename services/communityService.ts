@@ -26,7 +26,7 @@ export interface CommunityMember {
   user_id: string;
   role: 'owner' | 'admin' | 'moderator' | 'member';
   joined_at: string;
-  invitation_status: 'pending' | 'active' | 'declined';
+  status: 'pending' | 'active' | 'declined';
 }
 
 export interface CreateCommunityInput {
@@ -111,7 +111,7 @@ export const communityService = {
               community_id: community.id,
               user_id: userId,
               role: 'owner',
-              invitation_status: 'active'
+              status: 'active'
             });
 
           // Update member count
@@ -183,7 +183,7 @@ export const communityService = {
               .from('community_members')
               .select('community_id')
               .eq('user_id', userId)
-              .eq('invitation_status', 'active')
+              .eq('status', 'active')
           );
 
         if (!userError && userCommunities) {
@@ -315,7 +315,7 @@ export const communityService = {
           communities!inner(*)
         `)
         .eq('user_id', userId)
-        .eq('invitation_status', 'active')
+        .eq('status', 'active')
         .eq('communities.is_active', true);
 
       if (role) {
@@ -346,7 +346,7 @@ export const communityService = {
         .select('role')
         .eq('community_id', communityId)
         .eq('user_id', userId)
-        .eq('invitation_status', 'active')
+        .eq('status', 'active')
         .single();
 
       if (error || !data) {
@@ -430,7 +430,7 @@ export const communityService = {
         .from('community_members')
         .select('*', { count: 'exact', head: true })
         .eq('community_id', communityId)
-        .eq('invitation_status', 'active');
+        .eq('status', 'active');
 
       // Get members with user details
       let query = supabase
@@ -444,7 +444,7 @@ export const communityService = {
           )
         `)
         .eq('community_id', communityId)
-        .eq('invitation_status', 'active')
+        .eq('status', 'active')
         .order('joined_at', { ascending: false });
 
       if (options?.role) {
