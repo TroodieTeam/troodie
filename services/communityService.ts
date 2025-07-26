@@ -48,7 +48,8 @@ export const communityService = {
     input: CreateCommunityInput
   ): Promise<{ community: Community | null; error: string | null }> {
     try {
-      const { data, error } = await supabase.rpc('create_community', {
+      // First try the RPC function
+      const { data: rpcData, error: rpcError } = await supabase.rpc('create_community', {
         p_name: input.name,
         p_description: input.description || null,
         p_location: input.location || null,
@@ -59,18 +60,71 @@ export const communityService = {
         p_created_by: userId
       });
 
-      if (error) throw error;
+      if (!rpcError) {
+        // RPC succeeded, fetch the created community
+        const { data: community, error: fetchError } = await supabase
+          .from('communities')
+          .select('*')
+          .eq('id', rpcData)
+          .single();
 
-      // Fetch the created community
-      const { data: community, error: fetchError } = await supabase
-        .from('communities')
-        .select('*')
-        .eq('id', data)
-        .single();
+        if (fetchError) throw fetchError;
+        return { community, error: null };
+      }
 
-      if (fetchError) throw fetchError;
+      // If RPC fails (likely because migration hasn't been run), fall back to direct insert
+      if (rpcError.message.includes('Could not find the function')) {
+        console.warn('create_community function not found. Please run the migration. Using fallback method...');
+        
+        // Direct insert into communities table
+        const { data: community, error: insertError } = await supabase
+          .from('communities')
+          .insert({
+            name: input.name,
+            description: input.description || null,
+            location: input.location || null,
+            type: input.type,
+            is_event_based: input.is_event_based,
+            event_name: input.event_name || null,
+            event_date: input.event_date || null,
+            created_by: userId
+          })
+          .select()
+          .single();
 
-      return { community, error: null };
+        if (insertError) {
+          // If direct insert also fails, the tables probably don't exist
+          if (insertError.code === '42P01') {
+            return { 
+              community: null, 
+              error: 'Community tables not found. Please run the database migration first.' 
+            };
+          }
+          throw insertError;
+        }
+
+        // Add creator as owner
+        if (community) {
+          await supabase
+            .from('community_members')
+            .insert({
+              community_id: community.id,
+              user_id: userId,
+              role: 'owner',
+              invitation_status: 'active'
+            });
+
+          // Update member count
+          await supabase
+            .from('communities')
+            .update({ member_count: 1 })
+            .eq('id', community.id);
+        }
+
+        return { community, error: null };
+      }
+
+      throw rpcError;
     } catch (error: any) {
       console.error('Error creating community:', error);
       return { 
