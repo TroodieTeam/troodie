@@ -205,7 +205,7 @@ export default function ExploreScreen() {
       restaurant={{
         id: item.id,
         name: item.name,
-        image: item.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+        image: restaurantService.getRestaurantImage(item),
         cuisine: item.cuisine_types?.[0] || 'Restaurant',
         rating: item.google_rating || item.troodie_rating || 0,
         location: item.neighborhood || item.city || 'Charlotte',

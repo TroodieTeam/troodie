@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/lib/supabase'
+import { Database, supabase } from '@/lib/supabase'
 
 type User = Database['public']['Tables']['users']['Row']
 type UserInsert = Database['public']['Tables']['users']['Insert']
@@ -196,6 +195,39 @@ export const userService = {
     if (error) {
       console.error('Error getting Quick Saves board:', error)
       return null
+    }
+    return data
+  },
+
+  async updateNetworkProgress(userId: string, action: 'board' | 'post' | 'community') {
+    const { data, error } = await supabase
+      .rpc('update_network_progress', {
+        user_id: userId,
+        action_type: action
+      })
+    
+    if (error) {
+      console.error('Error updating network progress:', error)
+      throw error
+    }
+    return data
+  },
+
+  async getUserNetworkProgress(userId: string) {
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        has_created_board,
+        has_created_post,
+        has_joined_community,
+        network_progress
+      `)
+      .eq('id', userId)
+      .single()
+    
+    if (error) {
+      console.error('Error fetching network progress:', error)
+      throw error
     }
     return data
   }

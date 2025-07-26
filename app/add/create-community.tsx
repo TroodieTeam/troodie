@@ -1,24 +1,24 @@
+import { theme } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { communityService } from '@/services/communityService';
+import { CommunityFormData, CommunityType } from '@/types/community';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, Globe, Lock, MapPin } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Switch
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Globe, Lock, MapPin } from 'lucide-react-native';
-import { theme } from '@/constants/theme';
-import { useAuth } from '@/contexts/AuthContext';
-import { communityService } from '@/services/communityService';
-import { CommunityType, CommunityFormData } from '@/types/community';
 
 export default function CreateCommunityScreen() {
   const router = useRouter();
@@ -91,11 +91,14 @@ export default function CreateCommunityScreen() {
       if (community) {
         Alert.alert(
           'Success',
-          'Community created successfully!',
+          `Your community "${community.name}" has been created successfully!`,
           [
             {
               text: 'OK',
-              onPress: () => router.push(`/communities/${community.id}`)
+              onPress: () => {
+                // Navigate back to communities screen
+                router.back();
+              }
             }
           ]
         );
@@ -308,7 +311,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    color: theme.colors.text.medium,
+    color: theme.colors.text.secondary,
     marginTop: 2,
   },
   createButton: {
@@ -376,7 +379,7 @@ const styles = StyleSheet.create({
   typeDescription: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    color: theme.colors.text.medium,
+    color: theme.colors.text.secondary,
   },
   inputContainer: {
     marginBottom: 20,
@@ -453,7 +456,7 @@ const styles = StyleSheet.create({
   toggleDescription: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    color: theme.colors.text.medium,
+    color: theme.colors.text.secondary,
   },
   eventSection: {
     marginTop: 16,

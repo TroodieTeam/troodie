@@ -1,137 +1,138 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Image
-} from 'react-native';
+import { theme } from '@/constants/theme';
+import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Community, communityService } from '@/services/communityService';
+import { userService } from '@/services/userService';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import {
-  ChevronLeft,
-  Search,
-  MapPin,
-  Users,
-  TrendingUp,
-  Crown,
+  AlertCircle,
   Calendar,
-  Lock
+  ChevronLeft,
+  Lock,
+  MapPin,
+  Search,
+  TrendingUp,
+  Users
 } from 'lucide-react-native';
-import { theme } from '@/constants/theme';
-import { Community } from '@/types/add-flow';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function CommunitiesScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { updateNetworkProgress } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'discover' | 'joined'>('discover');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [userCommunities, setUserCommunities] = useState<Community[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock communities data
-  const featuredCommunities: Community[] = [
-    {
-      id: '1',
-      name: 'TechCrunch Disrupt 2025',
-      description: 'Connect with fellow attendees and discover SF&apos;s best eats',
-      coverImage: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-      category: 'Event',
-      location: 'San Francisco, CA',
-      memberCount: 1247,
-      activityLevel: 23,
-      type: 'paid',
-      price: 9.99,
-      admin: {
-        name: 'TechCrunch Team',
-        avatar: 'https://i.pravatar.cc/150?img=10',
-        verified: true,
-        bio: 'Community Admin'
-      },
-      stats: {
-        postsToday: 23,
-        activeMembers: 234,
-        recentPhotos: []
-      },
-      isPremium: true
-    },
-    {
-      id: '2',
-      name: 'South End Foodies',
-      description: 'Boston&apos;s South End neighborhood food enthusiasts',
-      coverImage: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
-      category: 'Location',
-      location: 'Boston, MA',
-      memberCount: 892,
-      activityLevel: 15,
-      type: 'public',
-      admin: {
-        name: 'Sarah Chen',
-        avatar: 'https://i.pravatar.cc/150?img=1',
-        verified: false,
-        bio: 'Local food blogger'
-      },
-      stats: {
-        postsToday: 15,
-        activeMembers: 156,
-        recentPhotos: []
+  // Fetch communities data
+  const fetchCommunities = useCallback(async () => {
+    try {
+      setError(null);
+      
+      // Fetch all public communities and user's private communities
+      const allCommunities = await communityService.getCommunities(user?.id);
+      
+      // Filter based on search query
+      const filtered = searchQuery 
+        ? allCommunities.filter(c => 
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.location?.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : allCommunities;
+      
+      setCommunities(filtered);
+      
+      // Fetch user's joined communities if logged in
+      if (user) {
+        const joined = await communityService.getUserCommunities(user.id);
+        setUserCommunities(joined);
+      } else {
+        setUserCommunities([]);
       }
-    },
-    {
-      id: '3',
-      name: 'Downtown Charlotte Eats',
-      description: 'Best spots in uptown Charlotte',
-      coverImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-      category: 'Location',
-      location: 'Charlotte, NC',
-      memberCount: 567,
-      activityLevel: 12,
-      type: 'public',
-      admin: {
-        name: 'Admin',
-        avatar: 'https://i.pravatar.cc/150?img=2',
-        verified: false,
-        bio: 'Community Admin'
-      },
-      stats: {
-        postsToday: 12,
-        activeMembers: 89,
-        recentPhotos: []
-      }
+    } catch (err) {
+      console.error('Error fetching communities:', err);
+      setError('Failed to load communities. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  ];
+  }, [user?.id, searchQuery]);
 
-  const joinedCommunities: Community[] = [
-    {
-      id: '4',
-      name: 'CTRL+ALT+SYNC 2025',
-      description: 'Charlotte tech conference attendees',
-      coverImage: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800',
-      category: 'Event',
-      location: 'Charlotte, NC',
-      memberCount: 234,
-      activityLevel: 8,
-      type: 'public',
-      admin: {
-        name: 'Event Team',
-        avatar: 'https://i.pravatar.cc/150?img=3',
-        verified: true,
-        bio: 'Official event organizers'
-      },
-      stats: {
-        postsToday: 8,
-        activeMembers: 45,
-        recentPhotos: []
-      },
-      isJoined: true
+  // Initial load
+  useEffect(() => {
+    fetchCommunities();
+  }, [fetchCommunities]);
+
+  // Handle refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchCommunities();
+  }, [fetchCommunities]);
+
+  // Check if user is member of a community
+  const isUserMember = useCallback((communityId: string) => {
+    return userCommunities.some(c => c.id === communityId);
+  }, [userCommunities]);
+  // Handle join community
+  const handleJoinCommunity = async (community: Community) => {
+    if (!user) {
+      router.push('/onboarding/login' as any);
+      return;
     }
-  ];
+
+    try {
+      const { success, error } = await communityService.joinCommunity(user.id, community.id);
+      
+      if (success) {
+        // Update network progress
+        try {
+          await userService.updateNetworkProgress(user.id, 'community');
+          updateNetworkProgress('community');
+        } catch (error) {
+          console.error('Error updating network progress:', error);
+        }
+        
+        Alert.alert('Success', `You've joined ${community.name}!`);
+        // Refresh communities to update membership status
+        fetchCommunities();
+      } else {
+        Alert.alert('Error', error || 'Failed to join community');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    }
+  };
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchCommunities();
+    }, [fetchCommunities])
+  );
 
   const handleCommunityPress = (community: Community) => {
     router.push({
       pathname: '/add/community-detail',
-      params: { community: JSON.stringify(community) }
+      params: { communityId: community.id }
     });
   };
 
@@ -187,28 +188,34 @@ export default function CommunitiesScreen() {
       >
         <Users size={20} color={activeTab === 'joined' ? theme.colors.primary : '#999'} />
         <Text style={[styles.tabText, activeTab === 'joined' && styles.tabTextActive]}>
-          Joined ({joinedCommunities.length})
+          Joined ({userCommunities.length})
         </Text>
       </TouchableOpacity>
     </View>
   );
 
-  const renderCommunityCard = (community: Community) => (
-    <TouchableOpacity
-      key={community.id}
-      style={styles.communityCard}
-      onPress={() => handleCommunityPress(community)}
-    >
-      <Image source={{ uri: community.coverImage }} style={styles.communityImage} />
+  const renderCommunityCard = (community: Community) => {
+    const isMember = isUserMember(community.id);
+    const coverImage = community.is_event_based 
+      ? 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'
+      : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800';
+    
+    return (
+      <TouchableOpacity
+        key={community.id}
+        style={styles.communityCard}
+        onPress={() => handleCommunityPress(community)}
+      >
+        <Image source={{ uri: coverImage }} style={styles.communityImage} />
       
-      {community.isPremium && (
-        <View style={styles.premiumBadge}>
-          <Crown size={14} color="#FFFFFF" />
-          <Text style={styles.premiumText}>Premium</Text>
+      {community.type === 'private' && (
+        <View style={styles.privateBadge}>
+          <Lock size={14} color="#FFFFFF" />
+          <Text style={styles.privateText}>Private</Text>
         </View>
       )}
       
-      {community.category === 'Event' && (
+      {community.is_event_based && (
         <View style={styles.eventBadge}>
           <Calendar size={12} color="#FFFFFF" />
           <Text style={styles.eventText}>Event</Text>
@@ -224,17 +231,13 @@ export default function CommunitiesScreen() {
         <View style={styles.communityStats}>
           <View style={styles.stat}>
             <Users size={14} color="#666" />
-            <Text style={styles.statText}>{community.memberCount.toLocaleString()}</Text>
+            <Text style={styles.statText}>{community.member_count.toLocaleString()} members</Text>
           </View>
           
-          <View style={styles.stat}>
-            <TrendingUp size={14} color="#666" />
-            <Text style={styles.statText}>{community.activityLevel} today</Text>
-          </View>
-          
-          {community.price && (
-            <View style={styles.priceTag}>
-              <Text style={styles.priceText}>${community.price.toFixed(2)}</Text>
+          {community.post_count > 0 && (
+            <View style={styles.stat}>
+              <TrendingUp size={14} color="#666" />
+              <Text style={styles.statText}>{community.post_count} posts</Text>
             </View>
           )}
         </View>
@@ -245,50 +248,84 @@ export default function CommunitiesScreen() {
             <Text style={styles.locationText}>{community.location}</Text>
           </View>
           
-          {community.type === 'private' && (
-            <Lock size={14} color="#666" />
-          )}
         </View>
         
-        {!community.isJoined && (
+        {!isMember && community.type === 'public' && (
           <TouchableOpacity 
-            style={[
-              styles.joinButton,
-              community.isPremium && styles.joinButtonPremium
-            ]}
+            style={styles.joinButton}
+            onPress={() => handleJoinCommunity(community)}
           >
-            <Text style={[
-              styles.joinButtonText,
-              community.isPremium && styles.joinButtonTextPremium
-            ]}>
-              {community.price ? `Join for $${community.price.toFixed(2)}` : 'Join Community'}
-            </Text>
+            <Text style={styles.joinButtonText}>Join Community</Text>
           </TouchableOpacity>
+        )}
+        
+        {isMember && (
+          <View style={styles.memberBadge}>
+            <Text style={styles.memberBadgeText}>Member</Text>
+          </View>
         )}
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
-  const renderFeaturedSection = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Featured Communities</Text>
-        <TouchableOpacity>
-          <Text style={styles.sectionLink}>Hot</Text>
-        </TouchableOpacity>
+  const renderFeaturedSection = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading communities...</Text>
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.errorContainer}>
+          <AlertCircle size={48} color="#EF4444" />
+          <Text style={styles.errorTitle}>Oops!</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchCommunities}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (communities.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Users size={48} color="#DDD" />
+          <Text style={styles.emptyTitle}>No Communities Found</Text>
+          <Text style={styles.emptyDescription}>
+            {searchQuery 
+              ? 'Try adjusting your search terms' 
+              : 'Be the first to create a community!'}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Discover Communities</Text>
+        {communities.map(renderCommunityCard)}
       </View>
-      
-      {featuredCommunities.map(renderCommunityCard)}
-    </View>
-  );
+    );
+  };
 
-  const renderJoinedSection = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Your Communities</Text>
-      
-      {joinedCommunities.length > 0 ? (
-        joinedCommunities.map(renderCommunityCard)
-      ) : (
+  const renderJoinedSection = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading your communities...</Text>
+        </View>
+      );
+    }
+
+    if (userCommunities.length === 0) {
+      return (
         <View style={styles.emptyState}>
           <Users size={48} color="#DDD" />
           <Text style={styles.emptyTitle}>No Communities Yet</Text>
@@ -296,14 +333,30 @@ export default function CommunitiesScreen() {
             Join communities to connect with like-minded food enthusiasts
           </Text>
         </View>
-      )}
-    </View>
-  );
+      );
+    }
+
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Your Communities</Text>
+        {userCommunities.map(renderCommunityCard)}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
         {renderSearchBar()}
         {renderTabs()}
         
@@ -435,19 +488,19 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 120,
   },
-  premiumBadge: {
+  privateBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFD700',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     gap: 4,
   },
-  premiumText: {
+  privateText: {
     fontSize: 12,
     fontFamily: 'Inter_700Bold',
     color: '#FFFFFF',
@@ -535,15 +588,77 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  joinButtonPremium: {
-    backgroundColor: '#FFD700',
-  },
   joinButtonText: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
   },
-  joinButtonTextPremium: {
+  memberBadge: {
+    backgroundColor: theme.colors.success,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  memberBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 100,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    color: theme.colors.text.dark,
+    marginTop: 12,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
+  },
+  signInButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  signInButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
   },
   emptyState: {

@@ -55,9 +55,9 @@ export const communityService = {
         p_location: input.location || null,
         p_type: input.type,
         p_is_event_based: input.is_event_based,
+        p_created_by: userId,
         p_event_name: input.event_name || null,
-        p_event_date: input.event_date || null,
-        p_created_by: userId
+        p_event_date: input.event_date || null
       });
 
       if (!rpcError) {
@@ -127,6 +127,15 @@ export const communityService = {
       throw rpcError;
     } catch (error: any) {
       console.error('Error creating community:', error);
+      
+      // Handle specific RLS recursion error
+      if (error.code === '42P17') {
+        return {
+          community: null,
+          error: 'Database policy configuration error. Please contact support or run the simple RLS migration.'
+        };
+      }
+      
       return { 
         community: null, 
         error: error.message || 'Failed to create community' 
@@ -173,26 +182,31 @@ export const communityService = {
 
       // If user is provided, also get their private communities
       if (userId && (!filters?.type || filters.type === 'private')) {
-        const { data: userCommunities, error: userError } = await supabase
-          .from('community_details_view')
-          .select('*')
-          .eq('type', 'private')
-          .eq('is_active', true)
-          .in('id', 
-            supabase
-              .from('community_members')
-              .select('community_id')
-              .eq('user_id', userId)
-              .eq('status', 'active')
-          );
+        // First get the community IDs the user is a member of
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('community_members')
+          .select('community_id')
+          .eq('user_id', userId)
+          .eq('status', 'active');
 
-        if (!userError && userCommunities) {
-          // Merge and deduplicate
-          const allCommunities = [...(data || []), ...userCommunities];
-          const uniqueCommunities = Array.from(
-            new Map(allCommunities.map(item => [item.id, item])).values()
-          );
-          return uniqueCommunities;
+        if (!membershipError && membershipData && membershipData.length > 0) {
+          const communityIds = membershipData.map(m => m.community_id);
+          
+          const { data: userCommunities, error: userError } = await supabase
+            .from('community_details_view')
+            .select('*')
+            .eq('type', 'private')
+            .eq('is_active', true)
+            .in('id', communityIds);
+
+          if (!userError && userCommunities) {
+            // Merge and deduplicate
+            const allCommunities = [...(data || []), ...userCommunities];
+            const uniqueCommunities = Array.from(
+              new Map(allCommunities.map(item => [item.id, item])).values()
+            );
+            return uniqueCommunities;
+          }
         }
       }
 
@@ -473,6 +487,107 @@ export const communityService = {
     } catch (error) {
       console.error('Error fetching community members:', error);
       return { members: [], total: 0 };
+    }
+  },
+
+  /**
+   * Get enhanced community members with full user data
+   */
+  async getCommunityMembersWithDetails(
+    communityId: string,
+    limit: number = 50
+  ): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('community_members')
+        .select(`
+          *,
+          user:users!community_members_user_id_fkey(
+            id,
+            name,
+            username,
+            avatar_url,
+            bio
+          )
+        `)
+        .eq('community_id', communityId)
+        .eq('status', 'active')
+        .order('joined_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching community members:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get community posts
+   */
+  async getCommunityPosts(
+    communityId: string,
+    limit: number = 20
+  ): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select(`
+          *,
+          user:users!community_posts_user_id_fkey(
+            id,
+            name,
+            username,
+            avatar_url
+          ),
+          restaurant:restaurants(
+            id,
+            name,
+            cover_photo_url
+          )
+        `)
+        .eq('community_id', communityId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      
+      // For now, return posts without interaction counts
+      // TODO: Add proper interaction counting when the schema is updated
+      const posts = (data || []).map(post => ({
+        ...post,
+        likes: 0, // Placeholder until interaction system is implemented
+        commentCount: 0 // Placeholder until comment system is implemented
+      }));
+
+      return posts;
+    } catch (error) {
+      console.error('Error fetching community posts:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Check if user is an admin of a community
+   */
+  async checkAdminStatus(
+    userId: string,
+    communityId: string
+  ): Promise<boolean> {
+    try {
+      const { data } = await supabase
+        .from('community_members')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('community_id', communityId)
+        .eq('status', 'active')
+        .single();
+
+      return data?.role === 'admin' || data?.role === 'owner';
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
     }
   }
 };

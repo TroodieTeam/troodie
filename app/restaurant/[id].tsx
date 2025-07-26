@@ -66,7 +66,7 @@ export default function RestaurantDetailScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data = await restaurantService.getRestaurantById(restaurantId);
+      const data = await restaurantService.getRestaurantDetails(restaurantId);
       if (data) {
         setRestaurant(data);
       } else {
@@ -158,7 +158,7 @@ export default function RestaurantDetailScreen() {
   const renderHeader = () => (
     <View style={styles.headerImage}>
       <Image
-        source={{ uri: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800' }}
+        source={{ uri: restaurantService.getRestaurantImage(restaurant) }}
         style={styles.image}
       />
       <LinearGradient
@@ -347,11 +347,17 @@ export default function RestaurantDetailScreen() {
       <View style={styles.tabContent}>
         {photos.length > 0 ? (
           <View style={styles.photosGrid}>
-            {photos.map((photo: string, index: number) => (
-              <TouchableOpacity key={index} style={styles.photoItem}>
-                <Image source={{ uri: photo }} style={styles.photo} />
-              </TouchableOpacity>
-            ))}
+            {photos.map((photo: any, index: number) => {
+              // Handle both string and object photo formats
+              const photoUrl = typeof photo === 'string' ? photo : photo?.url;
+              if (!photoUrl) return null;
+              
+              return (
+                <TouchableOpacity key={index} style={styles.photoItem}>
+                  <Image source={{ uri: photoUrl }} style={styles.photo} />
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ) : (
           <View style={styles.emptyPhotos}>

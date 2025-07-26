@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { ExternalContentPreview } from './posts/ExternalContentPreview';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -127,6 +128,14 @@ export function PostCard({
         <Text style={styles.timestamp}>{formatTimeAgo(post.created_at)}</Text>
       </View>
 
+      {/* Content Type Badge */}
+      {(post as any).content_type === 'external' && (
+        <View style={styles.contentTypeBadge}>
+          <Ionicons name="link" size={12} color="#666" />
+          <Text style={styles.contentTypeText}>External Content</Text>
+        </View>
+      )}
+
       {/* Content */}
       {post.caption && (
         <Text style={styles.caption} numberOfLines={3}>
@@ -134,8 +143,20 @@ export function PostCard({
         </Text>
       )}
 
-      {/* Photos */}
-      {post.photos && post.photos.length > 0 && (
+      {/* External Content Preview */}
+      {(post as any).content_type === 'external' && (post as any).external_url && (
+        <ExternalContentPreview
+          source={(post as any).external_source}
+          url={(post as any).external_url}
+          title={(post as any).external_title}
+          description={(post as any).external_description}
+          thumbnail={(post as any).external_thumbnail}
+          author={(post as any).external_author}
+        />
+      )}
+
+      {/* Photos - Only show for original content */}
+      {(post as any).content_type !== 'external' && post.photos && post.photos.length > 0 && (
         <View style={styles.photoContainer}>
           {post.photos.length === 1 ? (
             <Image source={{ uri: post.photos[0] }} style={styles.singlePhoto} />
@@ -448,5 +469,21 @@ const styles = StyleSheet.create({
     ...designTokens.typography.smallText,
     color: designTokens.colors.textMedium,
     fontFamily: 'Inter_500Medium',
+  },
+  contentTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.xs,
+    backgroundColor: designTokens.colors.backgroundLight,
+    alignSelf: 'flex-start',
+    paddingHorizontal: designTokens.spacing.sm,
+    paddingVertical: designTokens.spacing.xs,
+    borderRadius: designTokens.borderRadius.full,
+    marginBottom: designTokens.spacing.xs,
+  },
+  contentTypeText: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: '#666',
   },
 }); 

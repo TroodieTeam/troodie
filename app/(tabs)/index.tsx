@@ -1,8 +1,8 @@
 import { RestaurantCardWithSave } from '@/components/cards/RestaurantCardWithSave';
 import { ErrorState } from '@/components/ErrorState';
+import QuickSavesBoard from '@/components/home/QuickSavesBoard';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
-import QuickSavesBoard from '@/components/home/QuickSavesBoard';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
@@ -20,32 +20,34 @@ import { Notification } from '@/types/notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
-  Bell,
-  Bookmark,
-  Coffee,
-  Globe,
-  Lock,
-  Plus,
-  Search,
-  Sparkles,
-  UserPlus,
-  Utensils
+    Bell,
+    Bookmark,
+    Coffee,
+    Globe,
+    Lock,
+    MessageSquare,
+    Plus,
+    Search,
+    Sparkles,
+    UserPlus,
+    Users,
+    Utensils
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { userState } = useApp();
+  const { userState, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, networkProgress } = useApp();
   const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
   const [loading, setLoading] = useState(true);
@@ -169,22 +171,41 @@ export default function HomeScreen() {
 
   const networkSuggestions: NetworkSuggestion[] = [
     {
-      action: 'Invite Friends',
-      description: 'Connect with friends to see their favorite spots',
-      icon: UserPlus,
-      cta: 'Send Invites',
-      benefit: 'Get personalized recommendations',
-      onClick: handleInviteFriends
+      action: 'Create Board',
+      description: 'Organize your favorite restaurants into collections',
+      icon: Bookmark,
+      cta: 'Create Board',
+      benefit: 'Keep your saves organized',
+      onClick: () => router.push('/add/create-board'),
+      condition: () => !hasCreatedBoard,
+      completed: hasCreatedBoard
     },
-    // {
-    //   action: 'Share Your First Save',
-    //   description: 'Save a restaurant and share your experience',
-    //   icon: Camera,
-    //   cta: 'Add Restaurant',
-    //   benefit: 'Build your food profile',
-    //   onClick: () => router.push('/add/save-restaurant')
-    // },
+    {
+      action: 'Create Post',
+      description: 'Share your restaurant experiences with the community',
+      icon: MessageSquare,
+      cta: 'Share Experience',
+      benefit: 'Connect with other food lovers',
+      onClick: () => router.push('/add/create-post'),
+      condition: () => !hasCreatedPost,
+      completed: hasCreatedPost
+    },
+    {
+      action: 'Join Community',
+      description: 'Connect with people who share your dining interests',
+      icon: Users,
+      cta: 'Find Communities',
+      benefit: 'Discover new restaurants together',
+      onClick: () => router.push('/add/communities'),
+      condition: () => !hasJoinedCommunity,
+      completed: hasJoinedCommunity
+    }
   ];
+
+  // Filter suggestions based on conditions
+  const filteredNetworkSuggestions = networkSuggestions.filter(suggestion => 
+    suggestion.condition ? suggestion.condition() : true
+  );
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -235,37 +256,65 @@ export default function HomeScreen() {
     </View>
   );
 
-  const renderNetworkBuilding = () => (
-    <View style={styles.section}>
-      <View style={styles.networkHeader}>
-        <View style={styles.networkTitleContainer}>
-          <UserPlus size={16} color={designTokens.colors.primaryOrange} />
-          <Text style={styles.sectionTitle}>Build Your Network</Text>
+  const renderNetworkBuilding = () => {
+    // Don't show if user has completed all network building actions
+    if (hasCreatedBoard && hasCreatedPost && hasJoinedCommunity) {
+      return null;
+    }
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.networkHeader}>
+          <View style={styles.networkTitleContainer}>
+            <UserPlus size={16} color={designTokens.colors.primaryOrange} />
+            <Text style={styles.sectionTitle}>Build Your Network</Text>
+          </View>
+          <View style={styles.networkProgress}>
+            <Text style={styles.progressText}>
+              {networkProgress} of 3 completed
+            </Text>
+          </View>
+        </View>
+        <View style={styles.networkCards}>
+          {filteredNetworkSuggestions.map((suggestion, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={[
+                styles.networkCard,
+                suggestion.completed && styles.networkCardCompleted
+              ]}
+              onPress={suggestion.onClick}
+            >
+              <View style={styles.networkCardIcon}>
+                <suggestion.icon size={20} color={designTokens.colors.primaryOrange} />
+                {suggestion.completed && (
+                  <View style={styles.completedBadge}>
+                    <Text style={styles.completedText}>✓</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.networkCardContent}>
+                <Text style={styles.networkCardTitle}>{suggestion.action}</Text>
+                <Text style={styles.networkCardDescription}>{suggestion.description}</Text>
+                <Text style={styles.networkCardBenefit}>{suggestion.benefit}</Text>
+              </View>
+              <TouchableOpacity 
+                style={[
+                  styles.networkCardCTA,
+                  suggestion.completed && styles.networkCardCTACompleted
+                ]} 
+                onPress={suggestion.onClick}
+              >
+                <Text style={styles.networkCardCTAText}>
+                  {suggestion.completed ? 'Completed' : suggestion.cta}
+                </Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
-      <View style={styles.networkCards}>
-        {networkSuggestions.map((suggestion, index) => (
-          <TouchableOpacity 
-            key={index} 
-            style={styles.networkCard}
-            onPress={suggestion.onClick}
-          >
-            <View style={styles.networkCardIcon}>
-              <suggestion.icon size={20} color={designTokens.colors.primaryOrange} />
-            </View>
-            <View style={styles.networkCardContent}>
-              <Text style={styles.networkCardTitle}>{suggestion.action}</Text>
-              <Text style={styles.networkCardDescription}>{suggestion.description}</Text>
-              <Text style={styles.networkCardBenefit}>{suggestion.benefit}</Text>
-            </View>
-            <TouchableOpacity style={styles.networkCardCTA} onPress={suggestion.onClick}>
-              <Text style={styles.networkCardCTAText}>{suggestion.cta}</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderPersonalizedSection = () => (
     <View style={styles.section}>
@@ -658,6 +707,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: designTokens.spacing.md,
+    position: 'relative', // For completed badge
   },
   networkCardContent: {
     flex: 1,
@@ -949,5 +999,40 @@ const styles = StyleSheet.create({
   },
   notificationContainer: {
     position: 'relative'
-  }
+  },
+  networkProgress: {
+    backgroundColor: designTokens.colors.backgroundGray,
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.md,
+  },
+  progressText: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textMedium,
+  },
+  networkCardCompleted: {
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderColor: designTokens.colors.primaryOrange,
+  },
+  completedBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: designTokens.colors.primaryOrange,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completedText: {
+    fontSize: 10,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.white,
+  },
+  networkCardCTACompleted: {
+    backgroundColor: designTokens.colors.backgroundGray,
+    borderColor: designTokens.colors.borderLight,
+  },
 });

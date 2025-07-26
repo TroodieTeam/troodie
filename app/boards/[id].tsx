@@ -13,7 +13,7 @@ import {
   MapPin,
   MoreVertical,
   Plus,
-  Share,
+  Share2,
   Star,
   Trash2,
   Users
@@ -28,8 +28,11 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Dimensions
 } from 'react-native';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function BoardDetailScreen() {
   const router = useRouter();
@@ -51,7 +54,6 @@ export default function BoardDetailScreen() {
     try {
       setLoading(true);
       
-      // Load board details
       const boardData = await boardService.getBoardWithRestaurants(boardId);
       if (!boardData) {
         Alert.alert('Error', 'Board not found');
@@ -62,7 +64,6 @@ export default function BoardDetailScreen() {
       setBoard(boardData);
       setIsOwner(boardData.user_id === user?.id);
 
-      // Load restaurant details for each restaurant in the board
       if (boardData.restaurants && boardData.restaurants.length > 0) {
         const restaurantPromises = boardData.restaurants.map(async (br: BoardRestaurant) => {
           const restaurant = await restaurantService.getRestaurantById(br.restaurant_id);
@@ -95,12 +96,10 @@ export default function BoardDetailScreen() {
   };
 
   const handleShareBoard = () => {
-    // TODO: Implement board sharing
     Alert.alert('Share Board', 'Sharing feature coming soon!');
   };
 
   const handleEditBoard = () => {
-    // TODO: Navigate to edit board screen
     Alert.alert('Edit Board', 'Edit feature coming soon!');
   };
 
@@ -156,17 +155,21 @@ export default function BoardDetailScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={24} color="#333" />
+        <ChevronLeft size={24} color={theme.colors.text.primary} />
       </TouchableOpacity>
-      <Text style={styles.title}>Board</Text>
-      {isOwner && (
-        <TouchableOpacity 
-          style={styles.moreButton}
-          onPress={() => setShowMoreMenu(!showMoreMenu)}
-        >
-          <MoreVertical size={24} color="#333" />
+      <View style={styles.headerActions}>
+        <TouchableOpacity style={styles.headerButton} onPress={handleShareBoard}>
+          <Share2 size={20} color={theme.colors.text.primary} />
         </TouchableOpacity>
-      )}
+        {isOwner && (
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => setShowMoreMenu(!showMoreMenu)}
+          >
+            <MoreVertical size={20} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 
@@ -175,17 +178,13 @@ export default function BoardDetailScreen() {
 
     return (
       <View style={styles.moreMenu}>
-        <TouchableOpacity style={styles.menuItem} onPress={handleShareBoard}>
-          <Share size={16} color="#333" />
-          <Text style={styles.menuText}>Share Board</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem} onPress={handleEditBoard}>
-          <Edit size={16} color="#333" />
+          <Edit size={16} color={theme.colors.text.primary} />
           <Text style={styles.menuText}>Edit Board</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem} onPress={handleDeleteBoard}>
-          <Trash2 size={16} color="#FF4444" />
-          <Text style={[styles.menuText, { color: '#FF4444' }]}>Delete Board</Text>
+        <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={handleDeleteBoard}>
+          <Trash2 size={16} color={theme.colors.error} />
+          <Text style={[styles.menuText, { color: theme.colors.error }]}>Delete Board</Text>
         </TouchableOpacity>
       </View>
     );
@@ -193,24 +192,20 @@ export default function BoardDetailScreen() {
 
   const renderBoardInfo = () => (
     <View style={styles.boardInfo}>
-      <View style={styles.boardHeader}>
+      <View style={styles.boardTitleSection}>
         <Text style={styles.boardTitle}>{board?.title}</Text>
-        <View style={styles.boardMeta}>
+        <View style={styles.privacyBadge}>
           {board?.is_private ? (
-            <View style={styles.metaItem}>
-              <Lock size={16} color="#666" />
-              <Text style={styles.metaText}>Private</Text>
-            </View>
+            <>
+              <Lock size={14} color={theme.colors.text.secondary} />
+              <Text style={styles.privacyText}>Private</Text>
+            </>
           ) : (
-            <View style={styles.metaItem}>
-              <Globe size={16} color="#666" />
-              <Text style={styles.metaText}>Public</Text>
-            </View>
+            <>
+              <Globe size={14} color={theme.colors.text.secondary} />
+              <Text style={styles.privacyText}>Public</Text>
+            </>
           )}
-          <View style={styles.metaItem}>
-            <Users size={16} color="#666" />
-            <Text style={styles.metaText}>{board?.member_count || 0} members</Text>
-          </View>
         </View>
       </View>
       
@@ -218,73 +213,77 @@ export default function BoardDetailScreen() {
         <Text style={styles.boardDescription}>{board.description}</Text>
       )}
       
-      <View style={styles.boardStats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{board?.restaurant_count || 0}</Text>
-          <Text style={styles.statLabel}>Restaurants</Text>
+      <View style={styles.boardMeta}>
+        <View style={styles.metaCard}>
+          <Text style={styles.metaNumber}>{board?.restaurant_count || 0}</Text>
+          <Text style={styles.metaLabel}>Places</Text>
         </View>
+        
+        <View style={styles.metaCard}>
+          <Users size={16} color={theme.colors.text.secondary} />
+          <Text style={styles.metaNumber}>{board?.member_count || 0}</Text>
+          <Text style={styles.metaLabel}>Members</Text>
+        </View>
+        
         {board?.category && (
-          <View style={styles.statItem}>
-            <Text style={styles.statCategory}>{board.category}</Text>
-            <Text style={styles.statLabel}>Category</Text>
+          <View style={styles.metaCard}>
+            <Text style={styles.metaCategory}>{board.category}</Text>
           </View>
         )}
+        
         {board?.location && (
-          <View style={styles.statItem}>
-            <MapPin size={16} color="#666" />
-            <Text style={styles.statLabel}>{board.location}</Text>
+          <View style={styles.metaCard}>
+            <MapPin size={14} color={theme.colors.text.secondary} />
+            <Text style={styles.metaLocation}>{board.location}</Text>
           </View>
         )}
       </View>
     </View>
   );
 
-  const renderActionButtons = () => (
-    <View style={styles.actionButtons}>
-      {isOwner && (
-        <TouchableOpacity style={styles.addButton} onPress={handleAddRestaurants}>
-          <Plus size={20} color="#FFFFFF" />
-          <Text style={styles.addButtonText}>Add Restaurants</Text>
-        </TouchableOpacity>
-      )}
-      
-      <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
-        <Home size={20} color={theme.colors.primary} />
-        <Text style={styles.homeButtonText}>Go Home</Text>
+  const renderActionBar = () => {
+    if (!isOwner) return null;
+    
+    return (
+      <TouchableOpacity style={styles.floatingAddButton} onPress={handleAddRestaurants}>
+        <Plus size={24} color="#FFFFFF" />
+        <Text style={styles.floatingAddText}>Add Places</Text>
       </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const renderRestaurants = () => {
     if (restaurants.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No restaurants yet</Text>
+          <View style={styles.emptyIcon}>
+            <MapPin size={48} color={theme.colors.text.tertiary} />
+          </View>
+          <Text style={styles.emptyTitle}>No places yet</Text>
           <Text style={styles.emptyText}>
             {isOwner 
-              ? 'Add your first restaurant to this board!' 
-              : 'This board doesn\'t have any restaurants yet.'}
+              ? 'Start building your collection' 
+              : 'This board is waiting for its first recommendation'}
           </Text>
           {isOwner && (
             <TouchableOpacity style={styles.emptyButton} onPress={handleAddRestaurants}>
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.emptyButtonText}>Add Restaurants</Text>
+              <Plus size={18} color="#FFFFFF" />
+              <Text style={styles.emptyButtonText}>Add Your First Place</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.emptyHomeButton} onPress={handleGoHome}>
-            <Home size={16} color={theme.colors.primary} />
-            <Text style={styles.emptyHomeButtonText}>Go Home</Text>
-          </TouchableOpacity>
         </View>
       );
     }
 
     return (
-      <ScrollView style={styles.restaurantsList} showsVerticalScrollIndicator={false}>
-        {restaurants.map((restaurant) => (
+      <View style={styles.restaurantsList}>
+        {restaurants.map((restaurant, index) => (
           <TouchableOpacity
             key={restaurant.id}
-            style={styles.restaurantCard}
+            style={[
+              styles.restaurantCard,
+              index === restaurants.length - 1 && styles.lastCard
+            ]}
             onPress={() => router.push(`/restaurant/${restaurant.id}`)}
             onLongPress={() => isOwner && handleRemoveRestaurant(restaurant.id)}
           >
@@ -292,29 +291,41 @@ export default function BoardDetailScreen() {
               source={{ uri: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800' }} 
               style={styles.restaurantImage} 
             />
-            <View style={styles.restaurantInfo}>
-              <Text style={styles.restaurantName}>{restaurant.name}</Text>
-              <Text style={styles.restaurantDetails}>
-                {restaurant.cuisine_types?.join(' • ') || 'Restaurant'} • {restaurant.price_range || '$$'}
-              </Text>
-              <View style={styles.restaurantMeta}>
-                <Text style={styles.restaurantLocation}>
-                  {restaurant.neighborhood || 'Charlotte'}
+            <View style={styles.restaurantContent}>
+              <View style={styles.restaurantHeader}>
+                <Text style={styles.restaurantName} numberOfLines={1}>
+                  {restaurant.name}
                 </Text>
                 {restaurant.google_rating && (
                   <View style={styles.rating}>
-                    <Star size={12} color="#FFD700" />
+                    <Star size={14} color="#FFD700" fill="#FFD700" />
                     <Text style={styles.ratingText}>{restaurant.google_rating}</Text>
                   </View>
                 )}
               </View>
+              
+              <Text style={styles.restaurantCuisine} numberOfLines={1}>
+                {restaurant.cuisine_types?.join(' • ') || 'Restaurant'}
+              </Text>
+              
+              <View style={styles.restaurantFooter}>
+                <Text style={styles.restaurantLocation}>
+                  {restaurant.neighborhood || 'Charlotte'}
+                </Text>
+                <Text style={styles.restaurantPrice}>
+                  {restaurant.price_range || '$$'}
+                </Text>
+              </View>
+              
               {restaurant.boardRestaurant?.notes && (
-                <Text style={styles.restaurantNotes}>{restaurant.boardRestaurant.notes}</Text>
+                <Text style={styles.restaurantNote} numberOfLines={2}>
+                  "{restaurant.boardRestaurant.notes}"
+                </Text>
               )}
             </View>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     );
   };
 
@@ -324,7 +335,6 @@ export default function BoardDetailScreen() {
         {renderHeader()}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading board...</Text>
         </View>
       </SafeAreaView>
     );
@@ -334,11 +344,15 @@ export default function BoardDetailScreen() {
     <SafeAreaView style={styles.container}>
       {renderHeader()}
       {renderMoreMenu()}
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {renderBoardInfo()}
-        {renderActionButtons()}
         {renderRestaurants()}
       </ScrollView>
+      {renderActionBar()}
+      
+      <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
+        <Home size={20} color={theme.colors.text.secondary} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -348,265 +362,300 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  title: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+  headerActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
   },
-  moreButton: {
+  headerButton: {
     width: 40,
     height: 40,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   moreMenu: {
     position: 'absolute',
-    top: 80,
-    right: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 8,
+    top: 70,
+    right: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.xs,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 1000,
+    minWidth: 160,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  menuItemLast: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  menuText: {
+    fontSize: 14,
+    fontFamily: theme.fonts.body.medium,
+    color: theme.colors.text.primary,
+  },
+  boardInfo: {
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xl,
+    padding: theme.spacing.xl,
+    borderRadius: theme.borderRadius.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  boardTitleSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.sm,
+  },
+  boardTitle: {
+    fontSize: 28,
+    fontFamily: theme.fonts.heading.bold,
+    color: theme.colors.text.dark,
+    flex: 1,
+  },
+  privacyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.backgroundGray,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.xxl,
+    gap: theme.spacing.xs,
+  },
+  privacyText: {
+    fontSize: 12,
+    fontFamily: theme.fonts.body.medium,
+    color: theme.colors.text.secondary,
+  },
+  boardDescription: {
+    fontSize: 16,
+    fontFamily: theme.fonts.body.regular,
+    color: theme.colors.text.secondary,
+    lineHeight: 24,
+    marginBottom: theme.spacing.lg,
+  },
+  boardMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  metaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.backgroundGray,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    gap: theme.spacing.xs,
+  },
+  metaNumber: {
+    fontSize: 16,
+    fontFamily: theme.fonts.body.semiBold,
+    color: theme.colors.text.primary,
+  },
+  metaLabel: {
+    fontSize: 12,
+    fontFamily: theme.fonts.body.regular,
+    color: theme.colors.text.secondary,
+  },
+  metaCategory: {
+    fontSize: 14,
+    fontFamily: theme.fonts.body.medium,
+    color: theme.colors.primary,
+  },
+  metaLocation: {
+    fontSize: 14,
+    fontFamily: theme.fonts.body.regular,
+    color: theme.colors.text.secondary,
+  },
+  floatingAddButton: {
+    position: 'absolute',
+    bottom: 80,
+    right: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    borderRadius: theme.borderRadius.xxl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    gap: theme.spacing.sm,
+  },
+  floatingAddText: {
+    fontSize: 16,
+    fontFamily: theme.fonts.body.semiBold,
+    color: '#FFFFFF',
+  },
+  homeButton: {
+    position: 'absolute',
+    bottom: theme.spacing.xl,
+    left: theme.spacing.lg,
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    zIndex: 1000,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  menuText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#333',
-    marginLeft: 8,
-  },
-  boardInfo: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    marginBottom: 8,
-  },
-  boardHeader: {
-    marginBottom: 12,
-  },
-  boardTitle: {
-    fontSize: 24,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  boardMeta: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-  },
-  boardDescription: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  boardStats: {
-    flexDirection: 'row',
-    gap: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-  },
-  statCategory: {
-    fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#999',
-    marginTop: 2,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    gap: 8,
-    flex: 1,
-    marginRight: 8,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
-  },
-  homeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8F8F8',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    gap: 8,
-    flex: 1,
-    marginLeft: 8,
-  },
-  homeButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginTop: 12,
-  },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 40,
+    paddingVertical: 60,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.backgroundGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 8,
+    fontSize: 20,
+    fontFamily: theme.fonts.heading.semiBold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
   },
   emptyText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    fontSize: 16,
+    fontFamily: theme.fonts.body.regular,
+    color: theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: theme.spacing.xl,
   },
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    gap: 8,
-    marginBottom: 16,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    borderRadius: theme.borderRadius.xxl,
+    gap: theme.spacing.sm,
   },
   emptyButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    fontFamily: theme.fonts.body.semiBold,
     color: '#FFFFFF',
   },
-  emptyHomeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F0F0',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    gap: 8,
-  },
-  emptyHomeButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.primary,
-  },
   restaurantsList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing.lg,
   },
   restaurantCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  lastCard: {
+    marginBottom: 0,
   },
   restaurantImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 12,
+    width: '100%',
+    height: 180,
+    backgroundColor: theme.colors.backgroundGray,
   },
-  restaurantInfo: {
-    flex: 1,
+  restaurantContent: {
+    padding: theme.spacing.lg,
+  },
+  restaurantHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
   },
   restaurantName: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: 18,
+    fontFamily: theme.fonts.heading.semiBold,
+    color: theme.colors.text.dark,
+    flex: 1,
+    marginRight: theme.spacing.sm,
   },
-  restaurantDetails: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 4,
+  restaurantCuisine: {
+    fontSize: 14,
+    fontFamily: theme.fonts.body.regular,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
   },
-  restaurantMeta: {
+  restaurantFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   restaurantLocation: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#999',
+    fontSize: 14,
+    fontFamily: theme.fonts.body.regular,
+    color: theme.colors.text.tertiary,
+  },
+  restaurantPrice: {
+    fontSize: 14,
+    fontFamily: theme.fonts.body.medium,
+    color: theme.colors.primary,
   },
   rating: {
     flexDirection: 'row',
@@ -614,15 +663,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: '#666',
+    fontSize: 14,
+    fontFamily: theme.fonts.body.semiBold,
+    color: theme.colors.text.primary,
   },
-  restaurantNotes: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+  restaurantNote: {
+    fontSize: 14,
+    fontFamily: theme.fonts.body.regular,
+    color: theme.colors.text.secondary,
     fontStyle: 'italic',
-    marginTop: 4,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
 });

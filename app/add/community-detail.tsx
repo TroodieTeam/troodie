@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Dimensions
+  Dimensions,
+  ActivityIndicator,
+  Alert,
+  RefreshControl
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -21,73 +24,173 @@ import {
   MessageCircle,
   Bookmark,
   ChevronRight,
-  CheckCircle
+  CheckCircle,
+  Lock,
+  MoreVertical
 } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
-import { Community, CommunityPost } from '@/types/add-flow';
+import { communityService, Community } from '@/services/communityService';
+import { useAuth } from '@/contexts/AuthContext';
+import { CreatePostButton } from '@/components/community/CreatePostButton';
+import {
+  Menu,
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+  MenuProvider,
+} from 'react-native-popup-menu';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function CommunityDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const community: Community = JSON.parse(params.community as string);
+  const { user } = useAuth();
+  const communityId = params.communityId as string;
+  
+  const [community, setCommunity] = useState<Community | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isMember, setIsMember] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<'feed' | 'members' | 'events'>('feed');
+  const [members, setMembers] = useState<any[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock community posts
-  const mockPosts: CommunityPost[] = [
-    {
-      id: '1',
-      author: {
-        name: 'Sarah Chen',
-        avatar: 'https://i.pravatar.cc/150?img=1'
-      },
-      content: 'Just had an amazing dinner at State Bird Provisions! Perfect for conference dinners 🍽️',
-      images: ['https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800'],
-      likes: 15,
-      comments: 4,
-      createdAt: new Date('2025-01-09T10:00:00')
-    },
-    {
-      id: '2',
-      author: {
-        name: 'Mike Rodriguez',
-        avatar: 'https://i.pravatar.cc/150?img=3'
-      },
-      content: 'Book ahead - it fills up fast during conferences!',
-      likes: 8,
-      comments: 2,
-      createdAt: new Date('2025-01-09T08:00:00')
+  // Load all community data
+  const loadCommunityData = async () => {
+    if (!communityId) {
+      router.back();
+      return;
     }
-  ];
 
-  const topContributors = [
-    {
-      name: 'Sarah Chen',
-      role: 'Startup Founder • AI Startup',
-      contributions: 15,
-      avatar: 'https://i.pravatar.cc/150?img=1'
-    },
-    {
-      name: 'Mike Rodriguez',
-      role: 'VC Partner • Andreessen Horowitz',
-      contributions: 12,
-      avatar: 'https://i.pravatar.cc/150?img=3'
-    },
-    {
-      name: 'Alex Chen',
-      role: 'Tech Journalist • TechCrunch',
-      contributions: 8,
-      avatar: 'https://i.pravatar.cc/150?img=4'
+    try {
+      setRefreshing(true);
+      
+      // Load community details
+      const communityData = await communityService.getCommunityById(communityId);
+      if (!communityData) {
+        Alert.alert('Error', 'Community not found');
+        router.back();
+        return;
+      }
+      
+      setCommunity(communityData);
+      
+      // Check if user is a member and admin
+      if (user) {
+        const membership = await communityService.isUserMember(user.id, communityId);
+        setIsMember(membership.isMember);
+        
+        const adminStatus = await communityService.checkAdminStatus(user.id, communityId);
+        setIsAdmin(adminStatus);
+      }
+      
+      // Load members
+      const membersData = await communityService.getCommunityMembersWithDetails(communityId, 50);
+      setMembers(membersData);
+      
+      // Load posts
+      const postsData = await communityService.getCommunityPosts(communityId, 20);
+      setPosts(postsData);
+      
+    } catch (error) {
+      console.error('Error fetching community data:', error);
+      Alert.alert('Error', 'Failed to load community details');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  ];
+  };
 
-  const handleJoin = () => {
+  // Initial load
+  useEffect(() => {
+    loadCommunityData();
+  }, [communityId, user]);
+
+  // Handle join/leave community
+  const handleJoinLeave = async () => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    if (!community) return;
+
+    try {
+      if (isMember) {
+        const { success, error } = await communityService.leaveCommunity(user.id, community.id);
+        if (success) {
+          setIsMember(false);
+          Alert.alert('Success', 'You have left the community');
+        } else {
+          Alert.alert('Error', error || 'Failed to leave community');
+        }
+      } else {
+        const { success, error } = await communityService.joinCommunity(user.id, community.id);
+        if (success) {
+          setIsMember(true);
+          Alert.alert('Success', 'You have joined the community!');
+        } else {
+          Alert.alert('Error', error || 'Failed to join community');
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    }
+  };
+
+  // Navigate to member profile
+  const handleMemberPress = (member: any) => {
+    if (member.user?.username) {
+      router.push(`/profile/${member.user.username}`);
+    }
+  };
+  
+  // Handle edit community
+  const handleEditCommunity = () => {
     router.push({
-      pathname: '/add/join-community',
-      params: { community: params.community }
+      pathname: '/community/edit',
+      params: { communityId }
     });
   };
+  
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return 'Today';
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading community...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!community) {
+    return null;
+  }
+
+  const coverImage = community.is_event_based 
+    ? 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'
+    : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800';
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -95,43 +198,63 @@ export default function CommunityDetailScreen() {
         <ChevronLeft size={24} color="#333" />
       </TouchableOpacity>
       <Text style={styles.title}>Community</Text>
-      <TouchableOpacity style={styles.moreButton}>
-        <Text style={styles.moreText}>•••</Text>
-      </TouchableOpacity>
+      {isAdmin ? (
+        <Menu>
+          <MenuTrigger>
+            <TouchableOpacity style={styles.moreButton}>
+              <MoreVertical size={24} color="#333" />
+            </TouchableOpacity>
+          </MenuTrigger>
+          <MenuOptions>
+            <MenuOption onSelect={handleEditCommunity}>
+              <Text style={styles.menuOption}>Edit Community</Text>
+            </MenuOption>
+          </MenuOptions>
+        </Menu>
+      ) : (
+        <View style={styles.moreButton} />
+      )}
     </View>
   );
 
   const renderCommunityInfo = () => (
     <View>
-      <Image source={{ uri: community.coverImage }} style={styles.coverImage} />
+      <Image source={{ uri: coverImage }} style={styles.coverImage} />
       
       <View style={styles.communityInfo}>
         <View style={styles.communityHeader}>
           <Text style={styles.communityName}>{community.name}</Text>
-          {community.isPremium && (
-            <View style={styles.premiumBadge}>
-              <Crown size={16} color="#FFD700" />
-              <Text style={styles.premiumText}>Premium</Text>
+          {community.type === 'private' && (
+            <View style={styles.privateBadge}>
+              <Lock size={16} color="#FFFFFF" />
+              <Text style={styles.privateText}>Private</Text>
+            </View>
+          )}
+          {community.is_event_based && (
+            <View style={styles.eventBadge}>
+              <Calendar size={16} color="#FFFFFF" />
+              <Text style={styles.eventText}>Event</Text>
             </View>
           )}
         </View>
         
-        <Text style={styles.communityDescription}>{community.description}</Text>
+        <Text style={styles.communityDescription}>{community.description || 'Welcome to our community!'}</Text>
         
-        <View style={styles.adminInfo}>
-          <Image source={{ uri: community.admin.avatar }} style={styles.adminAvatar} />
-          <View>
-            <Text style={styles.adminLabel}>Admin: {community.admin.name}</Text>
-            {community.admin.verified && (
-              <CheckCircle size={14} color="#4CAF50" style={styles.verifiedIcon} />
-            )}
+        {community.created_by && (
+          <View style={styles.adminInfo}>
+            <View style={styles.adminAvatar}>
+              <Users size={20} color="#666" />
+            </View>
+            <View>
+              <Text style={styles.adminLabel}>Created by community admin</Text>
+            </View>
           </View>
-        </View>
+        )}
         
         <View style={styles.stats}>
           <View style={styles.statItem}>
             <Users size={20} color="#666" />
-            <Text style={styles.statValue}>{community.memberCount.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{community.member_count.toLocaleString()}</Text>
             <Text style={styles.statLabel}>Members</Text>
           </View>
           
@@ -139,31 +262,44 @@ export default function CommunityDetailScreen() {
           
           <View style={styles.statItem}>
             <TrendingUp size={20} color="#666" />
-            <Text style={styles.statValue}>{community.stats.activeMembers}</Text>
-            <Text style={styles.statLabel}>Active Today</Text>
+            <Text style={styles.statValue}>{community.post_count}</Text>
+            <Text style={styles.statLabel}>Posts</Text>
           </View>
           
-          <View style={styles.statDivider} />
-          
-          <View style={styles.statItem}>
-            <MapPin size={20} color="#666" />
-            <Text style={styles.statValue}>{community.location.split(',')[0]}</Text>
-            <Text style={styles.statLabel}>Location</Text>
-          </View>
+          {community.location && (
+            <>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <MapPin size={20} color="#666" />
+                <Text style={styles.statValue}>{community.location.split(',')[0]}</Text>
+                <Text style={styles.statLabel}>Location</Text>
+              </View>
+            </>
+          )}
         </View>
         
-        {!community.isJoined && (
+        {community.type === 'public' && (
           <TouchableOpacity 
             style={[
               styles.joinButton,
-              community.isPremium && styles.joinButtonPremium
+              isMember && styles.joinButtonSecondary
             ]}
-            onPress={handleJoin}
+            onPress={handleJoinLeave}
           >
-            <Text style={styles.joinButtonText}>
-              {community.price ? `Join for $${community.price}` : 'Join Community'}
+            <Text style={[
+              styles.joinButtonText,
+              isMember && styles.joinButtonTextSecondary
+            ]}>
+              {isMember ? 'Leave Community' : 'Join Community'}
             </Text>
           </TouchableOpacity>
+        )}
+        
+        {community.type === 'private' && !isMember && (
+          <View style={styles.privateMessage}>
+            <Lock size={16} color="#666" />
+            <Text style={styles.privateMessageText}>This is a private community. You need an invitation to join.</Text>
+          </View>
         )}
       </View>
     </View>
@@ -189,46 +325,60 @@ export default function CommunityDetailScreen() {
         </Text>
       </TouchableOpacity>
       
-      {community.category === 'Event' && (
+      {community.is_event_based && (
         <TouchableOpacity
           style={[styles.tab, activeTab === 'events' && styles.tabActive]}
           onPress={() => setActiveTab('events')}
         >
           <Text style={[styles.tabText, activeTab === 'events' && styles.tabTextActive]}>
-            Events
+            Event Info
           </Text>
         </TouchableOpacity>
       )}
     </View>
   );
 
-  const renderPost = (post: CommunityPost) => (
-    <View key={post.id} style={styles.postCard}>
+  const renderPost = (post: any) => (
+    <TouchableOpacity 
+      key={post.id} 
+      style={styles.postCard}
+      onPress={() => router.push(`/post/${post.id}`)}
+    >
       <View style={styles.postHeader}>
-        <Image source={{ uri: post.author.avatar }} style={styles.postAvatar} />
+        <Image 
+          source={{ uri: post.user?.avatar_url || 'https://via.placeholder.com/40' }} 
+          style={styles.postAvatar} 
+        />
         <View style={styles.postAuthorInfo}>
-          <Text style={styles.postAuthorName}>{post.author.name}</Text>
+          <Text style={styles.postAuthorName}>{post.user?.name || 'Anonymous'}</Text>
           <Text style={styles.postTime}>
-            {new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {formatDate(post.created_at)}
           </Text>
         </View>
       </View>
       
-      <Text style={styles.postContent}>{post.content}</Text>
+      {post.caption && <Text style={styles.postContent}>{post.caption}</Text>}
       
-      {post.images && post.images.length > 0 && (
-        <Image source={{ uri: post.images[0] }} style={styles.postImage} />
+      {post.photos && post.photos.length > 0 && (
+        <Image source={{ uri: post.photos[0] }} style={styles.postImage} />
+      )}
+      
+      {post.restaurant && (
+        <View style={styles.restaurantTag}>
+          <MapPin size={14} color="#666" />
+          <Text style={styles.restaurantName}>{post.restaurant.name}</Text>
+        </View>
       )}
       
       <View style={styles.postActions}>
         <TouchableOpacity style={styles.postAction}>
           <Heart size={18} color="#666" />
-          <Text style={styles.postActionText}>{post.likes}</Text>
+          <Text style={styles.postActionText}>{post.likes || 0}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.postAction}>
           <MessageCircle size={18} color="#666" />
-          <Text style={styles.postActionText}>{post.comments}</Text>
+          <Text style={styles.postActionText}>{post.commentCount || 0}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.postAction}>
@@ -236,39 +386,65 @@ export default function CommunityDetailScreen() {
           <Text style={styles.postActionText}>Save</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderFeed = () => (
     <View style={styles.feedContainer}>
-      <Text style={styles.feedRecommendation}>
-        Sarah Chen recommended for conference dinners: State Bird Provisions
-      </Text>
-      <Text style={styles.feedTime}>2 hours ago</Text>
-      
-      {mockPosts.map(renderPost)}
+      {posts.length === 0 ? (
+        <View style={styles.emptyState}>
+          <MessageCircle size={48} color="#999" />
+          <Text style={styles.emptyStateTitle}>No posts yet</Text>
+          <Text style={styles.emptyStateMessage}>
+            Be the first to share something with the community!
+          </Text>
+        </View>
+      ) : (
+        posts.map(renderPost)
+      )}
     </View>
   );
 
   const renderMembers = () => (
     <View style={styles.membersContainer}>
-      <Text style={styles.sectionTitle}>Top Contributors</Text>
+      <Text style={styles.sectionTitle}>
+        Members ({members.length})
+      </Text>
       
-      {topContributors.map((contributor, index) => (
-        <TouchableOpacity key={index} style={styles.memberItem}>
-          <Image source={{ uri: contributor.avatar }} style={styles.memberAvatar} />
-          <View style={styles.memberInfo}>
-            <Text style={styles.memberName}>{contributor.name}</Text>
-            <Text style={styles.memberRole}>{contributor.role}</Text>
-            <Text style={styles.memberContributions}>
-              {contributor.contributions} contributions
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.followButton}>
-            <Text style={styles.followButtonText}>Follow</Text>
+      {members.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Users size={48} color="#999" />
+          <Text style={styles.emptyStateTitle}>No members yet</Text>
+          <Text style={styles.emptyStateMessage}>
+            Be the first to join this community!
+          </Text>
+        </View>
+      ) : (
+        members.map((member) => (
+          <TouchableOpacity 
+            key={member.id} 
+            style={styles.memberItem}
+            onPress={() => handleMemberPress(member)}
+          >
+            <Image 
+              source={{ uri: member.user?.avatar_url || 'https://via.placeholder.com/48' }} 
+              style={styles.memberAvatar} 
+            />
+            <View style={styles.memberInfo}>
+              <Text style={styles.memberName}>{member.user?.name || 'Anonymous'}</Text>
+              <Text style={styles.memberRole}>{member.user?.bio || 'Member'}</Text>
+              <Text style={styles.memberJoined}>
+                Joined {formatDate(member.joined_at)}
+              </Text>
+            </View>
+            {(member.role === 'admin' || member.role === 'owner') && (
+              <View style={styles.adminBadge}>
+                <Crown size={16} color="#FFD700" />
+              </View>
+            )}
           </TouchableOpacity>
-        </TouchableOpacity>
-      ))}
+        ))
+      )}
     </View>
   );
 
@@ -284,19 +460,37 @@ export default function CommunityDetailScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {renderHeader()}
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {renderCommunityInfo()}
-        {renderTabs()}
+    <MenuProvider>
+      <SafeAreaView style={styles.container}>
+        {renderHeader()}
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing}
+              onRefresh={loadCommunityData}
+              colors={[theme.colors.primary]}
+            />
+          }
+        >
+          {renderCommunityInfo()}
+          {renderTabs()}
+          
+          {activeTab === 'feed' && renderFeed()}
+          {activeTab === 'members' && renderMembers()}
+          {activeTab === 'events' && renderEvents()}
+          
+          <View style={styles.bottomPadding} />
+        </ScrollView>
         
-        {activeTab === 'feed' && renderFeed()}
-        {activeTab === 'members' && renderMembers()}
-        {activeTab === 'events' && renderEvents()}
-        
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </SafeAreaView>
+        {isMember && activeTab === 'feed' && community && (
+          <CreatePostButton 
+            communityId={communityId}
+            communityName={community.name}
+          />
+        )}
+      </SafeAreaView>
+    </MenuProvider>
   );
 }
 
@@ -571,10 +765,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     color: '#666',
   },
-  memberContributions: {
+  memberJoined: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
+    fontFamily: 'Inter_400Regular',
+    color: '#999',
+  },
+  adminBadge: {
+    padding: 4,
   },
   followButton: {
     paddingHorizontal: 20,
@@ -611,6 +808,110 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   bottomPadding: {
-    height: 50,
+    height: 100,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#333',
+    marginTop: 16,
+  },
+  emptyStateMessage: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
+  },
+  restaurantTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  restaurantName: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: '#666',
+  },
+  menuOption: {
+    fontSize: 16,
+    fontFamily: 'Inter_500Medium',
+    color: '#333',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+    marginTop: 12,
+  },
+  joinButtonSecondary: {
+    backgroundColor: '#E5E7EB',
+  },
+  joinButtonTextSecondary: {
+    color: theme.colors.text.dark,
+  },
+  privateMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  privateMessageText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+  },
+  privateBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  privateText: {
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+    color: '#FFFFFF',
+  },
+  eventBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  eventText: {
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+    color: '#FFFFFF',
   },
 });
