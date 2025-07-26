@@ -177,7 +177,7 @@ export default function BoardAssignmentScreen() {
             onPress={() => handleToggleRestaurant(restaurant.id)}
           >
             <Image 
-              source={{ uri: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800' }} 
+              source={{ uri: restaurantService.getRestaurantImage(restaurant) }} 
               style={styles.restaurantImage} 
             />
             <View style={styles.restaurantInfo}>

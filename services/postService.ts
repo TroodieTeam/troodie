@@ -55,23 +55,45 @@ class PostService {
   /**
    * Create a new post
    */
-  async createPost(userId: string, postData: PostCreationData): Promise<Post> {
+  async createPost(postData: PostCreationData): Promise<Post> {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const insertData: any = {
+      user_id: user.id,
+      restaurant_id: postData.restaurantId,
+      caption: postData.caption,
+      photos: postData.photos,
+      rating: postData.rating,
+      visit_date: postData.visitDate?.toISOString().split('T')[0],
+      price_range: postData.priceRange,
+      visit_type: postData.visitType,
+      tags: postData.tags,
+      privacy: postData.privacy || 'public',
+      location_lat: postData.locationLat,
+      location_lng: postData.locationLng,
+      content_type: postData.contentType || 'original',
+    };
+
+    // Add external content fields if applicable
+    if (postData.contentType === 'external' && postData.externalContent) {
+      insertData.external_source = postData.externalContent.source;
+      insertData.external_url = postData.externalContent.url;
+      insertData.external_title = postData.externalContent.title;
+      insertData.external_description = postData.externalContent.description;
+      insertData.external_thumbnail = postData.externalContent.thumbnail;
+      insertData.external_author = postData.externalContent.author;
+    }
+
+    // Add community_id if provided
+    if (postData.communityId) {
+      insertData.community_id = postData.communityId;
+    }
+
     const { data, error } = await supabase
       .from('posts')
-      .insert({
-        user_id: userId,
-        restaurant_id: postData.restaurantId,
-        caption: postData.caption,
-        photos: postData.photos,
-        rating: postData.rating,
-        visit_date: postData.visitDate?.toISOString().split('T')[0],
-        price_range: postData.priceRange,
-        visit_type: postData.visitType,
-        tags: postData.tags,
-        privacy: postData.privacy || 'public',
-        location_lat: postData.locationLat,
-        location_lng: postData.locationLng,
-      })
+      .insert(insertData)
       .select()
       .single();
 

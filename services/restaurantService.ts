@@ -77,12 +77,40 @@ function transformError(error: any): Error {
 }
 
 export const restaurantService = {
+  // Dedicated method for getting restaurant image with comprehensive fallback logic
+  getRestaurantImage(restaurant: any): string {
+    try {
+      // Primary: Use cover_photo_url if available
+      if (restaurant.cover_photo_url) {
+        return restaurant.cover_photo_url;
+      }
+      
+      // Secondary: Use first photo from photos array
+      if (restaurant.photos && restaurant.photos.length > 0) {
+        // Handle both string array and object array formats
+        const firstPhoto = Array.isArray(restaurant.photos) 
+          ? restaurant.photos[0] 
+          : restaurant.photos[0]?.url;
+        
+        if (firstPhoto && typeof firstPhoto === 'string' && firstPhoto !== '') {
+          return firstPhoto;
+        }
+      }
+      
+      // Tertiary: Use stock image as last resort
+      return 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800';
+    } catch (error) {
+      console.error('Error getting restaurant image:', error);
+      return 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800';
+    }
+  },
+
   // Helper function to transform database restaurant to RestaurantInfo
   transformRestaurantData(restaurant: any): RestaurantInfo {
     return {
       id: restaurant.id,
       name: restaurant.name,
-      image: restaurant.cover_photo_url || restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+      image: this.getRestaurantImage(restaurant),
       cuisine: restaurant.cuisine_types?.[0] || 'Restaurant',
       rating: restaurant.troodie_rating || restaurant.google_rating || 0,
       location: restaurant.address || `${restaurant.city}, ${restaurant.state}` || 'Location',
@@ -158,6 +186,41 @@ export const restaurantService = {
       })
     } catch (error) {
       console.error('Error fetching restaurant:', error)
+      if (error instanceof NotFoundError) {
+        return null
+      }
+      throw error
+    }
+  },
+
+  async getRestaurantDetails(id: string): Promise<Restaurant | null> {
+    // Check cache first
+    const cached = restaurantCache.get(id)
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data
+    }
+
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+        if (error) {
+          throw transformError(error)
+        }
+
+        // Cache the result
+        if (data) {
+          restaurantCache.set(id, { data, timestamp: Date.now() })
+        }
+
+        return data
+      })
+    } catch (error) {
+      console.error('Error fetching restaurant details:', error)
       if (error instanceof NotFoundError) {
         return null
       }

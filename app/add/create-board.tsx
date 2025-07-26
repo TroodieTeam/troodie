@@ -1,22 +1,22 @@
-import { designTokens } from '@/constants/designTokens';
+import { theme } from '@/constants/theme';
 import { BoardType } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
+  ArrowLeft,
   Check,
-  ChevronLeft,
   Crown,
   Globe,
   Lock
 } from 'lucide-react-native';
 import React from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CreateBoardScreen() {
   const router = useRouter();
@@ -25,21 +25,21 @@ export default function CreateBoardScreen() {
     {
       type: 'free',
       title: 'Public Board',
-      description: 'Anyone can view and save your recommendations',
+      description: 'Anyone can view and save',
       icon: Globe,
       features: ['Public visibility', 'Social sharing', 'Basic analytics']
     },
     {
       type: 'private',
       title: 'Private Board',
-      description: 'Only people you invite can see this board',
+      description: 'Invite-only access',
       icon: Lock,
       features: ['Invite-only access', 'Collaboration', 'Privacy controls']
     },
     {
       type: 'paid',
       title: 'Paid Board',
-      description: 'Monetize your exclusive recommendations',
+      description: 'Monetize your recommendations',
       icon: Crown,
       features: ['Premium content', 'Revenue sharing', 'Advanced analytics']
     }
@@ -47,10 +47,10 @@ export default function CreateBoardScreen() {
 
   const getBoardColor = (type: string) => {
     switch (type) {
-      case 'free': return designTokens.colors.primaryOrange;
-      case 'private': return '#6B46C1';
-      case 'paid': return '#10B981';
-      default: return designTokens.colors.primaryOrange;
+      case 'free': return '#10B981';
+      case 'private': return '#64748B';
+      case 'paid': return theme.colors.primary;
+      default: return theme.colors.primary;
     }
   };
 
@@ -63,73 +63,77 @@ export default function CreateBoardScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={24} color={designTokens.colors.textDark} />
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => router.back()}
+      >
+        <ArrowLeft size={24} color={theme.colors.text.dark} />
       </TouchableOpacity>
-      <Text style={styles.title}>Create Board</Text>
+      
+      <View style={styles.headerTitle}>
+        <Text style={styles.title}>Create Board</Text>
+        <Text style={styles.subtitle}>Organize your recommendations</Text>
+      </View>
+      
       <View style={styles.placeholder} />
     </View>
   );
 
   const renderBoardTypes = () => (
     <View style={styles.content}>
-      <Text style={styles.subtitle}>Choose Board Type</Text>
+      <Text style={styles.sectionTitle}>Board Type</Text>
       
       {boardTypes.map((board) => (
         <TouchableOpacity
           key={board.type}
           style={[
-            styles.boardTypeCard,
-            board.type === 'paid' && styles.boardTypeCardPremium
+            styles.typeCard,
+            board.type === 'paid' && styles.typeCardPremium
           ]}
           onPress={() => handleSelectType(board.type)}
         >
-          <View style={styles.cardContent}>
-            <View style={[styles.iconContainer, { backgroundColor: getBoardColor(board.type) }]}>
-              <board.icon size={20} color={designTokens.colors.white} />
-            </View>
-            
-            <View style={styles.boardInfo}>
-              <View style={styles.boardHeader}>
-                <Text style={styles.boardTitle}>{board.title}</Text>
-                {board.type === 'paid' && (
-                  <View style={styles.premiumBadge}>
-                    <Text style={styles.premiumText}>Premium</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.boardDescription}>{board.description}</Text>
-              
-              <View style={styles.features}>
-                {board.features.slice(0, 2).map((feature, index) => (
-                  <View key={index} style={styles.featureItem}>
-                    <Check size={12} color="#4CAF50" />
-                    <Text style={styles.featureText}>{feature}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-            
-            <View style={styles.cardIndicator} />
+          <View style={[styles.typeIcon, { backgroundColor: getBoardColor(board.type) + '1A' }]}>
+            <board.icon size={16} color={getBoardColor(board.type)} />
           </View>
+          <View style={styles.typeContent}>
+            <Text style={styles.typeTitle}>{board.title}</Text>
+            <Text style={styles.typeDescription}>{board.description}</Text>
+          </View>
+          {board.type === 'paid' && (
+            <View style={styles.premiumBadge}>
+              <Text style={styles.premiumText}>Premium</Text>
+            </View>
+          )}
         </TouchableOpacity>
       ))}
       
-      <View style={styles.note}>
-        <Text style={styles.noteTitle}>Note:</Text>
-        <Text style={styles.noteText}>
-          • Users can create 1 private board for free{'\n'}
-          • Paid boards require a Troodie+ subscription
-        </Text>
+      <View style={styles.infoSection}>
+        <Text style={styles.infoTitle}>Quick Start Tips</Text>
+        <View style={styles.infoItem}>
+          <Check size={14} color={theme.colors.success} />
+          <Text style={styles.infoText}>Create up to 1 private board for free</Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Check size={14} color={theme.colors.success} />
+          <Text style={styles.infoText}>Public boards help you gain followers</Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Check size={14} color={theme.colors.success} />
+          <Text style={styles.infoText}>Upgrade to Troodie+ for unlimited boards</Text>
+        </View>
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {renderHeader()}
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {renderBoardTypes()}
+        <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -138,80 +142,94 @@ export default function CreateBoardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designTokens.colors.white,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: designTokens.colors.borderLight,
+    borderBottomColor: '#F3F4F6',
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: designTokens.colors.textDark,
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    padding: 20,
-  },
-  subtitle: {
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.textMedium,
-    marginBottom: 16,
+    color: theme.colors.text.dark,
   },
-  boardTypeCard: {
-    backgroundColor: designTokens.colors.white,
-    borderRadius: 12,
-    padding: 16,
+  subtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
+    marginTop: 2,
+  },
+  placeholder: {
+    width: 32,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+  },
+  content: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.dark,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: designTokens.colors.borderLight,
-    ...designTokens.shadows.card,
   },
-  boardTypeCardPremium: {
-    borderWidth: 1,
-    borderColor: designTokens.colors.primaryOrange,
-  },
-  cardContent: {
+  typeCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
+  typeCardPremium: {
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+    backgroundColor: '#FFF8F3',
+  },
+  typeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
-  boardInfo: {
+  typeContent: {
     flex: 1,
   },
-  boardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+  typeTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.text.dark,
+    marginBottom: 2,
   },
-  boardTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: designTokens.colors.textDark,
+  typeDescription: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
   },
   premiumBadge: {
-    marginLeft: 8,
-    backgroundColor: designTokens.colors.primaryOrange,
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -219,49 +237,33 @@ const styles = StyleSheet.create({
   premiumText: {
     fontSize: 10,
     fontFamily: 'Inter_700Bold',
-    color: designTokens.colors.white,
+    color: '#FFFFFF',
   },
-  boardDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: designTokens.colors.textMedium,
-    marginBottom: 12,
-  },
-  features: {
-    gap: 8,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  featureText: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: designTokens.colors.textMedium,
-  },
-  cardIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: designTokens.colors.primaryOrange,
-  },
-  note: {
-    backgroundColor: designTokens.colors.backgroundLight,
+  infoSection: {
+    backgroundColor: '#F9FAFB',
     borderRadius: 8,
     padding: 16,
     marginTop: 24,
   },
-  noteTitle: {
+  infoTitle: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.textDark,
+    color: theme.colors.text.dark,
+    marginBottom: 12,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
   },
-  noteText: {
-    fontSize: 14,
+  infoText: {
+    fontSize: 13,
     fontFamily: 'Inter_400Regular',
-    color: designTokens.colors.textMedium,
-    lineHeight: 20,
+    color: theme.colors.text.secondary,
+    flex: 1,
+  },
+  bottomPadding: {
+    height: 100,
   },
 });

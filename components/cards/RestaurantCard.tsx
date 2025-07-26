@@ -3,6 +3,7 @@ import { RestaurantInfo } from '@/types/core';
 import { MapPin, Star } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { TrafficLightRating } from '@/components/TrafficLightRating';
 
 interface RestaurantCardProps {
   restaurant: RestaurantInfo;
@@ -12,9 +13,10 @@ interface RestaurantCardProps {
     visits?: number;
   };
   compact?: boolean;
+  showRating?: boolean;
 }
 
-export function RestaurantCard({ restaurant, onPress, stats, compact = false }: RestaurantCardProps) {
+export function RestaurantCard({ restaurant, onPress, stats, compact = false, showRating = false }: RestaurantCardProps) {
   return (
     <TouchableOpacity 
       style={[styles.container, compact && styles.compactContainer]} 
@@ -55,6 +57,17 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false }: 
             {stats.visits && (
               <Text style={styles.statText}>{stats.visits} visits</Text>
             )}
+          </View>
+        )}
+
+        {showRating && (
+          <View style={styles.ratingContainer}>
+            <TrafficLightRating
+              restaurantId={restaurant.id}
+              showUserRating={false}
+              showSummary={true}
+              size="small"
+            />
           </View>
         )}
       </View>
@@ -143,5 +156,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
     color: theme.colors.primary,
+  },
+  ratingContainer: {
+    marginTop: 8,
   },
 });

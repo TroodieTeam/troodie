@@ -1,11 +1,13 @@
 import { designTokens } from '@/constants/designTokens';
+import { useAuth } from '@/contexts/AuthContext';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
   Camera,
   FolderPlus,
   Search,
-  UserPlus
+  UserPlus,
+  Users2
 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -19,6 +21,7 @@ import {
 
 export default function AddScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const addOptions: AddOption[] = [
     {
@@ -37,6 +40,14 @@ export default function AddScreen() {
       color: '#3B82F6',
       navigateTo: '/add/create-board'
     },
+    {
+      id: 'community',
+      title: 'Join Communities',
+      description: 'Connect with like-minded Troodies',
+      icon: Users2,
+      color: '#7C3AED',
+      navigateTo: '/add/communities'
+    }
   ];
 
   const progressCard: ProgressCard = {
@@ -110,6 +121,7 @@ export default function AddScreen() {
       </View>
     </View>
   );
+
 
   const renderProgressGamification = () => (
     <View style={styles.progressCard}>

@@ -56,6 +56,8 @@ export interface NetworkSuggestion {
   cta: string;
   benefit: string;
   onClick: () => void;
+  condition?: () => boolean;
+  completed?: boolean;
 }
 
 export interface TrendingContent {

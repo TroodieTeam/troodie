@@ -22,6 +22,15 @@ export interface PostWithUser extends Post {
   is_saved_by_user?: boolean;
 }
 
+export interface ExternalContent {
+  source: 'tiktok' | 'instagram' | 'youtube' | 'twitter' | 'article' | 'other';
+  url: string;
+  title?: string;
+  description?: string;
+  thumbnail?: string;
+  author?: string;
+}
+
 export interface PostCreationData {
   caption?: string;
   photos?: string[];
@@ -34,6 +43,9 @@ export interface PostCreationData {
   privacy?: 'public' | 'friends' | 'private';
   locationLat?: number;
   locationLng?: number;
+  contentType?: 'original' | 'external';
+  externalContent?: ExternalContent;
+  communityId?: string;
 }
 
 export interface ExploreFilters {

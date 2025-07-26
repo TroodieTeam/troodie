@@ -32,6 +32,9 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { TrafficLightRating } from '@/components/TrafficLightRating';
+import { BoardSelectionModal } from '@/components/BoardSelectionModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -40,12 +43,14 @@ type TabType = 'social' | 'info' | 'photos';
 export default function RestaurantDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
   const [restaurant, setRestaurant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('info');
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [showBoardModal, setShowBoardModal] = useState(false);
   const [socialStats] = useState({
     weeklyVisits: Math.floor(Math.random() * 200) + 50,
     totalVisits: Math.floor(Math.random() * 2000) + 500
@@ -61,7 +66,7 @@ export default function RestaurantDetailScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data = await restaurantService.getRestaurantById(restaurantId);
+      const data = await restaurantService.getRestaurantDetails(restaurantId);
       if (data) {
         setRestaurant(data);
       } else {
@@ -109,8 +114,11 @@ export default function RestaurantDetailScreen() {
   };
 
   const handleSave = () => {
-    setIsSaved(!isSaved);
-    // TODO: Implement save functionality with Supabase
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    setShowBoardModal(true);
   };
 
   if (loading && !error) {
@@ -150,7 +158,7 @@ export default function RestaurantDetailScreen() {
   const renderHeader = () => (
     <View style={styles.headerImage}>
       <Image
-        source={{ uri: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800' }}
+        source={{ uri: restaurantService.getRestaurantImage(restaurant) }}
         style={styles.image}
       />
       <LinearGradient
@@ -339,11 +347,17 @@ export default function RestaurantDetailScreen() {
       <View style={styles.tabContent}>
         {photos.length > 0 ? (
           <View style={styles.photosGrid}>
-            {photos.map((photo: string, index: number) => (
-              <TouchableOpacity key={index} style={styles.photoItem}>
-                <Image source={{ uri: photo }} style={styles.photo} />
-              </TouchableOpacity>
-            ))}
+            {photos.map((photo: any, index: number) => {
+              // Handle both string and object photo formats
+              const photoUrl = typeof photo === 'string' ? photo : photo?.url;
+              if (!photoUrl) return null;
+              
+              return (
+                <TouchableOpacity key={index} style={styles.photoItem}>
+                  <Image source={{ uri: photoUrl }} style={styles.photo} />
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ) : (
           <View style={styles.emptyPhotos}>
@@ -355,6 +369,37 @@ export default function RestaurantDetailScreen() {
       </View>
     );
   };
+
+  const renderSocialTab = () => (
+    <View style={styles.tabContent}>
+      <View style={styles.ratingSection}>
+        <Text style={styles.sectionTitle}>What do you think?</Text>
+        <TrafficLightRating 
+          restaurantId={id as string}
+          onRatingChange={(rating) => {
+            console.log('User rated:', rating);
+          }}
+          size="large"
+        />
+      </View>
+
+      <View style={styles.infoCard}>
+        <Text style={styles.sectionTitle}>Community Activity</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statItem}>
+            <Users size={24} color={designTokens.colors.textLight} />
+            <Text style={styles.statValue}>{socialStats.totalVisits}</Text>
+            <Text style={styles.statLabel}>Total Visits</Text>
+          </View>
+          <View style={styles.statItem}>
+            <TrendingUp size={24} color={designTokens.colors.textLight} />
+            <Text style={styles.statValue}>{socialStats.weeklyVisits}</Text>
+            <Text style={styles.statLabel}>This Week</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
 
   const renderInfoTab = () => (
     <View style={styles.tabContent}>
@@ -431,11 +476,7 @@ export default function RestaurantDetailScreen() {
       case 'info':
         return renderInfoTab();
       case 'social':
-        return (
-          <View style={styles.tabContent}>
-            <Text style={styles.placeholderText}>Social activity coming soon</Text>
-          </View>
-        );
+        return renderSocialTab();
       case 'photos':
         return renderPhotosTab();
       default:
@@ -451,6 +492,19 @@ export default function RestaurantDetailScreen() {
         {renderTabs()}
         {renderTabContent()}
       </ScrollView>
+
+      {restaurant && (
+        <BoardSelectionModal
+          visible={showBoardModal}
+          onClose={() => setShowBoardModal(false)}
+          restaurantId={id as string}
+          restaurantName={restaurant.name}
+          onSuccess={() => {
+            setIsSaved(true);
+            setShowBoardModal(false);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -774,5 +828,38 @@ const styles = StyleSheet.create({
   emptyPhotosSubtext: {
     ...designTokens.typography.detailText,
     color: designTokens.colors.textMedium,
+  },
+  ratingSection: {
+    backgroundColor: 'white',
+    borderRadius: designTokens.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    ...designTokens.typography.screenTitle,
+    color: designTokens.colors.textDark,
+    marginTop: 8,
+  },
+  statLabel: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+    marginTop: 4,
   },
 });
