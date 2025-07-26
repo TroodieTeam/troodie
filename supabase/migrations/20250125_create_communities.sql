@@ -119,7 +119,7 @@ CREATE OR REPLACE VIEW community_details_view AS
 SELECT 
   c.*,
   u.username as creator_username,
-  u.profile_photo_url as creator_photo,
+  u.avatar_url as creator_photo,
   COUNT(DISTINCT cm.user_id) as actual_member_count,
   COUNT(DISTINCT cp.id) as actual_post_count
 FROM communities c

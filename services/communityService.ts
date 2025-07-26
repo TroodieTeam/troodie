@@ -440,7 +440,7 @@ export const communityService = {
           users!inner(
             id,
             username,
-            profile_photo_url
+            avatar_url
           )
         `)
         .eq('community_id', communityId)

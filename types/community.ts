@@ -16,7 +16,7 @@ export interface Community {
   post_count: number;
   is_active: boolean;
   creator_username?: string;
-  creator_photo?: string;
+  creator_photo?: string; // This is avatar_url from users table
   actual_member_count?: number;
   actual_post_count?: number;
 }
