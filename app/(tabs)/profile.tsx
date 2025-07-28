@@ -98,13 +98,13 @@ export default function ProfileScreen() {
     if (!user?.id) return;
     
     try {
-      console.log('Loading profile for user:', user.id);
+      // Loading profile for user
       
       // Test storage access first
       await profileService.testStorageAccess();
       
       const profileData = await profileService.getProfile(user.id);
-      console.log('Profile loaded:', profileData);
+      // Profile loaded successfully
       setProfile(profileData);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -178,7 +178,7 @@ export default function ProfileScreen() {
     try {
       setLoadingPosts(true);
       const userPosts = await postService.getUserPosts(user.id, 50);
-      console.log('Loaded posts:', userPosts.length);
+      // Posts loaded
       setPosts(userPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
@@ -209,7 +209,7 @@ export default function ProfileScreen() {
     
     try {
       // TODO: Implement share functionality
-      console.log('Share profile:', profile);
+      // Share profile
     } catch (error) {
       console.error('Error sharing profile:', error);
     }
@@ -267,10 +267,7 @@ export default function ProfileScreen() {
     }
   };
 
-  // Debug logging
-  console.log('Profile data:', profile);
-  console.log('User data:', userData);
-  console.log('Avatar URL:', userData.avatar);
+  // Profile data prepared
 
   // Transform achievements for display
   const displayAchievements = achievements.slice(0, 3).map((achievement, index) => ({
@@ -297,8 +294,8 @@ export default function ProfileScreen() {
           <Image 
             source={{ uri: userData.avatar }} 
             style={styles.avatar}
-            onError={(error) => console.log('Avatar image error:', error)}
-            onLoad={() => console.log('Avatar image loaded successfully')}
+            onError={() => {}}
+            onLoad={() => {}}
           />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder]}>

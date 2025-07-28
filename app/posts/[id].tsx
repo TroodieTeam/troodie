@@ -50,16 +50,15 @@ export default function PostDetailScreen() {
   };
 
   const handleLike = (postId: string, liked: boolean) => {
-    console.log('Post liked:', postId, liked);
+    // TODO: Handle post like
   };
 
   const handleComment = (postId: string) => {
-    console.log('Comment on post:', postId);
     // TODO: Navigate to comment screen
   };
 
   const handleSave = (postId: string) => {
-    console.log('Save post:', postId);
+    // TODO: Handle post save
   };
 
   if (loading) {
@@ -128,7 +127,7 @@ export default function PostDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   header: {
     flexDirection: 'row',

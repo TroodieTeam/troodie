@@ -99,7 +99,6 @@ export function RestaurantCardWithSave({
     e.stopPropagation();
     if (!user) {
       // TODO: Show auth modal or redirect to login
-      console.log('User not authenticated');
       return;
     }
     setShowBoardModal(true);

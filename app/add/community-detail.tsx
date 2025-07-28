@@ -1,43 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import { CreatePostButton } from '@/components/community/CreatePostButton';
+import { theme } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { Community, communityService } from '@/services/communityService';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Dimensions,
+  Bookmark,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  Heart,
+  Lock,
+  MapPin,
+  MessageCircle,
+  MoreVertical,
+  TrendingUp,
+  Users
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
   ActivityIndicator,
   Alert,
-  RefreshControl
+  Dimensions,
+  Image,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  ChevronLeft,
-  Users,
-  TrendingUp,
-  MapPin,
-  Crown,
-  Calendar,
-  Heart,
-  MessageCircle,
-  Bookmark,
-  ChevronRight,
-  CheckCircle,
-  Lock,
-  MoreVertical
-} from 'lucide-react-native';
-import { theme } from '@/constants/theme';
-import { communityService, Community } from '@/services/communityService';
-import { useAuth } from '@/contexts/AuthContext';
-import { CreatePostButton } from '@/components/community/CreatePostButton';
 import {
   Menu,
-  MenuOptions,
   MenuOption,
-  MenuTrigger,
+  MenuOptions,
   MenuProvider,
+  MenuTrigger,
 } from 'react-native-popup-menu';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -497,7 +496,7 @@ export default function CommunityDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   header: {
     flexDirection: 'row',

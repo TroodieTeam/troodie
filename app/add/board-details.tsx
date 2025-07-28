@@ -3,6 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { boardService } from '@/services/boardService';
 import { userService } from '@/services/userService';
+import { imageUploadService } from '@/services/imageUploadService';
 import { BoardCreationForm } from '@/types/board';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -13,13 +14,15 @@ import {
     Globe,
     Lock,
     MapPin,
-    Tag
+    Tag,
+    X
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
     AccessibilityInfo,
     ActivityIndicator,
     Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -44,6 +47,9 @@ export default function BoardDetailsScreen() {
   const [location, setLocation] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [coverImageUri, setCoverImageUri] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   // Form validation states
   const [errors, setErrors] = useState<{[key: string]: string}>({});
@@ -116,13 +122,16 @@ export default function BoardDetailsScreen() {
         type: boardType,
         category,
         location: location.trim(),
+        cover_image_url: coverImageUrl || undefined,
         is_private: boardType === 'private',
         allow_comments: true,
         allow_saves: true,
         price: boardType === 'paid' ? 0 : undefined
       };
 
+      // Creating board with data
       const board = await boardService.createBoard(user.id, boardData);
+      // Board created successfully
 
       if (board) {
         // Update network progress
@@ -210,19 +219,86 @@ export default function BoardDetailsScreen() {
     );
   };
 
+  const handleImagePick = async () => {
+    if (!user) {
+      Alert.alert('Error', 'Please sign in to upload images');
+      return;
+    }
+
+    try {
+      const result = await imageUploadService.pickImage();
+      
+      if (!imageUploadService.validateImage(result)) {
+        return;
+      }
+
+      const asset = result.assets![0];
+      setCoverImageUri(asset.uri);
+      
+      // Upload image immediately
+      setUploadingImage(true);
+      const uploadResult = await imageUploadService.uploadBoardCover(asset.uri, user.id);
+      
+      if (uploadResult.url) {
+        setCoverImageUrl(uploadResult.url);
+        AccessibilityInfo.announceForAccessibility('Cover image uploaded successfully');
+      } else {
+        Alert.alert('Upload Error', uploadResult.error || 'Failed to upload image');
+        setCoverImageUri(null);
+      }
+    } catch (error: any) {
+      console.error('Image pick error:', error);
+      Alert.alert('Error', error.message || 'Failed to select image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageRemove = async () => {
+    if (coverImageUrl) {
+      // Optionally delete from storage
+      await imageUploadService.deleteImage(coverImageUrl, 'board-covers');
+    }
+    setCoverImageUri(null);
+    setCoverImageUrl(null);
+    AccessibilityInfo.announceForAccessibility('Cover image removed');
+  };
+
   const renderCoverImage = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Cover Image</Text>
-      <TouchableOpacity 
-        style={styles.coverImageUpload}
-        accessibilityLabel="Add cover image"
-        accessibilityRole="button"
-        accessibilityHint="Tap to select a cover image for your board"
-      >
-        <Camera size={24} color={theme.colors.text.secondary} />
-        <Text style={styles.coverImageText}>Add Cover Image</Text>
-        <Text style={styles.coverImageSubtext}>Recommended: 1200x630px</Text>
-      </TouchableOpacity>
+      {coverImageUri ? (
+        <View style={styles.coverImagePreview}>
+          <Image source={{ uri: coverImageUri }} style={styles.coverImage} />
+          {uploadingImage ? (
+            <View style={styles.imageOverlay}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+              <Text style={styles.uploadingText}>Uploading...</Text>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.removeButton}
+              onPress={handleImageRemove}
+              accessibilityLabel="Remove cover image"
+              accessibilityRole="button"
+            >
+              <X size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <TouchableOpacity 
+          style={styles.coverImageUpload}
+          onPress={handleImagePick}
+          accessibilityLabel="Add cover image"
+          accessibilityRole="button"
+          accessibilityHint="Tap to select a cover image for your board"
+        >
+          <Camera size={24} color={theme.colors.text.secondary} />
+          <Text style={styles.coverImageText}>Add Cover Image</Text>
+          <Text style={styles.coverImageSubtext}>Recommended: 1200x630px</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -242,7 +318,7 @@ export default function BoardDetailsScreen() {
               setErrors({...errors, title: ''});
             }
           }}
-          placeholderTextColor={theme.colors.text.light}
+          placeholderTextColor={theme.colors.text.tertiary}
           accessibilityLabel="Board title"
           accessibilityHint="Enter a descriptive title for your board"
           maxLength={100}
@@ -269,7 +345,7 @@ export default function BoardDetailsScreen() {
           }}
           multiline
           numberOfLines={4}
-          placeholderTextColor={theme.colors.text.light}
+          placeholderTextColor={theme.colors.text.tertiary}
           accessibilityLabel="Board description"
           accessibilityHint="Describe what your board is about"
           maxLength={500}
@@ -291,7 +367,7 @@ export default function BoardDetailsScreen() {
             placeholder="e.g., Manhattan, New York"
             value={location}
             onChangeText={setLocation}
-            placeholderTextColor={theme.colors.text.light}
+            placeholderTextColor={theme.colors.text.tertiary}
             accessibilityLabel="Board location"
             accessibilityHint="Optional: Add a location for your board"
           />
@@ -663,5 +739,43 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 100,
+  },
+  coverImagePreview: {
+    height: 180,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#FFFFFF',
+    marginTop: 8,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

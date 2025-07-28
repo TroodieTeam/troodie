@@ -29,8 +29,43 @@ export interface Profile {
 }
 
 class ProfileService {
+  async ensureUserExists(userId: string): Promise<void> {
+    try {
+      // Check if user exists in users table
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!existingUser) {
+        // Get user email from auth
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // Create user record
+        const { error } = await supabase
+          .from('users')
+          .insert({
+            id: userId,
+            email: user?.email,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (error && error.code !== '23505') { // 23505 is unique violation, which is ok
+          console.error('Error creating user record:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error in ensureUserExists:', error);
+    }
+  }
+
   async getProfile(userId: string): Promise<Profile | null> {
     try {
+      // Ensure user exists first
+      await this.ensureUserExists(userId);
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -51,12 +86,51 @@ class ProfileService {
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile | null> {
     try {
-      const { data, error } = await supabase
+      // First, check if the user exists
+      const { data: existingUser, error: checkError } = await supabase
         .from('users')
-        .update(updates)
+        .select('id')
         .eq('id', userId)
-        .select()
-        .single();
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking user existence:', checkError);
+        throw checkError;
+      }
+
+      let data;
+      let error;
+
+      if (existingUser) {
+        // User exists, update
+        const result = await supabase
+          .from('users')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userId)
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      } else {
+        // User doesn't exist, insert with upsert
+        const result = await supabase
+          .from('users')
+          .upsert({
+            id: userId,
+            ...updates,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         console.error('Error updating profile:', error);
@@ -72,14 +146,16 @@ class ProfileService {
 
   async uploadProfileImage(userId: string, imageUri: string): Promise<string> {
     try {
-      console.log('Starting profile image upload for user:', userId);
-      console.log('Image URI:', imageUri);
+      // Starting profile image upload
+      
+      // Ensure user exists first
+      await this.ensureUserExists(userId);
       
       // Generate unique filename with more randomness
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substr(2, 9);
       const fileName = `${userId}/profile-${timestamp}-${randomId}.jpg`;
-      console.log('Generated filename:', fileName);
+      // Generated filename
       
       // Read the image as blob
       const response = await fetch(imageUri);
@@ -87,14 +163,14 @@ class ProfileService {
         throw new Error(`Failed to fetch image: ${response.status} - ${response.statusText}`);
       }
       const blob = await response.blob();
-      console.log('Image blob created, size:', blob.size, 'bytes');
+      // Image blob created
       
       if (blob.size === 0) {
         throw new Error('Image blob is empty - invalid image data');
       }
 
       // Test storage bucket access first
-      console.log('Testing storage bucket access...');
+      // Testing storage bucket access
       const { data: bucketData, error: bucketError } = await supabase.storage
         .from('avatars')
         .list('', { limit: 1 });
@@ -104,7 +180,7 @@ class ProfileService {
         throw new Error(`Storage bucket not accessible: ${bucketError.message}`);
       }
       
-      console.log('Storage bucket accessible, proceeding with upload...');
+      // Storage bucket accessible, proceeding with upload
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
@@ -119,19 +195,19 @@ class ProfileService {
         throw error;
       }
 
-      console.log('Image uploaded successfully to storage:', data);
+      // Image uploaded successfully to storage
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
-      console.log('Public URL generated:', publicUrl);
+      // Public URL generated
 
       // Test if the URL is accessible
       try {
         const urlResponse = await fetch(publicUrl);
-        console.log('URL accessibility test:', urlResponse.status, urlResponse.ok);
+        // URL accessibility test completed
       } catch (urlError) {
         console.warn('URL accessibility test failed:', urlError);
       }
@@ -145,12 +221,12 @@ class ProfileService {
         throw new Error('Failed to update profile with image URL');
       }
 
-      console.log('Profile updated with image URL:', publicUrl);
+      // Profile updated with image URL
 
       // Unlock achievement for adding profile image
       try {
         await achievementService.unlockAchievement(userId, 'profile_image_added');
-        console.log('Achievement unlocked: profile_image_added');
+        // Achievement unlocked: profile_image_added
       } catch (achievementError) {
         console.warn('Achievement unlock failed:', achievementError);
       }
@@ -165,11 +241,11 @@ class ProfileService {
   // Debug function to test storage access
   async testStorageAccess(): Promise<void> {
     try {
-      console.log('Testing storage access...');
+      // Testing storage access
       
       // Test bucket listing
       const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      console.log('Available buckets:', buckets);
+      // Available buckets checked
       
       if (bucketError) {
         console.error('Bucket listing error:', bucketError);
@@ -180,7 +256,7 @@ class ProfileService {
         .from('avatars')
         .list('', { limit: 5 });
       
-      console.log('Avatars bucket contents:', avatarsList);
+      // Avatars bucket contents checked
       
       if (avatarsError) {
         console.error('Avatars bucket error:', avatarsError);
@@ -199,7 +275,7 @@ class ProfileService {
         .select('id')
         .eq('username', username.toLowerCase())
         .neq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         throw new Error('Username already taken');
@@ -277,7 +353,7 @@ class ProfileService {
         .from('users')
         .select('id')
         .eq('username', username.toLowerCase())
-        .single();
+        .maybeSingle();
 
       // If we get data, username is taken
       // If we get error (no rows), username is available

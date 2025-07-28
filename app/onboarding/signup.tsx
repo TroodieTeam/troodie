@@ -32,7 +32,6 @@ export default function SignupScreen() {
   // Check if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('[Signup] User is already authenticated, redirecting to main app');
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, router]);

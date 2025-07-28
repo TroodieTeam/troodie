@@ -30,10 +30,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserProfile = async (userId: string) => {
     try {
-      console.log('[AuthContext] Loading profile for user:', userId)
+      // Loading profile for user
       const profile = await userService.getProfile(userId)
       if (!profile) {
-        console.log('[AuthContext] No profile found, creating new profile')
+        // No profile found, creating new profile
         const newProfile = await userService.createProfile({
           id: userId,
           phone: null,
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
         setProfile(newProfile)
       } else {
-        console.log('[AuthContext] Profile loaded successfully')
+        // Profile loaded successfully
         setProfile(profile)
       }
     } catch (error) {
@@ -51,16 +51,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshAuth = async () => {
     try {
-      console.log('[AuthContext] Refreshing auth state...')
+      // Refreshing auth state
       const { data: { session } } = await supabase.auth.getSession()
       
       if (session) {
-        console.log('[AuthContext] Session found during refresh')
+        // Session found during refresh
         setSession(session)
         setUser(session.user)
         await loadUserProfile(session.user.id)
       } else {
-        console.log('[AuthContext] No session found during refresh')
+        // No session found during refresh
         setSession(null)
         setUser(null)
         setProfile(null)
@@ -84,11 +84,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Simple listener - only handle TOKEN_REFRESHED and user-initiated SIGNED_OUT
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AuthContext] Auth event:', event)
+      // Auth event received
       
       // Only handle specific events we care about
       if (event === 'TOKEN_REFRESHED' && session) {
-        console.log('[AuthContext] Token refreshed')
+        // Token refreshed
         setSession(session)
         setUser(session.user)
       }
@@ -121,11 +121,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     
     try {
-      console.log('[AuthContext] Verifying OTP for:', email)
+      // Verifying OTP
       const result = await authService.verifyOtp(email, token)
       
       if (result.success && result.session) {
-        console.log('[AuthContext] OTP verified successfully, setting session')
+        // OTP verified successfully
         
         // Directly set our state - don't rely on auth state changes
         setSession(result.session)
@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         return { ...result, session: result.session }
       } else {
-        console.log('[AuthContext] OTP verification failed:', result.error)
+        // OTP verification failed
         setError(result.error || 'Verification failed')
         return result
       }

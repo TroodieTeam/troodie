@@ -10,8 +10,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { boardService } from '@/services/boardService';
+import { communityService } from '@/services/communityService';
 import { InviteService } from '@/services/inviteService';
 import { notificationService } from '@/services/notificationService';
+import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
 import { Board } from '@/types/board';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
@@ -47,7 +49,7 @@ import {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { userState, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, networkProgress } = useApp();
+  const { userState, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, networkProgress, updateNetworkProgress } = useApp();
   const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
   const [loading, setLoading] = useState(true);
@@ -67,8 +69,33 @@ export default function HomeScreen() {
     loadRestaurants();
     if (user?.id) {
       loadUnreadCount();
+      checkUserProgress();
     }
-  }, [user?.id]);
+  }, [user?.id, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity]);
+
+  const checkUserProgress = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const [boards, posts, communities] = await Promise.all([
+        boardService.getUserBoards(user.id),
+        postService.getUserPosts(user.id),
+        communityService.getUserCommunities(user.id)
+      ]);
+      
+      if (boards.length > 0 && !hasCreatedBoard) {
+        updateNetworkProgress('board');
+      }
+      if (posts.length > 0 && !hasCreatedPost) {
+        updateNetworkProgress('post');
+      }
+      if (communities.length > 0 && !hasJoinedCommunity) {
+        updateNetworkProgress('community');
+      }
+    } catch (error) {
+      console.error('Error checking user progress:', error);
+    }
+  };
 
   const loadUnreadCount = async () => {
     try {
@@ -97,7 +124,7 @@ export default function HomeScreen() {
       if (user?.id) {
         try {
           const boards = await boardService.getUserBoards(user.id);
-          console.log('Loaded boards:', boards); // Debug log
+          // Boards loaded
           setUserBoards(boards);
         } catch (boardError) {
           console.error('Error loading boards:', boardError);
@@ -119,6 +146,7 @@ export default function HomeScreen() {
     await loadRestaurants();
     if (user?.id) {
       await loadUnreadCount();
+      await checkUserProgress();
     }
     setRefreshing(false);
   };
@@ -163,7 +191,7 @@ export default function HomeScreen() {
     try {
       const inviteLink = await inviteService.generateInviteLink(user!.id);
       // Handle invite link sharing
-      console.log('Invite link created:', inviteLink);
+      // Invite link created
     } catch (error) {
       console.error('Error creating invite link:', error);
     }
@@ -558,7 +586,7 @@ export default function HomeScreen() {
         
         {userState.isNewUser && renderWelcomeBanner()}
         
-        {userState.friendsCount < 5 && renderNetworkBuilding()}
+        {renderNetworkBuilding()}
         
         {user && <QuickSavesBoard />}
         

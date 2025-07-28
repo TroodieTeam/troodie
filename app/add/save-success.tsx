@@ -1,15 +1,15 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Animated
-} from 'react-native';
+import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { CheckCircle, Home, Utensils } from 'lucide-react-native';
-import { theme } from '@/constants/theme';
+import React from 'react';
+import {
+    Animated,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 export default function SaveSuccessScreen() {
   const router = useRouter();
@@ -80,7 +80,7 @@ export default function SaveSuccessScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   content: {
     flex: 1,

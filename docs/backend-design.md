@@ -126,6 +126,23 @@ CREATE TABLE public.restaurants (
 
 ### Social Features
 
+#### Power Users & Critics Definition
+Power users and critics are identified by the following criteria:
+
+- **Power Users**: 
+  - Have 10,000+ followers
+  - Posted 50+ restaurant reviews with high engagement
+  - Maintained consistent activity (weekly posts for 3+ months)
+  - High average rating accuracy (aligned with community consensus)
+  - Verified account status
+
+- **Food Critics**:
+  - Professional food critics with media affiliation
+  - Verified credentials from recognized publications
+  - Specialized food bloggers with 25,000+ followers
+  - Restaurant industry professionals (chefs, sommeliers)
+  - Manually verified by Troodie team
+
 #### `restaurant_saves` Table
 User saves/bookmarks of restaurants.
 
@@ -523,6 +540,53 @@ CREATE TABLE public.user_invite_shares (
 );
 ```
 
+### Restaurant Social Activity
+
+#### `restaurant_visits` Table
+Track user visits to restaurants for social activity feed.
+
+```sql
+CREATE TABLE public.restaurant_visits (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  restaurant_id uuid NOT NULL,
+  visit_type character varying CHECK (visit_type::text = ANY (ARRAY['check_in'::character varying, 'review'::character varying, 'save'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT restaurant_visits_pkey PRIMARY KEY (id),
+  CONSTRAINT restaurant_visits_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT restaurant_visits_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
+);
+```
+
+#### `restaurant_activity_feed` View
+Aggregated view for restaurant social activity.
+
+```sql
+CREATE VIEW restaurant_activity_feed AS
+SELECT 
+  rv.id,
+  rv.restaurant_id,
+  rv.user_id,
+  u.name as user_name,
+  u.avatar_url,
+  rv.visit_type,
+  rv.created_at,
+  CASE 
+    WHEN ur.follower_id IS NOT NULL THEN true 
+    ELSE false 
+  END as is_friend,
+  u.is_verified,
+  u.followers_count,
+  CASE 
+    WHEN u.followers_count > 10000 AND u.is_verified THEN true
+    ELSE false
+  END as is_power_user
+FROM restaurant_visits rv
+JOIN users u ON rv.user_id = u.id
+LEFT JOIN user_relationships ur ON ur.following_id = rv.user_id AND ur.follower_id = auth.uid()
+ORDER BY rv.created_at DESC;
+```
+
 ### Campaign System
 
 #### `campaigns` Table
@@ -817,6 +881,6 @@ supabase
 
 ---
 
-**Last Updated**: [Current Date]
-**Version**: 1.0
+**Last Updated**: 2025-07-27
+**Version**: 1.1
 **Maintainer**: Engineering Team

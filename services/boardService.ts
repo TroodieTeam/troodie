@@ -13,8 +13,8 @@ export const boardService = {
    */
   async createBoard(userId: string, boardData: BoardCreationForm): Promise<Board | null> {
     try {
-      // Use the simple function to create board (without board_members for now)
-      const { data, error } = await supabase
+      // Try to use the RPC function first
+      const { data: rpcData, error: rpcError } = await supabase
         .rpc('create_simple_board', {
           p_user_id: userId,
           p_title: boardData.title,
@@ -22,19 +22,46 @@ export const boardService = {
           p_type: boardData.type,
           p_category: boardData.category || null,
           p_location: boardData.location || null,
+          p_cover_image_url: boardData.cover_image_url || null,
           p_is_private: boardData.is_private,
           p_allow_comments: boardData.allow_comments,
           p_allow_saves: boardData.allow_saves,
           p_price: boardData.price || null
         })
 
-      if (error) throw error
+      // If RPC fails, try direct insert
+      if (rpcError) {
+        // RPC failed, trying direct insert
+        
+        const { data: insertData, error: insertError } = await supabase
+          .from('boards')
+          .insert({
+            user_id: userId,
+            title: boardData.title,
+            description: boardData.description || null,
+            type: boardData.type,
+            category: boardData.category || null,
+            location: boardData.location || null,
+            cover_image_url: boardData.cover_image_url || null,
+            is_private: boardData.is_private,
+            allow_comments: boardData.allow_comments,
+            allow_saves: boardData.allow_saves,
+            price: boardData.price || null,
+            restaurant_count: 0,
+            member_count: 0
+          })
+          .select()
+          .single()
 
-      // Fetch the created board
+        if (insertError) throw insertError
+        return insertData
+      }
+
+      // Fetch the created board from RPC
       const { data: board, error: fetchError } = await supabase
         .from('boards')
         .select('*')
-        .eq('id', data)
+        .eq('id', rpcData)
         .single()
 
       if (fetchError) throw fetchError

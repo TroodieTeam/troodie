@@ -13,7 +13,6 @@ export default function WelcomeScreen() {
   useEffect(() => {
     // Check if user is already authenticated
     if (isAuthenticated) {
-      console.log('[Welcome] User is authenticated, redirecting to main app');
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, router]);

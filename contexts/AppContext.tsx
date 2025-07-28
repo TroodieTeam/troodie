@@ -3,6 +3,7 @@ import { communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { Screen, UserState } from '@/types/core';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { useAuth } from './AuthContext';
 
 interface AppState {
   userState: UserState;
@@ -36,6 +37,7 @@ const defaultUserState: UserState = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [state, setState] = useState<AppState>({
     userState: defaultUserState,
     hasCreatedBoard: false,
@@ -86,13 +88,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Check network progress on app load
   useEffect(() => {
     const checkNetworkProgress = async () => {
-      if (!state.userState.id) return;
+      if (!user?.id) return;
       
       try {
         const [boards, posts, communities] = await Promise.all([
-          boardService.getUserBoards(state.userState.id),
-          postService.getUserPosts(state.userState.id),
-          communityService.getUserCommunities(state.userState.id)
+          boardService.getUserBoards(user.id),
+          postService.getUserPosts(user.id),
+          communityService.getUserCommunities(user.id)
         ]);
         
         setState(prev => ({
@@ -112,7 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     
     checkNetworkProgress();
-  }, [state.userState.id]);
+  }, [user?.id]);
 
   return (
     <AppContext.Provider

@@ -10,15 +10,15 @@ export default function Index() {
     // Wait for auth to initialize
     if (loading) return;
     
-    console.log('[Index] Auth check:', { isAuthenticated, loading });
+    // Auth check
     
     if (isAuthenticated) {
       // User is logged in - go directly to main app
-      console.log('[Index] User authenticated, going to main app');
+      // User authenticated, going to main app
       router.replace('/(tabs)');
     } else {
       // User is not logged in - go to onboarding
-      console.log('[Index] User not authenticated, going to onboarding');
+      // User not authenticated, going to onboarding
       router.replace('/onboarding/splash');
     }
   }, [router, loading, isAuthenticated]);
