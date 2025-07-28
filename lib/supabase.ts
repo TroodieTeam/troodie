@@ -18,8 +18,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
     // Add explicit storage key to ensure consistency
     storageKey: 'supabase.auth.token',
-    // Session auto refresh interval
-    sessionAutoRefreshInterval: 3600,
   },
 })
 
@@ -281,7 +279,7 @@ export type Database = {
       posts: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           restaurant_id: string
           caption: string | null
           photos: string[] | null
@@ -298,12 +296,19 @@ export type Database = {
           saves_count: number
           shares_count: number
           is_trending: boolean
+          content_type: 'original' | 'external'
+          external_source: string | null
+          external_url: string | null
+          external_title: string | null
+          external_description: string | null
+          external_thumbnail: string | null
+          external_author: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
-          user_id: string
+          user_id?: string | null
           restaurant_id: string
           caption?: string | null
           photos?: string[] | null
@@ -320,6 +325,13 @@ export type Database = {
           saves_count?: number
           shares_count?: number
           is_trending?: boolean
+          content_type?: 'original' | 'external'
+          external_source?: string | null
+          external_url?: string | null
+          external_title?: string | null
+          external_description?: string | null
+          external_thumbnail?: string | null
+          external_author?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -342,6 +354,42 @@ export type Database = {
           saves_count?: number
           shares_count?: number
           is_trending?: boolean
+          content_type?: 'original' | 'external'
+          external_source?: string | null
+          external_url?: string | null
+          external_title?: string | null
+          external_description?: string | null
+          external_thumbnail?: string | null
+          external_author?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      external_content_sources: {
+        Row: {
+          id: string
+          name: string
+          domain: string | null
+          icon_url: string | null
+          is_supported: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          domain?: string | null
+          icon_url?: string | null
+          is_supported?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          domain?: string | null
+          icon_url?: string | null
+          is_supported?: boolean
           created_at?: string
           updated_at?: string
         }

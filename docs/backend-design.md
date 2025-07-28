@@ -13,6 +13,56 @@ This document serves as the living documentation for Troodie's backend architect
 - **Storage**: Supabase Storage for images and media
 - **Edge Functions**: Supabase Edge Functions for serverless logic
 
+## Storage Configuration
+
+### Storage Buckets
+
+#### `post-photos` Bucket
+Stores all user-uploaded photos for posts.
+
+**Configuration**:
+- **Public**: Yes (publicly accessible for viewing)
+- **File Size Limit**: 10MB per file
+- **Allowed MIME Types**: 
+  - `image/jpeg`
+  - `image/jpg`
+  - `image/png`
+  - `image/gif`
+  - `image/webp`
+
+**Folder Structure**:
+```
+post-photos/
+└── posts/
+    └── {post_id}/
+        └── {timestamp}_{random_id}.jpg
+```
+
+**RLS Policies**:
+- Authenticated users can upload photos to their own posts
+- Authenticated users can update/delete their own photos
+- **Public read access for all photos** (unrestricted viewing)
+- Bucket marked as public for direct URL access
+
+**Storage Policy Implementation**:
+```sql
+-- Public read access for all post photos (simplified policy)
+CREATE POLICY "Public can view all post photos" ON storage.objects
+FOR SELECT TO public
+USING (bucket_id = 'post-photos');
+
+-- Users can upload photos to any post folder (posts/{post_id}/)
+CREATE POLICY "Users can upload their own post photos" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'post-photos' AND
+  (storage.foldername(name))[1] = 'posts'
+);
+
+-- Ensure bucket is marked as public
+UPDATE storage.buckets SET public = true WHERE id = 'post-photos';
+```
+
 ## Core Schema Design
 
 ### User Management
@@ -169,7 +219,7 @@ CREATE TABLE public.restaurant_saves (
 ```
 
 #### `posts` Table
-Social media-style posts about restaurant visits.
+Social media-style posts about restaurant visits with support for both original and external content.
 
 ```sql
 CREATE TABLE public.posts (
@@ -177,12 +227,12 @@ CREATE TABLE public.posts (
   user_id uuid,
   restaurant_id character varying NOT NULL,
   caption text,
-  photos ARRAY,
+  photos ARRAY,                       -- Array of photo URLs
   rating integer CHECK (rating >= 1 AND rating <= 5),
   visit_date date,
   price_range character varying,
   visit_type character varying CHECK (visit_type::text = ANY (ARRAY['dine_in'::character varying, 'takeout'::character varying, 'delivery'::character varying]::text[])),
-  tags ARRAY,
+  tags ARRAY,                         -- Array of tags
   privacy character varying DEFAULT 'public'::character varying CHECK (privacy::text = ANY (ARRAY['public'::character varying, 'friends'::character varying, 'private'::character varying]::text[])),
   location_lat numeric,
   location_lng numeric,
@@ -191,12 +241,51 @@ CREATE TABLE public.posts (
   saves_count integer DEFAULT 0,
   shares_count integer DEFAULT 0,
   is_trending boolean DEFAULT false,
+  -- External content support
+  content_type character varying DEFAULT 'original' CHECK (content_type::text = ANY (ARRAY['original'::character varying, 'external'::character varying]::text[])),
+  external_source character varying,   -- Source platform (tiktok, instagram, etc.)
+  external_url text,                  -- Original URL
+  external_title text,                -- Title from external source
+  external_description text,          -- Description from external source
+  external_thumbnail text,            -- Thumbnail image URL
+  external_author text,               -- Original author/creator
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT posts_pkey PRIMARY KEY (id),
   CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 ```
+
+**Content Types**:
+- `original`: User-created content with photos, ratings, and personal experiences
+- `external`: Curated content from external sources (TikTok, Instagram, articles, etc.)
+
+**Note**: The `community_id` field for community posts is planned for future implementation.
+
+#### `external_content_sources` Table
+Reference table for supported external content platforms.
+
+```sql
+CREATE TABLE public.external_content_sources (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL,
+  domain character varying,           -- Platform domain (e.g., tiktok.com)
+  icon_url text,                     -- Platform icon URL
+  is_supported boolean DEFAULT true, -- Whether platform is currently supported
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT external_content_sources_pkey PRIMARY KEY (id),
+  CONSTRAINT external_content_sources_name_unique UNIQUE (name)
+);
+```
+
+**Supported Platforms**:
+- TikTok (`tiktok.com`)
+- Instagram (`instagram.com`)
+- YouTube (`youtube.com`)
+- Twitter (`twitter.com`)
+- Articles (blogs, news sites)
+- Other (generic external links)
 
 #### `user_relationships` Table
 Follow/unfollow relationships between users.
@@ -289,6 +378,8 @@ CREATE TABLE public.board_restaurants (
 #### `communities` Table
 User-created communities around food interests.
 
+**Note**: Communities support hierarchical role-based access control (RBAC) where owners have full control, admins can manage content and members, moderators can manage content, and members can view and post.
+
 ```sql
 CREATE TABLE public.communities (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -313,21 +404,35 @@ CREATE TABLE public.communities (
 ```
 
 #### `community_members` Table
-Community membership management.
+Community membership management with role-based access control.
 
 ```sql
 CREATE TABLE public.community_members (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   community_id uuid,
   user_id uuid,
-  role character varying DEFAULT 'member'::character varying,
-  status character varying DEFAULT 'active'::character varying,
+  role character varying DEFAULT 'member'::character varying CHECK (role::text = ANY (ARRAY['owner'::character varying, 'admin'::character varying, 'moderator'::character varying, 'member'::character varying]::text[])),
+  status character varying DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'declined'::character varying]::text[])),
   joined_at timestamp with time zone DEFAULT now(),
   CONSTRAINT community_members_pkey PRIMARY KEY (id),
-  CONSTRAINT community_members_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id),
-  CONSTRAINT community_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT community_members_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id) ON DELETE CASCADE,
+  CONSTRAINT community_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT community_members_unique UNIQUE (community_id, user_id)
 );
 ```
+
+**Roles**:
+- `owner`: Creator of the community, has all permissions
+- `admin`: Can manage posts, members, and community settings
+- `moderator`: Can manage posts and basic moderation
+- `member`: Regular member with read/post permissions
+
+**Admin Permissions**:
+- Delete the entire community
+- Edit community details (name, description, settings)
+- Remove any member (except owner)
+- Delete any post within the community
+- Promote/demote members (future feature)
 
 #### `community_posts` Table
 Posts within communities.
@@ -721,6 +826,9 @@ CREATE INDEX idx_restaurants_google_place_id ON restaurants (google_place_id);
 CREATE INDEX idx_posts_created_at ON posts (created_at DESC);
 CREATE INDEX idx_posts_user_id ON posts (user_id);
 CREATE INDEX idx_posts_restaurant_id ON posts (restaurant_id);
+CREATE INDEX idx_posts_content_type ON posts (content_type);
+CREATE INDEX idx_posts_external_source ON posts (external_source);
+CREATE INDEX idx_posts_external_url ON posts (external_url);
 
 -- User relationships
 CREATE INDEX idx_user_relationships_follower ON user_relationships (follower_id);
@@ -745,10 +853,16 @@ POST   /api/restaurants/:id/save # Save restaurant
 DELETE /api/restaurants/:id/save # Unsave restaurant
 
 GET    /api/posts               # List posts
-POST   /api/posts              # Create post
+POST   /api/posts              # Create post (original or external)
 GET    /api/posts/:id          # Get post details
 PUT    /api/posts/:id          # Update post
 DELETE /api/posts/:id          # Delete post
+GET    /api/posts/external     # Get external content posts
+GET    /api/posts/original     # Get original posts only
+GET    /api/posts/external/:source # Get posts from specific external source
+
+GET    /api/external-sources   # List supported external content sources
+GET    /api/link-metadata      # Extract metadata from external URLs
 
 GET    /api/boards             # List boards
 POST   /api/boards            # Create board
@@ -760,6 +874,20 @@ GET    /api/users/:id          # Get user profile
 PUT    /api/users/:id          # Update user profile
 POST   /api/users/:id/follow   # Follow user
 DELETE /api/users/:id/follow   # Unfollow user
+
+GET    /api/communities        # List communities
+POST   /api/communities       # Create community
+GET    /api/communities/:id   # Get community details
+PUT    /api/communities/:id   # Update community (admin/owner only)
+DELETE /api/communities/:id   # Delete community (admin/owner only)
+
+POST   /api/communities/:id/join    # Join community
+DELETE /api/communities/:id/leave   # Leave community
+DELETE /api/communities/:id/members/:userId # Remove member (admin/owner only)
+GET    /api/communities/:id/members  # Get community members
+GET    /api/communities/:id/posts    # Get community posts
+DELETE /api/communities/:id/posts/:postId # Delete post (admin/owner only)
+PUT    /api/communities/:id/members/:userId/role # Update member role (owner only)
 ```
 
 ### Real-time Subscriptions
@@ -770,6 +898,15 @@ supabase
   .on('postgres_changes', 
     { event: 'INSERT', schema: 'public', table: 'posts' },
     (payload) => handleNewPost(payload)
+  )
+  .subscribe();
+
+// External content posts
+supabase
+  .channel('external_posts')
+  .on('postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'posts', filter: 'content_type=eq.external' },
+    (payload) => handleNewExternalPost(payload)
   )
   .subscribe();
 
@@ -792,11 +929,22 @@ supabase
 4. **Rank**: Results ranked by relevance and community activity
 
 ### Post Creation Flow
+
+#### Original Content Posts
 1. **Validation**: Check user permissions and content
-2. **Creation**: Insert into `posts` table
-3. **Media**: Upload images to Supabase Storage
+2. **Media Upload**: Upload images to Supabase Storage
+3. **Creation**: Insert into `posts` table with `content_type='original'`
 4. **Notifications**: Trigger notifications to followers
 5. **Feed**: Update real-time feeds
+
+#### External Content Posts
+1. **URL Validation**: Validate external URL format
+2. **Metadata Extraction**: Fetch title, description, thumbnail from URL
+3. **Source Detection**: Identify platform (TikTok, Instagram, etc.)
+4. **Creation**: Insert into `posts` table with `content_type='external'`
+5. **Attribution**: Store original source and author information
+6. **Notifications**: Trigger notifications to followers
+7. **Feed**: Update real-time feeds with external content indicator
 
 ### Board Management
 1. **Creation**: User creates board with settings
@@ -821,6 +969,13 @@ supabase
 - PII encryption for sensitive data
 - GDPR compliance for user data
 - Data retention policies
+
+### Content Moderation
+- External URL validation and safety checks
+- Prohibited domain filtering
+- Copyright violation detection
+- Spam and malicious content prevention
+- Community reporting system for inappropriate external content
 
 ## Performance Optimization
 

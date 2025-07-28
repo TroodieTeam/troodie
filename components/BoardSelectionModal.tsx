@@ -1,22 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-  Alert
-} from 'react-native';
-import { Plus, Check, X } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
-import { boardService } from '@/services/boardService';
 import { useAuth } from '@/contexts/AuthContext';
+import { boardService } from '@/services/boardService';
+import { TrafficLightRating as TLRating } from '@/services/ratingService';
 import { Board } from '@/types/board';
 import { useRouter } from 'expo-router';
-import { TrafficLightRating } from '@/components/TrafficLightRating';
-import { TrafficLightRating as TLRating } from '@/services/ratingService';
+import { Check, Plus, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 interface BoardSelectionModalProps {
   visible: boolean;
@@ -177,21 +176,6 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color="#333" />
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.restaurantInfo}>
-            <Text style={styles.restaurantName}>{restaurantName}</Text>
-            <Text style={styles.subtitle}>Rate and save this restaurant</Text>
-          </View>
-
-          <View style={styles.ratingSection}>
-            <Text style={styles.ratingTitle}>How was it?</Text>
-            <TrafficLightRating
-              restaurantId={restaurantId}
-              onRatingChange={setSelectedRating}
-              showSummary={false}
-              size="medium"
-            />
           </View>
 
           {loading ? (

@@ -9,6 +9,7 @@ import {
   DollarSign,
   Edit,
   Globe,
+  Home,
   Lock,
   MapPin,
   MoreVertical,
@@ -150,9 +151,14 @@ export default function BoardDetailScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={22} color={theme.colors.text.dark} />
-      </TouchableOpacity>
+      <View style={styles.navigationGroup}>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.back()}>
+          <ChevronLeft size={22} color={theme.colors.text.dark} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navButton} onPress={handleGoHome}>
+          <Home size={18} color={theme.colors.text.dark} />
+        </TouchableOpacity>
+      </View>
       <View style={styles.headerContent}>
         <Text style={styles.headerTitle} numberOfLines={1}>{board?.title || 'Board'}</Text>
         <Text style={styles.headerSubtitle}>
@@ -332,7 +338,12 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
     backgroundColor: '#FFFFFF',
   },
-  backButton: {
+  navigationGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  navButton: {
     width: 32,
     height: 32,
     justifyContent: 'center',
@@ -340,7 +351,7 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 8,
   },
   headerTitle: {
     fontSize: 16,

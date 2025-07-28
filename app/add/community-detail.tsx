@@ -2,19 +2,21 @@ import { CreatePostButton } from '@/components/community/CreatePostButton';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Community, communityService } from '@/services/communityService';
+import { postService } from '@/services/postService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Bookmark,
   Calendar,
   ChevronLeft,
-  ChevronRight,
   Crown,
+  Edit,
   Heart,
   Lock,
   MapPin,
   MessageCircle,
   MoreVertical,
+  Trash2,
   TrendingUp,
+  UserMinus,
   Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -22,6 +24,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  FlatList,
   Image,
   RefreshControl,
   SafeAreaView,
@@ -51,12 +54,11 @@ export default function CommunityDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<'feed' | 'members' | 'events'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'members' | 'about'>('feed');
   const [members, setMembers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load all community data
   const loadCommunityData = async () => {
     if (!communityId) {
       router.back();
@@ -66,7 +68,6 @@ export default function CommunityDetailScreen() {
     try {
       setRefreshing(true);
       
-      // Load community details
       const communityData = await communityService.getCommunityById(communityId);
       if (!communityData) {
         Alert.alert('Error', 'Community not found');
@@ -76,7 +77,6 @@ export default function CommunityDetailScreen() {
       
       setCommunity(communityData);
       
-      // Check if user is a member and admin
       if (user) {
         const membership = await communityService.isUserMember(user.id, communityId);
         setIsMember(membership.isMember);
@@ -85,11 +85,9 @@ export default function CommunityDetailScreen() {
         setIsAdmin(adminStatus);
       }
       
-      // Load members
       const membersData = await communityService.getCommunityMembersWithDetails(communityId, 50);
       setMembers(membersData);
       
-      // Load posts
       const postsData = await communityService.getCommunityPosts(communityId, 20);
       setPosts(postsData);
       
@@ -102,12 +100,10 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  // Initial load
   useEffect(() => {
     loadCommunityData();
   }, [communityId, user]);
 
-  // Handle join/leave community
   const handleJoinLeave = async () => {
     if (!user) {
       router.push('/login');
@@ -139,37 +135,93 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  // Navigate to member profile
-  const handleMemberPress = (member: any) => {
-    if (member.user?.username) {
-      router.push(`/profile/${member.user.username}`);
-    }
-  };
-  
-  // Handle edit community
   const handleEditCommunity = () => {
     router.push({
-      pathname: '/community/edit',
+      pathname: '/add/community-edit',
       params: { communityId }
     });
   };
-  
-  // Format date helper
+
+  const handleDeleteCommunity = () => {
+    Alert.alert(
+      'Delete Community',
+      'Are you sure you want to delete this community? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await communityService.deleteCommunity(communityId);
+              Alert.alert('Success', 'Community deleted successfully');
+              router.replace('/explore');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete community');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleRemoveMember = (memberId: string, memberName: string) => {
+    Alert.alert(
+      'Remove Member',
+      `Are you sure you want to remove ${memberName} from the community?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await communityService.removeMember(communityId, memberId);
+              setMembers(members.filter(m => m.user_id !== memberId));
+              Alert.alert('Success', 'Member removed successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to remove member');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeletePost = (postId: string) => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await postService.deletePost(postId);
+              setPosts(posts.filter(p => p.id !== postId));
+              Alert.alert('Success', 'Post deleted successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete post');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) {
-      return 'Today';
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   if (loading) {
@@ -177,36 +229,38 @@ export default function CommunityDetailScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading community...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!community) {
-    return null;
-  }
-
-  const coverImage = community.is_event_based 
-    ? 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'
-    : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800';
+  if (!community) return null;
 
   const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={24} color="#333" />
+        <ChevronLeft size={22} color={theme.colors.text.primary} />
       </TouchableOpacity>
-      <Text style={styles.title}>Community</Text>
+      <Text style={styles.title} numberOfLines={1}>{community.name}</Text>
       {isAdmin ? (
         <Menu>
           <MenuTrigger>
             <TouchableOpacity style={styles.moreButton}>
-              <MoreVertical size={24} color="#333" />
+              <MoreVertical size={20} color={theme.colors.text.primary} />
             </TouchableOpacity>
           </MenuTrigger>
-          <MenuOptions>
+          <MenuOptions customStyles={menuOptionsStyles}>
             <MenuOption onSelect={handleEditCommunity}>
-              <Text style={styles.menuOption}>Edit Community</Text>
+              <View style={styles.menuItem}>
+                <Edit size={16} color={theme.colors.text.primary} />
+                <Text style={styles.menuText}>Edit Community</Text>
+              </View>
+            </MenuOption>
+            <MenuOption onSelect={handleDeleteCommunity}>
+              <View style={styles.menuItem}>
+                <Trash2 size={16} color={theme.colors.error} />
+                <Text style={[styles.menuText, { color: theme.colors.error }]}>Delete Community</Text>
+              </View>
             </MenuOption>
           </MenuOptions>
         </Menu>
@@ -216,89 +270,66 @@ export default function CommunityDetailScreen() {
     </View>
   );
 
-  const renderCommunityInfo = () => (
-    <View>
-      <Image source={{ uri: coverImage }} style={styles.coverImage} />
+  const renderCommunityHeader = () => (
+    <View style={styles.communityHeader}>
+      <Image 
+        source={{ uri: community.cover_image_url || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800' }} 
+        style={styles.coverImage} 
+      />
       
       <View style={styles.communityInfo}>
-        <View style={styles.communityHeader}>
+        <View style={styles.titleRow}>
           <Text style={styles.communityName}>{community.name}</Text>
-          {community.type === 'private' && (
-            <View style={styles.privateBadge}>
-              <Lock size={16} color="#FFFFFF" />
-              <Text style={styles.privateText}>Private</Text>
-            </View>
-          )}
-          {community.is_event_based && (
-            <View style={styles.eventBadge}>
-              <Calendar size={16} color="#FFFFFF" />
-              <Text style={styles.eventText}>Event</Text>
-            </View>
-          )}
+          <View style={styles.badges}>
+            {community.type === 'private' && (
+              <View style={styles.badge}>
+                <Lock size={12} color={theme.colors.text.tertiary} />
+              </View>
+            )}
+            {community.is_event_based && (
+              <View style={styles.badge}>
+                <Calendar size={12} color={theme.colors.text.tertiary} />
+              </View>
+            )}
+          </View>
         </View>
         
-        <Text style={styles.communityDescription}>{community.description || 'Welcome to our community!'}</Text>
-        
-        {community.created_by && (
-          <View style={styles.adminInfo}>
-            <View style={styles.adminAvatar}>
-              <Users size={20} color="#666" />
-            </View>
-            <View>
-              <Text style={styles.adminLabel}>Created by community admin</Text>
-            </View>
-          </View>
+        {community.description && (
+          <Text style={styles.description} numberOfLines={2}>
+            {community.description}
+          </Text>
         )}
         
         <View style={styles.stats}>
-          <View style={styles.statItem}>
-            <Users size={20} color="#666" />
-            <Text style={styles.statValue}>{community.member_count.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Members</Text>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{community.member_count}</Text>
+            <Text style={styles.statLabel}>members</Text>
           </View>
-          
           <View style={styles.statDivider} />
-          
-          <View style={styles.statItem}>
-            <TrendingUp size={20} color="#666" />
+          <View style={styles.stat}>
             <Text style={styles.statValue}>{community.post_count}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
+            <Text style={styles.statLabel}>posts</Text>
           </View>
-          
           {community.location && (
             <>
               <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <MapPin size={20} color="#666" />
-                <Text style={styles.statValue}>{community.location.split(',')[0]}</Text>
-                <Text style={styles.statLabel}>Location</Text>
+              <View style={styles.stat}>
+                <MapPin size={12} color={theme.colors.text.tertiary} />
+                <Text style={styles.statLocation}>{community.location.split(',')[0]}</Text>
               </View>
             </>
           )}
         </View>
         
-        {community.type === 'public' && (
+        {!isAdmin && (
           <TouchableOpacity 
-            style={[
-              styles.joinButton,
-              isMember && styles.joinButtonSecondary
-            ]}
+            style={[styles.joinButton, isMember && styles.leaveButton]}
             onPress={handleJoinLeave}
           >
-            <Text style={[
-              styles.joinButtonText,
-              isMember && styles.joinButtonTextSecondary
-            ]}>
-              {isMember ? 'Leave Community' : 'Join Community'}
+            <Text style={[styles.joinButtonText, isMember && styles.leaveButtonText]}>
+              {isMember ? 'Leave' : 'Join Community'}
             </Text>
           </TouchableOpacity>
-        )}
-        
-        {community.type === 'private' && !isMember && (
-          <View style={styles.privateMessage}>
-            <Lock size={16} color="#666" />
-            <Text style={styles.privateMessageText}>This is a private community. You need an invitation to join.</Text>
-          </View>
         )}
       </View>
     </View>
@@ -310,150 +341,154 @@ export default function CommunityDetailScreen() {
         style={[styles.tab, activeTab === 'feed' && styles.tabActive]}
         onPress={() => setActiveTab('feed')}
       >
-        <Text style={[styles.tabText, activeTab === 'feed' && styles.tabTextActive]}>
-          Feed
-        </Text>
+        <Text style={[styles.tabText, activeTab === 'feed' && styles.tabTextActive]}>Feed</Text>
       </TouchableOpacity>
-      
       <TouchableOpacity
         style={[styles.tab, activeTab === 'members' && styles.tabActive]}
         onPress={() => setActiveTab('members')}
       >
-        <Text style={[styles.tabText, activeTab === 'members' && styles.tabTextActive]}>
-          Members
-        </Text>
+        <Text style={[styles.tabText, activeTab === 'members' && styles.tabTextActive]}>Members</Text>
       </TouchableOpacity>
-      
-      {community.is_event_based && (
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'events' && styles.tabActive]}
-          onPress={() => setActiveTab('events')}
-        >
-          <Text style={[styles.tabText, activeTab === 'events' && styles.tabTextActive]}>
-            Event Info
-          </Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={[styles.tab, activeTab === 'about' && styles.tabActive]}
+        onPress={() => setActiveTab('about')}
+      >
+        <Text style={[styles.tabText, activeTab === 'about' && styles.tabTextActive]}>About</Text>
+      </TouchableOpacity>
     </View>
   );
 
-  const renderPost = (post: any) => (
+  const renderPostItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
-      key={post.id} 
       style={styles.postCard}
-      onPress={() => router.push(`/post/${post.id}`)}
+      onPress={() => router.push(`/post/${item.id}`)}
     >
       <View style={styles.postHeader}>
         <Image 
-          source={{ uri: post.user?.avatar_url || 'https://via.placeholder.com/40' }} 
+          source={{ uri: item.user?.avatar_url || item.user?.profile_image_url || 'https://i.pravatar.cc/100' }} 
           style={styles.postAvatar} 
         />
-        <View style={styles.postAuthorInfo}>
-          <Text style={styles.postAuthorName}>{post.user?.name || 'Anonymous'}</Text>
+        <View style={styles.postInfo}>
+          <Text style={styles.postAuthor}>
+            {item.user?.name || item.user?.username || 'User'}
+          </Text>
           <Text style={styles.postTime}>
-            {formatDate(post.created_at)}
+            {item.user?.username ? `@${item.user.username} · ${formatDate(item.created_at)}` : formatDate(item.created_at)}
           </Text>
         </View>
+        {isAdmin && (
+          <Menu>
+            <MenuTrigger>
+              <TouchableOpacity style={styles.postMenu}>
+                <MoreVertical size={16} color={theme.colors.text.tertiary} />
+              </TouchableOpacity>
+            </MenuTrigger>
+            <MenuOptions customStyles={menuOptionsStyles}>
+              <MenuOption onSelect={() => handleDeletePost(item.id)}>
+                <View style={styles.menuItem}>
+                  <Trash2 size={14} color={theme.colors.error} />
+                  <Text style={[styles.menuText, { color: theme.colors.error }]}>Delete Post</Text>
+                </View>
+              </MenuOption>
+            </MenuOptions>
+          </Menu>
+        )}
       </View>
       
-      {post.caption && <Text style={styles.postContent}>{post.caption}</Text>}
+      {item.caption && <Text style={styles.postContent} numberOfLines={3}>{item.caption}</Text>}
       
-      {post.photos && post.photos.length > 0 && (
-        <Image source={{ uri: post.photos[0] }} style={styles.postImage} />
-      )}
-      
-      {post.restaurant && (
-        <View style={styles.restaurantTag}>
-          <MapPin size={14} color="#666" />
-          <Text style={styles.restaurantName}>{post.restaurant.name}</Text>
-        </View>
+      {item.photos && item.photos.length > 0 && (
+        <Image source={{ uri: item.photos[0] }} style={styles.postImage} />
       )}
       
       <View style={styles.postActions}>
-        <TouchableOpacity style={styles.postAction}>
-          <Heart size={18} color="#666" />
-          <Text style={styles.postActionText}>{post.likes || 0}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.postAction}>
-          <MessageCircle size={18} color="#666" />
-          <Text style={styles.postActionText}>{post.commentCount || 0}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.postAction}>
-          <Bookmark size={18} color="#666" />
-          <Text style={styles.postActionText}>Save</Text>
-        </TouchableOpacity>
+        <View style={styles.postAction}>
+          <Heart size={16} color={theme.colors.text.tertiary} />
+          <Text style={styles.postActionText}>{item.likes || 0}</Text>
+        </View>
+        <View style={styles.postAction}>
+          <MessageCircle size={16} color={theme.colors.text.tertiary} />
+          <Text style={styles.postActionText}>{item.commentCount || 0}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
-  const renderFeed = () => (
-    <View style={styles.feedContainer}>
-      {posts.length === 0 ? (
-        <View style={styles.emptyState}>
-          <MessageCircle size={48} color="#999" />
-          <Text style={styles.emptyStateTitle}>No posts yet</Text>
-          <Text style={styles.emptyStateMessage}>
-            Be the first to share something with the community!
+  const renderMemberItem = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      style={styles.memberItem}
+      onPress={() => {
+        if (item.user?.username) {
+          router.push(`/profile/${item.user.username}` as any);
+        }
+      }}
+    >
+      <Image 
+        source={{ uri: item.user?.avatar_url || item.user?.profile_image_url || 'https://i.pravatar.cc/100' }} 
+        style={styles.memberAvatar} 
+      />
+      <View style={styles.memberInfo}>
+        <View style={styles.memberNameRow}>
+          <Text style={styles.memberName}>
+            {item.user?.name || item.user?.username || 'User'}
           </Text>
+          {(item.role === 'admin' || item.role === 'owner') && (
+            <Crown size={14} color="#FFD700" />
+          )}
         </View>
-      ) : (
-        posts.map(renderPost)
+        <Text style={styles.memberBio} numberOfLines={1}>
+          {item.user?.username ? `@${item.user.username}` : ''} {item.user?.bio || `Joined ${formatDate(item.joined_at)}`}
+        </Text>
+      </View>
+      {isAdmin && item.user_id !== user?.id && item.role !== 'owner' && (
+        <TouchableOpacity 
+          style={styles.removeMember}
+          onPress={() => handleRemoveMember(item.user_id, item.user?.name || 'this member')}
+        >
+          <UserMinus size={16} color={theme.colors.error} />
+        </TouchableOpacity>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
-  const renderMembers = () => (
-    <View style={styles.membersContainer}>
-      <Text style={styles.sectionTitle}>
-        Members ({members.length})
-      </Text>
+  const renderAboutTab = () => (
+    <View style={styles.aboutContainer}>
+      <View style={styles.aboutSection}>
+        <Text style={styles.aboutTitle}>Description</Text>
+        <Text style={styles.aboutText}>{community.description || 'No description provided.'}</Text>
+      </View>
       
-      {members.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Users size={48} color="#999" />
-          <Text style={styles.emptyStateTitle}>No members yet</Text>
-          <Text style={styles.emptyStateMessage}>
-            Be the first to join this community!
-          </Text>
+      {community.location && (
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutTitle}>Location</Text>
+          <View style={styles.locationRow}>
+            <MapPin size={14} color={theme.colors.text.tertiary} />
+            <Text style={styles.aboutText}>{community.location}</Text>
+          </View>
         </View>
-      ) : (
-        members.map((member) => (
-          <TouchableOpacity 
-            key={member.id} 
-            style={styles.memberItem}
-            onPress={() => handleMemberPress(member)}
-          >
-            <Image 
-              source={{ uri: member.user?.avatar_url || 'https://via.placeholder.com/48' }} 
-              style={styles.memberAvatar} 
-            />
-            <View style={styles.memberInfo}>
-              <Text style={styles.memberName}>{member.user?.name || 'Anonymous'}</Text>
-              <Text style={styles.memberRole}>{member.user?.bio || 'Member'}</Text>
-              <Text style={styles.memberJoined}>
-                Joined {formatDate(member.joined_at)}
-              </Text>
-            </View>
-            {(member.role === 'admin' || member.role === 'owner') && (
-              <View style={styles.adminBadge}>
-                <Crown size={16} color="#FFD700" />
-              </View>
-            )}
-          </TouchableOpacity>
-        ))
       )}
-    </View>
-  );
-
-  const renderEvents = () => (
-    <View style={styles.eventsContainer}>
-      <View style={styles.eventCard}>
-        <Calendar size={24} color={theme.colors.primary} />
-        <Text style={styles.eventTitle}>Main Conference</Text>
-        <Text style={styles.eventDate}>March 15-17, 2025</Text>
-        <ChevronRight size={20} color="#999" />
+      
+      {community.category && (
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutTitle}>Category</Text>
+          <Text style={styles.aboutText}>{community.category}</Text>
+        </View>
+      )}
+      
+      <View style={styles.aboutSection}>
+        <Text style={styles.aboutTitle}>Community Stats</Text>
+        <View style={styles.aboutStats}>
+          <View style={styles.aboutStat}>
+            <Users size={20} color={theme.colors.text.secondary} />
+            <Text style={styles.aboutStatValue}>{community.member_count}</Text>
+            <Text style={styles.aboutStatLabel}>Members</Text>
+          </View>
+          <View style={styles.aboutStat}>
+            <TrendingUp size={20} color={theme.colors.text.secondary} />
+            <Text style={styles.aboutStatValue}>{community.post_count}</Text>
+            <Text style={styles.aboutStatLabel}>Posts</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -468,18 +503,48 @@ export default function CommunityDetailScreen() {
             <RefreshControl 
               refreshing={refreshing}
               onRefresh={loadCommunityData}
-              colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
             />
           }
         >
-          {renderCommunityInfo()}
+          {renderCommunityHeader()}
           {renderTabs()}
           
-          {activeTab === 'feed' && renderFeed()}
-          {activeTab === 'members' && renderMembers()}
-          {activeTab === 'events' && renderEvents()}
+          {activeTab === 'feed' && (
+            <FlatList
+              data={posts}
+              renderItem={renderPostItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              scrollEnabled={false}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <MessageCircle size={32} color={theme.colors.text.tertiary} />
+                  <Text style={styles.emptyTitle}>No posts yet</Text>
+                  <Text style={styles.emptyText}>Be the first to share!</Text>
+                </View>
+              }
+            />
+          )}
           
-          <View style={styles.bottomPadding} />
+          {activeTab === 'members' && (
+            <FlatList
+              data={members}
+              renderItem={renderMemberItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              scrollEnabled={false}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Users size={32} color={theme.colors.text.tertiary} />
+                  <Text style={styles.emptyTitle}>No members yet</Text>
+                  <Text style={styles.emptyText}>Be the first to join!</Text>
+                </View>
+              }
+            />
+          )}
+          
+          {activeTab === 'about' && renderAboutTab()}
         </ScrollView>
         
         {isMember && activeTab === 'feed' && community && (
@@ -493,147 +558,156 @@ export default function CommunityDetailScreen() {
   );
 }
 
+const menuOptionsStyles = {
+  optionsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: theme.colors.border,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+    marginHorizontal: 8,
   },
   moreButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  moreText: {
-    fontSize: 20,
-    color: '#666',
+  communityHeader: {
+    backgroundColor: '#FFFFFF',
   },
   coverImage: {
     width: SCREEN_WIDTH,
-    height: 180,
+    height: 120,
   },
   communityInfo: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
+    padding: 16,
   },
-  communityHeader: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
   communityName: {
-    fontSize: 24,
-    fontFamily: 'Poppins_700Bold',
-    color: '#333',
     flex: 1,
+    fontSize: 20,
+    fontFamily: 'Poppins_700Bold',
+    color: theme.colors.text.primary,
   },
-  premiumBadge: {
+  badges: {
     flexDirection: 'row',
+    gap: 8,
+  },
+  badge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.backgroundGray,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFD700' + '20',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
   },
-  premiumText: {
-    fontSize: 12,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFD700',
-  },
-  communityDescription: {
-    fontSize: 16,
+  description: {
+    fontSize: 13,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 16,
-    lineHeight: 24,
-  },
-  adminInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  adminAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  adminLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    color: '#666',
-  },
-  verifiedIcon: {
-    marginLeft: 4,
+    color: theme.colors.text.secondary,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   stats: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
-  statItem: {
-    flex: 1,
+  stat: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginTop: 4,
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.primary,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
+    color: theme.colors.text.tertiary,
+  },
+  statLocation: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.text.secondary,
+    marginLeft: 4,
   },
   statDivider: {
     width: 1,
-    height: 40,
-    backgroundColor: '#E0E0E0',
+    height: 24,
+    backgroundColor: theme.colors.border,
+    marginHorizontal: 16,
   },
   joinButton: {
     backgroundColor: theme.colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  joinButtonPremium: {
-    backgroundColor: '#FFD700',
-  },
   joinButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
+  },
+  leaveButton: {
+    backgroundColor: theme.colors.backgroundGray,
+  },
+  leaveButtonText: {
+    color: theme.colors.text.primary,
   },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: theme.colors.border,
+    marginBottom: 8,
   },
   tab: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   tabActive: {
@@ -641,276 +715,183 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.primary,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter_500Medium',
-    color: '#999',
+    color: theme.colors.text.tertiary,
   },
   tabTextActive: {
     color: theme.colors.primary,
     fontFamily: 'Inter_600SemiBold',
   },
-  feedContainer: {
-    padding: 20,
-  },
-  feedRecommendation: {
-    fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: '#333',
-    marginBottom: 4,
-  },
-  feedTime: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#999',
-    marginBottom: 20,
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   postCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 2,
     elevation: 2,
   },
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   postAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  postInfo: {
+    flex: 1,
+  },
+  postAuthor: {
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.primary,
+  },
+  postTime: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.tertiary,
+  },
+  postMenu: {
+    padding: 4,
+  },
+  postContent: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  postImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  postActions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  postAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  postActionText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.text.tertiary,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  memberAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 12,
   },
-  postAuthorInfo: {
-    flex: 1,
-  },
-  postAuthorName: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#333',
-  },
-  postTime: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#999',
-  },
-  postContent: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#333',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  postImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  postActions: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  postAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  postActionText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: '#666',
-  },
-  membersContainer: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  memberItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-  },
   memberInfo: {
     flex: 1,
   },
-  memberName: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#333',
-  },
-  memberRole: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-  },
-  memberJoined: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#999',
-  },
-  adminBadge: {
-    padding: 4,
-  },
-  followButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  followButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.primary,
-  },
-  eventsContainer: {
-    padding: 20,
-  },
-  eventCard: {
+  memberNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
+    gap: 4,
   },
-  eventTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#333',
-  },
-  eventDate: {
+  memberName: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.primary,
   },
-  bottomPadding: {
-    height: 100,
+  memberBio: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.tertiary,
+  },
+  removeMember: {
+    padding: 8,
+  },
+  aboutContainer: {
+    padding: 16,
+  },
+  aboutSection: {
+    marginBottom: 24,
+  },
+  aboutTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.primary,
+    marginBottom: 8,
+  },
+  aboutText: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
+    lineHeight: 18,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  aboutStats: {
+    flexDirection: 'row',
+    gap: 32,
+    marginTop: 8,
+  },
+  aboutStat: {
+    alignItems: 'center',
+  },
+  aboutStatValue: {
+    fontSize: 18,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.primary,
+    marginVertical: 4,
+  },
+  aboutStatLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.tertiary,
   },
   emptyState: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 48,
   },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginTop: 16,
-  },
-  emptyStateMessage: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 40,
-  },
-  restaurantTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  restaurantName: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: '#666',
-  },
-  menuOption: {
+  emptyTitle: {
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: '#333',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.primary,
     marginTop: 12,
   },
-  joinButtonSecondary: {
-    backgroundColor: '#E5E7EB',
+  emptyText: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.tertiary,
+    marginTop: 4,
   },
-  joinButtonTextSecondary: {
-    color: theme.colors.text.dark,
-  },
-  privateMessage: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F3F4F6',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  privateMessageText: {
-    flex: 1,
+  menuText: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-  },
-  privateBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  privateText: {
-    fontSize: 12,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
-  },
-  eventBadge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  eventText: {
-    fontSize: 12,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.text.primary,
   },
 });

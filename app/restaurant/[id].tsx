@@ -593,18 +593,75 @@ export default function RestaurantDetailScreen() {
 
           {recentActivity.length > 0 ? (
             <View style={styles.activityList}>
-              {recentActivity.map((activity) => (
-                <View key={activity.id} style={styles.activityItem}>
-                  <Image source={{ uri: activity.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.activityAvatar} />
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityText}>
-                      <Text style={styles.activityUser}>{activity.user.name}</Text> {activity.action.replace('_', ' ')}
-                      {activity.details ? ` ${activity.details}` : ''}
-                    </Text>
-                    <Text style={styles.activityTime}>{socialActivityService.formatTimeAgo(activity.created_at)}</Text>
-                  </View>
-                </View>
-              ))}
+                             {recentActivity.map((activity) => {
+                 const getTrafficLightColor = (rating: number | null) => {
+                   if (!rating) return '#DDD';
+                   const colors = { 1: '#FF4444', 2: '#FF7744', 3: '#FFAA44', 4: '#44AA44', 5: '#00AA00' };
+                   return colors[rating as keyof typeof colors] || '#DDD';
+                 };
+
+                 const getTrafficLightLabel = (rating: number | null) => {
+                   if (!rating) return '';
+                   const labels = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Great', 5: 'Excellent' };
+                   return labels[rating as keyof typeof labels] || '';
+                 };
+
+                                 
+
+                                 return (
+                   <View key={activity.id} style={styles.activityItem}>
+                     <Image source={{ uri: activity.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.activityAvatar} />
+                     <View style={styles.activityContent}>
+                       <View style={styles.activityMainRow}>
+                         <View style={styles.activityTextContainer}>
+                           <Text style={styles.activityText}>
+                             <Text style={styles.activityUser}>
+                               {activity.user.name || activity.user.username || 'Someone'}
+                             </Text>{' '}
+                             {activity.action === 'reviewed' ? 'reviewed' : 
+                              activity.action === 'saved' ? 'saved' :
+                              activity.action === 'checked_in' ? 'checked in' :
+                              activity.action === 'liked' ? 'liked' : 'visited'}
+                           </Text>
+                           
+                           {/* Show review content if it's a review */}
+                           {activity.action === 'reviewed' && activity.review && (
+                             <View style={styles.reviewContent}>
+                               {activity.review.caption && (
+                                 <Text style={styles.reviewText} numberOfLines={2}>
+                                   "{activity.review.caption}"
+                                 </Text>
+                               )}
+                               {activity.review.photos && activity.review.photos.length > 0 && (
+                                 <View style={styles.reviewPhotos}>
+                                   {activity.review.photos.slice(0, 3).map((photo, index) => (
+                                     <Image key={index} source={{ uri: photo }} style={styles.reviewPhoto} />
+                                   ))}
+                                   {activity.review.photos.length > 3 && (
+                                     <View style={styles.photoCount}>
+                                       <Text style={styles.photoCountText}>+{activity.review.photos.length - 3}</Text>
+                                     </View>
+                                   )}
+                                 </View>
+                               )}
+                             </View>
+                           )}
+                           
+                           <Text style={styles.activityTime}>{socialActivityService.formatTimeAgo(activity.created_at)}</Text>
+                         </View>
+                         
+                         {/* Traffic Light Rating */}
+                         {activity.action === 'reviewed' && activity.review?.rating && activity.review.rating > 0 && (
+                           <View style={styles.activityRating}>
+                             <View style={[styles.activityTrafficDot, { backgroundColor: getTrafficLightColor(activity.review.rating) }]} />
+                             <Text style={styles.activityRatingLabel}>{getTrafficLightLabel(activity.review.rating)}</Text>
+                           </View>
+                         )}
+                       </View>
+                     </View>
+                   </View>
+                 );
+              })}
             </View>
           ) : (
             <Text style={styles.emptyStateText}>No recent activity.</Text>
@@ -1222,7 +1279,7 @@ const styles = StyleSheet.create({
   },
   activityItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 8,
     borderRadius: designTokens.borderRadius.md,
     backgroundColor: 'rgba(16, 185, 129, 0.05)',
@@ -1236,6 +1293,15 @@ const styles = StyleSheet.create({
   activityContent: {
     flex: 1,
   },
+  activityMainRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  activityTextContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
   activityText: {
     ...designTokens.typography.smallText,
     color: designTokens.colors.textDark,
@@ -1247,6 +1313,61 @@ const styles = StyleSheet.create({
     ...designTokens.typography.smallText,
     color: designTokens.colors.textLight,
     fontSize: 11,
+    marginTop: 2,
+  },
+  activityRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activityTrafficDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  activityRatingLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
+  },
+  reviewContent: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  reviewText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: designTokens.colors.textMedium,
+    lineHeight: 16,
+    marginBottom: 6,
+    fontFamily: 'Inter_400Regular',
+  },
+  reviewPhotos: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+  },
+  reviewPhoto: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+  },
+  photoCount: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoCountText: {
+    fontSize: 10,
+    color: 'white',
+    fontFamily: 'Inter_500Medium',
   },
   emptyStateText: {
     ...designTokens.typography.detailText,

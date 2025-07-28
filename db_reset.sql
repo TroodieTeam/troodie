@@ -58,8 +58,6 @@ INSERT INTO public.users (
   created_at,
   updated_at,
   email,
-  profile_image_url,
-  location,
   saves_count,
   reviews_count,
   followers_count,
@@ -73,7 +71,7 @@ INSERT INTO public.users (
   'cb1799bf-3afb-44ca-adec-9033f8ec077b',
   null,
   'jack_black',
-  null,
+  'Jack Black',
   '🌮 Always searching for the perfect taco spot',
   'https://cacrjcekanesymdzpjtt.supabase.co/storage/v1/object/public/avatars/cb1799bf-3afb-44ca-adec-9033f8ec077b/profile-1753140096991.jpg',
   'social_explorer',
@@ -81,11 +79,9 @@ INSERT INTO public.users (
   false,
   false,
   60,
-  '2025-07-21 22:58:02.5571+00',
-  '2025-07-25 22:48:10.554659+00',
-  null,
-  null,
-  null,
+  '2025-01-28 22:58:02.5571+00',
+  '2025-01-28 22:58:02.5571+00',
+  'jack@troodie.app',
   0,
   0,
   0,
@@ -114,8 +110,8 @@ INSERT INTO public.boards (
   'Your personal collection of saved restaurants',
   'free',
   false,
-  '2025-07-21 22:58:02.5571+00',
-  '2025-07-21 22:58:02.5571+00'
+  '2025-01-28 22:58:02.5571+00',
+  '2025-01-28 22:58:02.5571+00'
 );
 
 -- Update the user's default_board_id
@@ -133,7 +129,7 @@ INSERT INTO public.board_members (
   '89645b9c-dead-40a9-a429-3c48aee9beda',
   'cb1799bf-3afb-44ca-adec-9033f8ec077b',
   'owner',
-  '2025-07-21 22:58:02.5571+00'
+  '2025-01-28 22:58:02.5571+00'
 ) ON CONFLICT (board_id, user_id) DO NOTHING;
 
 -- Success message

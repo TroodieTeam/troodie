@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
 import { isPowerUser } from '@/constants/powerUsersCriteria';
+import { supabase } from '@/lib/supabase';
 
 export interface FriendVisit {
   id: string;
@@ -55,11 +55,17 @@ export interface RecentActivity {
   user: {
     id: string;
     name: string;
+    username: string;
     avatar_url: string;
   };
   action: 'checked_in' | 'saved' | 'reviewed' | 'liked';
   details?: string; // e.g., "to 'Weekend Spots'"
   created_at: string;
+  review?: {
+    rating: number;
+    caption?: string;
+    photos?: string[];
+  };
 }
 
 export const socialActivityService = {
@@ -289,6 +295,8 @@ export const socialActivityService = {
           id,
           created_at,
           rating,
+          caption,
+          photos,
           user_id
         `)
         .eq('restaurant_id', restaurantId)
@@ -338,7 +346,7 @@ export const socialActivityService = {
       // Fetch all user data at once
       const { data: users } = await supabase
         .from('users')
-        .select('id, name, avatar_url')
+        .select('id, name, username, avatar_url')
         .in('id', Array.from(userIds));
 
       const userMap = new Map(users?.map(u => [u.id, u]) || []);
@@ -350,10 +358,20 @@ export const socialActivityService = {
           if (user) {
             activities.push({
               id: `review-${post.id}`,
-              user: user,
+              user: {
+                id: user.id,
+                name: user.name || user.username || 'Unknown User',
+                username: user.username || 'unknown',
+                avatar_url: user.avatar_url || ''
+              },
               action: 'reviewed',
               details: `gave a ${post.rating}-star review`,
               created_at: post.created_at,
+              review: {
+                rating: post.rating,
+                caption: post.caption,
+                photos: post.photos || []
+              }
             });
           }
         });
@@ -366,7 +384,12 @@ export const socialActivityService = {
           if (user) {
             activities.push({
               id: `save-${save.id}`,
-              user: user,
+              user: {
+                id: user.id,
+                name: user.name || user.username || 'Unknown User',
+                username: user.username || 'unknown',
+                avatar_url: user.avatar_url || ''
+              },
               action: 'saved',
               details: 'to their collection',
               created_at: save.created_at,
@@ -382,7 +405,12 @@ export const socialActivityService = {
           if (user) {
             activities.push({
               id: `checkin-${visit.id}`,
-              user: user,
+              user: {
+                id: user.id,
+                name: user.name || user.username || 'Unknown User',
+                username: user.username || 'unknown',
+                avatar_url: user.avatar_url || ''
+              },
               action: 'checked_in',
               created_at: visit.created_at,
             });
@@ -443,17 +471,27 @@ export const socialActivityService = {
           // Fetch user details for the new post
           const { data: user } = await supabase
             .from('users')
-            .select('id, name, avatar_url')
+            .select('id, name, username, avatar_url')
             .eq('id', payload.new.user_id)
             .single();
 
           if (user) {
             onUpdate({
               id: `review-${payload.new.id}`,
-              user,
+              user: {
+                id: user.id,
+                name: user.name || user.username || 'Unknown User',
+                username: user.username || 'unknown',
+                avatar_url: user.avatar_url || ''
+              },
               action: 'reviewed',
               details: `gave a ${payload.new.rating}-star review`,
               created_at: payload.new.created_at,
+              review: {
+                rating: payload.new.rating,
+                caption: payload.new.caption,
+                photos: payload.new.photos || []
+              }
             });
           }
         }
@@ -470,14 +508,19 @@ export const socialActivityService = {
           // Fetch user details for the new save
           const { data: user } = await supabase
             .from('users')
-            .select('id, name, avatar_url')
+            .select('id, name, username, avatar_url')
             .eq('id', payload.new.user_id)
             .single();
 
           if (user) {
             onUpdate({
               id: `save-${payload.new.id}`,
-              user,
+              user: {
+                id: user.id,
+                name: user.name || user.username || 'Unknown User',
+                username: user.username || 'unknown',
+                avatar_url: user.avatar_url || ''
+              },
               action: 'saved',
               details: 'to their collection',
               created_at: payload.new.created_at,

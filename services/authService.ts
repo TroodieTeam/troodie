@@ -19,24 +19,55 @@ export const authService = {
    */
   async signUpWithEmail(email: string): Promise<OtpResponse> {
     try {
-      const { data, error } = await supabase.auth.signInWithOtp({
+      // First, try to send OTP for existing user
+      const { data: existingOtp, error: existingError } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: true,
-          emailRedirectTo: undefined, // We're using OTP, not magic link
+          shouldCreateUser: false,
+          emailRedirectTo: undefined,
         },
       })
       
-      if (error) {
+      if (!existingError) {
         return {
-          success: false,
-          error: this.getErrorMessage(error),
+          success: true,
+          messageId: existingOtp?.messageId,
         }
       }
       
+      // User doesn't exist, create them manually using our function
+      const { data: createResult, error: createError } = await supabase.rpc('create_new_user', {
+        user_email: email
+      })
+      
+      if (createError) {
+        return {
+          success: false,
+          error: 'Unable to create account. Please try again.',
+        }
+      }
+      
+      // Account created, now try to send OTP
+      const { data: newUserOtp, error: newUserOtpError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false, // User already exists
+          emailRedirectTo: undefined,
+        },
+      })
+      
+      if (newUserOtpError) {
+        // Account exists but OTP failed - return success anyway, they can use sign in
+        return {
+          success: true,
+          messageId: 'ACCOUNT_CREATED_NO_OTP', // Flag to show "Please sign in" message
+        }
+      }
+      
+      // Both account creation and OTP sending succeeded
       return {
         success: true,
-        messageId: data?.messageId,
+        messageId: newUserOtp?.messageId,
       }
     } catch (error) {
       return {
@@ -51,6 +82,8 @@ export const authService = {
    */
   async signInWithEmail(email: string): Promise<OtpResponse> {
     try {
+      console.log('[AuthService] Attempting to sign in user with email:', email)
+      
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -60,17 +93,37 @@ export const authService = {
       })
       
       if (error) {
+        console.error('[AuthService] Sign in OTP error:', error)
+        
+        // If user not found, they might need to sign up
+        if (error.message?.includes('not found') || error.message?.includes('not exist')) {
+          return {
+            success: false,
+            error: 'No account found with this email. Please sign up first.',
+          }
+        }
+        
+        // If OTP is disabled, suggest alternative
+        if (error.message?.includes('Signups not allowed for otp')) {
+          return {
+            success: false,
+            error: 'Email verification is temporarily unavailable. Please try again later.',
+          }
+        }
+        
         return {
           success: false,
           error: this.getErrorMessage(error),
         }
       }
       
+      console.log('[AuthService] Sign in OTP sent successfully, messageId:', data?.messageId)
       return {
         success: true,
         messageId: data?.messageId,
       }
     } catch (error) {
+      console.error('[AuthService] Unexpected sign in error:', error)
       return {
         success: false,
         error: 'An unexpected error occurred. Please try again.',
@@ -102,6 +155,53 @@ export const authService = {
         return {
           success: false,
           error: 'Verification failed. Please try again.',
+        }
+      }
+      
+      // After successful verification, ensure user profile exists
+      if (data.user) {
+        console.log('[AuthService] Ensuring user profile exists...')
+        
+        // Check if profile exists
+        const { data: existingProfile, error: profileCheckError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', data.user.id)
+          .single()
+        
+        if (profileCheckError && profileCheckError.code === 'PGRST116') {
+          // Profile doesn't exist, create it
+          console.log('[AuthService] Creating user profile after verification...')
+          const { error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: data.user.id,
+              email: email,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+          
+          if (createError) {
+            console.error('[AuthService] Failed to create profile after verification:', createError)
+            
+            // Try using the function as fallback
+            const { error: funcError } = await supabase.rpc('create_user_profile', {
+              user_id: data.user.id,
+              user_email: email
+            })
+            
+            if (funcError) {
+              console.error('[AuthService] Function fallback also failed:', funcError)
+            } else {
+              console.log('[AuthService] Profile created via function fallback')
+            }
+          } else {
+            console.log('[AuthService] User profile created successfully after verification')
+          }
+        } else if (!profileCheckError) {
+          console.log('[AuthService] User profile already exists')
+        } else {
+          console.error('[AuthService] Error checking profile existence:', profileCheckError)
         }
       }
       

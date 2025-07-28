@@ -68,6 +68,7 @@ export default Sentry.wrap(function RootLayout() {
               <Stack.Screen name="add" options={{ headerShown: false }} />
               <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="dark" />

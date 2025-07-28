@@ -18,6 +18,8 @@ export interface Community {
   post_count: number;
   is_active: boolean;
   settings?: any;
+  cover_image_url?: string;
+  category?: string;
 }
 
 export interface CommunityMember {
@@ -340,7 +342,7 @@ export const communityService = {
 
       if (error) throw error;
 
-      return data?.map(item => item.communities) || [];
+      return data?.map(item => item.communities as unknown as Community) || [];
     } catch (error) {
       console.error('Error fetching user communities:', error);
       return [];
@@ -507,6 +509,7 @@ export const communityService = {
             name,
             username,
             avatar_url,
+            profile_image_url,
             bio
           )
         `)
@@ -539,7 +542,8 @@ export const communityService = {
             id,
             name,
             username,
-            avatar_url
+            avatar_url,
+            profile_image_url
           ),
           restaurant:restaurants(
             id,
@@ -588,6 +592,63 @@ export const communityService = {
     } catch (error) {
       console.error('Error checking admin status:', error);
       return false;
+    }
+  },
+
+  /**
+   * Delete a community (admin only)
+   */
+  async deleteCommunity(
+    communityId: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const { error } = await supabase
+        .from('communities')
+        .delete()
+        .eq('id', communityId);
+
+      if (error) throw error;
+
+      return { success: true, error: null };
+    } catch (error: any) {
+      console.error('Error deleting community:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to delete community' 
+      };
+    }
+  },
+
+  /**
+   * Remove a member from community (admin only)
+   */
+  async removeMember(
+    communityId: string,
+    userId: string
+  ): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const { error } = await supabase
+        .from('community_members')
+        .delete()
+        .eq('community_id', communityId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      // Update member count
+      await supabase.rpc('decrement', {
+        table_name: 'communities',
+        column_name: 'member_count',
+        row_id: communityId
+      });
+
+      return { success: true, error: null };
+    } catch (error: any) {
+      console.error('Error removing member:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to remove member' 
+      };
     }
   }
 };

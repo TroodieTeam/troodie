@@ -1,8 +1,8 @@
 import { BoardCard } from '@/components/BoardCard';
+import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
+import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
-import { PostCard } from '@/components/PostCard';
-import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,9 +14,9 @@ import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
 import { restaurantService } from '@/services/restaurantService';
 import { Board, BoardRestaurant } from '@/types/board';
+import { RestaurantInfo } from '@/types/core';
 import { PersonaType } from '@/types/onboarding';
 import { PostWithUser } from '@/types/post';
-import { RestaurantInfo } from '@/types/core';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   Award,
@@ -289,53 +289,56 @@ export default function ProfileScreen() {
 
   const renderProfileInfo = () => (
     <View style={styles.profileInfo}>
-      <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
-        {userData.avatar ? (
-          <Image 
-            source={{ uri: userData.avatar }} 
-            style={styles.avatar}
-            onError={() => {}}
-            onLoad={() => {}}
-          />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <User size={32} color="#999" />
-          </View>
-        )}
-        <View style={styles.editAvatarButton}>
-          <Camera size={12} color={designTokens.colors.white} />
-        </View>
-      </TouchableOpacity>
-
-      <View style={styles.userDetails}>
-        <Text style={styles.name}>{userData.username}</Text>
-        
-        {persona && (
-          <View style={styles.personaBadge}>
-            <Text style={styles.personaName}>{persona.name}</Text>
-          </View>
-        )}
-      </View>
-
-      {userData.bio ? (
-        <Text style={styles.bio}>{userData.bio}</Text>
-      ) : (
-        <TouchableOpacity onPress={() => setShowEditModal(true)}>
-          <Text style={styles.bioPlaceholder}>Add a bio...</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Achievement Badges */}
-      {displayAchievements.length > 0 && (
-        <View style={styles.achievementsContainer}>
-          {displayAchievements.map((achievement) => (
-            <View key={achievement.id} style={styles.achievementBadge}>
-              <Award size={8} color="#B45309" />
-              <Text style={styles.achievementText}>{achievement.name}</Text>
+      <View style={styles.profileHeader}>
+        <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
+          {userData.avatar ? (
+            <Image 
+              source={{ uri: userData.avatar }} 
+              style={styles.avatar}
+              onError={() => {}}
+              onLoad={() => {}}
+            />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <User size={24} color="#999" />
             </View>
-          ))}
+          )}
+          <View style={styles.editAvatarButton}>
+            <Camera size={10} color={designTokens.colors.white} />
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.profileDetails}>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{userData.username}</Text>
+            {persona && (
+              <View style={styles.personaBadge}>
+                <Text style={styles.personaName}>{persona.name}</Text>
+              </View>
+            )}
+          </View>
+          
+          {userData.bio ? (
+            <Text style={styles.bio} numberOfLines={2}>{userData.bio}</Text>
+          ) : (
+            <TouchableOpacity onPress={() => setShowEditModal(true)}>
+              <Text style={styles.bioPlaceholder}>Add a bio...</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Achievement Badges */}
+          {displayAchievements.length > 0 && (
+            <View style={styles.achievementsContainer}>
+              {displayAchievements.map((achievement) => (
+                <View key={achievement.id} style={styles.achievementBadge}>
+                  <Award size={8} color="#B45309" />
+                  <Text style={styles.achievementText}>{achievement.name}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
-      )}
+      </View>
 
       <View style={styles.stats}>
         <View style={styles.statItem}>
@@ -358,11 +361,11 @@ export default function ProfileScreen() {
 
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.editProfileButton} onPress={() => setShowEditModal(true)}>
-          <PenLine size={12} color={designTokens.colors.primaryOrange} />
+          <PenLine size={10} color={designTokens.colors.primaryOrange} />
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.shareButton} onPress={handleShareProfile}>
-          <Share2 size={12} color={designTokens.colors.textMedium} />
+          <Share2 size={10} color={designTokens.colors.textMedium} />
           <Text style={styles.shareButtonText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -415,16 +418,18 @@ export default function ProfileScreen() {
       ) : quickSaves.length > 0 ? (
         <FlatList
           data={quickSaves}
-          renderItem={({ item }: { item: BoardRestaurant & { restaurant?: RestaurantInfo } }) => (
-            item.restaurant && (
+          renderItem={({ item }: { item: BoardRestaurant & { restaurant?: RestaurantInfo } }) => {
+            if (!item.restaurant) return null;
+            
+            return (
               <View style={styles.quickSaveItem}>
                 <RestaurantCard 
                   restaurant={item.restaurant} 
                   onPress={() => router.push(`/restaurant/${item.restaurant_id}`)}
                 />
               </View>
-            )
-          )}
+            );
+          }}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.quickSavesList}
@@ -542,33 +547,37 @@ export default function ProfileScreen() {
     }
 
     return (
-      <FlatList
-        data={posts}
-        renderItem={({ item }: { item: PostWithUser }) => (
-          <View style={styles.postContainer}>
-            <PostCard
-              post={item}
-              onPress={() => handlePostPress(item.id)}
-              onLike={handleLike}
-              onComment={handleComment}
-              onSave={handleSave}
-              showActions={true}
+      <View style={styles.tabContent}>
+        <FlatList
+          data={posts}
+          renderItem={({ item }: { item: PostWithUser }) => {
+            console.log('Rendering post:', {
+              id: item.id,
+              rating: item.rating,
+              photos: item.photos,
+              caption: item.caption
+            });
+            
+            return (
+              <ProfilePostCard
+                post={item}
+                onPress={() => handlePostPress(item.id)}
+                onEdit={() => handleEditPost(item.id)}
+              />
+            );
+          }}
+          keyExtractor={(item: PostWithUser) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.postsList}
+          refreshControl={
+            <RefreshControl
+              refreshing={loadingPosts}
+              onRefresh={loadPosts}
+              tintColor={designTokens.colors.primaryOrange}
             />
-            <View style={styles.postActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => handleEditPost(item.id)}
-              >
-                <PenLine size={16} color={designTokens.colors.primaryOrange} />
-                <Text style={styles.actionText}>Edit</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-        keyExtractor={(item: PostWithUser) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.postsList}
-      />
+          }
+        />
+      </View>
     );
   };
 
@@ -631,43 +640,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   profileInfo: {
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 16,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    marginBottom: 12,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginRight: 12,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
     borderColor: designTokens.colors.primaryOrange + '33',
   },
   editAvatarButton: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
+    bottom: -2,
+    right: -2,
     backgroundColor: designTokens.colors.primaryOrange,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: designTokens.colors.white,
   },
-  userDetails: {
+  profileDetails: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 4,
   },
   name: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     color: designTokens.colors.textDark,
-    marginBottom: 4,
   },
   username: {
     fontSize: 14,
@@ -679,41 +695,38 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.primaryOrange + '1A',
     borderWidth: 1,
     borderColor: designTokens.colors.primaryOrange + '33',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: designTokens.borderRadius.full,
   },
   personaName: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.primaryOrange,
   },
   bio: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textDark,
-    textAlign: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 40,
+    marginBottom: 8,
   },
   achievementsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 6,
-    marginBottom: 20,
+    gap: 4,
+    marginTop: 4,
   },
   achievementBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
     gap: 2,
   },
   achievementText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: 'Inter_600SemiBold',
     color: '#B45309',
   },
@@ -721,13 +734,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: designTokens.colors.borderLight,
   },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     color: designTokens.colors.textDark,
   },
@@ -798,15 +815,15 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.white,
     borderWidth: 1,
     borderColor: designTokens.colors.primaryOrange,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 4,
   },
   editProfileText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.primaryOrange,
   },
@@ -815,21 +832,21 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.backgroundLight,
     borderWidth: 1,
     borderColor: designTokens.colors.borderLight,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 4,
   },
   shareButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textDark,
   },
   tabsContainer: {
     marginHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   tabs: {
     flexDirection: 'row',
@@ -959,13 +976,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bioPlaceholder: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
     fontStyle: 'italic',
-    textAlign: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 40,
+    marginBottom: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -1030,6 +1045,7 @@ const styles = StyleSheet.create({
     color: designTokens.colors.primaryOrange,
   },
   postsList: {
+    paddingHorizontal: 20,
     paddingBottom: 20,
   },
   fixedContent: {

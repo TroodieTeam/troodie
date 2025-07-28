@@ -74,3 +74,8 @@ export function detectPlatform(url: string): 'tiktok' | 'instagram' | 'youtube' 
   
   return 'other';
 }
+
+/**
+ * Alias for detectPlatform to match frontend usage
+ */
+export const detectExternalSource = detectPlatform;
