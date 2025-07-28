@@ -22,30 +22,32 @@ import { Notification } from '@/types/notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
-    Bell,
-    Bookmark,
-    Coffee,
-    Globe,
-    Lock,
-    MessageSquare,
-    Plus,
-    Search,
-    Sparkles,
-    UserPlus,
-    Users,
-    Utensils
+  Bell,
+  Bookmark,
+  Coffee,
+  Globe,
+  Lock,
+  MessageSquare,
+  Plus,
+  Search,
+  Sparkles,
+  UserPlus,
+  Users,
+  Utensils
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
+
+
 
 export default function HomeScreen() {
   const router = useRouter();
