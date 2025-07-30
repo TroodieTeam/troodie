@@ -1,17 +1,20 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { 
   Image, 
   StyleSheet, 
   Text, 
   TouchableOpacity, 
   View,
-  ActivityIndicator 
+  ActivityIndicator,
+  Vibration
 } from 'react-native';
 import { Bookmark, MapPin, Star } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { RestaurantInfo } from '@/types/core';
 import { BoardSelectionModal } from '../BoardSelectionModal';
+import { SaveService } from '@/services/saveService';
+import { ToastService } from '@/services/toastService';
 
 interface RestaurantCardWithSaveProps {
   restaurant: RestaurantInfo;
@@ -95,18 +98,69 @@ export function RestaurantCardWithSave({
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = useCallback((e: any) => {
+  // Check if restaurant is already saved on mount
+  useEffect(() => {
+    if (user && restaurant.id) {
+      checkSaveStatus();
+    }
+  }, [user, restaurant.id]);
+
+  const checkSaveStatus = async () => {
+    try {
+      const saved = await SaveService.isRestaurantSaved(user!.id, restaurant.id);
+      setIsSaved(saved);
+    } catch (error) {
+      console.error('Error checking save status:', error);
+    }
+  };
+
+  const handleSaveToggle = useCallback(async (e: any) => {
     e.stopPropagation();
     if (!user) {
       // TODO: Show auth modal or redirect to login
+      ToastService.showError('Please sign in to save restaurants');
       return;
     }
-    setShowBoardModal(true);
-  }, [user]);
 
-  const handleSaveSuccess = useCallback(() => {
-    setIsSaved(true);
+    // Haptic feedback
+    Vibration.vibrate(10);
+
+    // Optimistic update
+    const wasAlreadySaved = isSaved;
+    setIsSaved(!isSaved);
+    setIsSaving(true);
+
+    try {
+      if (!wasAlreadySaved) {
+        // Save to default board instantly
+        const result = await SaveService.saveRestaurant({
+          restaurantId: restaurant.id,
+          userId: user.id
+        });
+
+        // Show success toast with board option
+        ToastService.showSuccess(`Saved to ${result.board_title}`, {
+          label: 'Add to Board',
+          onPress: () => setShowBoardModal(true)
+        });
+      } else {
+        // Remove save
+        await SaveService.unsaveRestaurant(user.id, restaurant.id);
+        ToastService.showInfo('Removed from saves');
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setIsSaved(wasAlreadySaved);
+      ToastService.showError('Failed to update save');
+      console.error('Save toggle error:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [user, isSaved, restaurant.id]);
+
+  const handleBoardSaveSuccess = useCallback(() => {
     setShowBoardModal(false);
+    checkSaveStatus(); // Refresh save status
   }, []);
 
   const handleCardPress = useCallback(() => {
@@ -134,7 +188,7 @@ export function RestaurantCardWithSave({
           />
           {showSaveButton && (
             <SaveButton 
-              onPress={handleSave} 
+              onPress={handleSaveToggle} 
               isSaved={isSaved} 
               isLoading={isSaving}
             />
@@ -164,7 +218,7 @@ export function RestaurantCardWithSave({
           onClose={() => setShowBoardModal(false)}
           restaurantId={restaurant.id}
           restaurantName={restaurant.name}
-          onSuccess={handleSaveSuccess}
+          onSuccess={handleBoardSaveSuccess}
         />
       )}
     </>
