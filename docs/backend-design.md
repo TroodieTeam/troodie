@@ -8,10 +8,70 @@ This document serves as the living documentation for Troodie's backend architect
 
 ### Technology Stack
 - **Database**: PostgreSQL (via Supabase)
-- **Authentication**: Supabase Auth with email OTP
+- **Authentication**: Supabase Auth with email passwordless (OTP)
 - **Real-time**: Supabase Realtime subscriptions
 - **Storage**: Supabase Storage for images and media
 - **Edge Functions**: Supabase Edge Functions for serverless logic
+
+## Authentication Configuration
+
+### Email Passwordless (OTP) Authentication
+
+Troodie uses Supabase's email passwordless authentication with One-Time Passwords (OTP).
+
+**Key Configuration**:
+- **Authentication Method**: Email OTP (6-digit codes)
+- **OTP Validity**: 1 hour (3600 seconds)
+- **Rate Limiting**: 1 OTP request per 60 seconds per email
+- **User Creation**: Automatic on first signup
+- **Email Confirmation**: Disabled (users are auto-confirmed)
+
+**Required Supabase Dashboard Settings**:
+1. **Authentication > Providers > Email**:
+   - Enable Email Provider: ON
+   - Confirm email: OFF
+   - Enable email signup: ON
+
+2. **Project Settings > Auth**:
+   - Enable sign ups: ON
+   - Auto-confirm users: ON
+
+**Auth Flow**:
+1. **Sign Up**: User enters email → OTP sent → User enters OTP → Account created & logged in
+2. **Sign In**: User enters email → OTP sent → User enters OTP → Logged in
+3. **Resend OTP**: Rate limited to once per 60 seconds
+
+**Implementation Details**:
+- `signInWithOtp` handles both signup and login
+- For signup: `shouldCreateUser: true` allows new user creation
+- For login: `shouldCreateUser: false` prevents accidental account creation
+- User profiles are created after OTP verification using `ensure_user_profile` function
+- **No auth triggers** - Profile creation happens in-app to avoid "Database error saving new user"
+
+### User Profile Creation
+
+**Automatic Profile Setup**:
+When a new user signs up, the following happens automatically after OTP verification:
+
+1. **User Profile Creation**:
+   - Function: `ensure_user_profile(user_id, email)`
+   - Creates entry in `public.users` table
+   - Sets initial fields (id, email, created_at, updated_at)
+
+2. **Default Board Creation**:
+   - Every user gets a "Quick Saves" board automatically
+   - Board details:
+     - Title: "Quick Saves"
+     - Description: "Your personal collection of saved restaurants"
+     - Type: "free"
+     - Privacy: public (is_private: false)
+   - User is added as "owner" in board_members table
+   - User's `default_board_id` is set to this board
+   - `has_created_board` flag is set to true
+
+**Database Functions**:
+- `ensure_user_profile(p_user_id, p_email)` - Creates user profile and default board
+- `create_default_boards_for_existing_users()` - Retroactively creates boards for existing users
 
 ## Storage Configuration
 
@@ -173,6 +233,30 @@ CREATE TABLE public.restaurants (
   CONSTRAINT restaurants_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
 );
 ```
+
+#### `external_content_sources` Table
+Supported external content platforms for posts.
+
+```sql
+CREATE TABLE public.external_content_sources (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL UNIQUE,
+  domain character varying,
+  icon_url text,
+  is_supported boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT external_content_sources_pkey PRIMARY KEY (id)
+);
+```
+
+**Default Sources**:
+- TikTok (tiktok.com)
+- Instagram (instagram.com)
+- YouTube (youtube.com)
+- Twitter (twitter.com)
+- Articles
+- Other
 
 ### Social Features
 
@@ -643,6 +727,43 @@ CREATE TABLE public.user_invite_shares (
   CONSTRAINT user_invite_shares_pkey PRIMARY KEY (id),
   CONSTRAINT user_invite_shares_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+```
+
+## Troubleshooting
+
+### Common Authentication Issues
+
+#### "Database error saving new user"
+This error typically occurs when there are database triggers on the `auth.users` table that fail during user creation.
+
+**Solution**:
+- Remove all triggers on `auth.users` table
+- Handle profile creation after OTP verification instead
+- Use the `ensure_user_profile` function to create profiles
+
+**Migration to fix**:
+```sql
+-- Remove all auth triggers
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+```
+
+#### Profile Not Created
+If a user successfully logs in but has no profile in `public.users`:
+
+**Solution**:
+```sql
+-- Manually create profile
+SELECT public.ensure_user_profile('user-uuid-here', 'user@email.com');
+```
+
+#### No Default Board
+If a user exists but has no default "Quick Saves" board:
+
+**Solution**:
+```sql
+-- Create default boards for all users missing them
+SELECT public.create_default_boards_for_existing_users();
 ```
 
 ### Restaurant Social Activity

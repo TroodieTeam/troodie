@@ -16,60 +16,58 @@ export interface OtpResponse {
 export const authService = {
   /**
    * Sign up a new user with email OTP
+   * According to Supabase docs, signInWithOtp will create user if doesn't exist
    */
   async signUpWithEmail(email: string): Promise<OtpResponse> {
     try {
-      // First, try to send OTP for existing user
-      const { data: existingOtp, error: existingError } = await supabase.auth.signInWithOtp({
+      console.log('[AuthService] Attempting to sign up user with email:', email)
+      
+      // Use signInWithOtp which will create the user automatically
+      // Don't check users table first as it might not have the profile yet
+      const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: false,
+          // Allow user creation for signup
+          shouldCreateUser: true,
           emailRedirectTo: undefined,
         },
       })
       
-      if (!existingError) {
-        return {
-          success: true,
-          messageId: existingOtp?.messageId,
+      if (error) {
+        console.error('[AuthService] Sign up OTP error:', error)
+        
+        // If user already exists (will get a specific error)
+        if (error.message?.includes('User already registered') || 
+            error.message?.includes('already been registered')) {
+          return {
+            success: false,
+            error: 'An account with this email already exists. Please sign in instead.',
+          }
         }
-      }
-      
-      // User doesn't exist, create them manually using our function
-      const { data: createResult, error: createError } = await supabase.rpc('create_new_user', {
-        user_email: email
-      })
-      
-      if (createError) {
+        
+        // If signups are disabled
+        if (error.message?.includes('Signups not allowed')) {
+          return {
+            success: false,
+            error: 'Sign ups are temporarily disabled. Please contact support.',
+          }
+        }
+        
+        
         return {
           success: false,
-          error: 'Unable to create account. Please try again.',
+          error: this.getErrorMessage(error),
         }
       }
       
-      // Account created, now try to send OTP
-      const { data: newUserOtp, error: newUserOtpError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false, // User already exists
-          emailRedirectTo: undefined,
-        },
-      })
+      console.log('[AuthService] Sign up OTP sent successfully, messageId:', data?.messageId)
       
-      if (newUserOtpError) {
-        // Account exists but OTP failed - return success anyway, they can use sign in
-        return {
-          success: true,
-          messageId: 'ACCOUNT_CREATED_NO_OTP', // Flag to show "Please sign in" message
-        }
-      }
-      
-      // Both account creation and OTP sending succeeded
       return {
         success: true,
-        messageId: newUserOtp?.messageId,
+        messageId: data?.messageId,
       }
     } catch (error) {
+      console.error('[AuthService] Unexpected sign up error:', error)
       return {
         success: false,
         error: 'An unexpected error occurred. Please try again.',
@@ -84,10 +82,11 @@ export const authService = {
     try {
       console.log('[AuthService] Attempting to sign in user with email:', email)
       
+      // Use signInWithOtp with shouldCreateUser: false for login
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: false,
+          shouldCreateUser: false, // Prevent creating new users on login
           emailRedirectTo: undefined,
         },
       })
@@ -95,19 +94,13 @@ export const authService = {
       if (error) {
         console.error('[AuthService] Sign in OTP error:', error)
         
-        // If user not found, they might need to sign up
-        if (error.message?.includes('not found') || error.message?.includes('not exist')) {
+        // Handle user not found
+        if (error.message?.includes('User not found') || 
+            error.message?.includes('not registered') ||
+            error.status === 400) {
           return {
             success: false,
             error: 'No account found with this email. Please sign up first.',
-          }
-        }
-        
-        // If OTP is disabled, suggest alternative
-        if (error.message?.includes('Signups not allowed for otp')) {
-          return {
-            success: false,
-            error: 'Email verification is temporarily unavailable. Please try again later.',
           }
         }
         
@@ -162,46 +155,17 @@ export const authService = {
       if (data.user) {
         console.log('[AuthService] Ensuring user profile exists...')
         
-        // Check if profile exists
-        const { data: existingProfile, error: profileCheckError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', data.user.id)
-          .single()
+        // Use the ensure_user_profile function to handle this properly
+        const { error: profileError } = await supabase.rpc('ensure_user_profile', {
+          p_user_id: data.user.id,
+          p_email: email
+        })
         
-        if (profileCheckError && profileCheckError.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          console.log('[AuthService] Creating user profile after verification...')
-          const { error: createError } = await supabase
-            .from('users')
-            .insert({
-              id: data.user.id,
-              email: email,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-          
-          if (createError) {
-            console.error('[AuthService] Failed to create profile after verification:', createError)
-            
-            // Try using the function as fallback
-            const { error: funcError } = await supabase.rpc('create_user_profile', {
-              user_id: data.user.id,
-              user_email: email
-            })
-            
-            if (funcError) {
-              console.error('[AuthService] Function fallback also failed:', funcError)
-            } else {
-              console.log('[AuthService] Profile created via function fallback')
-            }
-          } else {
-            console.log('[AuthService] User profile created successfully after verification')
-          }
-        } else if (!profileCheckError) {
-          console.log('[AuthService] User profile already exists')
+        if (profileError) {
+          console.error('[AuthService] Error ensuring profile exists:', profileError)
+          // Don't fail the login, profile creation is not critical
         } else {
-          console.error('[AuthService] Error checking profile existence:', profileCheckError)
+          console.log('[AuthService] User profile ensured successfully')
         }
       }
       
@@ -293,26 +257,43 @@ export const authService = {
    */
   async resendOtp(email: string, type: 'signup' | 'login' = 'login'): Promise<OtpResponse> {
     try {
+      console.log('[AuthService] Resending OTP for:', email, 'type:', type)
+      
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
+          // For signup, allow user creation; for login, don't
           shouldCreateUser: type === 'signup',
           emailRedirectTo: undefined,
         },
       })
       
       if (error) {
+        console.error('[AuthService] Resend OTP error:', error)
+        
+        // Handle rate limiting specifically
+        if (error.message?.includes('rate limit') || error.status === 429) {
+          const match = error.message.match(/(\d+) seconds?/);
+          const seconds = match ? match[1] : '60';
+          return {
+            success: false,
+            error: `Please wait ${seconds} seconds before requesting another code.`,
+          }
+        }
+        
         return {
           success: false,
           error: this.getErrorMessage(error),
         }
       }
       
+      console.log('[AuthService] OTP resent successfully, messageId:', data?.messageId)
       return {
         success: true,
         messageId: data?.messageId,
       }
     } catch (error) {
+      console.error('[AuthService] Unexpected resend error:', error)
       return {
         success: false,
         error: 'Failed to resend code. Please try again.',
@@ -324,9 +305,13 @@ export const authService = {
    * Convert Supabase auth errors to user-friendly messages
    */
   getErrorMessage(error: AuthError): string {
-    // Handle rate limiting
-    if (error.message?.includes('rate limit') || error.message?.includes('too many requests')) {
-      return 'Too many attempts. Please wait a moment before trying again.'
+    // Handle rate limiting (OTP can only be requested once every 60 seconds)
+    if (error.message?.includes('rate limit') || 
+        error.message?.includes('too many requests') ||
+        error.status === 429) {
+      const match = error.message?.match(/(\d+) seconds?/);
+      const seconds = match ? match[1] : '60';
+      return `Please wait ${seconds} seconds before requesting another code.`
     }
     
     // Handle invalid OTP
@@ -334,13 +319,15 @@ export const authService = {
       return 'Invalid verification code. Please check and try again.'
     }
     
-    // Handle expired OTP
+    // Handle expired OTP (expires after 1 hour by default)
     if (error.message?.includes('expired')) {
       return 'Verification code has expired. Please request a new one.'
     }
     
-    // Handle user not found
-    if (error.message?.includes('user not found') || error.message?.includes('not exist')) {
+    // Handle user not found/not registered
+    if (error.message?.includes('User not found') || 
+        error.message?.includes('not registered') ||
+        error.message?.includes('not exist')) {
       return 'No account found with this email. Please sign up first.'
     }
     
