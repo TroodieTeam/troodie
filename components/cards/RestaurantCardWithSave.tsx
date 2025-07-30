@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { RestaurantInfo } from '@/types/core';
 import { boardService } from '@/services/boardService';
 import { ToastService } from '@/services/toastService';
+import { BoardSelectionModal } from '../BoardSelectionModal';
 
 interface RestaurantCardWithSaveProps {
   restaurant: RestaurantInfo;
@@ -29,16 +30,19 @@ interface RestaurantCardWithSaveProps {
 // Separate components for better modularity
 const SaveButton = ({ 
   onPress, 
+  onLongPress,
   isSaved, 
   isLoading 
 }: { 
-  onPress: (e: any) => void; 
+  onPress: (e: any) => void;
+  onLongPress?: (e: any) => void; 
   isSaved: boolean; 
   isLoading?: boolean;
 }) => (
   <TouchableOpacity 
     style={styles.saveButton} 
     onPress={onPress}
+    onLongPress={onLongPress}
     activeOpacity={0.8}
     disabled={isLoading}
   >
@@ -95,6 +99,7 @@ export function RestaurantCardWithSave({
   const { user } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showBoardModal, setShowBoardModal] = useState(false);
 
   // Check if restaurant is saved on mount
   useEffect(() => {
@@ -147,9 +152,7 @@ export function RestaurantCardWithSave({
           {
             label: 'Add to Board',
             onPress: () => {
-              // Navigate to board selection
-              // This would require passing a callback or using navigation
-              console.log('Navigate to board selection');
+              setShowBoardModal(true);
             }
           }
         );
@@ -166,6 +169,17 @@ export function RestaurantCardWithSave({
     }
   }, [user, restaurant.id, isSaved]);
 
+  const handleLongPress = useCallback((e: any) => {
+    e.stopPropagation();
+    if (!user) {
+      ToastService.showError('Please sign in to save restaurants');
+      return;
+    }
+    
+    Vibration.vibrate(20);
+    setShowBoardModal(true);
+  }, [user]);
+
   const handleCardPress = useCallback(() => {
     if (onPress) {
       onPress();
@@ -178,44 +192,61 @@ export function RestaurantCardWithSave({
   const detailsText = `${cuisineText} • ${priceRange}`;
 
   return (
-    <TouchableOpacity 
-      style={[styles.container, compact && styles.compactContainer]} 
-      onPress={handleCardPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.imageContainer}>
-        <Image 
-          source={{ uri: restaurant.image || 'https://via.placeholder.com/300x200' }} 
-          style={[styles.image, compact && styles.compactImage]} 
-        />
-        {showSaveButton && (
-          <SaveButton 
-            onPress={handleSave} 
-            isSaved={isSaved} 
-            isLoading={isSaving}
+    <>
+      <TouchableOpacity 
+        style={[styles.container, compact && styles.compactContainer]} 
+        onPress={handleCardPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.imageContainer}>
+          <Image 
+            source={{ uri: restaurant.image || 'https://via.placeholder.com/300x200' }} 
+            style={[styles.image, compact && styles.compactImage]} 
           />
-        )}
-      </View>
-      
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>
-          {restaurant.name || 'Restaurant'}
-        </Text>
-        <Text style={styles.cuisine} numberOfLines={1}>
-          {detailsText}
-        </Text>
+          {showSaveButton && (
+            <SaveButton 
+              onPress={handleSave}
+              onLongPress={handleLongPress}
+              isSaved={isSaved} 
+              isLoading={isSaving}
+            />
+          )}
+        </View>
         
-        {!compact && (
-          <>
-            {restaurant.rating !== undefined && restaurant.rating > 0 && (
-              <RatingSection rating={restaurant.rating} />
-            )}
-            {restaurant.location && <LocationSection location={restaurant.location} />}
-            {stats && <StatsSection stats={stats} />}
-          </>
-        )}
-      </View>
-    </TouchableOpacity>
+        <View style={styles.content}>
+          <Text style={styles.name} numberOfLines={1}>
+            {restaurant.name || 'Restaurant'}
+          </Text>
+          <Text style={styles.cuisine} numberOfLines={1}>
+            {detailsText}
+          </Text>
+          
+          {!compact && (
+            <>
+              {restaurant.rating !== undefined && restaurant.rating > 0 && (
+                <RatingSection rating={restaurant.rating} />
+              )}
+              {restaurant.location && <LocationSection location={restaurant.location} />}
+              {stats && <StatsSection stats={stats} />}
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+      
+      {showBoardModal && (
+        <BoardSelectionModal
+          visible={showBoardModal}
+          onClose={() => setShowBoardModal(false)}
+          restaurantId={restaurant.id}
+          restaurantName={restaurant.name}
+          onSuccess={() => {
+            setShowBoardModal(false);
+            // Refresh save status after adding to boards
+            checkSaveStatus();
+          }}
+        />
+      )}
+    </>
   );
 }
 
