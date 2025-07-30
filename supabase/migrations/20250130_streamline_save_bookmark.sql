@@ -114,9 +114,9 @@ BEGIN
   -- Check if already saved to this board
   SELECT id INTO v_save_id
   FROM public.restaurant_saves
-  WHERE user_id = p_user_id
-    AND restaurant_id = p_restaurant_id
-    AND board_id = v_board_id;
+  WHERE public.restaurant_saves.user_id = p_user_id
+    AND public.restaurant_saves.restaurant_id = p_restaurant_id
+    AND public.restaurant_saves.board_id = v_board_id;
   
   -- If not already saved, create the save
   IF v_save_id IS NULL THEN
@@ -168,8 +168,8 @@ BEGIN
   -- Delete all saves of this restaurant by the user
   WITH deleted AS (
     DELETE FROM public.restaurant_saves
-    WHERE user_id = p_user_id
-      AND restaurant_id = p_restaurant_id
+    WHERE public.restaurant_saves.user_id = p_user_id
+      AND public.restaurant_saves.restaurant_id = p_restaurant_id
     RETURNING board_id
   )
   SELECT COUNT(*) INTO v_deleted_count FROM deleted;
@@ -180,8 +180,8 @@ BEGIN
   FROM (
     SELECT board_id, COUNT(*) as count
     FROM public.restaurant_saves
-    WHERE user_id = p_user_id
-      AND restaurant_id = p_restaurant_id
+    WHERE public.restaurant_saves.user_id = p_user_id
+      AND public.restaurant_saves.restaurant_id = p_restaurant_id
     GROUP BY board_id
   ) sub
   WHERE b.id = sub.board_id;
@@ -196,6 +196,7 @@ GRANT EXECUTE ON FUNCTION public.save_restaurant_instant(UUID, UUID, UUID) TO au
 GRANT EXECUTE ON FUNCTION public.unsave_restaurant(UUID, UUID) TO authenticated;
 
 -- Create RLS policy for default board access
+DROP POLICY IF EXISTS "Users can access their default board" ON public.boards;
 CREATE POLICY "Users can access their default board"
 ON public.boards
 FOR ALL
