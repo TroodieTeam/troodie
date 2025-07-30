@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { Alert } from 'react-native';
 
 export interface SaveResult {
   save_id: string;
@@ -67,7 +66,7 @@ export class SaveService {
   }
 
   /**
-   * Check if a restaurant is saved by the user
+   * Check if a restaurant is saved by the user (in any board)
    */
   static async isRestaurantSaved(userId: string, restaurantId: string): Promise<boolean> {
     try {
