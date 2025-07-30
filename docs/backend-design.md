@@ -74,10 +74,10 @@ When a new user signs up, the following happens automatically after OTP verifica
 - `create_default_boards_for_existing_users()` - Retroactively creates boards for existing users
 - `get_or_create_default_board(p_user_id)` - Gets or creates user's default board
 
-### Default Board Management (Quick Saves)
+### Quick Saves Board
 
 **Overview**:
-Every user has a default "Quick Saves" board for instant restaurant bookmarking without friction.
+Users have a "Quick Saves" board for instant restaurant bookmarking. This is managed through the application logic using the boardService.
 
 **Schema Updates**:
 ```sql
@@ -85,27 +85,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS default_board_id UUID REFERENCES boar
 ALTER TABLE users ADD COLUMN IF NOT EXISTS default_avatar_url TEXT;
 ```
 
-**Function Implementation**:
-```sql
-CREATE OR REPLACE FUNCTION get_or_create_default_board(p_user_id UUID)
-RETURNS UUID AS $$
-DECLARE
-  v_board_id UUID;
-BEGIN
-  SELECT default_board_id INTO v_board_id FROM users WHERE id = p_user_id;
-  
-  IF v_board_id IS NULL THEN
-    INSERT INTO boards (user_id, title, description, type, is_private)
-    VALUES (p_user_id, 'Quick Saves', 'Your quick saves collection', 'free', false)
-    RETURNING id INTO v_board_id;
-    
-    UPDATE users SET default_board_id = v_board_id WHERE id = p_user_id;
-  END IF;
-  
-  RETURN v_board_id;
-END;
-$$ LANGUAGE plpgsql;
-```
+The Quick Saves board is created automatically when needed through `boardService.getUserQuickSavesBoard()` and `boardService.saveRestaurantToQuickSaves()`.
 
 ## Storage Configuration
 
