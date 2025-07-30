@@ -38,6 +38,8 @@ export type Database = {
           is_restaurant: boolean
           is_creator: boolean
           profile_completion: number
+          default_board_id: string | null
+          default_avatar_url: string | null
           created_at: string
           updated_at: string
         }
@@ -53,6 +55,8 @@ export type Database = {
           is_restaurant?: boolean
           is_creator?: boolean
           profile_completion?: number
+          default_board_id?: string | null
+          default_avatar_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -68,6 +72,8 @@ export type Database = {
           is_restaurant?: boolean
           is_creator?: boolean
           profile_completion?: number
+          default_board_id?: string | null
+          default_avatar_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -99,6 +105,10 @@ export type Database = {
           is_claimed: boolean
           owner_id: string | null
           data_source: 'seed' | 'google' | 'user' | null
+          submitted_by: string | null
+          is_approved: boolean
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           updated_at: string
           last_google_sync: string | null
@@ -129,6 +139,10 @@ export type Database = {
           is_claimed?: boolean
           owner_id?: string | null
           data_source?: 'seed' | 'google' | 'user' | null
+          submitted_by?: string | null
+          is_approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           updated_at?: string
           last_google_sync?: string | null
@@ -159,6 +173,10 @@ export type Database = {
           is_claimed?: boolean
           owner_id?: string | null
           data_source?: 'seed' | 'google' | 'user' | null
+          submitted_by?: string | null
+          is_approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           updated_at?: string
           last_google_sync?: string | null
@@ -231,6 +249,7 @@ export type Database = {
           allow_comments: boolean
           allow_saves: boolean
           member_count: number
+          share_count: number
           is_active: boolean
           created_at: string
           updated_at: string
@@ -251,6 +270,7 @@ export type Database = {
           allow_comments?: boolean
           allow_saves?: boolean
           member_count?: number
+          share_count?: number
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -271,6 +291,7 @@ export type Database = {
           allow_comments?: boolean
           allow_saves?: boolean
           member_count?: number
+          share_count?: number
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -294,7 +315,7 @@ export type Database = {
           likes_count: number
           comments_count: number
           saves_count: number
-          shares_count: number
+          share_count: number
           is_trending: boolean
           content_type: 'original' | 'external'
           external_source: string | null
@@ -323,7 +344,7 @@ export type Database = {
           likes_count?: number
           comments_count?: number
           saves_count?: number
-          shares_count?: number
+          share_count?: number
           is_trending?: boolean
           content_type?: 'original' | 'external'
           external_source?: string | null
@@ -352,7 +373,7 @@ export type Database = {
           likes_count?: number
           comments_count?: number
           saves_count?: number
-          shares_count?: number
+          share_count?: number
           is_trending?: boolean
           content_type?: 'original' | 'external'
           external_source?: string | null
@@ -600,6 +621,64 @@ export type Database = {
           id?: string
           follower_id?: string | null
           following_id?: string | null
+          created_at?: string
+        }
+      }
+      share_analytics: {
+        Row: {
+          id: string
+          user_id: string | null
+          content_type: 'board' | 'post' | 'profile'
+          content_id: string
+          platform: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          content_type: 'board' | 'post' | 'profile'
+          content_id: string
+          platform?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          content_type?: 'board' | 'post' | 'profile'
+          content_id?: string
+          platform?: string | null
+          created_at?: string
+        }
+      }
+      community_admin_logs: {
+        Row: {
+          id: string
+          community_id: string
+          admin_id: string
+          action_type: 'remove_member' | 'delete_post' | 'delete_message' | 'update_role'
+          target_id: string
+          target_type: 'user' | 'post' | 'message'
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          community_id: string
+          admin_id: string
+          action_type: 'remove_member' | 'delete_post' | 'delete_message' | 'update_role'
+          target_id: string
+          target_type: 'user' | 'post' | 'message'
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          community_id?: string
+          admin_id?: string
+          action_type?: 'remove_member' | 'delete_post' | 'delete_message' | 'update_role'
+          target_id?: string
+          target_type?: 'user' | 'post' | 'message'
+          reason?: string | null
           created_at?: string
         }
       }

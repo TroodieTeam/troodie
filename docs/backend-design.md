@@ -72,6 +72,40 @@ When a new user signs up, the following happens automatically after OTP verifica
 **Database Functions**:
 - `ensure_user_profile(p_user_id, p_email)` - Creates user profile and default board
 - `create_default_boards_for_existing_users()` - Retroactively creates boards for existing users
+- `get_or_create_default_board(p_user_id)` - Gets or creates user's default board
+
+### Default Board Management (Quick Saves)
+
+**Overview**:
+Every user has a default "Quick Saves" board for instant restaurant bookmarking without friction.
+
+**Schema Updates**:
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS default_board_id UUID REFERENCES boards(id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS default_avatar_url TEXT;
+```
+
+**Function Implementation**:
+```sql
+CREATE OR REPLACE FUNCTION get_or_create_default_board(p_user_id UUID)
+RETURNS UUID AS $$
+DECLARE
+  v_board_id UUID;
+BEGIN
+  SELECT default_board_id INTO v_board_id FROM users WHERE id = p_user_id;
+  
+  IF v_board_id IS NULL THEN
+    INSERT INTO boards (user_id, title, description, type, is_private)
+    VALUES (p_user_id, 'Quick Saves', 'Your quick saves collection', 'free', false)
+    RETURNING id INTO v_board_id;
+    
+    UPDATE users SET default_board_id = v_board_id WHERE id = p_user_id;
+  END IF;
+  
+  RETURN v_board_id;
+END;
+$$ LANGUAGE plpgsql;
+```
 
 ## Storage Configuration
 
@@ -226,13 +260,82 @@ CREATE TABLE public.restaurants (
   is_claimed boolean DEFAULT false,   -- Claimed by owner
   owner_id uuid,                      -- Restaurant owner
   data_source character varying CHECK (data_source::text = ANY (ARRAY['seed'::character varying, 'google'::character varying, 'user'::character varying]::text[])),
+  submitted_by uuid,                  -- User who submitted (for user-generated)
+  is_approved boolean DEFAULT false,  -- Admin approval status
+  approved_at timestamp with time zone,
+  approved_by uuid,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   last_google_sync timestamp with time zone,
   CONSTRAINT restaurants_pkey PRIMARY KEY (id),
-  CONSTRAINT restaurants_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
+  CONSTRAINT restaurants_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id),
+  CONSTRAINT restaurants_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id),
+  CONSTRAINT restaurants_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id)
 );
 ```
+
+#### User-Submitted Restaurants
+
+**Overview**:
+Users can add new restaurants that aren't in the database, which are saved to their personal collection and optionally submitted for community-wide visibility after moderation.
+
+**Schema Updates**:
+```sql
+-- Add user submission tracking
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS submitted_by UUID REFERENCES users(id);
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT false;
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES users(id);
+```
+
+**Function Implementation**:
+```sql
+CREATE OR REPLACE FUNCTION create_user_restaurant(
+  p_user_id UUID,
+  p_name VARCHAR,
+  p_address TEXT,
+  p_city VARCHAR,
+  p_state VARCHAR,
+  p_cuisine_types TEXT[],
+  p_description TEXT DEFAULT NULL,
+  p_website TEXT DEFAULT NULL,
+  p_price_range VARCHAR DEFAULT NULL
+) RETURNS UUID AS $$
+DECLARE
+  v_restaurant_id UUID;
+  v_default_board_id UUID;
+BEGIN
+  -- Insert restaurant
+  INSERT INTO restaurants (
+    name, address, city, state, cuisine_types, 
+    data_source, submitted_by, website, price_range
+  ) VALUES (
+    p_name, p_address, p_city, p_state, p_cuisine_types,
+    'user', p_user_id, p_website, p_price_range
+  ) RETURNING id INTO v_restaurant_id;
+  
+  -- Get user's default board
+  SELECT get_or_create_default_board(p_user_id) INTO v_default_board_id;
+  
+  -- Auto-save to user's collection
+  INSERT INTO restaurant_saves (
+    user_id, restaurant_id, board_id
+  ) VALUES (
+    p_user_id, v_restaurant_id, v_default_board_id
+  );
+  
+  RETURN v_restaurant_id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Moderation Workflow**:
+1. User submits restaurant via "Add" tab
+2. Restaurant created with `data_source = 'user'` and `is_approved = false`
+3. Auto-saved to user's personal collection (visible to them immediately)
+4. Admin reviews submission in moderation queue
+5. If approved, `is_approved = true` and restaurant becomes publicly visible
+6. If rejected, restaurant remains in user's collection only
 
 #### `external_content_sources` Table
 Supported external content platforms for posts.
@@ -386,6 +489,63 @@ CREATE TABLE public.user_relationships (
 );
 ```
 
+#### User Search Functionality
+
+**Full-Text Search Implementation**:
+
+```sql
+-- Add search indexes
+CREATE INDEX IF NOT EXISTS idx_users_search ON users USING gin(
+  to_tsvector('english', COALESCE(username, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(bio, ''))
+);
+
+-- Search function with follow status
+CREATE OR REPLACE FUNCTION search_users(
+  search_query TEXT, 
+  limit_count INT DEFAULT 20, 
+  offset_count INT DEFAULT 0
+)
+RETURNS TABLE (
+  id UUID,
+  username VARCHAR,
+  name VARCHAR,
+  bio TEXT,
+  avatar_url TEXT,
+  is_verified BOOLEAN,
+  followers_count INT,
+  is_following BOOLEAN
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    u.id,
+    u.username,
+    u.name,
+    u.bio,
+    u.avatar_url,
+    u.is_verified,
+    u.followers_count,
+    EXISTS(
+      SELECT 1 FROM user_relationships ur 
+      WHERE ur.follower_id = auth.uid() AND ur.following_id = u.id
+    ) as is_following
+  FROM users u
+  WHERE 
+    to_tsvector('english', COALESCE(u.username, '') || ' ' || COALESCE(u.name, '') || ' ' || COALESCE(u.bio, ''))
+    @@ plainto_tsquery('english', search_query)
+  ORDER BY u.followers_count DESC, u.created_at DESC
+  LIMIT limit_count
+  OFFSET offset_count;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Features**:
+- Full-text search across username, name, and bio
+- Returns follow status for current user
+- Prioritizes verified users and those with more followers
+- Supports pagination for large result sets
+
 ### Board System
 
 #### `boards` Table
@@ -528,6 +688,8 @@ CREATE TABLE public.community_posts (
   user_id uuid,
   content text NOT NULL,
   images ARRAY,
+  deleted_at timestamp with time zone,
+  deleted_by uuid REFERENCES users(id),
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT community_posts_pkey PRIMARY KEY (id),
@@ -535,6 +697,33 @@ CREATE TABLE public.community_posts (
   CONSTRAINT community_posts_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id)
 );
 ```
+
+#### `community_admin_logs` Table
+Audit trail for administrative actions in communities.
+
+```sql
+CREATE TABLE IF NOT EXISTS community_admin_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  community_id UUID REFERENCES communities(id),
+  admin_id UUID REFERENCES users(id),
+  action_type VARCHAR NOT NULL CHECK (action_type IN ('remove_member', 'delete_post', 'delete_message', 'update_role')),
+  target_id UUID NOT NULL,
+  target_type VARCHAR NOT NULL CHECK (target_type IN ('user', 'post', 'message')),
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for quick lookups
+CREATE INDEX idx_community_admin_logs_community ON community_admin_logs(community_id);
+CREATE INDEX idx_community_admin_logs_admin ON community_admin_logs(admin_id);
+```
+
+**Admin Control Features**:
+- Soft delete for posts (maintains audit trail)
+- Remove members from community
+- Delete inappropriate content
+- Update member roles
+- All actions logged for accountability
 
 ### Engagement & Interactions
 
@@ -652,6 +841,31 @@ CREATE TABLE public.push_tokens (
   CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 ```
+
+### Share Analytics
+
+#### `share_analytics` Table
+Track sharing activity for boards, posts, and profiles.
+
+```sql
+CREATE TABLE IF NOT EXISTS share_analytics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  content_type VARCHAR NOT NULL CHECK (content_type IN ('board', 'post', 'profile')),
+  content_id UUID NOT NULL,
+  platform VARCHAR,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add share count columns to existing tables
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0;
+ALTER TABLE boards ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0;
+```
+
+**Usage**:
+- Track when users share content via system share sheet
+- Analyze popular content based on share metrics
+- Platform field captures where content was shared (if available)
 
 ### Achievement & Gamification
 
@@ -1157,6 +1371,6 @@ supabase
 
 ---
 
-**Last Updated**: 2025-07-27
-**Version**: 1.1
+**Last Updated**: 2025-07-30
+**Version**: 1.2
 **Maintainer**: Engineering Team

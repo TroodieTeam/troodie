@@ -123,6 +123,26 @@
 
 ---
 
+## Epic 8: UI/UX Improvements and Polish
+
+| Task | Status | Priority | Estimate | Assignee | Notes |
+|------|--------|----------|----------|----------|-------|
+| [8.1 Streamline Save/Bookmark Process](./task-8-1-streamline-save-bookmark.md) | 🔴 | High | 3 days | - | One-tap save with optional board organization |
+| [8.2 Compact Profile & Activity Screens](./task-8-2-compact-profile-activity-screens.md) | 🔴 | Medium | 2 days | - | Responsive design for all devices |
+| [8.3 Display Profile and Post Images](./task-8-3-display-profile-post-images.md) | 🔴 | High | 2 days | - | Proper image handling and placeholders |
+| [8.4 Add Share Functionality](./task-8-4-share-functionality.md) | 🔴 | Medium | 3 days | - | Share boards, posts, and profiles |
+| [8.5 Community Admin Controls](./task-8-5-community-admin-controls.md) | 🔴 | Medium | 3 days | - | Remove users, delete posts, audit logs |
+| [8.6 User Search and Follow](./task-8-6-user-search-follow.md) | 🔴 | High | 4 days | - | Find and connect with other users |
+| [8.7 Rename Recommendations Section](./task-8-7-rename-recommendations-section.md) | 🔴 | Low | 0.5 days | - | "What's Hot in Your City" with explanation |
+| [8.8 Fix Post Button & Interface](./task-8-8-fix-post-button-interface.md) | 🔴 | High | 2 days | - | Clear requirements and active state |
+| [8.9 Add Save Restaurant Feature](./task-8-9-add-save-restaurant.md) | 🔴 | High | 4 days | - | User-submitted restaurants |
+
+**Epic Status:** Not Started  
+**Epic Progress:** 0/9 tasks completed  
+**Estimated Duration:** 23.5 days
+
+---
+
 ## Sprint Planning
 
 ### Phase 1: Core Infrastructure (Weeks 1-4)
@@ -161,17 +181,27 @@
 
 **Total Estimate:** 15 days
 
+### Phase 5: UI/UX Polish (Weeks 17-21)
+**Priority:** User Experience Enhancement
+- Task 8.1: Streamline Save/Bookmark ✅ (High)
+- Task 8.3: Display Profile/Post Images ✅ (High)
+- Task 8.6: User Search and Follow ✅ (High)
+- Task 8.8: Fix Post Button & Interface ✅ (High)
+- Task 8.9: Add Save Restaurant ✅ (High)
+
+**Total Estimate:** 15 days
+
 ---
 
 ## Overall Progress Summary
 
-**Total Tasks:** 26  
-**Completed:** 12 (46%)  
+**Total Tasks:** 35  
+**Completed:** 12 (34%)  
 **In Progress:** 0 (0%)  
-**Not Started:** 14 (54%)  
+**Not Started:** 23 (66%)  
 **Blocked:** 0 (0%)
 
-**Total Estimated Duration:** 84 days (~17 weeks)
+**Total Estimated Duration:** 107.5 days (~21.5 weeks)
 
 ---
 
@@ -213,10 +243,11 @@
 
 ## Notes & Updates
 
-**Last Updated:** January 22, 2025  
-**Next Review:** January 23, 2025
+**Last Updated:** January 30, 2025  
+**Next Review:** January 31, 2025
 
 ### Recent Changes
+- 🆕 **Jan 30**: Added Epic 8 - UI/UX Improvements with 9 new tasks based on user feedback
 - ✅ **Jan 26**: Completed Task 6.10 - Enhance Post Functionality for External Content
 - ✅ **Jan 26**: Completed Task 4.4 - Enhance Community Detail Screen with live data and full features
 - ✅ **Jan 22**: Completed Task 3.5 - Fix Edit Profile Modal Bug
