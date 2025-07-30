@@ -230,13 +230,13 @@ export default function ExploreScreen() {
         });
       }}
       onLike={(postId: string, liked: boolean) => {
-        console.log('Post liked:', postId, liked);
+        // TODO: Handle post like
       }}
       onComment={(postId: string) => {
-        console.log('Comment on post:', postId);
+        // TODO: Navigate to comment screen
       }}
       onSave={(postId: string) => {
-        console.log('Save post:', postId);
+        // TODO: Handle post save
       }}
     />
   ), [router]);
@@ -333,7 +333,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   header: {
     paddingHorizontal: designTokens.spacing.lg,

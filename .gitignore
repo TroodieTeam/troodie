@@ -48,3 +48,5 @@ docs/
 # documentation files
 README.md
 TODO.md
+
+.env.local

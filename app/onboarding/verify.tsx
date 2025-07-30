@@ -99,7 +99,7 @@ export default function VerifyScreen() {
       if (result.success && result.session) {
         // Get the user ID directly from the result
         const userId = result.session.user.id;
-        console.log('[Verify] OTP verified successfully for user:', userId);
+        // OTP verified successfully
         
         // Give a moment for the auth context to update
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -107,12 +107,12 @@ export default function VerifyScreen() {
         // Check if this is a login or signup flow
         if (verificationType === 'login') {
           // For login, existing users go straight to the main app
-          console.log('[Verify] Login successful, going to main app');
+          // Login successful, going to main app
           await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
           router.replace('/(tabs)');
         } else {
           // For signup, always continue with onboarding flow
-          console.log('[Verify] Signup successful, starting onboarding');
+          // Signup successful, starting onboarding
           setCurrentStep('quiz');
           router.push('/onboarding/quiz');
         }

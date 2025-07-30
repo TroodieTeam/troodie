@@ -8,10 +8,134 @@ This document serves as the living documentation for Troodie's backend architect
 
 ### Technology Stack
 - **Database**: PostgreSQL (via Supabase)
-- **Authentication**: Supabase Auth with email OTP
+- **Authentication**: Supabase Auth with email passwordless (OTP)
 - **Real-time**: Supabase Realtime subscriptions
 - **Storage**: Supabase Storage for images and media
 - **Edge Functions**: Supabase Edge Functions for serverless logic
+
+## Authentication Configuration
+
+### Email Passwordless (OTP) Authentication
+
+Troodie uses Supabase's email passwordless authentication with One-Time Passwords (OTP).
+
+**Key Configuration**:
+- **Authentication Method**: Email OTP (6-digit codes)
+- **OTP Validity**: 1 hour (3600 seconds)
+- **Rate Limiting**: 1 OTP request per 60 seconds per email
+- **User Creation**: Automatic on first signup
+- **Email Confirmation**: Disabled (users are auto-confirmed)
+
+**Required Supabase Dashboard Settings**:
+1. **Authentication > Providers > Email**:
+   - Enable Email Provider: ON
+   - Confirm email: OFF
+   - Enable email signup: ON
+
+2. **Project Settings > Auth**:
+   - Enable sign ups: ON
+   - Auto-confirm users: ON
+
+**Auth Flow**:
+1. **Sign Up**: User enters email → OTP sent → User enters OTP → Account created & logged in
+2. **Sign In**: User enters email → OTP sent → User enters OTP → Logged in
+3. **Resend OTP**: Rate limited to once per 60 seconds
+
+**Implementation Details**:
+- `signInWithOtp` handles both signup and login
+- For signup: `shouldCreateUser: true` allows new user creation
+- For login: `shouldCreateUser: false` prevents accidental account creation
+- User profiles are created after OTP verification using `ensure_user_profile` function
+- **No auth triggers** - Profile creation happens in-app to avoid "Database error saving new user"
+
+### User Profile Creation
+
+**Automatic Profile Setup**:
+When a new user signs up, the following happens automatically after OTP verification:
+
+1. **User Profile Creation**:
+   - Function: `ensure_user_profile(user_id, email)`
+   - Creates entry in `public.users` table
+   - Sets initial fields (id, email, created_at, updated_at)
+
+2. **Default Board Creation**:
+   - Every user gets a "Quick Saves" board automatically
+   - Board details:
+     - Title: "Quick Saves"
+     - Description: "Your personal collection of saved restaurants"
+     - Type: "free"
+     - Privacy: public (is_private: false)
+   - User is added as "owner" in board_members table
+   - User's `default_board_id` is set to this board
+   - `has_created_board` flag is set to true
+
+**Database Functions**:
+- `ensure_user_profile(p_user_id, p_email)` - Creates user profile and default board
+- `create_default_boards_for_existing_users()` - Retroactively creates boards for existing users
+- `get_or_create_default_board(p_user_id)` - Gets or creates user's default board
+
+### Quick Saves Board
+
+**Overview**:
+Users have a "Quick Saves" board for instant restaurant bookmarking. This is managed through the application logic using the boardService.
+
+**Schema Updates**:
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS default_board_id UUID REFERENCES boards(id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS default_avatar_url TEXT;
+```
+
+The Quick Saves board is created automatically when needed through `boardService.getUserQuickSavesBoard()` and `boardService.saveRestaurantToQuickSaves()`.
+
+## Storage Configuration
+
+### Storage Buckets
+
+#### `post-photos` Bucket
+Stores all user-uploaded photos for posts.
+
+**Configuration**:
+- **Public**: Yes (publicly accessible for viewing)
+- **File Size Limit**: 10MB per file
+- **Allowed MIME Types**: 
+  - `image/jpeg`
+  - `image/jpg`
+  - `image/png`
+  - `image/gif`
+  - `image/webp`
+
+**Folder Structure**:
+```
+post-photos/
+└── posts/
+    └── {post_id}/
+        └── {timestamp}_{random_id}.jpg
+```
+
+**RLS Policies**:
+- Authenticated users can upload photos to their own posts
+- Authenticated users can update/delete their own photos
+- **Public read access for all photos** (unrestricted viewing)
+- Bucket marked as public for direct URL access
+
+**Storage Policy Implementation**:
+```sql
+-- Public read access for all post photos (simplified policy)
+CREATE POLICY "Public can view all post photos" ON storage.objects
+FOR SELECT TO public
+USING (bucket_id = 'post-photos');
+
+-- Users can upload photos to any post folder (posts/{post_id}/)
+CREATE POLICY "Users can upload their own post photos" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'post-photos' AND
+  (storage.foldername(name))[1] = 'posts'
+);
+
+-- Ensure bucket is marked as public
+UPDATE storage.buckets SET public = true WHERE id = 'post-photos';
+```
 
 ## Core Schema Design
 
@@ -116,15 +240,125 @@ CREATE TABLE public.restaurants (
   is_claimed boolean DEFAULT false,   -- Claimed by owner
   owner_id uuid,                      -- Restaurant owner
   data_source character varying CHECK (data_source::text = ANY (ARRAY['seed'::character varying, 'google'::character varying, 'user'::character varying]::text[])),
+  submitted_by uuid,                  -- User who submitted (for user-generated)
+  is_approved boolean DEFAULT false,  -- Admin approval status
+  approved_at timestamp with time zone,
+  approved_by uuid,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   last_google_sync timestamp with time zone,
   CONSTRAINT restaurants_pkey PRIMARY KEY (id),
-  CONSTRAINT restaurants_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
+  CONSTRAINT restaurants_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id),
+  CONSTRAINT restaurants_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id),
+  CONSTRAINT restaurants_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id)
 );
 ```
 
+#### User-Submitted Restaurants
+
+**Overview**:
+Users can add new restaurants that aren't in the database, which are saved to their personal collection and optionally submitted for community-wide visibility after moderation.
+
+**Schema Updates**:
+```sql
+-- Add user submission tracking
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS submitted_by UUID REFERENCES users(id);
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT false;
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES users(id);
+```
+
+**Function Implementation**:
+```sql
+CREATE OR REPLACE FUNCTION create_user_restaurant(
+  p_user_id UUID,
+  p_name VARCHAR,
+  p_address TEXT,
+  p_city VARCHAR,
+  p_state VARCHAR,
+  p_cuisine_types TEXT[],
+  p_description TEXT DEFAULT NULL,
+  p_website TEXT DEFAULT NULL,
+  p_price_range VARCHAR DEFAULT NULL
+) RETURNS UUID AS $$
+DECLARE
+  v_restaurant_id UUID;
+  v_default_board_id UUID;
+BEGIN
+  -- Insert restaurant
+  INSERT INTO restaurants (
+    name, address, city, state, cuisine_types, 
+    data_source, submitted_by, website, price_range
+  ) VALUES (
+    p_name, p_address, p_city, p_state, p_cuisine_types,
+    'user', p_user_id, p_website, p_price_range
+  ) RETURNING id INTO v_restaurant_id;
+  
+  -- Get user's default board
+  SELECT get_or_create_default_board(p_user_id) INTO v_default_board_id;
+  
+  -- Auto-save to user's collection
+  INSERT INTO restaurant_saves (
+    user_id, restaurant_id, board_id
+  ) VALUES (
+    p_user_id, v_restaurant_id, v_default_board_id
+  );
+  
+  RETURN v_restaurant_id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Moderation Workflow**:
+1. User submits restaurant via "Add" tab
+2. Restaurant created with `data_source = 'user'` and `is_approved = false`
+3. Auto-saved to user's personal collection (visible to them immediately)
+4. Admin reviews submission in moderation queue
+5. If approved, `is_approved = true` and restaurant becomes publicly visible
+6. If rejected, restaurant remains in user's collection only
+
+#### `external_content_sources` Table
+Supported external content platforms for posts.
+
+```sql
+CREATE TABLE public.external_content_sources (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL UNIQUE,
+  domain character varying,
+  icon_url text,
+  is_supported boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT external_content_sources_pkey PRIMARY KEY (id)
+);
+```
+
+**Default Sources**:
+- TikTok (tiktok.com)
+- Instagram (instagram.com)
+- YouTube (youtube.com)
+- Twitter (twitter.com)
+- Articles
+- Other
+
 ### Social Features
+
+#### Power Users & Critics Definition
+Power users and critics are identified by the following criteria:
+
+- **Power Users**: 
+  - Have 10,000+ followers
+  - Posted 50+ restaurant reviews with high engagement
+  - Maintained consistent activity (weekly posts for 3+ months)
+  - High average rating accuracy (aligned with community consensus)
+  - Verified account status
+
+- **Food Critics**:
+  - Professional food critics with media affiliation
+  - Verified credentials from recognized publications
+  - Specialized food bloggers with 25,000+ followers
+  - Restaurant industry professionals (chefs, sommeliers)
+  - Manually verified by Troodie team
 
 #### `restaurant_saves` Table
 User saves/bookmarks of restaurants.
@@ -152,7 +386,7 @@ CREATE TABLE public.restaurant_saves (
 ```
 
 #### `posts` Table
-Social media-style posts about restaurant visits.
+Social media-style posts about restaurant visits with support for both original and external content.
 
 ```sql
 CREATE TABLE public.posts (
@@ -160,12 +394,12 @@ CREATE TABLE public.posts (
   user_id uuid,
   restaurant_id character varying NOT NULL,
   caption text,
-  photos ARRAY,
+  photos ARRAY,                       -- Array of photo URLs
   rating integer CHECK (rating >= 1 AND rating <= 5),
   visit_date date,
   price_range character varying,
   visit_type character varying CHECK (visit_type::text = ANY (ARRAY['dine_in'::character varying, 'takeout'::character varying, 'delivery'::character varying]::text[])),
-  tags ARRAY,
+  tags ARRAY,                         -- Array of tags
   privacy character varying DEFAULT 'public'::character varying CHECK (privacy::text = ANY (ARRAY['public'::character varying, 'friends'::character varying, 'private'::character varying]::text[])),
   location_lat numeric,
   location_lng numeric,
@@ -174,12 +408,51 @@ CREATE TABLE public.posts (
   saves_count integer DEFAULT 0,
   shares_count integer DEFAULT 0,
   is_trending boolean DEFAULT false,
+  -- External content support
+  content_type character varying DEFAULT 'original' CHECK (content_type::text = ANY (ARRAY['original'::character varying, 'external'::character varying]::text[])),
+  external_source character varying,   -- Source platform (tiktok, instagram, etc.)
+  external_url text,                  -- Original URL
+  external_title text,                -- Title from external source
+  external_description text,          -- Description from external source
+  external_thumbnail text,            -- Thumbnail image URL
+  external_author text,               -- Original author/creator
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT posts_pkey PRIMARY KEY (id),
   CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 ```
+
+**Content Types**:
+- `original`: User-created content with photos, ratings, and personal experiences
+- `external`: Curated content from external sources (TikTok, Instagram, articles, etc.)
+
+**Note**: The `community_id` field for community posts is planned for future implementation.
+
+#### `external_content_sources` Table
+Reference table for supported external content platforms.
+
+```sql
+CREATE TABLE public.external_content_sources (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL,
+  domain character varying,           -- Platform domain (e.g., tiktok.com)
+  icon_url text,                     -- Platform icon URL
+  is_supported boolean DEFAULT true, -- Whether platform is currently supported
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT external_content_sources_pkey PRIMARY KEY (id),
+  CONSTRAINT external_content_sources_name_unique UNIQUE (name)
+);
+```
+
+**Supported Platforms**:
+- TikTok (`tiktok.com`)
+- Instagram (`instagram.com`)
+- YouTube (`youtube.com`)
+- Twitter (`twitter.com`)
+- Articles (blogs, news sites)
+- Other (generic external links)
 
 #### `user_relationships` Table
 Follow/unfollow relationships between users.
@@ -195,6 +468,63 @@ CREATE TABLE public.user_relationships (
   CONSTRAINT user_relationships_follower_id_fkey FOREIGN KEY (follower_id) REFERENCES public.users(id)
 );
 ```
+
+#### User Search Functionality
+
+**Full-Text Search Implementation**:
+
+```sql
+-- Add search indexes
+CREATE INDEX IF NOT EXISTS idx_users_search ON users USING gin(
+  to_tsvector('english', COALESCE(username, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(bio, ''))
+);
+
+-- Search function with follow status
+CREATE OR REPLACE FUNCTION search_users(
+  search_query TEXT, 
+  limit_count INT DEFAULT 20, 
+  offset_count INT DEFAULT 0
+)
+RETURNS TABLE (
+  id UUID,
+  username VARCHAR,
+  name VARCHAR,
+  bio TEXT,
+  avatar_url TEXT,
+  is_verified BOOLEAN,
+  followers_count INT,
+  is_following BOOLEAN
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    u.id,
+    u.username,
+    u.name,
+    u.bio,
+    u.avatar_url,
+    u.is_verified,
+    u.followers_count,
+    EXISTS(
+      SELECT 1 FROM user_relationships ur 
+      WHERE ur.follower_id = auth.uid() AND ur.following_id = u.id
+    ) as is_following
+  FROM users u
+  WHERE 
+    to_tsvector('english', COALESCE(u.username, '') || ' ' || COALESCE(u.name, '') || ' ' || COALESCE(u.bio, ''))
+    @@ plainto_tsquery('english', search_query)
+  ORDER BY u.followers_count DESC, u.created_at DESC
+  LIMIT limit_count
+  OFFSET offset_count;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Features**:
+- Full-text search across username, name, and bio
+- Returns follow status for current user
+- Prioritizes verified users and those with more followers
+- Supports pagination for large result sets
 
 ### Board System
 
@@ -272,6 +602,8 @@ CREATE TABLE public.board_restaurants (
 #### `communities` Table
 User-created communities around food interests.
 
+**Note**: Communities support hierarchical role-based access control (RBAC) where owners have full control, admins can manage content and members, moderators can manage content, and members can view and post.
+
 ```sql
 CREATE TABLE public.communities (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -296,21 +628,35 @@ CREATE TABLE public.communities (
 ```
 
 #### `community_members` Table
-Community membership management.
+Community membership management with role-based access control.
 
 ```sql
 CREATE TABLE public.community_members (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   community_id uuid,
   user_id uuid,
-  role character varying DEFAULT 'member'::character varying,
-  status character varying DEFAULT 'active'::character varying,
+  role character varying DEFAULT 'member'::character varying CHECK (role::text = ANY (ARRAY['owner'::character varying, 'admin'::character varying, 'moderator'::character varying, 'member'::character varying]::text[])),
+  status character varying DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'declined'::character varying]::text[])),
   joined_at timestamp with time zone DEFAULT now(),
   CONSTRAINT community_members_pkey PRIMARY KEY (id),
-  CONSTRAINT community_members_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id),
-  CONSTRAINT community_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT community_members_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id) ON DELETE CASCADE,
+  CONSTRAINT community_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT community_members_unique UNIQUE (community_id, user_id)
 );
 ```
+
+**Roles**:
+- `owner`: Creator of the community, has all permissions
+- `admin`: Can manage posts, members, and community settings
+- `moderator`: Can manage posts and basic moderation
+- `member`: Regular member with read/post permissions
+
+**Admin Permissions**:
+- Delete the entire community
+- Edit community details (name, description, settings)
+- Remove any member (except owner)
+- Delete any post within the community
+- Promote/demote members (future feature)
 
 #### `community_posts` Table
 Posts within communities.
@@ -322,6 +668,8 @@ CREATE TABLE public.community_posts (
   user_id uuid,
   content text NOT NULL,
   images ARRAY,
+  deleted_at timestamp with time zone,
+  deleted_by uuid REFERENCES users(id),
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT community_posts_pkey PRIMARY KEY (id),
@@ -329,6 +677,33 @@ CREATE TABLE public.community_posts (
   CONSTRAINT community_posts_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id)
 );
 ```
+
+#### `community_admin_logs` Table
+Audit trail for administrative actions in communities.
+
+```sql
+CREATE TABLE IF NOT EXISTS community_admin_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  community_id UUID REFERENCES communities(id),
+  admin_id UUID REFERENCES users(id),
+  action_type VARCHAR NOT NULL CHECK (action_type IN ('remove_member', 'delete_post', 'delete_message', 'update_role')),
+  target_id UUID NOT NULL,
+  target_type VARCHAR NOT NULL CHECK (target_type IN ('user', 'post', 'message')),
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for quick lookups
+CREATE INDEX idx_community_admin_logs_community ON community_admin_logs(community_id);
+CREATE INDEX idx_community_admin_logs_admin ON community_admin_logs(admin_id);
+```
+
+**Admin Control Features**:
+- Soft delete for posts (maintains audit trail)
+- Remove members from community
+- Delete inappropriate content
+- Update member roles
+- All actions logged for accountability
 
 ### Engagement & Interactions
 
@@ -447,6 +822,31 @@ CREATE TABLE public.push_tokens (
 );
 ```
 
+### Share Analytics
+
+#### `share_analytics` Table
+Track sharing activity for boards, posts, and profiles.
+
+```sql
+CREATE TABLE IF NOT EXISTS share_analytics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  content_type VARCHAR NOT NULL CHECK (content_type IN ('board', 'post', 'profile')),
+  content_id UUID NOT NULL,
+  platform VARCHAR,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add share count columns to existing tables
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0;
+ALTER TABLE boards ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0;
+```
+
+**Usage**:
+- Track when users share content via system share sheet
+- Analyze popular content based on share metrics
+- Platform field captures where content was shared (if available)
+
 ### Achievement & Gamification
 
 #### `user_achievements` Table
@@ -521,6 +921,90 @@ CREATE TABLE public.user_invite_shares (
   CONSTRAINT user_invite_shares_pkey PRIMARY KEY (id),
   CONSTRAINT user_invite_shares_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+```
+
+## Troubleshooting
+
+### Common Authentication Issues
+
+#### "Database error saving new user"
+This error typically occurs when there are database triggers on the `auth.users` table that fail during user creation.
+
+**Solution**:
+- Remove all triggers on `auth.users` table
+- Handle profile creation after OTP verification instead
+- Use the `ensure_user_profile` function to create profiles
+
+**Migration to fix**:
+```sql
+-- Remove all auth triggers
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+```
+
+#### Profile Not Created
+If a user successfully logs in but has no profile in `public.users`:
+
+**Solution**:
+```sql
+-- Manually create profile
+SELECT public.ensure_user_profile('user-uuid-here', 'user@email.com');
+```
+
+#### No Default Board
+If a user exists but has no default "Quick Saves" board:
+
+**Solution**:
+```sql
+-- Create default boards for all users missing them
+SELECT public.create_default_boards_for_existing_users();
+```
+
+### Restaurant Social Activity
+
+#### `restaurant_visits` Table
+Track user visits to restaurants for social activity feed.
+
+```sql
+CREATE TABLE public.restaurant_visits (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  restaurant_id uuid NOT NULL,
+  visit_type character varying CHECK (visit_type::text = ANY (ARRAY['check_in'::character varying, 'review'::character varying, 'save'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT restaurant_visits_pkey PRIMARY KEY (id),
+  CONSTRAINT restaurant_visits_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT restaurant_visits_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id)
+);
+```
+
+#### `restaurant_activity_feed` View
+Aggregated view for restaurant social activity.
+
+```sql
+CREATE VIEW restaurant_activity_feed AS
+SELECT 
+  rv.id,
+  rv.restaurant_id,
+  rv.user_id,
+  u.name as user_name,
+  u.avatar_url,
+  rv.visit_type,
+  rv.created_at,
+  CASE 
+    WHEN ur.follower_id IS NOT NULL THEN true 
+    ELSE false 
+  END as is_friend,
+  u.is_verified,
+  u.followers_count,
+  CASE 
+    WHEN u.followers_count > 10000 AND u.is_verified THEN true
+    ELSE false
+  END as is_power_user
+FROM restaurant_visits rv
+JOIN users u ON rv.user_id = u.id
+LEFT JOIN user_relationships ur ON ur.following_id = rv.user_id AND ur.follower_id = auth.uid()
+ORDER BY rv.created_at DESC;
 ```
 
 ### Campaign System
@@ -657,6 +1141,9 @@ CREATE INDEX idx_restaurants_google_place_id ON restaurants (google_place_id);
 CREATE INDEX idx_posts_created_at ON posts (created_at DESC);
 CREATE INDEX idx_posts_user_id ON posts (user_id);
 CREATE INDEX idx_posts_restaurant_id ON posts (restaurant_id);
+CREATE INDEX idx_posts_content_type ON posts (content_type);
+CREATE INDEX idx_posts_external_source ON posts (external_source);
+CREATE INDEX idx_posts_external_url ON posts (external_url);
 
 -- User relationships
 CREATE INDEX idx_user_relationships_follower ON user_relationships (follower_id);
@@ -681,10 +1168,16 @@ POST   /api/restaurants/:id/save # Save restaurant
 DELETE /api/restaurants/:id/save # Unsave restaurant
 
 GET    /api/posts               # List posts
-POST   /api/posts              # Create post
+POST   /api/posts              # Create post (original or external)
 GET    /api/posts/:id          # Get post details
 PUT    /api/posts/:id          # Update post
 DELETE /api/posts/:id          # Delete post
+GET    /api/posts/external     # Get external content posts
+GET    /api/posts/original     # Get original posts only
+GET    /api/posts/external/:source # Get posts from specific external source
+
+GET    /api/external-sources   # List supported external content sources
+GET    /api/link-metadata      # Extract metadata from external URLs
 
 GET    /api/boards             # List boards
 POST   /api/boards            # Create board
@@ -696,6 +1189,20 @@ GET    /api/users/:id          # Get user profile
 PUT    /api/users/:id          # Update user profile
 POST   /api/users/:id/follow   # Follow user
 DELETE /api/users/:id/follow   # Unfollow user
+
+GET    /api/communities        # List communities
+POST   /api/communities       # Create community
+GET    /api/communities/:id   # Get community details
+PUT    /api/communities/:id   # Update community (admin/owner only)
+DELETE /api/communities/:id   # Delete community (admin/owner only)
+
+POST   /api/communities/:id/join    # Join community
+DELETE /api/communities/:id/leave   # Leave community
+DELETE /api/communities/:id/members/:userId # Remove member (admin/owner only)
+GET    /api/communities/:id/members  # Get community members
+GET    /api/communities/:id/posts    # Get community posts
+DELETE /api/communities/:id/posts/:postId # Delete post (admin/owner only)
+PUT    /api/communities/:id/members/:userId/role # Update member role (owner only)
 ```
 
 ### Real-time Subscriptions
@@ -706,6 +1213,15 @@ supabase
   .on('postgres_changes', 
     { event: 'INSERT', schema: 'public', table: 'posts' },
     (payload) => handleNewPost(payload)
+  )
+  .subscribe();
+
+// External content posts
+supabase
+  .channel('external_posts')
+  .on('postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'posts', filter: 'content_type=eq.external' },
+    (payload) => handleNewExternalPost(payload)
   )
   .subscribe();
 
@@ -728,11 +1244,22 @@ supabase
 4. **Rank**: Results ranked by relevance and community activity
 
 ### Post Creation Flow
+
+#### Original Content Posts
 1. **Validation**: Check user permissions and content
-2. **Creation**: Insert into `posts` table
-3. **Media**: Upload images to Supabase Storage
+2. **Media Upload**: Upload images to Supabase Storage
+3. **Creation**: Insert into `posts` table with `content_type='original'`
 4. **Notifications**: Trigger notifications to followers
 5. **Feed**: Update real-time feeds
+
+#### External Content Posts
+1. **URL Validation**: Validate external URL format
+2. **Metadata Extraction**: Fetch title, description, thumbnail from URL
+3. **Source Detection**: Identify platform (TikTok, Instagram, etc.)
+4. **Creation**: Insert into `posts` table with `content_type='external'`
+5. **Attribution**: Store original source and author information
+6. **Notifications**: Trigger notifications to followers
+7. **Feed**: Update real-time feeds with external content indicator
 
 ### Board Management
 1. **Creation**: User creates board with settings
@@ -757,6 +1284,13 @@ supabase
 - PII encryption for sensitive data
 - GDPR compliance for user data
 - Data retention policies
+
+### Content Moderation
+- External URL validation and safety checks
+- Prohibited domain filtering
+- Copyright violation detection
+- Spam and malicious content prevention
+- Community reporting system for inappropriate external content
 
 ## Performance Optimization
 
@@ -817,6 +1351,6 @@ supabase
 
 ---
 
-**Last Updated**: [Current Date]
-**Version**: 1.0
+**Last Updated**: 2025-07-30
+**Version**: 1.2
 **Maintainer**: Engineering Team

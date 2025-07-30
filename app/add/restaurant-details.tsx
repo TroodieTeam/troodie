@@ -2,25 +2,25 @@ import { theme } from '@/constants/theme';
 import { RestaurantSaveForm, RestaurantSearchResult } from '@/types/add-flow';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    Camera,
-    Car,
-    ChevronLeft,
-    Coffee,
-    ShoppingBag,
-    Star
+  Camera,
+  Car,
+  ChevronLeft,
+  Coffee,
+  ShoppingBag,
+  Star
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function RestaurantDetailsScreen() {
@@ -304,7 +304,7 @@ export default function RestaurantDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   keyboardView: {
     flex: 1,

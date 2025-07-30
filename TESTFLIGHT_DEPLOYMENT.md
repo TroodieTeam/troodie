@@ -74,9 +74,14 @@ The app.config.js already contains the correct iOS configuration:
 eas build --platform ios --profile production
 ```
 
-#### 2.2 Submit to TestFlight (Automatic)
+#### 2.2 Submit to TestFlight
 ```bash
-eas submit --platform ios --profile production
+eas submit --platform ios --latest
+```
+
+#### 2.3 Build and Submit in One Command (Recommended)
+```bash
+eas build --platform ios --profile production --auto-submit
 ```
 
 **That's it!** EAS handles:

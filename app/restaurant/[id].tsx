@@ -1,15 +1,22 @@
+import { BoardSelectionModal } from '@/components/BoardSelectionModal';
 import { ErrorState } from '@/components/ErrorState';
 import { designTokens } from '@/constants/designTokens';
+import { useAuth } from '@/contexts/AuthContext';
 import { restaurantService } from '@/services/restaurantService';
+import { FriendVisit, PowerUserReview, RecentActivity, socialActivityService } from '@/services/socialActivityService';
 import { getErrorType } from '@/types/errors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
+  Award,
   Bookmark,
+  Calendar,
   Camera,
+  CheckCircle,
   Clock,
   ExternalLink,
+  Eye,
   Globe,
   Heart,
   MapPin,
@@ -32,9 +39,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { TrafficLightRating } from '@/components/TrafficLightRating';
-import { BoardSelectionModal } from '@/components/BoardSelectionModal';
-import { useAuth } from '@/contexts/AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -55,12 +59,25 @@ export default function RestaurantDetailScreen() {
     weeklyVisits: Math.floor(Math.random() * 200) + 50,
     totalVisits: Math.floor(Math.random() * 2000) + 500
   });
+  
+  // Social data states
+  const [friendsWhoVisited, setFriendsWhoVisited] = useState<FriendVisit[]>([]);
+  const [powerUsersAndCritics, setPowerUsersAndCritics] = useState<PowerUserReview[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [socialDataLoading, setSocialDataLoading] = useState(false);
+  const [socialDataError, setSocialDataError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (id) {
       loadRestaurant(id as string);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (id && activeTab === 'social' && user) {
+      loadSocialData(id as string);
+    }
+  }, [id, activeTab, user]);
 
   const loadRestaurant = async (restaurantId: string) => {
     try {
@@ -89,6 +106,44 @@ export default function RestaurantDetailScreen() {
     }
   };
 
+  const loadSocialData = async (restaurantId: string) => {
+    if (!user) return;
+    
+    try {
+      setSocialDataLoading(true);
+      setSocialDataError(null);
+
+      // Load all social data in parallel
+      const [friends, powerUsers, activity] = await Promise.all([
+        socialActivityService.getFriendsWhoVisited(restaurantId, user.id),
+        socialActivityService.getPowerUsersAndCritics(restaurantId),
+        socialActivityService.getRecentActivity(restaurantId),
+      ]);
+
+      setFriendsWhoVisited(friends);
+      setPowerUsersAndCritics(powerUsers);
+      setRecentActivity(activity);
+
+      // Subscribe to real-time updates
+      const unsubscribe = socialActivityService.subscribeToRecentActivity(
+        restaurantId,
+        (newActivity) => {
+          setRecentActivity(prev => [newActivity, ...prev].slice(0, 10));
+        }
+      );
+
+      // Cleanup subscription on unmount
+      return () => {
+        unsubscribe();
+      };
+    } catch (err: any) {
+      console.error('Error loading social data:', err);
+      setSocialDataError(err);
+    } finally {
+      setSocialDataLoading(false);
+    }
+  };
+
   const handleCall = () => {
     if (restaurant?.phone) {
       Linking.openURL(`tel:${restaurant.phone}`);
@@ -110,7 +165,7 @@ export default function RestaurantDetailScreen() {
 
   const handleReserve = () => {
     // TODO: Implement reservation functionality
-    console.log('Reserve table');
+    // Reserve table functionality
   };
 
   const handleSave = () => {
@@ -193,10 +248,10 @@ export default function RestaurantDetailScreen() {
               <Text style={styles.badgeText}>Trending</Text>
             </View>
           )}
-          <View style={[styles.badge, styles.socialBadge]}>
+          {/* <View style={[styles.badge, styles.socialBadge]}>
             <Users size={12} color="white" />
             <Text style={styles.badgeText}>{socialStats.weeklyVisits} this week</Text>
-          </View>
+          </View> */}
         </View>
         
         <Text style={styles.restaurantName}>{restaurant.name}</Text>
@@ -370,36 +425,251 @@ export default function RestaurantDetailScreen() {
     );
   };
 
-  const renderSocialTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.ratingSection}>
-        <Text style={styles.sectionTitle}>What do you think?</Text>
-        <TrafficLightRating 
-          restaurantId={id as string}
-          onRatingChange={(rating) => {
-            console.log('User rated:', rating);
-          }}
-          size="large"
-        />
-      </View>
+  const renderSocialTab = () => {
 
-      <View style={styles.infoCard}>
-        <Text style={styles.sectionTitle}>Community Activity</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Users size={24} color={designTokens.colors.textLight} />
-            <Text style={styles.statValue}>{socialStats.totalVisits}</Text>
-            <Text style={styles.statLabel}>Total Visits</Text>
-          </View>
-          <View style={styles.statItem}>
-            <TrendingUp size={24} color={designTokens.colors.textLight} />
-            <Text style={styles.statValue}>{socialStats.weeklyVisits}</Text>
-            <Text style={styles.statLabel}>This Week</Text>
+    const renderStars = (rating: number) => (
+      <View style={styles.socialRating}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            size={10}
+            color={star <= rating ? designTokens.colors.primaryOrange : '#DDD'}
+            fill={star <= rating ? designTokens.colors.primaryOrange : 'transparent'}
+          />
+        ))}
+      </View>
+    );
+
+    if (socialDataLoading && friendsWhoVisited.length === 0) {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+            <Text style={styles.loadingText}>Loading social activity...</Text>
           </View>
         </View>
+      );
+    }
+
+    return (
+      <View style={styles.tabContent}>
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
+            <Bookmark size={16} color="#333" />
+            <Text style={styles.actionButtonText}>Save</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Heart size={16} color="#333" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <MessageCircle size={16} color="#333" />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionButton, styles.reserveButton]} onPress={handleReserve}>
+            <Calendar size={16} color="white" />
+            <Text style={[styles.actionButtonText, styles.reserveButtonText]}>Reserve</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Friends Who Visited */}
+        <View style={styles.socialCard}>
+          <View style={styles.socialHeader}>
+            <View style={styles.socialHeaderLeft}>
+              <Users size={16} color={designTokens.colors.primaryOrange} />
+              <Text style={styles.socialTitle}>Friends Who Visited</Text>
+            </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{friendsWhoVisited.length}</Text>
+            </View>
+          </View>
+
+          {friendsWhoVisited.length > 0 ? (
+            <View style={styles.socialList}>
+              {friendsWhoVisited.map((friend) => {
+                const rating = friend.post?.rating || friend.save?.personal_rating || 0;
+                const comment = friend.post?.caption || friend.save?.notes || '';
+                const photos = friend.post?.photos || friend.save?.photos || [];
+                const createdAt = friend.post?.created_at || friend.save?.created_at || '';
+
+                return (
+                  <TouchableOpacity key={friend.id} style={styles.socialItem}>
+                    <View style={styles.avatarContainer}>
+                      <Image source={{ uri: friend.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.avatar} />
+                      {friend.user.is_verified && (
+                        <View style={styles.verifiedBadge}>
+                          <CheckCircle size={10} color="white" />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.socialContent}>
+                      <View style={styles.socialMetaRow}>
+                        <Text style={styles.socialName}>{friend.user.name}</Text>
+                        {renderStars(rating)}
+                        <View style={styles.friendBadge}>
+                          <Text style={styles.friendBadgeText}>Friend</Text>
+                        </View>
+                      </View>
+                      {comment ? <Text style={styles.socialComment}>{comment}</Text> : null}
+                      {photos.length > 0 && (
+                        <View style={styles.socialPhotos}>
+                          {photos.slice(0, 3).map((photo, index) => (
+                            <Image key={index} source={{ uri: photo }} style={styles.socialPhoto} />
+                          ))}
+                        </View>
+                      )}
+                      <Text style={styles.socialTime}>{socialActivityService.formatTimeAgo(createdAt)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.emptyStateText}>
+              {user ? 'No friends have visited yet. Be the first!' : 'Sign in to see friend activity'}
+            </Text>
+          )}
+        </View>
+
+        {/* Power Users & Critics */}
+        <View style={[styles.socialCard, styles.powerUsersCard]}>
+          <View style={styles.socialHeader}>
+            <View style={styles.socialHeaderLeft}>
+              <Award size={16} color="#8B5CF6" />
+              <Text style={styles.socialTitle}>Power Users & Critics</Text>
+            </View>
+            <View style={[styles.badge, styles.purpleBadge]}>
+              <Text style={styles.badgeText}>{powerUsersAndCritics.length}</Text>
+            </View>
+          </View>
+
+          {powerUsersAndCritics.length > 0 ? (
+            <View style={styles.socialList}>
+              {powerUsersAndCritics.map((review) => (
+                <TouchableOpacity key={review.id} style={[styles.socialItem, styles.powerUserItem]}>
+                  <View style={styles.avatarContainer}>
+                    <Image source={{ uri: review.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.avatar} />
+                    <View style={styles.powerUserBadge}>
+                      <Star size={10} color="white" fill="white" />
+                    </View>
+                  </View>
+                  <View style={styles.socialContent}>
+                    <View style={styles.socialMetaRow}>
+                      <Text style={styles.socialName}>{review.user.name}</Text>
+                      {renderStars(review.post.rating)}
+                    </View>
+                    <Text style={styles.socialComment}>{review.post.caption}</Text>
+                    {review.post.photos.length > 0 && (
+                      <View style={styles.socialPhotos}>
+                        {review.post.photos.map((photo, index) => (
+                          <Image key={index} source={{ uri: photo }} style={styles.socialPhoto} />
+                        ))}
+                      </View>
+                    )}
+                    <View style={styles.powerUserFooter}>
+                      <Text style={styles.socialTime}>{socialActivityService.formatTimeAgo(review.post.created_at)}</Text>
+                      <Text style={styles.followerCount}>
+                        {(review.user.followers_count / 1000).toFixed(0)}K followers
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyStateText}>No reviews from power users yet.</Text>
+          )}
+        </View>
+
+        {/* Recent Activity */}
+        <View style={styles.socialCard}>
+          <View style={styles.socialHeader}>
+            <View style={styles.socialHeaderLeft}>
+              <Eye size={16} color="#10B981" />
+              <Text style={styles.socialTitle}>Recent Activity</Text>
+            </View>
+            <View style={[styles.badge, styles.greenBadge]}>
+              <Text style={styles.badgeText}>Live</Text>
+            </View>
+          </View>
+
+          {recentActivity.length > 0 ? (
+            <View style={styles.activityList}>
+                             {recentActivity.map((activity) => {
+                 const getTrafficLightColor = (rating: number | null) => {
+                   if (!rating) return '#DDD';
+                   const colors = { 1: '#FF4444', 2: '#FF7744', 3: '#FFAA44', 4: '#44AA44', 5: '#00AA00' };
+                   return colors[rating as keyof typeof colors] || '#DDD';
+                 };
+
+                 const getTrafficLightLabel = (rating: number | null) => {
+                   if (!rating) return '';
+                   const labels = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Great', 5: 'Excellent' };
+                   return labels[rating as keyof typeof labels] || '';
+                 };
+
+                                 
+
+                                 return (
+                   <View key={activity.id} style={styles.activityItem}>
+                     <Image source={{ uri: activity.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.activityAvatar} />
+                     <View style={styles.activityContent}>
+                       <View style={styles.activityMainRow}>
+                         <View style={styles.activityTextContainer}>
+                           <Text style={styles.activityText}>
+                             <Text style={styles.activityUser}>
+                               {activity.user.name || activity.user.username || 'Someone'}
+                             </Text>{' '}
+                             {activity.action === 'reviewed' ? 'reviewed' : 
+                              activity.action === 'saved' ? 'saved' :
+                              activity.action === 'checked_in' ? 'checked in' :
+                              activity.action === 'liked' ? 'liked' : 'visited'}
+                           </Text>
+                           
+                           {/* Show review content if it's a review */}
+                           {activity.action === 'reviewed' && activity.review && (
+                             <View style={styles.reviewContent}>
+                               {activity.review.caption && (
+                                 <Text style={styles.reviewText} numberOfLines={2}>
+                                   "{activity.review.caption}"
+                                 </Text>
+                               )}
+                               {activity.review.photos && activity.review.photos.length > 0 && (
+                                 <View style={styles.reviewPhotos}>
+                                   {activity.review.photos.slice(0, 3).map((photo, index) => (
+                                     <Image key={index} source={{ uri: photo }} style={styles.reviewPhoto} />
+                                   ))}
+                                   {activity.review.photos.length > 3 && (
+                                     <View style={styles.photoCount}>
+                                       <Text style={styles.photoCountText}>+{activity.review.photos.length - 3}</Text>
+                                     </View>
+                                   )}
+                                 </View>
+                               )}
+                             </View>
+                           )}
+                           
+                           <Text style={styles.activityTime}>{socialActivityService.formatTimeAgo(activity.created_at)}</Text>
+                         </View>
+                         
+                         {/* Traffic Light Rating */}
+                         {activity.action === 'reviewed' && activity.review?.rating && activity.review.rating > 0 && (
+                           <View style={styles.activityRating}>
+                             <View style={[styles.activityTrafficDot, { backgroundColor: getTrafficLightColor(activity.review.rating) }]} />
+                             <Text style={styles.activityRatingLabel}>{getTrafficLightLabel(activity.review.rating)}</Text>
+                           </View>
+                         )}
+                       </View>
+                     </View>
+                   </View>
+                 );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.emptyStateText}>No recent activity.</Text>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderInfoTab = () => (
     <View style={styles.tabContent}>
@@ -861,5 +1131,254 @@ const styles = StyleSheet.create({
     ...designTokens.typography.smallText,
     color: designTokens.colors.textMedium,
     marginTop: 4,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  socialCard: {
+    backgroundColor: 'white',
+    borderRadius: designTokens.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  powerUsersCard: {
+    backgroundColor: '#F3F0FF',
+  },
+  socialHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  socialHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  socialTitle: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+  },
+  socialList: {
+    gap: 12,
+  },
+  socialItem: {
+    flexDirection: 'row',
+    padding: 8,
+    borderRadius: designTokens.borderRadius.md,
+    backgroundColor: designTokens.colors.backgroundGray,
+  },
+  powerUserItem: {
+    backgroundColor: 'rgba(139, 92, 246, 0.05)',
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    backgroundColor: designTokens.colors.primaryOrange,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  powerUserBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  socialContent: {
+    flex: 1,
+  },
+  socialMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  socialName: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
+  },
+  socialRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  friendBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: designTokens.borderRadius.full,
+  },
+  friendBadgeText: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1E40AF',
+    fontSize: 10,
+  },
+  socialComment: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+    marginBottom: 8,
+  },
+  socialPhotos: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 8,
+  },
+  socialPhoto: {
+    width: 32,
+    height: 32,
+    borderRadius: designTokens.borderRadius.sm,
+  },
+  socialTime: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textLight,
+    fontSize: 11,
+  },
+  powerUserFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  followerCount: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_500Medium',
+    color: '#8B5CF6',
+    fontSize: 11,
+  },
+  activityList: {
+    gap: 8,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 8,
+    borderRadius: designTokens.borderRadius.md,
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+  },
+  activityAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityMainRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  activityTextContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  activityText: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textDark,
+  },
+  activityUser: {
+    fontFamily: 'Inter_500Medium',
+  },
+  activityTime: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textLight,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  activityRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activityTrafficDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  activityRatingLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
+  },
+  reviewContent: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  reviewText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: designTokens.colors.textMedium,
+    lineHeight: 16,
+    marginBottom: 6,
+    fontFamily: 'Inter_400Regular',
+  },
+  reviewPhotos: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+  },
+  reviewPhoto: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+  },
+  photoCount: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoCountText: {
+    fontSize: 10,
+    color: 'white',
+    fontFamily: 'Inter_500Medium',
+  },
+  emptyStateText: {
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textLight,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  purpleBadge: {
+    backgroundColor: '#EDE9FE',
+  },
+  greenBadge: {
+    backgroundColor: '#D1FAE5',
   },
 });

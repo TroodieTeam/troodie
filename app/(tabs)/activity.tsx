@@ -115,7 +115,6 @@ export default function ActivityScreen() {
 
   const handleShareExperience = () => {
     // TODO: Implement post creation when available
-    console.log('Post creation not yet implemented');
   };
 
   const renderEmptyState = () => (
@@ -176,7 +175,7 @@ export default function ActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   header: {
     flexDirection: 'row',

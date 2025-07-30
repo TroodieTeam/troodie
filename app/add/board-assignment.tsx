@@ -1,28 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  Alert,
-  TextInput
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  ChevronLeft,
-  Plus,
-  Check,
-  Search
-} from 'lucide-react-native';
 import { theme } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { boardService } from '@/services/boardService';
 import { restaurantService } from '@/services/restaurantService';
-import { useAuth } from '@/contexts/AuthContext';
-import { Board } from '@/types/board';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  Check,
+  ChevronLeft,
+  MapPin,
+  Plus,
+  Search,
+  Star
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function BoardAssignmentScreen() {
   const router = useRouter();
@@ -122,118 +123,131 @@ export default function BoardAssignmentScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={24} color="#333" />
-      </TouchableOpacity>
-      <Text style={styles.title}>Add Restaurants</Text>
-      <TouchableOpacity 
-        style={styles.skipButton} 
-        onPress={handleSkip}
-      >
-        <Text style={styles.skipText}>Skip</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderBoardInfo = () => (
-    <View style={styles.boardInfo}>
-      <Text style={styles.boardInfoText}>Adding to</Text>
-      <Text style={styles.boardTitle}>{boardTitle}</Text>
-    </View>
-  );
-
-  const renderSearchBar = () => (
-    <View style={styles.searchContainer}>
-      <Search size={20} color="#999" />
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search restaurants..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholderTextColor="#999"
-      />
-    </View>
-  );
-
-  const renderRestaurants = () => {
-    if (loading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading restaurants...</Text>
+      <View style={styles.headerTop}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ChevronLeft size={22} color={theme.colors.text.dark} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.title}>Add to "{boardTitle}"</Text>
+          <Text style={styles.subtitle}>{selectedRestaurants.length} selected</Text>
         </View>
-      );
-    }
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+          <Text style={styles.skipText}>Skip</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.searchBar}>
+        <Search size={18} color={theme.colors.text.tertiary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search restaurants..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor={theme.colors.text.tertiary}
+        />
+      </View>
+    </View>
+  );
 
+  const renderRestaurantItem = ({ item: restaurant }: { item: any }) => {
+    const isSelected = selectedRestaurants.includes(restaurant.id);
+    
     return (
-      <ScrollView style={styles.restaurantsList} showsVerticalScrollIndicator={false}>
-        {filteredRestaurants.map((restaurant) => (
-          <TouchableOpacity
-            key={restaurant.id}
-            style={[
-              styles.restaurantCard,
-              selectedRestaurants.includes(restaurant.id) && styles.restaurantCardSelected
-            ]}
-            onPress={() => handleToggleRestaurant(restaurant.id)}
-          >
-            <Image 
-              source={{ uri: restaurantService.getRestaurantImage(restaurant) }} 
-              style={styles.restaurantImage} 
-            />
-            <View style={styles.restaurantInfo}>
-              <Text style={styles.restaurantName}>{restaurant.name}</Text>
-              <Text style={styles.restaurantDetails}>
-                {restaurant.cuisine_types?.join(' • ') || 'Restaurant'} • {restaurant.price_range || '$$'}
+      <TouchableOpacity
+        style={[styles.restaurantCard, isSelected && styles.restaurantCardSelected]}
+        onPress={() => handleToggleRestaurant(restaurant.id)}
+        activeOpacity={0.7}
+      >
+        <Image 
+          source={{ uri: restaurantService.getRestaurantImage(restaurant) }} 
+          style={styles.restaurantImage} 
+        />
+        <View style={styles.restaurantContent}>
+          <View style={styles.restaurantInfo}>
+            <Text style={styles.restaurantName} numberOfLines={1}>
+              {restaurant.name}
+            </Text>
+            <View style={styles.restaurantMeta}>
+              <Text style={styles.cuisineText} numberOfLines={1}>
+                {restaurant.cuisine_types?.[0] || 'Restaurant'}
               </Text>
-              <Text style={styles.restaurantLocation}>
-                {restaurant.neighborhood || 'Charlotte'}
-              </Text>
-            </View>
-            <View style={[
-              styles.checkbox,
-              selectedRestaurants.includes(restaurant.id) && styles.checkboxSelected
-            ]}>
-              {selectedRestaurants.includes(restaurant.id) && (
-                <Check size={16} color="#FFFFFF" />
+              <Text style={styles.separator}>•</Text>
+              <Text style={styles.priceText}>{restaurant.price_range || '$$'}</Text>
+              {restaurant.google_rating && (
+                <>
+                  <Text style={styles.separator}>•</Text>
+                  <View style={styles.ratingContainer}>
+                    <Star size={12} color={theme.colors.primary} fill={theme.colors.primary} />
+                    <Text style={styles.ratingText}>{restaurant.google_rating}</Text>
+                  </View>
+                </>
               )}
             </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+            {restaurant.address && (
+              <View style={styles.locationContainer}>
+                <MapPin size={12} color={theme.colors.text.tertiary} />
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {restaurant.neighborhood || restaurant.city || 'Charlotte'}
+                </Text>
+              </View>
+            )}
+          </View>
+          <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+            {isSelected && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+          </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
-  const renderFooter = () => (
-    <View style={styles.footer}>
-      <Text style={styles.selectionCount}>
-        {selectedRestaurants.length} restaurant{selectedRestaurants.length !== 1 ? 's' : ''} selected
-      </Text>
-      <TouchableOpacity
-        style={[
-          styles.addButton,
-          (selectedRestaurants.length === 0 || saving) && styles.addButtonDisabled
-        ]}
-        onPress={handleAddToBoard}
-        disabled={selectedRestaurants.length === 0 || saving}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <>
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add to Board</Text>
-          </>
-        )}
-      </TouchableOpacity>
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>No restaurants found</Text>
+      <Text style={styles.emptySubtext}>Try adjusting your search</Text>
     </View>
   );
+
+  const renderFooter = () => {
+    if (selectedRestaurants.length === 0) return null;
+    
+    return (
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.addButton, saving && styles.addButtonDisabled]}
+          onPress={handleAddToBoard}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
+              <Text style={styles.addButtonText}>
+                Add {selectedRestaurants.length} to Board
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
-      {renderBoardInfo()}
-      {renderSearchBar()}
-      {renderRestaurants()}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredRestaurants}
+          renderItem={renderRestaurantItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={renderEmpty}
+        />
+      )}
       {renderFooter()}
     </SafeAreaView>
   );
@@ -242,165 +256,212 @@ export default function BoardAssignmentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   header: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingBottom: 12,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
   title: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.dark,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
   },
   skipButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   skipText: {
-    fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: '#666',
-  },
-  boardInfo: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-  },
-  boardInfoText: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 4,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.text.secondary,
   },
-  boardTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-  },
-  searchContainer: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F8F8',
+    backgroundColor: theme.colors.backgroundGray,
     borderRadius: 8,
-    paddingHorizontal: 16,
-    margin: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 16,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    paddingLeft: 12,
-    fontSize: 16,
+    paddingLeft: 8,
+    fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    color: '#333',
+    color: theme.colors.text.dark,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 100,
   },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginTop: 12,
-  },
-  restaurantsList: {
-    flex: 1,
-    paddingHorizontal: 20,
+  listContent: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   restaurantCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
     backgroundColor: '#FFFFFF',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderRadius: 12,
+    marginBottom: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   restaurantCardSelected: {
-    backgroundColor: theme.colors.primary + '10',
+    backgroundColor: theme.colors.primary + '08',
+    borderWidth: 1.5,
     borderColor: theme.colors.primary,
   },
   restaurantImage: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
     borderRadius: 8,
-    marginRight: 12,
+  },
+  restaurantContent: {
+    flex: 1,
+    flexDirection: 'row',
+    marginLeft: 12,
   },
   restaurantInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   restaurantName: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    color: theme.colors.text.dark,
+    marginBottom: 4,
+  },
+  restaurantMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 2,
   },
-  restaurantDetails: {
+  cuisineText: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 2,
+    color: theme.colors.text.secondary,
+    maxWidth: 100,
   },
-  restaurantLocation: {
+  separator: {
     fontSize: 12,
+    color: theme.colors.text.tertiary,
+    marginHorizontal: 4,
+  },
+  priceText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.text.secondary,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.text.dark,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  locationText: {
+    fontSize: 11,
     fontFamily: 'Inter_400Regular',
-    color: '#999',
+    color: theme.colors.text.tertiary,
+    flex: 1,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#DDD',
+    borderColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 12,
   },
   checkboxSelected: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
-  footer: {
-    flexDirection: 'row',
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    paddingVertical: 60,
   },
-  selectionCount: {
-    fontSize: 14,
+  emptyText: {
+    fontSize: 16,
     fontFamily: 'Inter_500Medium',
-    color: '#666',
+    color: theme.colors.text.dark,
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: theme.colors.text.secondary,
+  },
+  footer: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 5,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 6,
   },
   addButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   addButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
   },

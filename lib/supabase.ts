@@ -18,8 +18,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
     // Add explicit storage key to ensure consistency
     storageKey: 'supabase.auth.token',
-    // Session auto refresh interval
-    sessionAutoRefreshInterval: 3600,
   },
 })
 
@@ -40,6 +38,8 @@ export type Database = {
           is_restaurant: boolean
           is_creator: boolean
           profile_completion: number
+          default_board_id: string | null
+          default_avatar_url: string | null
           created_at: string
           updated_at: string
         }
@@ -55,6 +55,8 @@ export type Database = {
           is_restaurant?: boolean
           is_creator?: boolean
           profile_completion?: number
+          default_board_id?: string | null
+          default_avatar_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -70,6 +72,8 @@ export type Database = {
           is_restaurant?: boolean
           is_creator?: boolean
           profile_completion?: number
+          default_board_id?: string | null
+          default_avatar_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -101,6 +105,10 @@ export type Database = {
           is_claimed: boolean
           owner_id: string | null
           data_source: 'seed' | 'google' | 'user' | null
+          submitted_by: string | null
+          is_approved: boolean
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           updated_at: string
           last_google_sync: string | null
@@ -131,6 +139,10 @@ export type Database = {
           is_claimed?: boolean
           owner_id?: string | null
           data_source?: 'seed' | 'google' | 'user' | null
+          submitted_by?: string | null
+          is_approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           updated_at?: string
           last_google_sync?: string | null
@@ -161,6 +173,10 @@ export type Database = {
           is_claimed?: boolean
           owner_id?: string | null
           data_source?: 'seed' | 'google' | 'user' | null
+          submitted_by?: string | null
+          is_approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           updated_at?: string
           last_google_sync?: string | null
@@ -233,6 +249,7 @@ export type Database = {
           allow_comments: boolean
           allow_saves: boolean
           member_count: number
+          share_count: number
           is_active: boolean
           created_at: string
           updated_at: string
@@ -253,6 +270,7 @@ export type Database = {
           allow_comments?: boolean
           allow_saves?: boolean
           member_count?: number
+          share_count?: number
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -273,6 +291,7 @@ export type Database = {
           allow_comments?: boolean
           allow_saves?: boolean
           member_count?: number
+          share_count?: number
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -281,7 +300,7 @@ export type Database = {
       posts: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           restaurant_id: string
           caption: string | null
           photos: string[] | null
@@ -296,14 +315,21 @@ export type Database = {
           likes_count: number
           comments_count: number
           saves_count: number
-          shares_count: number
+          share_count: number
           is_trending: boolean
+          content_type: 'original' | 'external'
+          external_source: string | null
+          external_url: string | null
+          external_title: string | null
+          external_description: string | null
+          external_thumbnail: string | null
+          external_author: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
-          user_id: string
+          user_id?: string | null
           restaurant_id: string
           caption?: string | null
           photos?: string[] | null
@@ -318,8 +344,15 @@ export type Database = {
           likes_count?: number
           comments_count?: number
           saves_count?: number
-          shares_count?: number
+          share_count?: number
           is_trending?: boolean
+          content_type?: 'original' | 'external'
+          external_source?: string | null
+          external_url?: string | null
+          external_title?: string | null
+          external_description?: string | null
+          external_thumbnail?: string | null
+          external_author?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -340,8 +373,44 @@ export type Database = {
           likes_count?: number
           comments_count?: number
           saves_count?: number
-          shares_count?: number
+          share_count?: number
           is_trending?: boolean
+          content_type?: 'original' | 'external'
+          external_source?: string | null
+          external_url?: string | null
+          external_title?: string | null
+          external_description?: string | null
+          external_thumbnail?: string | null
+          external_author?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      external_content_sources: {
+        Row: {
+          id: string
+          name: string
+          domain: string | null
+          icon_url: string | null
+          is_supported: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          domain?: string | null
+          icon_url?: string | null
+          is_supported?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          domain?: string | null
+          icon_url?: string | null
+          is_supported?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -552,6 +621,64 @@ export type Database = {
           id?: string
           follower_id?: string | null
           following_id?: string | null
+          created_at?: string
+        }
+      }
+      share_analytics: {
+        Row: {
+          id: string
+          user_id: string | null
+          content_type: 'board' | 'post' | 'profile'
+          content_id: string
+          platform: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          content_type: 'board' | 'post' | 'profile'
+          content_id: string
+          platform?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          content_type?: 'board' | 'post' | 'profile'
+          content_id?: string
+          platform?: string | null
+          created_at?: string
+        }
+      }
+      community_admin_logs: {
+        Row: {
+          id: string
+          community_id: string
+          admin_id: string
+          action_type: 'remove_member' | 'delete_post' | 'delete_message' | 'update_role'
+          target_id: string
+          target_type: 'user' | 'post' | 'message'
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          community_id: string
+          admin_id: string
+          action_type: 'remove_member' | 'delete_post' | 'delete_message' | 'update_role'
+          target_id: string
+          target_type: 'user' | 'post' | 'message'
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          community_id?: string
+          admin_id?: string
+          action_type?: 'remove_member' | 'delete_post' | 'delete_message' | 'update_role'
+          target_id?: string
+          target_type?: 'user' | 'post' | 'message'
+          reason?: string | null
           created_at?: string
         }
       }

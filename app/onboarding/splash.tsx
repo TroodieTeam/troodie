@@ -13,7 +13,6 @@ export default function SplashScreen() {
   useEffect(() => {
     // Check if user is authenticated
     if (isAuthenticated) {
-      console.log('[Splash] User is authenticated, redirecting to main app');
       router.replace('/(tabs)');
       return;
     }

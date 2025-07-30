@@ -18,6 +18,7 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
+    "@sentry/react-native": "^6.18.1",
     "@supabase/supabase-js": "^2.52.0",
     "expo": "~53.0.17",
     "expo-blur": "~14.1.5",
@@ -27,6 +28,7 @@
     "expo-font": "~13.3.2",
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.3.2",
+    "expo-image-manipulator": "^13.1.7",
     "expo-image-picker": "~16.1.4",
     "expo-linear-gradient": "^14.1.5",
     "expo-linking": "~7.1.7",
@@ -48,6 +50,7 @@
     "react-native-screens": "~4.11.1",
     "react-native-super-grid": "^6.0.1",
     "react-native-svg": "15.11.2",
+    "react-native-toast-message": "^2.3.3",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5"

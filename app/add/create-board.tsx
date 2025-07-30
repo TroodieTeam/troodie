@@ -3,8 +3,6 @@ import { BoardType } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  Check,
-  Crown,
   Globe,
   Lock
 } from 'lucide-react-native';
@@ -36,13 +34,13 @@ export default function CreateBoardScreen() {
       icon: Lock,
       features: ['Invite-only access', 'Collaboration', 'Privacy controls']
     },
-    {
-      type: 'paid',
-      title: 'Paid Board',
-      description: 'Monetize your recommendations',
-      icon: Crown,
-      features: ['Premium content', 'Revenue sharing', 'Advanced analytics']
-    }
+    // {
+    //   type: 'paid',
+    //   title: 'Paid Board',
+    //   description: 'Monetize your recommendations',
+    //   icon: Crown,
+    //   features: ['Premium content', 'Revenue sharing', 'Advanced analytics']
+    // }
   ];
 
   const getBoardColor = (type: string) => {
@@ -107,7 +105,7 @@ export default function CreateBoardScreen() {
         </TouchableOpacity>
       ))}
       
-      <View style={styles.infoSection}>
+      {/* <View style={styles.infoSection}>
         <Text style={styles.infoTitle}>Quick Start Tips</Text>
         <View style={styles.infoItem}>
           <Check size={14} color={theme.colors.success} />
@@ -121,7 +119,7 @@ export default function CreateBoardScreen() {
           <Check size={14} color={theme.colors.success} />
           <Text style={styles.infoText}>Upgrade to Troodie+ for unlimited boards</Text>
         </View>
-      </View>
+      </View> */}
     </View>
   );
 

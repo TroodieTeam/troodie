@@ -1,23 +1,30 @@
 -- Email Authentication Configuration
 -- This migration configures settings for email OTP authentication
 
--- Note: Email templates must be configured through the Supabase Dashboard UI
--- See /docs/supabase-email-templates.md for template configuration
-
 -- Update auth settings for email OTP
--- These settings control OTP behavior
 UPDATE auth.config
 SET 
   -- Set OTP expiry to 60 minutes (3600 seconds)
   otp_exp = 3600,
-  -- Disable email confirmation requirement (we verify via OTP instead)
+  -- Enable email confirmation for new users
   mailer_autoconfirm = false,
   -- Enable secure email change (requires re-authentication)
-  secure_email_change_enabled = true
+  secure_email_change_enabled = true,
+  -- Enable OTP for email verification
+  enable_signup = true,
+  -- Set minimum password length (for future use)
+  minimum_password_length = 6
 WHERE id = 'default';
 
--- Create a function to clean up expired OTP tokens (optional)
--- This helps keep the auth tables clean
+-- Ensure email templates are properly configured
+-- Note: Email templates must be configured through the Supabase Dashboard UI
+-- Go to Authentication > Email Templates and configure:
+-- 1. Magic Link template
+-- 2. OTP template
+-- 3. Email Change template
+-- 4. Confirmation template
+
+-- Create a function to clean up expired OTP tokens
 CREATE OR REPLACE FUNCTION auth.clean_expired_tokens()
 RETURNS void
 LANGUAGE plpgsql
@@ -34,10 +41,6 @@ BEGIN
     AND revoked = true;
 END;
 $$;
-
--- Optional: Create a scheduled job to clean up tokens
--- Note: This requires pg_cron extension which may need to be enabled
--- SELECT cron.schedule('cleanup-expired-tokens', '0 3 * * *', 'SELECT auth.clean_expired_tokens();');
 
 -- Add indexes for better performance on auth queries
 CREATE INDEX IF NOT EXISTS idx_users_email_lower ON auth.users (LOWER(email));

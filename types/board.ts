@@ -44,6 +44,7 @@ export interface BoardCreationForm {
   title: string;
   description?: string;
   type: BoardType;
+  cover_image_url?: string;
   category?: string;
   location?: string;
   is_private: boolean;

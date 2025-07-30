@@ -29,7 +29,6 @@ export default function LoginScreen() {
   // Check if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('[Login] User is already authenticated, redirecting to main app');
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, router]);

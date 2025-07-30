@@ -86,9 +86,11 @@ class PostService {
       insertData.external_author = postData.externalContent.author;
     }
 
-    // Add community_id if provided
+    // Add community_id if provided (when community posts are implemented)
     if (postData.communityId) {
-      insertData.community_id = postData.communityId;
+      // Note: community_id field would need to be added to posts table schema
+      // insertData.community_id = postData.communityId;
+      console.log('Community posts not yet implemented in database schema');
     }
 
     const { data, error } = await supabase
@@ -135,11 +137,33 @@ class PostService {
       console.error('Error fetching user:', userError);
     }
 
+    // Fetch restaurant data
+    let restaurantData = null;
+    if (postData.restaurant_id) {
+      const { data: restaurant, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('id, name, address, cuisine_types, price_range, cover_photo_url')
+        .eq('id', postData.restaurant_id)
+        .single();
+      
+      if (!restaurantError && restaurant) {
+        restaurantData = restaurant;
+      }
+    }
+
     // Transform to PostWithUser format
     return {
       ...postData,
       user: userData ? this.transformUser({ user: userData }) : this.transformUser(postData),
-      restaurant: this.transformRestaurant(postData),
+      restaurant: restaurantData ? {
+        id: restaurantData.id,
+        name: restaurantData.name,
+        image: restaurantData.cover_photo_url || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+        cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
+        rating: postData.rating || 0,
+        location: restaurantData.address || 'Location',
+        priceRange: restaurantData.price_range || postData.price_range || '$$',
+      } : this.transformRestaurant(postData),
     };
   }
 
@@ -174,11 +198,38 @@ class PostService {
       console.error('Error fetching user:', userError);
     }
 
-    return postsData.map(post => ({
-      ...post,
-      user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-      restaurant: this.transformRestaurant(post),
-    }));
+    // Get unique restaurant IDs
+    const restaurantIds = [...new Set(postsData.map(post => post.restaurant_id).filter(id => id))];
+    
+    // Fetch restaurant data if we have IDs
+    let restaurantsMap = new Map();
+    if (restaurantIds.length > 0) {
+      const { data: restaurantsData } = await supabase
+        .from('restaurants')
+        .select('id, name, address, cuisine_types, price_range, cover_photo_url')
+        .in('id', restaurantIds);
+      
+      if (restaurantsData) {
+        restaurantsMap = new Map(restaurantsData.map(r => [r.id, r]));
+      }
+    }
+
+    return postsData.map(post => {
+      const restaurantData = restaurantsMap.get(post.restaurant_id);
+      return {
+        ...post,
+        user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
+        restaurant: restaurantData ? {
+          id: restaurantData.id,
+          name: restaurantData.name,
+          image: restaurantData.cover_photo_url || post.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+          cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
+          rating: post.rating || 0,
+          location: restaurantData.address || 'Location',
+          priceRange: restaurantData.price_range || post.price_range || '$$',
+        } : this.transformRestaurant(post),
+      };
+    });
   }
 
   /**
@@ -214,8 +265,9 @@ class PostService {
       return [];
     }
 
-    // Get unique user IDs
+    // Get unique user IDs and restaurant IDs
     const userIds = [...new Set(postsData.map(post => post.user_id))];
+    const restaurantIds = [...new Set(postsData.map(post => post.restaurant_id).filter(id => id))];
     
     // Fetch user data
     const { data: usersData, error: usersError } = await supabase
@@ -228,16 +280,38 @@ class PostService {
       throw usersError;
     }
 
+    // Fetch restaurant data
+    let restaurantsMap = new Map();
+    if (restaurantIds.length > 0) {
+      const { data: restaurantsData } = await supabase
+        .from('restaurants')
+        .select('id, name, address, cuisine_types, price_range, cover_photo_url')
+        .in('id', restaurantIds);
+      
+      if (restaurantsData) {
+        restaurantsMap = new Map(restaurantsData.map(r => [r.id, r]));
+      }
+    }
+
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
-    // Combine posts with user data
+    // Combine posts with user and restaurant data
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
+      const restaurantData = restaurantsMap.get(post.restaurant_id);
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: restaurantData ? {
+          id: restaurantData.id,
+          name: restaurantData.name,
+          image: restaurantData.cover_photo_url || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+          cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
+          rating: post.rating || 0,
+          location: restaurantData.address || 'Location',
+          priceRange: restaurantData.price_range || post.price_range || '$$',
+        } : this.transformRestaurant(post),
       };
     });
   }
@@ -500,6 +574,137 @@ class PostService {
     }
 
     return !!data;
+  }
+
+  /**
+   * Get external content sources
+   */
+  async getExternalContentSources() {
+    const { data, error } = await supabase
+      .from('external_content_sources')
+      .select('*')
+      .eq('is_supported', true)
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching external content sources:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Get posts filtered by content type
+   */
+  async getPostsByContentType(
+    contentType: 'original' | 'external',
+    filters: ExploreFilters = {}
+  ): Promise<PostWithUser[]> {
+    let query = supabase
+      .from('posts')
+      .select('*')
+      .eq('privacy', 'public')
+      .eq('content_type', contentType);
+
+    // Apply additional filters
+    if (filters.filter === 'Trending') {
+      query = query.eq('is_trending', true);
+    }
+
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+
+    if (filters.offset) {
+      query = query.range(filters.offset, filters.offset + (filters.limit || 20) - 1);
+    }
+
+    const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
+
+    if (postsError) {
+      console.error('Error fetching posts by content type:', postsError);
+      return [];
+    }
+
+    if (!postsData || postsData.length === 0) {
+      return [];
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(postsData.map(post => post.user_id))];
+    
+    // Fetch user data
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+    }
+
+    // Create a map of users for quick lookup
+    const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
+
+    // Combine posts with user data
+    return postsData.map(post => {
+      const userData = usersMap.get(post.user_id);
+      return {
+        ...post,
+        user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
+        restaurant: this.transformRestaurant(post),
+      };
+    });
+  }
+
+  /**
+   * Get posts by external source
+   */
+  async getPostsByExternalSource(source: string, limit: number = 20): Promise<PostWithUser[]> {
+    const { data: postsData, error: postsError } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('privacy', 'public')
+      .eq('content_type', 'external')
+      .eq('external_source', source)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (postsError) {
+      console.error('Error fetching posts by external source:', postsError);
+      return [];
+    }
+
+    if (!postsData || postsData.length === 0) {
+      return [];
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(postsData.map(post => post.user_id))];
+    
+    // Fetch user data
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+    }
+
+    // Create a map of users for quick lookup
+    const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
+
+    // Combine posts with user data
+    return postsData.map(post => {
+      const userData = usersMap.get(post.user_id);
+      return {
+        ...post,
+        user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
+        restaurant: this.transformRestaurant(post),
+      };
+    });
   }
 }
 

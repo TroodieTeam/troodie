@@ -13,7 +13,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.troodie.troodie.com",
-      buildNumber: "3",
+      buildNumber: "5",
       infoPlist: {
         NSLocationWhenInUseUsageDescription: "Troodie uses your location to show nearby restaurants and recommendations.",
         NSCameraUsageDescription: "Troodie uses your camera to take photos of restaurants and food.",
@@ -54,6 +54,18 @@ export default {
       eas: {
         projectId: "68397d45-255f-4b4c-ba93-d51a044ddfb2"
       }
+    },
+    hooks: {
+      postPublish: [
+        {
+          file: "sentry-expo/upload-sourcemaps",
+          config: {
+            organization: "troodie",
+            project: "troodie",
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+          },
+        },
+      ],
     }
   }
 };

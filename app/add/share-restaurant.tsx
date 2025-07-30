@@ -1,30 +1,30 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  Switch,
-  KeyboardAvoidingView,
-  Platform
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  ChevronLeft,
-  Instagram,
-  Twitter,
-  Users,
-  Globe,
-  Lock,
-  UserCheck,
-  CheckCircle
-} from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { RestaurantSaveForm } from '@/types/add-flow';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+    CheckCircle,
+    ChevronLeft,
+    Globe,
+    Instagram,
+    Lock,
+    Twitter,
+    UserCheck,
+    Users
+} from 'lucide-react-native';
+import React, { useState } from 'react';
+import {
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 export default function ShareRestaurantScreen() {
   const router = useRouter();
@@ -235,7 +235,7 @@ export default function ShareRestaurantScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   keyboardView: {
     flex: 1,

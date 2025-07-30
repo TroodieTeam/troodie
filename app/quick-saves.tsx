@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from 'react'
-import {
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
-  SafeAreaView,
-  RefreshControl
-} from 'react-native'
-import { useRouter } from 'expo-router'
-import { ArrowLeft } from 'lucide-react-native'
+import { RestaurantCard } from '@/components/cards/RestaurantCard'
+import { designTokens } from '@/constants/designTokens'
+import { theme } from '@/constants/theme'
 import { useAuth } from '@/contexts/AuthContext'
 import { boardService } from '@/services/boardService'
 import { restaurantService } from '@/services/restaurantService'
 import { BoardRestaurant } from '@/types/board'
 import { RestaurantInfo } from '@/types/core'
-import { RestaurantCard } from '@/components/cards/RestaurantCard'
-import { theme } from '@/constants/theme'
-import { designTokens } from '@/constants/designTokens'
+import { useRouter } from 'expo-router'
+import { ArrowLeft } from 'lucide-react-native'
+import React, { useEffect, useState } from 'react'
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native'
 
 type QuickSave = BoardRestaurant & { restaurant?: RestaurantInfo }
 
@@ -194,7 +194,7 @@ export default function QuickSavesScreen() {
 const styles = {
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   header: {
     flexDirection: 'row' as const,

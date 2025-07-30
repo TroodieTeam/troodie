@@ -38,7 +38,7 @@ export const userService = {
           .rpc('ensure_quick_saves_board', { p_user_id: data.id })
         
         if (boardId) {
-          console.log('Quick Saves board created:', boardId)
+          // Quick Saves board created successfully
         }
       } catch (error) {
         console.error('Error creating Quick Saves board:', error)
