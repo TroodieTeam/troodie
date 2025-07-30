@@ -13,7 +13,7 @@ import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { RestaurantInfo } from '@/types/core';
 import { BoardSelectionModal } from '../BoardSelectionModal';
-import { SaveService } from '@/services/saveService';
+import { SaveService } from '@/services/saveServiceDirect';
 import { ToastService } from '@/services/toastService';
 
 interface RestaurantCardWithSaveProps {
