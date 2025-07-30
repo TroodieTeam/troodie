@@ -15,11 +15,13 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 
 import { NetworkStatusBanner } from '@/components/NetworkStatusBanner';
 import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
+import { toastConfig } from '@/components/CustomToast';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
@@ -72,6 +74,7 @@ export default Sentry.wrap(function RootLayout() {
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="dark" />
+            <Toast config={toastConfig} />
           </ThemeProvider>
         </OnboardingProvider>
       </AppProvider>

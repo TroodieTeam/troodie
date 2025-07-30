@@ -1,16 +1,19 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { 
   Image, 
   StyleSheet, 
   Text, 
   TouchableOpacity, 
   View,
-  ActivityIndicator 
+  ActivityIndicator,
+  Vibration
 } from 'react-native';
 import { Bookmark, MapPin, Star } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { RestaurantInfo } from '@/types/core';
+import { boardService } from '@/services/boardService';
+import { ToastService } from '@/services/toastService';
 import { BoardSelectionModal } from '../BoardSelectionModal';
 
 interface RestaurantCardWithSaveProps {
@@ -27,16 +30,19 @@ interface RestaurantCardWithSaveProps {
 // Separate components for better modularity
 const SaveButton = ({ 
   onPress, 
+  onLongPress,
   isSaved, 
   isLoading 
 }: { 
-  onPress: (e: any) => void; 
+  onPress: (e: any) => void;
+  onLongPress?: (e: any) => void; 
   isSaved: boolean; 
   isLoading?: boolean;
 }) => (
   <TouchableOpacity 
     style={styles.saveButton} 
     onPress={onPress}
+    onLongPress={onLongPress}
     activeOpacity={0.8}
     disabled={isLoading}
   >
@@ -91,23 +97,88 @@ export function RestaurantCardWithSave({
   showSaveButton = true 
 }: RestaurantCardWithSaveProps) {
   const { user } = useAuth();
-  const [showBoardModal, setShowBoardModal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showBoardModal, setShowBoardModal] = useState(false);
 
-  const handleSave = useCallback((e: any) => {
+  // Check if restaurant is saved on mount
+  useEffect(() => {
+    if (user && restaurant.id) {
+      checkSaveStatus();
+    }
+  }, [user, restaurant.id]);
+
+  const checkSaveStatus = async () => {
+    if (!user) return;
+    
+    try {
+      // Check if restaurant is saved in Quick Saves
+      const quickSavesBoard = await boardService.getUserQuickSavesBoard(user.id);
+      if (quickSavesBoard) {
+        const boards = await boardService.getBoardsForRestaurant(restaurant.id, user.id);
+        setIsSaved(boards.some(b => b.id === quickSavesBoard.id));
+      }
+    } catch (error) {
+      console.error('Error checking save status:', error);
+    }
+  };
+
+  const handleSave = useCallback(async (e: any) => {
     e.stopPropagation();
     if (!user) {
-      // TODO: Show auth modal or redirect to login
+      ToastService.showError('Please sign in to save restaurants');
       return;
     }
+
+    setIsSaving(true);
+    Vibration.vibrate(10);
+
+    try {
+      if (isSaved) {
+        // Unsave from Quick Saves
+        const quickSavesBoard = await boardService.getUserQuickSavesBoard(user.id);
+        if (quickSavesBoard) {
+          await boardService.removeRestaurantFromBoard(quickSavesBoard.id, restaurant.id);
+          setIsSaved(false);
+          ToastService.showSuccess('Removed from Quick Saves');
+        }
+      } else {
+        // Save to Quick Saves
+        await boardService.saveRestaurantToQuickSaves(user.id, restaurant.id);
+        setIsSaved(true);
+        
+        ToastService.showSuccess(
+          'Added to Quick Saves',
+          {
+            label: 'Add to Board',
+            onPress: () => {
+              setShowBoardModal(true);
+            }
+          }
+        );
+      }
+    } catch (error: any) {
+      console.error('Save toggle error:', error);
+      if (error.message?.includes('already exists')) {
+        setIsSaved(true);
+      } else {
+        ToastService.showError('Failed to save restaurant');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [user, restaurant.id, isSaved]);
+
+  const handleLongPress = useCallback((e: any) => {
+    e.stopPropagation();
+    if (!user) {
+      ToastService.showError('Please sign in to save restaurants');
+      return;
+    }
+    
+    Vibration.vibrate(20);
     setShowBoardModal(true);
   }, [user]);
-
-  const handleSaveSuccess = useCallback(() => {
-    setIsSaved(true);
-    setShowBoardModal(false);
-  }, []);
 
   const handleCardPress = useCallback(() => {
     if (onPress) {
@@ -134,7 +205,8 @@ export function RestaurantCardWithSave({
           />
           {showSaveButton && (
             <SaveButton 
-              onPress={handleSave} 
+              onPress={handleSave}
+              onLongPress={handleLongPress}
               isSaved={isSaved} 
               isLoading={isSaving}
             />
@@ -149,22 +221,29 @@ export function RestaurantCardWithSave({
             {detailsText}
           </Text>
           
-          <View style={styles.details}>
-            <RatingSection rating={restaurant.rating || 0} />
-            <LocationSection location={restaurant.location || 'Unknown'} />
-          </View>
-
-          {stats && <StatsSection stats={stats} />}
+          {!compact && (
+            <>
+              {restaurant.rating !== undefined && restaurant.rating > 0 && (
+                <RatingSection rating={restaurant.rating} />
+              )}
+              {restaurant.location && <LocationSection location={restaurant.location} />}
+              {stats && <StatsSection stats={stats} />}
+            </>
+          )}
         </View>
       </TouchableOpacity>
-
+      
       {showBoardModal && (
         <BoardSelectionModal
           visible={showBoardModal}
           onClose={() => setShowBoardModal(false)}
           restaurantId={restaurant.id}
           restaurantName={restaurant.name}
-          onSuccess={handleSaveSuccess}
+          onSuccess={() => {
+            setShowBoardModal(false);
+            // Refresh save status after adding to boards
+            checkSaveStatus();
+          }}
         />
       )}
     </>
@@ -177,48 +256,49 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 16,
   },
   compactContainer: {
-    flexDirection: 'row',
+    marginBottom: 12,
   },
   imageContainer: {
     position: 'relative',
   },
   image: {
     width: '100%',
-    height: 160,
+    height: 200,
     backgroundColor: '#F0F0F0',
   },
   compactImage: {
-    width: 100,
-    height: 100,
+    height: 150,
   },
   saveButton: {
     position: 'absolute',
     top: 12,
     right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   content: {
-    padding: 12,
-    flex: 1,
+    padding: 16,
   },
   name: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    fontSize: 18,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1A1A1A',
     marginBottom: 4,
   },
   cuisine: {
@@ -227,44 +307,37 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
   },
-  details: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    marginBottom: 4,
   },
   ratingText: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
-    color: '#333',
+    color: '#1A1A1A',
+    marginLeft: 4,
   },
   location: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    flex: 1,
+    marginBottom: 4,
   },
   locationText: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
     color: '#666',
+    marginLeft: 4,
     flex: 1,
   },
   stats: {
     flexDirection: 'row',
-    gap: 12,
     marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    gap: 16,
   },
   statText: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
+    fontFamily: 'Inter_400Regular',
+    color: '#999',
   },
 });
