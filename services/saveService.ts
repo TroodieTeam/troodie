@@ -24,7 +24,7 @@ export class SaveService {
   }: SaveRestaurantParams): Promise<SaveResult> {
     try {
       const { data, error } = await supabase
-        .rpc('save_restaurant_simple', {
+        .rpc('save_restaurant_instant', {
           p_user_id: userId,
           p_restaurant_id: restaurantId,
           p_board_id: boardId
