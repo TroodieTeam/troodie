@@ -12,9 +12,10 @@ import { designTokens } from '@/constants/designTokens'
 
 interface QuickSavesBoardProps {
   onRestaurantPress?: (restaurantId: string) => void
+  refreshTrigger?: number
 }
 
-const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress }) => {
+const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, refreshTrigger }) => {
   const [saves, setSaves] = useState<Array<BoardRestaurant & { restaurant?: RestaurantInfo }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +24,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress }) 
 
   useEffect(() => {
     loadQuickSaves()
-  }, [user?.id])
+  }, [user?.id, refreshTrigger])
 
   const loadQuickSaves = async () => {
     if (!user?.id) return
@@ -160,8 +161,8 @@ const styles = {
     paddingHorizontal: theme.spacing.md,
   },
   restaurantCard: {
-    marginRight: theme.spacing.md,
-    width: 280,
+    marginRight: 12,
+    width: 240, // Reduced width for compact cards
   },
   loadingContainer: {
     height: 200,

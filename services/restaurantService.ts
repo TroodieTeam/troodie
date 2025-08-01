@@ -1,6 +1,7 @@
 import { Database, supabase } from '@/lib/supabase'
 import { RestaurantInfo } from '@/types/core'
 import { NetworkError, NotFoundError, ServerError, TimeoutError, isNetworkError } from '@/types/errors'
+import { DEFAULT_IMAGES, getRestaurantPlaceholder } from '@/constants/images'
 
 type Restaurant = Database['public']['Tables']['restaurants']['Row']
 type RestaurantInsert = Database['public']['Tables']['restaurants']['Insert']
@@ -76,6 +77,13 @@ function transformError(error: any): Error {
   return error;
 }
 
+// Helper to construct Supabase storage URL
+function getSupabaseStorageUrl(path: string): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return '';
+  return `${supabaseUrl}/storage/v1/object/public/${path}`;
+}
+
 export const restaurantService = {
   // Dedicated method for getting restaurant image with comprehensive fallback logic
   getRestaurantImage(restaurant: any): string {
@@ -93,15 +101,20 @@ export const restaurantService = {
           : restaurant.photos[0]?.url;
         
         if (firstPhoto && typeof firstPhoto === 'string' && firstPhoto !== '') {
+          // Check if it's a relative path that needs Supabase storage URL
+          if (!firstPhoto.startsWith('http') && !firstPhoto.startsWith('//')) {
+            // Assume it's a path in the restaurant-photos bucket
+            return getSupabaseStorageUrl(`restaurant-photos/${firstPhoto}`);
+          }
           return firstPhoto;
         }
       }
       
-      // Tertiary: Use stock image as last resort
-      return 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800';
+      // Tertiary: Use placeholder with restaurant name
+      return getRestaurantPlaceholder(restaurant.name || 'Restaurant');
     } catch (error) {
       console.error('Error getting restaurant image:', error);
-      return 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800';
+      return DEFAULT_IMAGES.restaurant;
     }
   },
 
@@ -456,6 +469,26 @@ export const restaurantService = {
       })
     } catch (error) {
       console.error('Error fetching featured restaurants:', error)
+      throw error
+    }
+  },
+
+  async getAllRestaurants(limit: number = 50): Promise<Restaurant[]> {
+    try {
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*')
+          .order('google_rating', { ascending: false, nullsFirst: false })
+          .limit(limit)
+
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
+      })
+    } catch (error) {
+      console.error('Error fetching all restaurants:', error)
       throw error
     }
   },

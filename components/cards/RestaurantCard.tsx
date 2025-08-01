@@ -1,9 +1,9 @@
-import { theme } from '@/constants/theme';
+import { designTokens } from '@/constants/designTokens';
+import { DEFAULT_IMAGES } from '@/constants/images';
 import { RestaurantInfo } from '@/types/core';
-import { MapPin, Star } from 'lucide-react-native';
+import { Star } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { TrafficLightRating } from '@/components/TrafficLightRating';
 
 interface RestaurantCardProps {
   restaurant: RestaurantInfo;
@@ -17,57 +17,43 @@ interface RestaurantCardProps {
 }
 
 export function RestaurantCard({ restaurant, onPress, stats, compact = false, showRating = false }: RestaurantCardProps) {
+  // Always use compact horizontal layout for better space efficiency
   return (
     <TouchableOpacity 
-      style={[styles.container, compact && styles.compactContainer]} 
+      style={styles.container} 
       onPress={onPress}
       activeOpacity={0.7}
     >
       <Image 
-        source={{ uri: restaurant.image }} 
-        style={[styles.image, compact && styles.compactImage]} 
+        source={{ uri: restaurant.image || DEFAULT_IMAGES.restaurant }} 
+        style={styles.image} 
       />
       <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>
-          {restaurant.name}
-        </Text>
-        <Text style={styles.cuisine} numberOfLines={1}>
-          {restaurant.cuisine} • {restaurant.priceRange}
-        </Text>
-        
-        <View style={styles.details}>
+        <View style={styles.topRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {restaurant.name}
+          </Text>
           <View style={styles.rating}>
-                          <Star size={14} color="#FFB800" />
+            <Star size={12} color="#FFB800" fill="#FFB800" />
             <Text style={styles.ratingText}>{restaurant.rating}</Text>
           </View>
-          
-          <View style={styles.location}>
-            <MapPin size={14} color="#666" />
-            <Text style={styles.locationText} numberOfLines={1}>
-              {restaurant.location}
-            </Text>
-          </View>
+        </View>
+        
+        <View style={styles.bottomRow}>
+          <Text style={styles.cuisine} numberOfLines={1}>
+            {restaurant.cuisine} • {restaurant.priceRange}
+          </Text>
+          <Text style={styles.dot}>•</Text>
+          <Text style={styles.locationText} numberOfLines={1}>
+            {restaurant.location}
+          </Text>
         </View>
 
-        {stats && (
-          <View style={styles.stats}>
-            {stats.saves && (
-              <Text style={styles.statText}>{stats.saves} saves</Text>
-            )}
-            {stats.visits && (
-              <Text style={styles.statText}>{stats.visits} visits</Text>
-            )}
-          </View>
-        )}
-
-        {showRating && (
-          <View style={styles.ratingContainer}>
-            <TrafficLightRating
-              restaurantId={restaurant.id}
-              showUserRating={false}
-              showSummary={true}
-              size="small"
-            />
+        {stats && (stats.saves || stats.visits) && (
+          <View style={styles.statsRow}>
+            {stats.saves ? <Text style={styles.statText}>{stats.saves} saves</Text> : null}
+            {stats.saves && stats.visits && <Text style={styles.dot}>•</Text>}
+            {stats.visits ? <Text style={styles.statText}>{stats.visits} visits</Text> : null}
           </View>
         )}
       </View>
@@ -77,87 +63,77 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false, sh
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  compactContainer: {
     flexDirection: 'row',
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.sm,
+    overflow: 'hidden',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
   },
   image: {
-    width: '100%',
-    height: 160,
-    backgroundColor: '#F0F0F0',
-  },
-  compactImage: {
-    width: 100,
-    height: 100,
+    width: 64,
+    height: 64,
+    backgroundColor: designTokens.colors.backgroundGray,
   },
   content: {
-    padding: 12,
     flex: 1,
+    padding: 8,
+    justifyContent: 'center',
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 3,
   },
   name: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  cuisine: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 8,
-  },
-  details: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+    flex: 1,
+    marginRight: 8,
   },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   ratingText: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: 'Inter_500Medium',
-    color: '#333',
+    color: designTokens.colors.textDark,
   },
-  location: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    flex: 1,
+    marginBottom: 2,
+  },
+  cuisine: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    color: designTokens.colors.textMedium,
+    flexShrink: 0,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
+    color: designTokens.colors.textMedium,
     flex: 1,
   },
-  stats: {
+  dot: {
+    fontSize: 12,
+    color: designTokens.colors.textLight,
+    marginHorizontal: 4,
+  },
+  statsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    alignItems: 'center',
+    marginTop: 2,
   },
   statText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
-  },
-  ratingContainer: {
-    marginTop: 8,
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    color: designTokens.colors.primaryOrange,
   },
 });

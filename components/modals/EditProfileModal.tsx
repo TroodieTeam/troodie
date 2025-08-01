@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { designTokens } from '@/constants/designTokens';
 import { profileService, Profile } from '@/services/profileService';
 import { useApp } from '@/contexts/AppContext';
+import { getAvatarUrl } from '@/utils/avatarUtils';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface EditProfileModalProps {
@@ -36,7 +37,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [imageUri, setImageUri] = useState(currentProfile?.avatar_url || '');
+  const [imageUri, setImageUri] = useState(getAvatarUrl(currentProfile) || '');
   const [username, setUsername] = useState(currentProfile?.username || '');
   const [bio, setBio] = useState(currentProfile?.bio || '');
   const [usernameError, setUsernameError] = useState('');
@@ -45,7 +46,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   useEffect(() => {
     if (visible && currentProfile) {
       // Reset form when modal opens
-      setImageUri(currentProfile.avatar_url || '');
+      setImageUri(getAvatarUrl(currentProfile) || '');
       setUsername(currentProfile.username || '');
       setBio(currentProfile.bio || '');
       setUsernameError('');
@@ -151,8 +152,21 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       let updatedProfile: Profile | null = null;
 
       // Upload image if changed
-      if (imageUri && imageUri !== currentProfile?.avatar_url) {
-        await profileService.uploadProfileImage(user.id, imageUri);
+      if (imageUri && imageUri !== getAvatarUrl(currentProfile)) {
+        console.log('Uploading new profile image...');
+        console.log('Current image:', getAvatarUrl(currentProfile));
+        console.log('New image URI:', imageUri);
+        
+        try {
+          const uploadedUrl = await profileService.uploadProfileImage(user.id, imageUri);
+          console.log('Image uploaded successfully:', uploadedUrl);
+          
+          // Refresh profile to get updated avatar URL
+          updatedProfile = await profileService.getProfile(user.id);
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          throw uploadError;
+        }
       }
 
       // Update username if changed

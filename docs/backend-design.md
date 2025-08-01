@@ -91,6 +91,32 @@ The Quick Saves board is created automatically when needed through `boardService
 
 ### Storage Buckets
 
+#### `avatars` Bucket
+Stores user profile images/avatars.
+
+**Configuration**:
+- **Public**: Yes (publicly accessible for viewing)
+- **File Size Limit**: 5MB per file
+- **Allowed MIME Types**: 
+  - `image/jpeg`
+  - `image/jpg`
+  - `image/png`
+  - `image/gif`
+  - `image/webp`
+- **Path Structure**: `{user_id}/{timestamp}-{random}.jpg`
+- **Upload Service**: `ImageUploadServiceV2` (see `services/imageUploadServiceV2.ts`)
+- **Upload Methods** (in order of reliability):
+  1. Base64 encoding via Expo FileSystem with base64-arraybuffer
+  2. Direct blob upload with explicit content type
+  3. FormData multipart upload as fallback
+- **Image Processing**:
+  - Automatic resize to max width 800px
+  - Compression quality: 0.7
+  - Format: JPEG
+- **RLS Policies**:
+  - Public read access for all
+  - Users can upload/update/delete files in their own folder (`{user_id}/*`)
+
 #### `post-photos` Bucket
 Stores all user-uploaded photos for posts.
 
@@ -103,13 +129,22 @@ Stores all user-uploaded photos for posts.
   - `image/png`
   - `image/gif`
   - `image/webp`
+- **Upload Service**: `ImageUploadServiceV2` (see `services/imageUploadServiceV2.ts`)
+- **Upload Methods** (same as avatars bucket):
+  1. Base64 encoding via Expo FileSystem with base64-arraybuffer
+  2. Direct blob upload with explicit content type
+  3. FormData multipart upload as fallback
+- **Image Processing**:
+  - Automatic resize to max width 800px
+  - Compression quality: 0.7
+  - Format: JPEG
 
 **Folder Structure**:
 ```
 post-photos/
 └── posts/
     └── {post_id}/
-        └── {timestamp}_{random_id}.jpg
+        └── {timestamp}-{random_id}.jpg
 ```
 
 **RLS Policies**:
@@ -151,14 +186,14 @@ CREATE TABLE public.users (
   username character varying UNIQUE,    -- @username for mentions
   name character varying,               -- Display name
   bio text,                           -- User bio
-  avatar_url text,                     -- Profile image
+  avatar_url text,                     -- Profile image (primary field for user avatars)
   persona character varying,           -- User persona type
   is_verified boolean DEFAULT false,   -- Verified user status
   is_restaurant boolean DEFAULT false, -- Restaurant owner flag
   is_creator boolean DEFAULT false,    -- Content creator flag
   profile_completion integer DEFAULT 0, -- Profile completion percentage
   email text,                         -- Email address
-  profile_image_url text,             -- Alternative profile image
+  profile_image_url text,             -- DEPRECATED: Use avatar_url instead
   location text,                      -- User location
   saves_count integer DEFAULT 0,      -- Cached count
   reviews_count integer DEFAULT 0,    -- Cached count
@@ -705,6 +740,42 @@ CREATE INDEX idx_community_admin_logs_admin ON community_admin_logs(admin_id);
 - Update member roles
 - All actions logged for accountability
 
+**Permission Function**:
+```sql
+CREATE OR REPLACE FUNCTION check_community_permission(
+  p_user_id UUID,
+  p_community_id UUID,
+  p_action VARCHAR
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_role VARCHAR;
+BEGIN
+  -- Get user's role in the community
+  SELECT role INTO v_role
+  FROM community_members
+  WHERE user_id = p_user_id 
+    AND community_id = p_community_id
+    AND status = 'active';
+  
+  IF v_role IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Check permissions based on role
+  CASE v_role
+    WHEN 'owner' THEN
+      RETURN TRUE; -- Owners can do everything
+    WHEN 'admin' THEN
+      RETURN p_action IN ('remove_member', 'delete_post', 'delete_message', 'view_audit_logs');
+    WHEN 'moderator' THEN
+      RETURN p_action IN ('delete_post', 'delete_message');
+    ELSE
+      RETURN FALSE;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
 ### Engagement & Interactions
 
 #### `post_likes` Table
@@ -846,6 +917,29 @@ ALTER TABLE boards ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0;
 - Track when users share content via system share sheet
 - Analyze popular content based on share metrics
 - Platform field captures where content was shared (if available)
+
+### UI String Management
+
+#### Recommendation System Naming
+The application uses a dual recommendation system with distinct naming:
+
+1. **"Your Network"** - Social-based recommendations showing activity from users you follow
+   - Shows restaurants and dishes that friends are saving, visiting, and recommending
+   - Based on social graph and relationship data
+   - Personalized based on who you follow
+   - Empty state encourages following more users
+
+2. **"What's Hot in Your City"** - Location-based trending content
+   - Shows trending restaurants based on community activity in your area
+   - Algorithm considers saves, reviews, posts, and engagement patterns
+   - Location-based filtering for relevant local content
+   - Emphasizes community-wide popular spots
+
+**Implementation**:
+- Centralized string constants in `constants/strings.ts`
+- InfoModal components explain recommendation logic to users
+- Consistent terminology across all screens and components
+- Migration utilities for updating existing references
 
 ### Achievement & Gamification
 

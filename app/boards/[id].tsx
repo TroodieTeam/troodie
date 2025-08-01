@@ -1,3 +1,4 @@
+import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { boardService } from '@/services/boardService';
@@ -6,16 +7,12 @@ import { BoardRestaurant, BoardWithRestaurants } from '@/types/board';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ChevronLeft,
-  DollarSign,
   Edit,
-  Globe,
   Home,
-  Lock,
   MapPin,
   MoreVertical,
   Plus,
   Share2,
-  Star,
   Trash2
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -23,7 +20,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -234,48 +230,17 @@ export default function BoardDetailScreen() {
     );
   };
 
-  const renderRestaurantItem = ({ item: restaurant }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.restaurantCard}
-      onPress={() => router.push(`/restaurant/${restaurant.id}`)}
-      onLongPress={() => isOwner && handleRemoveRestaurant(restaurant.id)}
-      activeOpacity={0.7}
-    >
-      <Image 
-        source={{ uri: restaurantService.getRestaurantImage(restaurant) }} 
-        style={styles.restaurantImage} 
-      />
-      <View style={styles.restaurantContent}>
-        <View style={styles.restaurantInfo}>
-          <Text style={styles.restaurantName} numberOfLines={1}>
-            {restaurant.name}
-          </Text>
-          <View style={styles.restaurantMeta}>
-            <Text style={styles.cuisineText} numberOfLines={1}>
-              {restaurant.cuisine_types?.[0] || 'Restaurant'}
-            </Text>
-            <Text style={styles.separator}>•</Text>
-            <Text style={styles.priceText}>{restaurant.price_range || '$$'}</Text>
-            {restaurant.google_rating && (
-              <>
-                <Text style={styles.separator}>•</Text>
-                <View style={styles.ratingContainer}>
-                  <Star size={12} color={theme.colors.primary} fill={theme.colors.primary} />
-                  <Text style={styles.ratingText}>{restaurant.google_rating}</Text>
-                </View>
-              </>
-            )}
-          </View>
-          {restaurant.neighborhood && (
-            <View style={styles.locationContainer}>
-              <MapPin size={10} color={theme.colors.text.tertiary} />
-              <Text style={styles.locationText}>{restaurant.neighborhood}</Text>
-            </View>
-          )}
-        </View>
+  const renderRestaurantItem = ({ item: restaurant }: { item: any }) => {
+    // Restaurant is already transformed to RestaurantInfo by restaurantService.getRestaurantById()
+    return (
+      <View style={styles.restaurantItemContainer}>
+        <RestaurantCard
+          restaurant={restaurant}
+          onPress={() => router.push(`/restaurant/${restaurant.id}`)}
+        />
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -442,79 +407,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  restaurantCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 8,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  restaurantImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 8,
-    backgroundColor: theme.colors.backgroundGray,
-  },
-  restaurantContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  restaurantInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  restaurantName: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.text.dark,
-    marginBottom: 4,
-  },
-  restaurantMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  cuisineText: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: theme.colors.text.secondary,
-    maxWidth: 100,
-  },
-  separator: {
-    fontSize: 12,
-    color: theme.colors.text.tertiary,
-    marginHorizontal: 4,
-  },
-  priceText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: theme.colors.text.secondary,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  ratingText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: theme.colors.text.dark,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 11,
-    fontFamily: 'Inter_400Regular',
-    color: theme.colors.text.tertiary,
-    flex: 1,
+  restaurantItemContainer: {
+    marginBottom: 10,
   },
   loadingContainer: {
     flex: 1,

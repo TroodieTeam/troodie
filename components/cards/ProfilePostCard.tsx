@@ -1,4 +1,5 @@
 import { theme } from '@/constants/theme';
+import { DEFAULT_IMAGES } from '@/constants/images';
 import { PostWithUser } from '@/types/post';
 import { Bookmark, Calendar, Heart, MapPin, MessageCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -20,14 +21,6 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
   const [imageError, setImageError] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
 
-  // Debug logging for post data
-  console.log('ProfilePostCard received post:', {
-    id: post.id,
-    rating: post.rating,
-    photos: post.photos,
-    restaurant_image: post.restaurant?.image,
-    created_at: post.created_at
-  });
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -116,13 +109,11 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
 
         {/* Restaurant Info */}
         <View style={styles.restaurantSection}>
-          {post.restaurant?.image && (
-            <Image 
-              source={{ uri: post.restaurant.image }} 
-              style={styles.restaurantImage}
-              resizeMode="cover"
-            />
-          )}
+          <Image 
+            source={{ uri: post.restaurant?.image || DEFAULT_IMAGES.restaurant }} 
+            style={styles.restaurantImage}
+            resizeMode="cover"
+          />
           <View style={styles.restaurantInfo}>
             <Text style={styles.restaurantName} numberOfLines={1}>
               {post.restaurant?.name || 'Restaurant'}
@@ -372,16 +363,16 @@ const styles = StyleSheet.create({
   },
   photoContainer: {
     width: '100%',
-    height: 140,
-    borderRadius: 8,
+    height: 120,
+    borderRadius: 6,
     backgroundColor: theme.colors.backgroundGray,
-    marginBottom: 8,
+    marginBottom: 6,
     overflow: 'hidden',
   },
   photo: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+    borderRadius: 6,
   },
   footer: {
     flexDirection: 'row',
@@ -403,7 +394,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
   },
   morePhotos: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'Inter_500Medium',
     color: theme.colors.text.tertiary,
   },

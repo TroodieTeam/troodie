@@ -2,15 +2,15 @@ import { ErrorState } from '@/components/ErrorState';
 import { RestaurantCardSkeleton } from '@/components/LoadingSkeleton';
 import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
-import { designTokens } from '@/constants/designTokens';
+import { designTokens, compactDesign } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
-import { useRouter } from 'expo-router';
-import { Search } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { Search, Users, SlidersHorizontal } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -19,262 +19,290 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Pressable,
+  Dimensions
 } from 'react-native';
 
 type TabType = 'restaurants' | 'posts';
 
+interface TabState<T> {
+  data: T[];
+  filtered: T[];
+  loading: boolean;
+  error: Error | null;
+}
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Fisher-Yates shuffle algorithm for randomizing arrays
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
+const useTabData = <T extends any>(
+  loadFn: () => Promise<T[]>,
+  filterFn: (items: T[], query: string) => T[],
+  shouldRandomize: boolean = false
+) => {
+  const [state, setState] = useState<TabState<T>>({
+    data: [],
+    filtered: [],
+    loading: true,
+    error: null,
+  });
+
+  const load = async () => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await loadFn();
+      const processedData = shouldRandomize ? shuffleArray(data) : data;
+      setState({ data: processedData, filtered: processedData, loading: false, error: null });
+    } catch (err: any) {
+      setState(prev => ({ ...prev, loading: false, error: err }));
+    }
+  };
+
+  const filter = (query: string) => {
+    const filtered = query ? filterFn(state.data, query) : state.data;
+    setState(prev => ({ ...prev, filtered }));
+  };
+
+  return { ...state, load, filter };
+};
+
 export default function ExploreScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('restaurants');
   const [refreshing, setRefreshing] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const [isReRandomizing, setIsReRandomizing] = useState(false);
   
-  // Restaurant tab state
-  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
-  const [restaurants, setRestaurants] = useState<any[]>([]);
-  const [filteredRestaurants, setFilteredRestaurants] = useState<any[]>([]);
-  const [restaurantError, setRestaurantError] = useState<Error | null>(null);
-  
-  // Posts tab state
-  const [loadingPosts, setLoadingPosts] = useState(true);
-  const [posts, setPosts] = useState<PostWithUser[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<PostWithUser[]>([]);
-  const [postError, setPostError] = useState<Error | null>(null);
-  
-  const [retrying, setRetrying] = useState(false);
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Load data based on active tab
+  // Restaurant data management with randomization - now showing ALL restaurants
+  const restaurants = useTabData(
+    () => restaurantService.getAllRestaurants(100), // Increased limit to show more restaurants
+    (items, query) => {
+      const q = query.toLowerCase();
+      return items.filter(r => 
+        r.name?.toLowerCase().includes(q) ||
+        r.cuisine_types?.some((c: string) => c.toLowerCase().includes(q)) ||
+        r.neighborhood?.toLowerCase().includes(q) ||
+        r.city?.toLowerCase().includes(q) ||
+        r.state?.toLowerCase().includes(q) ||
+        r.address?.toLowerCase().includes(q)
+      );
+    },
+    true // Enable randomization for restaurants
+  );
+
+  // Posts data management
+  const posts = useTabData(
+    () => postService.getExplorePosts({ limit: 50 }),
+    (items, query) => {
+      const q = query.toLowerCase();
+      return items.filter(p => 
+        p.caption?.toLowerCase().includes(q) ||
+        p.restaurant?.name?.toLowerCase().includes(q) ||
+        p.tags?.some((t: string) => t.toLowerCase().includes(q))
+      );
+    }
+  );
+
+  const currentTab = activeTab === 'restaurants' ? restaurants : posts;
+
+  // Load data on tab change
   useEffect(() => {
-    if (activeTab === 'restaurants' && restaurants.length === 0) {
-      loadRestaurants();
-    } else if (activeTab === 'posts' && posts.length === 0) {
-      loadPosts();
+    if (activeTab === 'restaurants' && restaurants.data.length === 0) {
+      restaurants.load().then(() => setHasInitiallyLoaded(true));
+    } else if (activeTab === 'posts' && posts.data.length === 0) {
+      posts.load();
     }
-  }, [activeTab, restaurants.length, posts.length]);
+    // Clear re-randomizing state when switching tabs
+    setIsReRandomizing(false);
+  }, [activeTab]);
 
-  // Debounce search query
+  // Reload and re-randomize restaurants when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Only reload restaurants if we're on the restaurants tab and have already loaded once
+      if (activeTab === 'restaurants' && hasInitiallyLoaded) {
+        const performReRandomization = async () => {
+          setIsReRandomizing(true);
+          await restaurants.load();
+          // Small delay to ensure smooth transition
+          setTimeout(() => {
+            setIsReRandomizing(false);
+          }, 300);
+        };
+        performReRandomization();
+      }
+    }, [activeTab, hasInitiallyLoaded])
+  );
+
+  // Filter on search change
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Filter data based on search query and active tab
-  useEffect(() => {
-    if (activeTab === 'restaurants') {
-      filterRestaurants();
-    } else {
-      filterPostsData();
-    }
-  }, [debouncedSearchQuery, restaurants, posts, activeTab, filterRestaurants, filterPostsData]);
-
-  const loadRestaurants = async () => {
-    try {
-      setLoadingRestaurants(true);
-      setRestaurantError(null);
-      
-      // For Charlotte beta, always load Charlotte restaurants
-      const data = await restaurantService.getRestaurantsByCity('Charlotte', 50);
-      setRestaurants(data);
-      setFilteredRestaurants(data);
-    } catch (err: any) {
-      console.error('Error loading restaurants:', err);
-      setRestaurantError(err);
-    } finally {
-      setLoadingRestaurants(false);
-    }
-  };
-
-  const loadPosts = async () => {
-    try {
-      setLoadingPosts(true);
-      setPostError(null);
-      
-      const data = await postService.getExplorePosts({ limit: 50 });
-      setPosts(data);
-      setFilteredPosts(data);
-    } catch (err: any) {
-      console.error('Error loading posts:', err);
-      setPostError(err);
-    } finally {
-      setLoadingPosts(false);
-    }
-  };
-
-  const filterRestaurants = useCallback(() => {
-    if (!debouncedSearchQuery) {
-      setFilteredRestaurants(restaurants);
-      return;
-    }
-
-    const query = debouncedSearchQuery.toLowerCase();
-    const filtered = restaurants.filter(restaurant => 
-      restaurant.name?.toLowerCase().includes(query) ||
-      restaurant.cuisine_types?.some((cuisine: string) => 
-        cuisine.toLowerCase().includes(query)
-      ) ||
-      restaurant.neighborhood?.toLowerCase().includes(query) ||
-      restaurant.city?.toLowerCase().includes(query)
-    );
-    
-    setFilteredRestaurants(filtered);
-  }, [restaurants, debouncedSearchQuery]);
-
-  const filterPostsData = useCallback(() => {
-    if (!debouncedSearchQuery) {
-      setFilteredPosts(posts);
-      return;
-    }
-
-    const query = debouncedSearchQuery.toLowerCase();
-    const filtered = posts.filter(post => 
-      post.caption?.toLowerCase().includes(query) ||
-      post.restaurant?.name?.toLowerCase().includes(query) ||
-      post.tags?.some((tag: string) => tag.toLowerCase().includes(query))
-    );
-    
-    setFilteredPosts(filtered);
-  }, [posts, debouncedSearchQuery]);
+    currentTab.filter(debouncedSearch);
+  }, [debouncedSearch, activeTab]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    if (activeTab === 'restaurants') {
-      await loadRestaurants();
-    } else {
-      await loadPosts();
+    await currentTab.load();
+    // Ensure we mark as initially loaded after refresh
+    if (activeTab === 'restaurants' && !hasInitiallyLoaded) {
+      setHasInitiallyLoaded(true);
     }
     setRefreshing(false);
   };
 
-  const onRetry = async () => {
-    setRetrying(true);
-    if (activeTab === 'restaurants') {
-      await loadRestaurants();
-    } else {
-      await loadPosts();
-    }
-    setRetrying(false);
-  };
-
-  const renderHeader = useCallback(() => (
+  const Header = useMemo(() => (
     <View style={styles.header}>
-      <Text style={styles.title}>Explore</Text>
-      <Text style={styles.subtitle}>Discover through your network</Text>
+      {/* Compact Title Bar */}
+      <View style={styles.titleBar}>
+        <Text style={styles.title}>Explore</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push('/search')}
+          >
+            <Users size={compactDesign.icon.small} color={designTokens.colors.textLight} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton}>
+            <SlidersHorizontal size={compactDesign.icon.small} color={designTokens.colors.textLight} />
+          </TouchableOpacity>
+        </View>
+      </View>
       
-      <View style={styles.searchContainer}>
-        <Search size={20} color={designTokens.colors.textLight} style={styles.searchIcon} />
+      {/* Compact Search Bar */}
+      <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
+        <Search size={compactDesign.icon.small} color={designTokens.colors.textLight} />
         <TextInput
           style={styles.searchInput}
-          placeholder={activeTab === 'restaurants' ? 'Search restaurants...' : 'Search posts...'}
+          placeholder={`Search ${activeTab}...`}
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
         />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Text style={styles.clearText}>Clear</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'restaurants' && styles.tabActive]}
-          onPress={() => setActiveTab('restaurants')}
-        >
-          <Text style={[styles.tabText, activeTab === 'restaurants' && styles.tabTextActive]}>
-            Restaurants
-          </Text>
-          {activeTab === 'restaurants' && <View style={styles.tabIndicator} />}
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'posts' && styles.tabActive]}
-          onPress={() => setActiveTab('posts')}
-        >
-          <Text style={[styles.tabText, activeTab === 'posts' && styles.tabTextActive]}>
-            Posts
-          </Text>
-          {activeTab === 'posts' && <View style={styles.tabIndicator} />}
-        </TouchableOpacity>
+      {/* Minimal Tab Switcher */}
+      <View style={styles.tabBar}>
+        {(['restaurants', 'posts'] as const).map(tab => (
+          <Pressable
+            key={tab}
+            style={[styles.tab, activeTab === tab && styles.tabActive]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </Text>
+          </Pressable>
+        ))}
       </View>
     </View>
-  ), [searchQuery, activeTab]);
+  ), [searchQuery, activeTab, router, searchFocused]);
 
-  const renderRestaurantItem = useCallback(({ item }: { item: any }) => (
-    <RestaurantCard
-      restaurant={{
-        id: item.id,
-        name: item.name,
-        image: restaurantService.getRestaurantImage(item),
-        cuisine: item.cuisine_types?.[0] || 'Restaurant',
-        rating: item.google_rating || item.troodie_rating || 0,
-        location: item.neighborhood || item.city || 'Charlotte',
-        priceRange: item.price_range || '$$',
-      }}
-      onPress={() => {
-        router.push({
-          pathname: '/restaurant/[id]',
-          params: { id: item.id }
-        });
-      }}
-    />
-  ), [router]);
-
-  const renderPostItem = useCallback(({ item }: { item: PostWithUser }) => (
-    <PostCard
-      post={item}
-      onPress={() => {
-        router.push({
+  const renderItem = useCallback(({ item }: { item: any }) => {
+    if (activeTab === 'restaurants') {
+      return (
+        <RestaurantCard
+          restaurant={{
+            id: item.id,
+            name: item.name,
+            image: restaurantService.getRestaurantImage(item),
+            cuisine: item.cuisine_types?.[0] || 'Restaurant',
+            rating: item.google_rating || item.troodie_rating || 0,
+            location: item.neighborhood || item.city || 'Charlotte',
+            priceRange: item.price_range || '$$',
+          }}
+          onPress={() => router.push({
+            pathname: '/restaurant/[id]',
+            params: { id: item.id }
+          })}
+        />
+      );
+    }
+    
+    return (
+      <PostCard
+        post={item as PostWithUser}
+        onPress={() => router.push({
           pathname: '/posts/[id]',
           params: { id: item.id }
-        });
-      }}
-      onLike={(postId: string, liked: boolean) => {
-        // TODO: Handle post like
-      }}
-      onComment={(postId: string) => {
-        // TODO: Navigate to comment screen
-      }}
-      onSave={(postId: string) => {
-        // TODO: Handle post save
-      }}
-    />
-  ), [router]);
+        })}
+        onLike={() => {}}
+        onComment={() => {}}
+        onSave={() => {}}
+      />
+    );
+  }, [activeTab, router]);
 
-  const loading = activeTab === 'restaurants' ? loadingRestaurants : loadingPosts;
-  const error = activeTab === 'restaurants' ? restaurantError : postError;
-  const data = activeTab === 'restaurants' ? filteredRestaurants : filteredPosts;
-  const hasData = activeTab === 'restaurants' ? restaurants.length > 0 : posts.length > 0;
+  const EmptyComponent = useCallback(() => {
+    if (currentTab.error) {
+      return (
+        <ErrorState
+          error={currentTab.error}
+          errorType={getErrorType(currentTab.error)}
+          onRetry={currentTab.load}
+          retrying={false}
+        />
+      );
+    }
 
-  if (loading && !error && !hasData) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>{activeTab === 'restaurants' ? '🍴' : '📝'}</Text>
+        <Text style={styles.emptyTitle}>
+          No {activeTab} found
+        </Text>
+        <Text style={styles.emptyText}>
+          {debouncedSearch 
+            ? 'Try adjusting your search'
+            : activeTab === 'restaurants' 
+              ? 'Check back soon for new restaurants'
+              : 'Be the first to share your experience'
+          }
+        </Text>
+      </View>
+    );
+  }, [currentTab, activeTab, debouncedSearch]);
+
+  // Loading state for initial load or re-randomization (but not when searching)
+  if ((currentTab.loading && currentTab.data.length === 0) || (isReRandomizing && !searchQuery)) {
     return (
       <SafeAreaView style={styles.container}>
         <FlatList
-          ListHeaderComponent={renderHeader}
+          ListHeaderComponent={Header}
           data={[1, 2, 3, 4, 5]}
-          style={styles.listView}
-          keyExtractor={(item) => item.toString()}
           renderItem={() => <RestaurantCardSkeleton />}
-          showsVerticalScrollIndicator={false}
+          keyExtractor={item => item.toString()}
           contentContainerStyle={styles.listContent}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  if (error && !hasData) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Explore</Text>
-          <Text style={styles.subtitle}>Discover through your network</Text>
-        </View>
-        <ErrorState
-          error={error}
-          errorType={getErrorType(error)}
-          onRetry={onRetry}
-          retrying={retrying}
-          fullScreen
         />
       </SafeAreaView>
     );
@@ -283,11 +311,10 @@ export default function ExploreScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        ListHeaderComponent={renderHeader}
-        data={data}
-        style={styles.listView}
-        keyExtractor={(item) => item.id}
-        renderItem={activeTab === 'restaurants' ? renderRestaurantItem : renderPostItem}
+        ListHeaderComponent={Header}
+        data={currentTab.filtered}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -295,36 +322,13 @@ export default function ExploreScreen() {
             tintColor={designTokens.colors.primaryOrange}
           />
         }
-        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={EmptyComponent}
+        showsVerticalScrollIndicator={false}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={10}
-        removeClippedSubviews={true}
-        ListEmptyComponent={
-          error ? (
-            <ErrorState
-              error={error}
-              errorType={getErrorType(error)}
-              onRetry={onRetry}
-              retrying={retrying}
-            />
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>
-                {activeTab === 'restaurants' ? 'No restaurants found' : 'No posts found'}
-              </Text>
-              <Text style={styles.emptyText}>
-                {debouncedSearchQuery 
-                  ? 'Try adjusting your search'
-                  : activeTab === 'restaurants' 
-                    ? 'Check back soon for new restaurants'
-                    : 'Be the first to share your experience'
-                }
-              </Text>
-            </View>
-          )
-        }
+        removeClippedSubviews
       />
     </SafeAreaView>
   );
@@ -333,89 +337,110 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#FAFAFA',
   },
   header: {
-    paddingHorizontal: designTokens.spacing.lg,
-    paddingTop: designTokens.spacing.md,
-    paddingBottom: designTokens.spacing.md,
+    backgroundColor: '#FFFFFF',
+    paddingBottom: compactDesign.content.gap,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.colors.borderLight,
+  },
+  titleBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: compactDesign.header.paddingHorizontal,
+    paddingVertical: compactDesign.header.paddingVertical,
   },
   title: {
-    ...designTokens.typography.screenTitle,
+    ...designTokens.typography.sectionTitle,
     color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.xs,
   },
-  subtitle: {
-    ...designTokens.typography.bodyRegular,
-    color: designTokens.colors.textMedium,
-    marginBottom: designTokens.spacing.lg,
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  searchContainer: {
+  iconButton: {
+    width: compactDesign.button.heightSmall,
+    height: compactDesign.button.heightSmall,
+    borderRadius: compactDesign.button.heightSmall / 2,
+    backgroundColor: designTokens.colors.backgroundGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: designTokens.colors.backgroundGray,
-    borderRadius: designTokens.borderRadius.md,
-    paddingHorizontal: designTokens.spacing.lg,
-    height: 48,
-    marginBottom: designTokens.spacing.lg,
+    marginHorizontal: compactDesign.content.padding,
+    marginBottom: compactDesign.content.gap,
+    paddingHorizontal: compactDesign.input.paddingHorizontal,
+    height: compactDesign.input.height,
+    borderRadius: designTokens.borderRadius.sm,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  searchIcon: {
-    marginRight: designTokens.spacing.md,
+  searchBarFocused: {
+    borderColor: designTokens.colors.primaryOrange,
+    backgroundColor: '#FFF',
   },
   searchInput: {
     flex: 1,
     ...designTokens.typography.inputText,
     color: designTokens.colors.textDark,
+    padding: 0,
   },
-  tabContainer: {
+  clearText: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.primaryOrange,
+    fontWeight: '600',
+  },
+  tabBar: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: designTokens.colors.borderLight,
+    paddingHorizontal: compactDesign.content.padding,
+    gap: 8,
   },
   tab: {
     flex: 1,
-    paddingVertical: designTokens.spacing.md,
+    paddingVertical: 8,
     alignItems: 'center',
-    position: 'relative',
+    borderRadius: designTokens.borderRadius.sm,
+    backgroundColor: designTokens.colors.backgroundGray,
   },
   tabActive: {
-    // Active tab styling handled by text and indicator
+    backgroundColor: designTokens.colors.primaryOrange,
   },
   tabText: {
-    ...designTokens.typography.bodyMedium,
+    ...designTokens.typography.filterText,
+    fontWeight: '600',
     color: designTokens.colors.textMedium,
   },
   tabTextActive: {
-    color: designTokens.colors.primaryOrange,
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: -1,
-    left: '10%',
-    right: '10%',
-    height: 2,
-    backgroundColor: designTokens.colors.primaryOrange,
-  },
-  listView: {
-    flex: 1,
+    color: '#FFFFFF',
   },
   listContent: {
-    paddingHorizontal: designTokens.spacing.lg,
-    paddingBottom: designTokens.spacing.xl,
+    paddingTop: 8,
+    paddingHorizontal: compactDesign.content.padding,
+    paddingBottom: compactDesign.content.padding,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: designTokens.spacing.xxxl,
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
   },
   emptyTitle: {
     ...designTokens.typography.cardTitle,
     color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.sm,
+    marginBottom: 8,
   },
   emptyText: {
-    ...designTokens.typography.detailText,
+    ...designTokens.typography.bodyRegular,
     color: designTokens.colors.textMedium,
     textAlign: 'center',
   },

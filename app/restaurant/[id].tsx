@@ -11,14 +11,12 @@ import {
   ArrowLeft,
   Award,
   Bookmark,
-  Calendar,
   Camera,
   CheckCircle,
   Clock,
   ExternalLink,
   Eye,
   Globe,
-  Heart,
   MapPin,
   MessageCircle,
   Phone,
@@ -176,6 +174,22 @@ export default function RestaurantDetailScreen() {
     setShowBoardModal(true);
   };
 
+  const handleCreatePost = () => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    
+    if (restaurant) {
+      router.push({
+        pathname: '/add/create-post',
+        params: { 
+          selectedRestaurant: JSON.stringify(restaurant)
+        }
+      });
+    }
+  };
+
   if (loading && !error) {
     return (
       <View style={styles.container}>
@@ -230,9 +244,6 @@ export default function RestaurantDetailScreen() {
           <TouchableOpacity style={styles.headerButton} onPress={() => {}}>
             <Share size={20} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton} onPress={() => {}}>
-            <Camera size={20} color="white" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -281,11 +292,7 @@ export default function RestaurantDetailScreen() {
         <Text style={styles.actionButtonText}>Save</Text>
       </TouchableOpacity>
       
-      <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
-        <Heart size={18} color={designTokens.colors.textDark} />
-      </TouchableOpacity>
-      
-      <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+      <TouchableOpacity style={styles.actionButton} onPress={handleCreatePost}>
         <MessageCircle size={18} color={designTokens.colors.textDark} />
       </TouchableOpacity>
     </View>
@@ -453,23 +460,6 @@ export default function RestaurantDetailScreen() {
 
     return (
       <View style={styles.tabContent}>
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
-            <Bookmark size={16} color="#333" />
-            <Text style={styles.actionButtonText}>Save</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Heart size={16} color="#333" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <MessageCircle size={16} color="#333" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, styles.reserveButton]} onPress={handleReserve}>
-            <Calendar size={16} color="white" />
-            <Text style={[styles.actionButtonText, styles.reserveButtonText]}>Reserve</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Friends Who Visited */}
         <View style={styles.socialCard}>
           <View style={styles.socialHeader}>

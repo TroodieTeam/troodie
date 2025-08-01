@@ -1,13 +1,14 @@
 import { CreatePostButton } from '@/components/community/CreatePostButton';
+import { ReasonModal } from '@/components/community/ReasonModal';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Community, communityService } from '@/services/communityService';
-import { postService } from '@/services/postService';
+import { CommunityAdminService } from '@/services/communityAdminService';
+import { useCommunityPermissions, getRoleDisplayName, getRoleBadgeColor } from '@/utils/communityPermissions';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Calendar,
   ChevronLeft,
-  Crown,
   Edit,
   Heart,
   Lock,
@@ -17,7 +18,8 @@ import {
   Trash2,
   TrendingUp,
   UserMinus,
-  Users
+  Users,
+  FileText
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -53,11 +55,23 @@ export default function CommunityDetailScreen() {
   const [community, setCommunity] = useState<Community | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<'feed' | 'members' | 'about'>('feed');
   const [members, setMembers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Admin modals
+  const [removeMemberModal, setRemoveMemberModal] = useState<{ visible: boolean; member: any }>({ 
+    visible: false, 
+    member: null 
+  });
+  const [deletePostModal, setDeletePostModal] = useState<{ visible: boolean; postId: string }>({ 
+    visible: false, 
+    postId: '' 
+  });
+  
+  // Use permissions hook
+  const { role, hasPermission } = useCommunityPermissions(communityId, user?.id);
 
   const loadCommunityData = async () => {
     if (!communityId) {
@@ -80,9 +94,6 @@ export default function CommunityDetailScreen() {
       if (user) {
         const membership = await communityService.isUserMember(user.id, communityId);
         setIsMember(membership.isMember);
-        
-        const adminStatus = await communityService.checkAdminStatus(user.id, communityId);
-        setIsAdmin(adminStatus);
       }
       
       const membersData = await communityService.getCommunityMembersWithDetails(communityId, 50);
@@ -164,51 +175,64 @@ export default function CommunityDetailScreen() {
       ]
     );
   };
+  
+  const handleViewAuditLogs = () => {
+    router.push({
+      pathname: '/add/community-audit-logs',
+      params: { communityId }
+    });
+  };
 
-  const handleRemoveMember = (memberId: string, memberName: string) => {
-    Alert.alert(
-      'Remove Member',
-      `Are you sure you want to remove ${memberName} from the community?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await communityService.removeMember(communityId, memberId);
-              setMembers(members.filter(m => m.user_id !== memberId));
-              Alert.alert('Success', 'Member removed successfully');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to remove member');
-            }
-          }
-        }
-      ]
-    );
+  const handleRemoveMember = (memberId: string) => {
+    const member = members.find(m => m.user_id === memberId);
+    if (!member) return;
+    
+    setRemoveMemberModal({ visible: true, member });
+  };
+  
+  const handleRemoveMemberConfirm = async (reason: string) => {
+    if (!removeMemberModal.member) return;
+    
+    try {
+      const { success, error } = await CommunityAdminService.removeMember(
+        communityId,
+        removeMemberModal.member.user_id,
+        reason
+      );
+      
+      if (success) {
+        setMembers(members.filter(m => m.user_id !== removeMemberModal.member.user_id));
+        Alert.alert('Success', 'Member removed successfully');
+      } else {
+        Alert.alert('Error', error || 'Failed to remove member');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to remove member');
+    }
   };
 
   const handleDeletePost = (postId: string) => {
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await postService.deletePost(postId);
-              setPosts(posts.filter(p => p.id !== postId));
-              Alert.alert('Success', 'Post deleted successfully');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete post');
-            }
-          }
-        }
-      ]
-    );
+    setDeletePostModal({ visible: true, postId });
+  };
+  
+  const handleDeletePostConfirm = async (reason: string) => {
+    if (!deletePostModal.postId) return;
+    
+    try {
+      const { success, error } = await CommunityAdminService.deletePost(
+        deletePostModal.postId,
+        reason
+      );
+      
+      if (success) {
+        setPosts(posts.filter(p => p.id !== deletePostModal.postId));
+        Alert.alert('Success', 'Post deleted successfully');
+      } else {
+        Alert.alert('Error', error || 'Failed to delete post');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete post');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -242,7 +266,7 @@ export default function CommunityDetailScreen() {
         <ChevronLeft size={22} color={theme.colors.text.primary} />
       </TouchableOpacity>
       <Text style={styles.title} numberOfLines={1}>{community.name}</Text>
-      {isAdmin ? (
+      {(hasPermission('update_settings') || hasPermission('delete_community') || hasPermission('view_audit_logs')) ? (
         <Menu>
           <MenuTrigger>
             <TouchableOpacity style={styles.moreButton}>
@@ -250,18 +274,30 @@ export default function CommunityDetailScreen() {
             </TouchableOpacity>
           </MenuTrigger>
           <MenuOptions customStyles={menuOptionsStyles}>
-            <MenuOption onSelect={handleEditCommunity}>
-              <View style={styles.menuItem}>
-                <Edit size={16} color={theme.colors.text.primary} />
-                <Text style={styles.menuText}>Edit Community</Text>
-              </View>
-            </MenuOption>
-            <MenuOption onSelect={handleDeleteCommunity}>
-              <View style={styles.menuItem}>
-                <Trash2 size={16} color={theme.colors.error} />
-                <Text style={[styles.menuText, { color: theme.colors.error }]}>Delete Community</Text>
-              </View>
-            </MenuOption>
+            {hasPermission('update_settings') && (
+              <MenuOption onSelect={handleEditCommunity}>
+                <View style={styles.menuItem}>
+                  <Edit size={16} color={theme.colors.text.primary} />
+                  <Text style={styles.menuText}>Edit Community</Text>
+                </View>
+              </MenuOption>
+            )}
+            {hasPermission('view_audit_logs') && (
+              <MenuOption onSelect={handleViewAuditLogs}>
+                <View style={styles.menuItem}>
+                  <FileText size={16} color={theme.colors.text.primary} />
+                  <Text style={styles.menuText}>View Audit Logs</Text>
+                </View>
+              </MenuOption>
+            )}
+            {hasPermission('delete_community') && (
+              <MenuOption onSelect={handleDeleteCommunity}>
+                <View style={styles.menuItem}>
+                  <Trash2 size={16} color={theme.colors.error} />
+                  <Text style={[styles.menuText, { color: theme.colors.error }]}>Delete Community</Text>
+                </View>
+              </MenuOption>
+            )}
           </MenuOptions>
         </Menu>
       ) : (
@@ -321,7 +357,7 @@ export default function CommunityDetailScreen() {
           )}
         </View>
         
-        {!isAdmin && (
+        {(!hasPermission('update_settings') || role === 'member') && (
           <TouchableOpacity 
             style={[styles.joinButton, isMember && styles.leaveButton]}
             onPress={handleJoinLeave}
@@ -376,7 +412,7 @@ export default function CommunityDetailScreen() {
             {item.user?.username ? `@${item.user.username} · ${formatDate(item.created_at)}` : formatDate(item.created_at)}
           </Text>
         </View>
-        {isAdmin && (
+        {(hasPermission('delete_post') || item.user?.id === user?.id) && (
           <Menu>
             <MenuTrigger>
               <TouchableOpacity style={styles.postMenu}>
@@ -418,8 +454,8 @@ export default function CommunityDetailScreen() {
     <TouchableOpacity 
       style={styles.memberItem}
       onPress={() => {
-        if (item.user?.username) {
-          router.push(`/profile/${item.user.username}` as any);
+        if (item.user_id) {
+          router.push(`/user/${item.user_id}`);
         }
       }}
     >
@@ -432,18 +468,25 @@ export default function CommunityDetailScreen() {
           <Text style={styles.memberName}>
             {item.user?.name || item.user?.username || 'User'}
           </Text>
-          {(item.role === 'admin' || item.role === 'owner') && (
-            <Crown size={14} color="#FFD700" />
+          {item.role !== 'member' && (
+            <View style={[
+              styles.roleBadge,
+              { backgroundColor: getRoleBadgeColor(item.role) }
+            ]}>
+              <Text style={styles.roleBadgeText}>
+                {getRoleDisplayName(item.role)}
+              </Text>
+            </View>
           )}
         </View>
         <Text style={styles.memberBio} numberOfLines={1}>
           {item.user?.username ? `@${item.user.username}` : ''} {item.user?.bio || `Joined ${formatDate(item.joined_at)}`}
         </Text>
       </View>
-      {isAdmin && item.user_id !== user?.id && item.role !== 'owner' && (
+      {hasPermission('remove_member') && item.user_id !== user?.id && item.role !== 'owner' && (
         <TouchableOpacity 
           style={styles.removeMember}
-          onPress={() => handleRemoveMember(item.user_id, item.user?.name || 'this member')}
+          onPress={() => handleRemoveMember(item.user_id)}
         >
           <UserMinus size={16} color={theme.colors.error} />
         </TouchableOpacity>
@@ -553,6 +596,27 @@ export default function CommunityDetailScreen() {
             communityName={community.name}
           />
         )}
+        
+        {/* Reason Modals */}
+        <ReasonModal
+          visible={removeMemberModal.visible}
+          onClose={() => setRemoveMemberModal({ visible: false, member: null })}
+          onSubmit={handleRemoveMemberConfirm}
+          title={`Remove ${removeMemberModal.member?.user?.name || 'member'}`}
+          placeholder="Reason for removal (required)"
+          submitText="Remove Member"
+          requireReason={true}
+        />
+        
+        <ReasonModal
+          visible={deletePostModal.visible}
+          onClose={() => setDeletePostModal({ visible: false, postId: '' })}
+          onSubmit={handleDeletePostConfirm}
+          title="Delete Post"
+          placeholder="Reason for deletion (optional)"
+          submitText="Delete Post"
+          requireReason={false}
+        />
       </SafeAreaView>
     </MenuProvider>
   );
@@ -893,5 +957,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
     color: theme.colors.text.primary,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 4,
+  },
+  roleBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
   },
 });

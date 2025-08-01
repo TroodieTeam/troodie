@@ -1,5 +1,5 @@
 import { designTokens } from '@/constants/designTokens';
-import { Bell, Bookmark } from 'lucide-react-native';
+import { Bell } from 'lucide-react-native';
 import React from 'react';
 import {
   ScrollView,
@@ -7,7 +7,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { ActionCard } from './ActionCard';
 
 interface EmptyActivityStateProps {
   onExploreRestaurants: () => void;
@@ -39,18 +38,20 @@ export const EmptyActivityState: React.FC<EmptyActivityStateProps> = ({
       </View>
 
       {/* Action Cards */}
-      <View style={styles.actionCards}>
-        <ActionCard
-          icon={Bookmark}
-          title="Save Your First Restaurant"
-          description="Start building your collection and get recommendations"
-          benefit="💡 Get personalized suggestions"
-          buttonText="Explore Restaurants"
-          onPress={onSaveRestaurant || onExploreRestaurants}
-          colorScheme="blue"
-        />
+      {/* <View style={styles.actionCards}>
+        {onSaveRestaurant && (
+          <ActionCard
+            icon={Bookmark}
+            title="Save Your First Restaurant"
+            description="Start building your collection and get recommendations"
+            benefit="💡 Get personalized suggestions"
+            buttonText="Explore Restaurants"
+            onPress={onSaveRestaurant}
+            colorScheme="blue"
+          />
+        )}
 
-        {/* {onDiscoverGems && (
+        {onDiscoverGems && (
           <ActionCard
             icon={Sparkles}
             title="Discover Local Gems"
@@ -72,8 +73,8 @@ export const EmptyActivityState: React.FC<EmptyActivityStateProps> = ({
             onPress={onShareExperience}
             colorScheme="purple"
           />
-        )} */}
-      </View>
+        )}
+      </View> */}
     </ScrollView>
   );
 };

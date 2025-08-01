@@ -3,11 +3,12 @@ import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
-import { designTokens } from '@/constants/designTokens';
+import { designTokens, compactDesign } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
+import { useSmoothDataFetch, useSmoothMultiDataFetch } from '@/hooks/useSmoothDataFetch';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
 import { postService } from '@/services/postService';
@@ -17,9 +18,11 @@ import { Board, BoardRestaurant } from '@/types/board';
 import { RestaurantInfo } from '@/types/core';
 import { PersonaType } from '@/types/onboarding';
 import { PostWithUser } from '@/types/post';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { getAvatarUrl } from '@/utils/avatarUtils';
+import { useRouter } from 'expo-router';
 import {
   Award,
+  Bookmark,
   Camera,
   Grid3X3,
   MessageSquare,
@@ -29,7 +32,7 @@ import {
   Share2,
   User
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -52,155 +55,168 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('quicksaves');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [achievements, setAchievements] = useState<any[]>([]);
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [loadingBoards, setLoadingBoards] = useState(true);
-  const [posts, setPosts] = useState<PostWithUser[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(true);
-  const [quickSaves, setQuickSaves] = useState<Array<BoardRestaurant & { restaurant?: RestaurantInfo }>>([]);
-  const [loadingQuickSaves, setLoadingQuickSaves] = useState(true);
-  const [refreshingQuickSaves, setRefreshingQuickSaves] = useState(false);
-  
-  const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
-                 (onboardingState.persona ? personas[onboardingState.persona] : null);
 
-  // Load profile data
-  useEffect(() => {
-    if (user?.id) {
-      loadProfile();
-      loadAchievements();
-      loadBoards();
-      loadPosts();
-      loadQuickSaves();
+  // Data fetching functions
+  const fetchProfile = useCallback(async () => {
+    if (!user?.id) return null;
+    try {
+      return await profileService.getProfile(user.id);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      return null;
     }
   }, [user?.id]);
 
-  // Refresh data when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      if (user?.id) {
-        // Refresh Quick Saves if it's the active tab
-        if (activeTab === 'quicksaves') {
-          loadQuickSaves();
-        } else if (activeTab === 'posts') {
-          loadPosts();
-        } else if (activeTab === 'boards') {
-          loadBoards();
-        }
+  const fetchAchievements = useCallback(async () => {
+    if (!user?.id) return [];
+    try {
+      return await achievementService.getUserAchievements(user.id);
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+      return [];
+    }
+  }, [user?.id]);
+
+  const fetchBoards = useCallback(async () => {
+    if (!user?.id) return [];
+    try {
+      return await boardService.getUserBoards(user.id);
+    } catch (error) {
+      console.error('Error fetching boards:', error);
+      return [];
+    }
+  }, [user?.id]);
+
+  const fetchPosts = useCallback(async () => {
+    if (!user?.id) return [];
+    try {
+      return await postService.getUserPosts(user.id);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      return [];
+    }
+  }, [user?.id]);
+
+  const fetchQuickSaves = useCallback(async () => {
+    if (!user?.id) return [];
+    try {
+      const quickSaves = await boardService.getQuickSavesRestaurants(user.id, 50);
+      
+      if (!quickSaves || quickSaves.length === 0) {
+        return [];
       }
-    }, [user?.id, activeTab])
-  );
-
-  const loadProfile = async () => {
-    if (!user?.id) return;
-    
-    try {
-      // Loading profile for user
       
-      // Test storage access first
-      await profileService.testStorageAccess();
+      // Batch fetch restaurant details for better performance
+      const restaurantIds = quickSaves.map(save => save.restaurant_id);
+      const uniqueRestaurantIds = [...new Set(restaurantIds)];
       
-      const profileData = await profileService.getProfile(user.id);
-      // Profile loaded successfully
-      setProfile(profileData);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadAchievements = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const userAchievements = await achievementService.getUserAchievements(user.id);
-      setAchievements(userAchievements);
-    } catch (error) {
-      console.error('Error loading achievements:', error);
-    }
-  };
-
-  const loadBoards = async () => {
-    if (!user?.id) return;
-    
-    try {
-      setLoadingBoards(true);
-      const userBoards = await boardService.getUserBoards(user.id);
-      setBoards(userBoards);
-    } catch (error) {
-      console.error('Error loading boards:', error);
-    } finally {
-      setLoadingBoards(false);
-    }
-  };
-
-  const loadQuickSaves = async (isRefreshing = false) => {
-    if (!user?.id) return;
-    
-    try {
-      if (!isRefreshing) {
-        setLoadingQuickSaves(true);
-      }
-      const saves = await boardService.getQuickSavesRestaurants(user.id);
-      
-      // Load restaurant details for each save
-      const savesWithRestaurants = await Promise.all(
-        saves.map(async (save) => {
-          const restaurant = await restaurantService.getRestaurantById(save.restaurant_id);
-          return {
-            ...save,
-            restaurant: restaurant || undefined
-          };
-        })
+      // Fetch all restaurants in parallel with error handling for individual failures
+      const restaurants = await Promise.allSettled(
+        uniqueRestaurantIds.map(id => restaurantService.getRestaurantById(id))
       );
       
-      setQuickSaves(savesWithRestaurants.filter(save => save.restaurant));
+      // Create a map for quick lookup, only including successful fetches
+      const restaurantMap = new Map();
+      restaurants.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          restaurantMap.set(uniqueRestaurantIds[index], result.value);
+        }
+      });
+      
+      // Map restaurants to saves
+      const savesWithRestaurants = quickSaves.map(save => ({
+        ...save,
+        restaurant: restaurantMap.get(save.restaurant_id) || undefined
+      }));
+      
+      return savesWithRestaurants.filter(save => save.restaurant);
     } catch (error) {
-      console.error('Error loading quick saves:', error);
-    } finally {
-      setLoadingQuickSaves(false);
-      setRefreshingQuickSaves(false);
+      console.error('Error fetching quick saves:', error);
+      return [];
     }
-  };
+  }, [user?.id]);
 
-  const onRefreshQuickSaves = async () => {
-    setRefreshingQuickSaves(true);
-    await loadQuickSaves(true);
-  };
+  // Use smooth data fetching
+  const { data: profile, loading: loadingProfile } = useSmoothDataFetch(
+    fetchProfile, 
+    [user?.id], 
+    { minLoadingTime: 300, fetchOnFocus: true }
+  );
 
-  const loadPosts = async () => {
-    if (!user?.id) return;
-    
-    try {
-      setLoadingPosts(true);
-      const userPosts = await postService.getUserPosts(user.id, 50);
-      // Posts loaded
-      setPosts(userPosts);
-    } catch (error) {
-      console.error('Error loading posts:', error);
-      setPosts([]); // Set empty array on error
-    } finally {
-      setLoadingPosts(false);
+  const { data: achievements } = useSmoothDataFetch(
+    fetchAchievements, 
+    [user?.id], 
+    { minLoadingTime: 300, fetchOnFocus: true }
+  );
+
+  const { 
+    data: boards, 
+    loading: loadingBoards,
+    refresh: refreshBoards 
+  } = useSmoothDataFetch(
+    fetchBoards, 
+    [user?.id], 
+    { 
+      minLoadingTime: 300, 
+      fetchOnFocus: true,
+      cacheDuration: 60000 
     }
-  };
+  );
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([
-      loadProfile(),
-      loadAchievements(),
-      loadBoards(),
-      loadPosts(),
-    ]);
-    setRefreshing(false);
-  };
+  const { 
+    data: posts, 
+    loading: loadingPosts,
+    refresh: refreshPosts 
+  } = useSmoothDataFetch(
+    fetchPosts, 
+    [user?.id], 
+    { 
+      minLoadingTime: 300, 
+      fetchOnFocus: true,
+      cacheDuration: 60000 
+    }
+  );
+
+  const { 
+    data: quickSaves, 
+    loading: loadingQuickSaves,
+    refreshing: refreshingQuickSaves,
+    refresh: refreshQuickSaves 
+  } = useSmoothDataFetch(
+    fetchQuickSaves, 
+    [user?.id], 
+    { 
+      minLoadingTime: 300, 
+      fetchOnFocus: true,
+      cacheDuration: 30000 
+    }
+  );
+
+  // Ensure data is always an array to prevent null errors
+  const safeAchievements = achievements || [];
+  const safeBoards = boards || [];
+  const safePosts = posts || [];
+  const safeQuickSaves = quickSaves || [];
+
+  const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
+                 (onboardingState.persona ? personas[onboardingState.persona] : null);
+
+  // Refresh data when tab changes
+  useEffect(() => {
+    if (user?.id && !loadingProfile) {
+      // Only refresh if not already loading
+      if (activeTab === 'quicksaves' && !loadingQuickSaves) {
+        refreshQuickSaves();
+      } else if (activeTab === 'posts' && !loadingPosts) {
+        refreshPosts();
+      } else if (activeTab === 'boards' && !loadingBoards) {
+        refreshBoards();
+      }
+    }
+  }, [activeTab, user?.id, loadingProfile]);
 
   const handleProfileSave = (updatedProfile: Profile) => {
-    setProfile(updatedProfile);
+    // Profile will be automatically refreshed by the hook
     setShowEditModal(false);
   };
 
@@ -229,48 +245,38 @@ export default function ProfileScreen() {
     });
   };
 
-  const handleLike = (postId: string, liked: boolean) => {
-    // Update local state to reflect like change
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, likes_count: liked ? post.likes_count + 1 : post.likes_count - 1 }
-        : post
-    ));
-  };
+  const handleLike = useCallback((postId: string, liked: boolean) => {
+    // Like actions are handled by the PostCard component
+  }, []);
 
-  const handleComment = (postId: string) => {
+  const handleComment = useCallback((postId: string) => {
     router.push({
       pathname: '/posts/[id]',
       params: { id: postId }
     });
-  };
+  }, [router]);
 
-  const handleSave = (postId: string) => {
-    // Update local state to reflect save change
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, saves_count: post.saves_count + 1 }
-        : post
-    ));
-  };
+  const handleSave = useCallback((postId: string) => {
+    // Save actions are handled by the PostCard component
+  }, []);
 
   // User data with real profile
   const userData = {
     name: profile?.name || profile?.email?.split('@')[0] || 'Troodie User',
     username: profile?.username ? `@${profile.username}` : '@user',
-    avatar: profile?.avatar_url || profile?.profile_image_url || null,
+    avatar: getAvatarUrl(profile),
     bio: profile?.bio || '',
     stats: {
       followers: profile?.followers_count || 0,
       following: profile?.following_count || 0,
-      posts: posts.length // Use actual posts count instead of reviews_count
+      posts: safePosts.length // Use actual posts count instead of reviews_count
     }
   };
 
   // Profile data prepared
 
-  // Transform achievements for display
-  const displayAchievements = achievements.slice(0, 3).map((achievement, index) => ({
+  // Transform safeAchievements for display
+  const displayAchievements = safeAchievements.slice(0, 3).map((achievement, index) => ({
     id: index + 1,
     name: achievement.title || achievement.name,
     icon: Award
@@ -295,8 +301,10 @@ export default function ProfileScreen() {
             <Image 
               source={{ uri: userData.avatar }} 
               style={styles.avatar}
-              onError={() => {}}
-              onLoad={() => {}}
+              onError={(e) => {
+                console.error('Failed to load avatar:', userData.avatar, e.nativeEvent.error);
+              }}
+              resizeMode="cover"
             />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
@@ -350,7 +358,7 @@ export default function ProfileScreen() {
           <Text style={styles.statLabel}>Following</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{boards.length}</Text>
+          <Text style={styles.statValue}>{safeBoards.length}</Text>
           <Text style={styles.statLabel}>Boards</Text>
         </View>
         <View style={styles.statItem}>
@@ -379,9 +387,9 @@ export default function ProfileScreen() {
           style={[styles.tab, activeTab === 'quicksaves' && styles.activeTab]}
           onPress={() => setActiveTab('quicksaves')}
         >
-          <Grid3X3 size={12} color={activeTab === 'quicksaves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <Bookmark size={12} color={activeTab === 'quicksaves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'quicksaves' && styles.activeTabText]}>
-            Quick Saves
+            Saves ({safeQuickSaves.length})
           </Text>
         </TouchableOpacity>
 
@@ -391,7 +399,7 @@ export default function ProfileScreen() {
         >
           <Grid3X3 size={12} color={activeTab === 'boards' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'boards' && styles.activeTabText]}>
-            Boards ({boards.length})
+            Boards ({safeBoards.length})
           </Text>
         </TouchableOpacity>
         
@@ -401,7 +409,7 @@ export default function ProfileScreen() {
         >
           <MessageSquare size={12} color={activeTab === 'posts' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'posts' && styles.activeTabText]}>
-            Posts ({posts.length})
+            Posts ({safePosts.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -415,9 +423,9 @@ export default function ProfileScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
         </View>
-      ) : quickSaves.length > 0 ? (
+      ) : safeQuickSaves.length > 0 ? (
         <FlatList
-          data={quickSaves}
+          data={safeQuickSaves}
           renderItem={({ item }: { item: BoardRestaurant & { restaurant?: RestaurantInfo } }) => {
             if (!item.restaurant) return null;
             
@@ -436,7 +444,7 @@ export default function ProfileScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshingQuickSaves}
-              onRefresh={onRefreshQuickSaves}
+              onRefresh={() => refreshQuickSaves()}
               tintColor={designTokens.colors.primaryOrange}
             />
           }
@@ -467,9 +475,9 @@ export default function ProfileScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
         </View>
-      ) : boards.length > 0 ? (
+      ) : safeBoards.length > 0 ? (
         <FlatList
-          data={boards}
+          data={safeBoards}
           renderItem={({ item }: { item: Board }) => (
             <BoardCard 
               key={item.id} 
@@ -523,7 +531,7 @@ export default function ProfileScreen() {
       );
     }
 
-    if (posts.length === 0) {
+    if (safePosts.length === 0) {
       return (
         <View style={styles.tabContent}>
           <View style={styles.emptyState}>
@@ -549,14 +557,8 @@ export default function ProfileScreen() {
     return (
       <View style={styles.tabContent}>
         <FlatList
-          data={posts}
+          data={safePosts}
           renderItem={({ item }: { item: PostWithUser }) => {
-            console.log('Rendering post:', {
-              id: item.id,
-              rating: item.rating,
-              photos: item.photos,
-              caption: item.caption
-            });
             
             return (
               <ProfilePostCard
@@ -572,7 +574,7 @@ export default function ProfileScreen() {
           refreshControl={
             <RefreshControl
               refreshing={loadingPosts}
-              onRefresh={loadPosts}
+              onRefresh={refreshPosts}
               tintColor={designTokens.colors.primaryOrange}
             />
           }
@@ -581,7 +583,7 @@ export default function ProfileScreen() {
     );
   };
 
-  if (loading) {
+  if (loadingProfile) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -630,31 +632,31 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: compactDesign.header.paddingHorizontal,
+    paddingVertical: compactDesign.header.paddingVertical,
   },
   headerButton: {
-    width: 40,
-    height: 40,
+    width: compactDesign.button.height,
+    height: compactDesign.button.height,
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInfo: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: compactDesign.content.padding,
+    paddingBottom: compactDesign.content.paddingCompact,
   },
   profileHeader: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: compactDesign.content.gap,
   },
   avatarContainer: {
     position: 'relative',
     marginRight: 12,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48, // Reduced from 56
+    height: 48,
+    borderRadius: 24,
     borderWidth: 2,
     borderColor: designTokens.colors.primaryOrange + '33',
   },
@@ -663,9 +665,9 @@ const styles = StyleSheet.create({
     bottom: -2,
     right: -2,
     backgroundColor: designTokens.colors.primaryOrange,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18, // Reduced from 20
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -681,21 +683,20 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   name: {
-    fontSize: 16,
+    ...designTokens.typography.cardTitle,
     fontFamily: 'Poppins_700Bold',
     color: designTokens.colors.textDark,
   },
   username: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    ...designTokens.typography.bodyRegular,
     color: designTokens.colors.textMedium,
-    marginBottom: 12,
+    marginBottom: compactDesign.content.gap,
   },
   personaBadge: {
     backgroundColor: designTokens.colors.primaryOrange + '1A',
     borderWidth: 1,
     borderColor: designTokens.colors.primaryOrange + '33',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: designTokens.borderRadius.full,
   },
@@ -705,10 +706,9 @@ const styles = StyleSheet.create({
     color: designTokens.colors.primaryOrange,
   },
   bio: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    ...designTokens.typography.smallText,
     color: designTokens.colors.textDark,
-    marginBottom: 8,
+    marginBottom: compactDesign.card.gap,
   },
   achievementsContainer: {
     flexDirection: 'row',
@@ -734,8 +734,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    marginBottom: 12,
-    paddingVertical: 12,
+    marginBottom: compactDesign.content.gap,
+    paddingVertical: compactDesign.content.gap,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: designTokens.colors.borderLight,
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: designTokens.colors.backgroundLight,
-    borderRadius: 8,
+    borderRadius: designTokens.borderRadius.sm,
     padding: 2,
   },
   tab: {
@@ -859,8 +859,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: designTokens.borderRadius.sm - 2,
     gap: 4,
   },
   activeTab: {
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
     ...designTokens.shadows.card,
   },
   tabText: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textMedium,
   },
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   quickSaveItem: {
-    marginBottom: 16,
+    // RestaurantCard now handles its own margin
   },
   addBoardButton: {
     flexDirection: 'row',
@@ -1036,11 +1036,11 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: compactDesign.card.gap,
     gap: 4,
   },
   actionText: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
     color: designTokens.colors.primaryOrange,
   },
