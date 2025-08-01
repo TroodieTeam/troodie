@@ -51,6 +51,7 @@ export default {
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+      googlePlacesApiKey: process.env.GOOGLE_MAPS_API_KEY,
       eas: {
         projectId: "68397d45-255f-4b4c-ba93-d51a044ddfb2"
       }

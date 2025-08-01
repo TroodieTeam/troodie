@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Lock, Globe, MapPin, Calendar } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
+import { designTokens } from '@/constants/designTokens';
 import { Board } from '@/types/board';
 
 interface BoardCardProps {
@@ -21,42 +22,38 @@ export const BoardCard: React.FC<BoardCardProps> = ({ board, onPress }) => {
       )}
       
       <View style={styles.content}>
-        <View style={styles.header}>
+        <View style={styles.topRow}>
           <Text style={styles.title} numberOfLines={1}>{board.title}</Text>
-          <View style={styles.privacyBadge}>
-            {(board.is_private || board.type === 'private') ? (
-              <Lock size={14} color="#666" />
-            ) : (
-              <Globe size={14} color="#666" />
-            )}
-          </View>
+          {(board.is_private || board.type === 'private') ? (
+            <Lock size={12} color={designTokens.colors.textLight} />
+          ) : (
+            <Globe size={12} color={designTokens.colors.textLight} />
+          )}
+        </View>
+        
+        <View style={styles.bottomRow}>
+          <Text style={styles.metaText}>
+            {board.restaurant_count || 0} places
+          </Text>
+          {board.location && (
+            <>
+              <Text style={styles.dot}>•</Text>
+              <Text style={styles.metaText}>{board.location}</Text>
+            </>
+          )}
+          {board.category && (
+            <>
+              <Text style={styles.dot}>•</Text>
+              <Text style={styles.categoryText}>{board.category}</Text>
+            </>
+          )}
         </View>
         
         {board.description && (
-          <Text style={styles.description} numberOfLines={2}>
+          <Text style={styles.description} numberOfLines={1}>
             {board.description}
           </Text>
         )}
-        
-        <View style={styles.meta}>
-          <View style={styles.metaItem}>
-            <Text style={styles.metaCount}>{board.restaurant_count || 0}</Text>
-            <Text style={styles.metaLabel}>restaurants</Text>
-          </View>
-          
-          {board.location && (
-            <View style={styles.metaItem}>
-              <MapPin size={12} color="#999" />
-              <Text style={styles.metaLabel}>{board.location}</Text>
-            </View>
-          )}
-          
-          {board.category && (
-            <View style={styles.metaItem}>
-              <Text style={styles.categoryLabel}>{board.category}</Text>
-            </View>
-          )}
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -64,86 +61,70 @@ export const BoardCard: React.FC<BoardCardProps> = ({ board, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    flexDirection: 'row',
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.sm,
     overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
   },
   coverImage: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#F0F0F0',
+    width: 64,
+    height: 64,
+    backgroundColor: designTokens.colors.backgroundGray,
   },
   placeholderImage: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#F8F8F8',
+    width: 64,
+    height: 64,
+    backgroundColor: designTokens.colors.backgroundGray,
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderEmoji: {
-    fontSize: 40,
+    fontSize: 24,
   },
   content: {
-    padding: 16,
+    flex: 1,
+    padding: 8,
+    justifyContent: 'center',
   },
-  header: {
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   title: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
     flex: 1,
+    marginRight: 8,
   },
-  privacyBadge: {
-    marginLeft: 8,
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  metaText: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    color: designTokens.colors.textMedium,
+  },
+  categoryText: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.primaryOrange,
+  },
+  dot: {
+    fontSize: 11,
+    color: designTokens.colors.textLight,
+    marginHorizontal: 4,
   },
   description: {
-    fontSize: 14,
+    fontSize: 10,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaCount: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-    color: theme.colors.primary,
-  },
-  metaLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#999',
-  },
-  categoryLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    color: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '10',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    color: designTokens.colors.textLight,
+    marginTop: 2,
   },
 });

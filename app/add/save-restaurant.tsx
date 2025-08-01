@@ -1,5 +1,6 @@
 import { BetaRestaurantNotice } from '@/components/BetaRestaurantNotice';
 import { theme } from '@/constants/theme';
+import { designTokens, compactDesign } from '@/constants/designTokens';
 import { restaurantService } from '@/services/restaurantService';
 import { RestaurantSearchResult } from '@/types/add-flow';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,7 +10,8 @@ import {
     Edit3,
     MapPin,
     Search,
-    Star
+    Star,
+    Plus
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -23,6 +25,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 
 export default function SaveRestaurantScreen() {
   const router = useRouter();
@@ -31,6 +34,7 @@ export default function SaveRestaurantScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [allRestaurants, setAllRestaurants] = useState<any[]>([]);
+  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
 
   useEffect(() => {
     loadRestaurants();
@@ -38,7 +42,7 @@ export default function SaveRestaurantScreen() {
 
   const loadRestaurants = async () => {
     try {
-      const restaurants = await restaurantService.getRestaurantsByCity('Charlotte', 100);
+      const restaurants = await restaurantService.getAllRestaurants(200); // Get more restaurants from all locations
       setAllRestaurants(restaurants);
     } catch (error) {
       console.error('Error loading restaurants:', error);
@@ -68,9 +72,7 @@ export default function SaveRestaurantScreen() {
     
     setIsSearching(true);
     try {
-      const results = await restaurantService.searchRestaurants(searchQuery, {
-        city: 'Charlotte'
-      });
+      const results = await restaurantService.searchRestaurants(searchQuery);
       setSearchResults(results.map(transformRestaurant));
     } catch (error) {
       console.error('Error searching restaurants:', error);
@@ -95,10 +97,12 @@ export default function SaveRestaurantScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={24} color="#333" />
+        <ChevronLeft size={compactDesign.icon.medium} color={designTokens.colors.textDark} />
       </TouchableOpacity>
       <Text style={styles.title}>Save a Restaurant</Text>
-      <View style={styles.placeholder} />
+      <TouchableOpacity style={styles.addButton} onPress={() => setShowAddRestaurantModal(true)}>
+        <Plus size={compactDesign.icon.medium} color={theme.colors.primary} />
+      </TouchableOpacity>
     </View>
   );
 
@@ -165,7 +169,7 @@ export default function SaveRestaurantScreen() {
         <Search size={20} color="#999" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search Charlotte restaurants..."
+          placeholder="Search restaurants..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
@@ -210,7 +214,7 @@ export default function SaveRestaurantScreen() {
               <View style={styles.resultFooter}>
                 {restaurant.rating && (
                   <View style={styles.rating}>
-                    <Star size={14} color="#FFD700" />
+                    <Star size={compactDesign.icon.small} color="#FFD700" />
                     <Text style={styles.ratingText}>{restaurant.rating}</Text>
                   </View>
                 )}
@@ -223,10 +227,11 @@ export default function SaveRestaurantScreen() {
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>No restaurants found</Text>
           <Text style={styles.emptyDescription}>
-            Try searching with different keywords or add it manually
+            Can't find what you're looking for? Add it to our database!
           </Text>
-          <TouchableOpacity style={styles.manualAddButton} onPress={() => setSearchMethod('manual')}>
-            <Text style={styles.manualAddText}>Add Manually</Text>
+          <TouchableOpacity style={styles.addRestaurantButton} onPress={() => setShowAddRestaurantModal(true)}>
+            <Plus size={20} color="#FFF" />
+            <Text style={styles.addRestaurantText}>Add Restaurant</Text>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -252,6 +257,12 @@ export default function SaveRestaurantScreen() {
       </ScrollView>
     </View>
   );
+
+  const handleRestaurantAdded = (restaurant: any) => {
+    // Transform the added restaurant to match our format
+    const transformedRestaurant = transformRestaurant(restaurant);
+    handleSelectRestaurant(transformedRestaurant);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -285,6 +296,12 @@ export default function SaveRestaurantScreen() {
           </View>
         )}
       </View>
+      
+      <AddRestaurantModal
+        visible={showAddRestaurantModal}
+        onClose={() => setShowAddRestaurantModal(false)}
+        onRestaurantAdded={handleRestaurantAdded}
+      />
     </SafeAreaView>
   );
 }
@@ -298,49 +315,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: compactDesign.header.paddingHorizontal,
+    paddingVertical: compactDesign.header.paddingVertical,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: designTokens.colors.borderLight,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: compactDesign.button.height,
+    height: compactDesign.button.height,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 20,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    ...designTokens.typography.sectionTitle,
+    color: designTokens.colors.textDark,
   },
   placeholder: {
     width: 40,
+  },
+  addButton: {
+    width: compactDesign.button.height,
+    height: compactDesign.button.height,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: compactDesign.button.height / 2,
+    backgroundColor: theme.colors.primary + '10',
   },
   content: {
     flex: 1,
   },
   searchMethods: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: compactDesign.content.padding,
+    paddingVertical: compactDesign.content.paddingCompact,
     gap: 8,
   },
   methodButton: {
     flex: 1,
     flexDirection: 'column',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#F0F0F0',
+    paddingVertical: 10,
+    borderRadius: designTokens.borderRadius.sm,
+    backgroundColor: designTokens.colors.backgroundGray,
     gap: 4,
   },
   methodButtonActive: {
     backgroundColor: theme.colors.primary + '20',
   },
   methodText: {
-    fontSize: 12,
+    ...designTokens.typography.smallText,
     fontFamily: 'Inter_500Medium',
-    color: '#666',
+    color: designTokens.colors.textMedium,
   },
   methodTextActive: {
     color: theme.colors.primary,
@@ -348,33 +372,25 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    paddingHorizontal: 16,
-    height: 48,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.sm,
+    marginHorizontal: compactDesign.content.padding,
+    paddingHorizontal: compactDesign.input.paddingHorizontal,
+    height: compactDesign.input.height,
+    ...designTokens.shadows.card,
   },
   searchIcon: {
     marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#333',
+    ...designTokens.typography.inputText,
+    color: designTokens.colors.textDark,
   },
   resultsContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: compactDesign.content.padding,
+    paddingTop: compactDesign.content.paddingCompact,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -388,24 +404,17 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: compactDesign.card.borderRadius,
+    padding: compactDesign.card.padding,
+    marginBottom: compactDesign.content.gap,
+    ...designTokens.shadows.card,
   },
   resultImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 12,
+    width: 60, // Reduced from 80
+    height: 60,
+    borderRadius: designTokens.borderRadius.sm,
+    marginRight: compactDesign.card.gap,
   },
   resultInfo: {
     flex: 1,
@@ -416,9 +425,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   resultName: {
-    fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    ...designTokens.typography.cardTitle,
+    color: designTokens.colors.textDark,
     flex: 1,
   },
   verifiedBadge: {
@@ -433,9 +441,8 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
   },
   resultAddress: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    color: '#666',
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
     marginBottom: 4,
   },
   resultDetails: {
@@ -478,9 +485,8 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#333',
+    ...designTokens.typography.cardTitle,
+    color: designTokens.colors.textDark,
     marginBottom: 8,
   },
   emptyDescription: {
@@ -490,13 +496,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  manualAddButton: {
+  addRestaurantButton: {
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: compactDesign.button.paddingHorizontal,
+    height: compactDesign.button.height,
+    borderRadius: designTokens.borderRadius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  manualAddText: {
+  addRestaurantText: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',

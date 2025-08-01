@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { Share } from 'react-native';
 import { achievementService } from './achievementService';
+import { ImageUploadServiceV2 } from './imageUploadServiceV2';
 
 export interface Profile {
   id: string;
@@ -77,6 +78,13 @@ class ProfileService {
         return null;
       }
 
+      // Log avatar URLs for debugging
+      if (data) {
+        console.log('Profile fetched for user:', userId);
+        console.log('avatar_url:', data.avatar_url);
+        console.log('profile_image_url:', data.profile_image_url);
+      }
+
       return data;
     } catch (error) {
       console.error('Error in getProfile:', error);
@@ -146,71 +154,15 @@ class ProfileService {
 
   async uploadProfileImage(userId: string, imageUri: string): Promise<string> {
     try {
-      // Starting profile image upload
+      console.log('Starting profile image upload for user:', userId);
       
       // Ensure user exists first
       await this.ensureUserExists(userId);
       
-      // Generate unique filename with more randomness
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substr(2, 9);
-      const fileName = `${userId}/profile-${timestamp}-${randomId}.jpg`;
-      // Generated filename
+      // Use the new V2 image upload service
+      const publicUrl = await ImageUploadServiceV2.uploadProfileImage(userId, imageUri);
       
-      // Read the image as blob
-      const response = await fetch(imageUri);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} - ${response.statusText}`);
-      }
-      const blob = await response.blob();
-      // Image blob created
-      
-      if (blob.size === 0) {
-        throw new Error('Image blob is empty - invalid image data');
-      }
-
-      // Test storage bucket access first
-      // Testing storage bucket access
-      const { data: bucketData, error: bucketError } = await supabase.storage
-        .from('avatars')
-        .list('', { limit: 1 });
-      
-      if (bucketError) {
-        console.error('Storage bucket access error:', bucketError);
-        throw new Error(`Storage bucket not accessible: ${bucketError.message}`);
-      }
-      
-      // Storage bucket accessible, proceeding with upload
-
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg',
-          upsert: true // Use upsert to overwrite existing files
-        });
-
-      if (error) {
-        console.error('Error uploading image to storage:', error);
-        throw error;
-      }
-
-      // Image uploaded successfully to storage
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      // Public URL generated
-
-      // Test if the URL is accessible
-      try {
-        const urlResponse = await fetch(publicUrl);
-        // URL accessibility test completed
-      } catch (urlError) {
-        console.warn('URL accessibility test failed:', urlError);
-      }
+      console.log('Image uploaded successfully, URL:', publicUrl);
 
       // Update profile with new image URL
       const updatedProfile = await this.updateProfile(userId, {
@@ -221,12 +173,12 @@ class ProfileService {
         throw new Error('Failed to update profile with image URL');
       }
 
-      // Profile updated with image URL
+      console.log('Profile updated with new avatar URL');
 
       // Unlock achievement for adding profile image
       try {
         await achievementService.unlockAchievement(userId, 'profile_image_added');
-        // Achievement unlocked: profile_image_added
+        console.log('Profile image achievement unlocked');
       } catch (achievementError) {
         console.warn('Achievement unlock failed:', achievementError);
       }

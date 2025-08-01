@@ -70,6 +70,11 @@
       "iosDisplayInForeground": true,
       "androidMode": "default",
       "androidCollapsedTitle": "New Notification"
+    },
+    "extra": {
+      "googlePlacesApiKey": "${GOOGLE_PLACES_API_KEY}",
+      "supabaseUrl": "${SUPABASE_URL}",
+      "supabaseAnonKey": "${SUPABASE_ANON_KEY}"
     }
   }
 }

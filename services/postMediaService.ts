@@ -1,73 +1,49 @@
-import { supabase } from '@/lib/supabase';
+import { ImageUploadServiceV2 } from './imageUploadServiceV2';
 import * as ImagePicker from 'expo-image-picker';
 
 class PostMediaService {
   /**
    * Upload photos for a post
    */
-  async uploadPostPhotos(photos: string[], userId: string): Promise<string[]> {
+  async uploadPostPhotos(photos: string[], userId: string, postId?: string): Promise<string[]> {
+    // Generate a temporary post ID if not provided
+    const postIdForUpload = postId || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
     const uploadedUrls: string[] = [];
 
-    for (const photoUri of photos) {
-      try {
-        const url = await this.uploadPhoto(photoUri, userId);
-        uploadedUrls.push(url);
-      } catch (error) {
-        console.error('Error uploading photo:', error);
-        throw new Error(`Failed to upload photo: ${error}`);
+    try {
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        const result = await ImageUploadServiceV2.uploadImage(
+          photo,
+          'post-photos',
+          `posts/${postIdForUpload}`
+        );
+        uploadedUrls.push(result.publicUrl);
       }
+      return uploadedUrls;
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      throw new Error(`Failed to upload photos: ${error}`);
     }
-
-    return uploadedUrls;
   }
 
   /**
    * Upload a single photo
    */
-  async uploadPhoto(photoUri: string, userId: string): Promise<string> {
-    // Compress the photo first
-    const compressedUri = await this.compressPhoto(photoUri);
-    
-    // Generate a unique filename
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 15);
-    const filename = `posts/${userId}/${timestamp}_${randomId}.jpg`;
-
-    // Convert URI to blob
-    const response = await fetch(compressedUri);
-    const blob = await response.blob();
-
-    // Upload to Supabase storage
-    const { data, error } = await supabase.storage
-      .from('post-photos')
-      .upload(filename, blob, {
-        contentType: 'image/jpeg',
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (error) {
-      console.error('Error uploading to storage:', error);
-      throw new Error(`Failed to upload to storage: ${error.message}`);
+  async uploadPhoto(photoUri: string, userId: string, postId: string): Promise<string> {
+    try {
+      const result = await ImageUploadServiceV2.uploadImage(
+        photoUri,
+        'post-photos',
+        `posts/${postId}`
+      );
+      return result.publicUrl;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      throw error;
     }
-
-    // Get the public URL
-    const { data: urlData } = supabase.storage
-      .from('post-photos')
-      .getPublicUrl(filename);
-
-    return urlData.publicUrl;
   }
 
-  /**
-   * Compress a photo
-   */
-  async compressPhoto(photoUri: string): Promise<string> {
-    // For now, return the original URI
-    // In a real implementation, you would use a library like react-native-image-crop-picker
-    // or expo-image-manipulator to compress the image
-    return photoUri;
-  }
 
   /**
    * Generate a thumbnail for a photo
@@ -114,13 +90,13 @@ class PostMediaService {
         throw new Error('Permission to access camera roll is required!');
       }
 
-      // Launch image picker
+      // Launch image picker with base64 option for better compatibility
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: maxPhotos,
         quality: 0.8,
-        aspect: [4, 3],
+        base64: true, // Request base64 data
       });
 
       if (result.canceled) {

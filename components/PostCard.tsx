@@ -1,4 +1,5 @@
-import { designTokens } from '@/constants/designTokens';
+import { designTokens, compactDesign } from '@/constants/designTokens';
+import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { postEngagementService } from '@/services/postEngagementService';
 import { PostWithUser } from '@/types/post';
@@ -25,7 +26,7 @@ interface PostCardProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 32;
+const CARD_WIDTH = SCREEN_WIDTH - (compactDesign.content.padding * 2);
 
 export function PostCard({
   post,
@@ -159,11 +160,22 @@ export function PostCard({
       {(post as any).content_type !== 'external' && post.photos && post.photos.length > 0 && (
         <View style={styles.photoContainer}>
           {post.photos.length === 1 ? (
-            <Image source={{ uri: post.photos[0] }} style={styles.singlePhoto} />
+            <Image 
+              source={{ uri: post.photos[0] }} 
+              style={styles.singlePhoto}
+              onError={(e) => console.error('Image load error:', e.nativeEvent.error)}
+              defaultSource={{ uri: 'https://via.placeholder.com/400x200?text=Loading...' }}
+            />
           ) : (
             <View style={styles.photoGrid}>
               {post.photos.slice(0, 4).map((photo, index) => (
-                <Image key={index} source={{ uri: photo }} style={styles.gridPhoto} />
+                <Image 
+                  key={index} 
+                  source={{ uri: photo }} 
+                  style={styles.gridPhoto}
+                  onError={(e) => console.error(`Image ${index} load error:`, e.nativeEvent.error)}
+                  defaultSource={{ uri: 'https://via.placeholder.com/200x120?text=Loading...' }}
+                />
               ))}
               {post.photos.length > 4 && (
                 <View style={styles.photoOverlay}>
@@ -177,7 +189,7 @@ export function PostCard({
 
       {/* Restaurant Info */}
       <View style={styles.restaurantInfo}>
-        <Image source={{ uri: post.restaurant.image }} style={styles.restaurantImage} />
+        <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
         <View style={styles.restaurantDetails}>
           <Text style={styles.restaurantName} numberOfLines={1}>
             {post.restaurant.name}
@@ -204,7 +216,7 @@ export function PostCard({
                   post.visit_type === 'dine_in' ? 'restaurant' :
                   post.visit_type === 'takeout' ? 'bag-handle' : 'car'
                 }
-                size={14}
+                size={compactDesign.icon.small}
                 color={designTokens.colors.textMedium}
               />
               <Text style={styles.visitTypeText}>
@@ -218,7 +230,7 @@ export function PostCard({
           )}
           {post.rating && post.rating > 0 && (
             <View style={styles.ratingInfo}>
-              <Ionicons name="star" size={14} color={designTokens.colors.primaryOrange} />
+              <Ionicons name="star" size={compactDesign.icon.small} color={designTokens.colors.primaryOrange} />
               <Text style={styles.ratingText}>{post.rating}</Text>
             </View>
           )}
@@ -245,28 +257,28 @@ export function PostCard({
           <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
-              size={20}
+              size={compactDesign.icon.medium}
               color={isLiked ? '#FF4444' : designTokens.colors.textMedium}
             />
             <Text style={styles.actionCount}>{likesCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
-            <Ionicons name="chatbubble-outline" size={20} color={designTokens.colors.textMedium} />
+            <Ionicons name="chatbubble-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
             <Text style={styles.actionCount}>{post.comments_count}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
-              size={20}
+              size={compactDesign.icon.medium}
               color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textMedium}
             />
             <Text style={styles.actionCount}>{savesCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={20} color={designTokens.colors.textMedium} />
+            <Ionicons name="share-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
             <Text style={styles.actionCount}>{post.shares_count}</Text>
           </TouchableOpacity>
         </View>
@@ -278,9 +290,9 @@ export function PostCard({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: designTokens.colors.white,
-    borderRadius: designTokens.borderRadius.lg,
-    padding: designTokens.spacing.md,
-    marginBottom: designTokens.spacing.md,
+    borderRadius: compactDesign.card.borderRadius,
+    padding: compactDesign.card.padding,
+    marginBottom: compactDesign.content.gap,
     borderWidth: 1,
     borderColor: designTokens.colors.borderLight,
   },
@@ -288,7 +300,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: designTokens.spacing.sm,
+    marginBottom: compactDesign.card.gap,
   },
   userInfo: {
     flexDirection: 'row',
@@ -296,10 +308,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: designTokens.spacing.sm,
+    width: 32, // Reduced from 40
+    height: 32,
+    borderRadius: 16,
+    marginRight: compactDesign.card.gap,
   },
   userDetails: {
     flex: 1,
@@ -325,16 +337,16 @@ const styles = StyleSheet.create({
   caption: {
     ...designTokens.typography.bodyRegular,
     color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.sm,
-    lineHeight: 20,
+    marginBottom: compactDesign.card.gap,
+    lineHeight: 18,
   },
   photoContainer: {
-    marginBottom: designTokens.spacing.sm,
+    marginBottom: compactDesign.card.gap,
   },
   singlePhoto: {
     width: '100%',
-    height: 200,
-    borderRadius: designTokens.borderRadius.md,
+    height: 160, // Reduced from 200
+    borderRadius: designTokens.borderRadius.sm,
     backgroundColor: designTokens.colors.backgroundLight,
   },
   photoGrid: {
@@ -343,8 +355,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   gridPhoto: {
-    width: (CARD_WIDTH - 32) / 2 - 1,
-    height: 120,
+    width: (CARD_WIDTH - (compactDesign.card.padding * 2)) / 2 - 1,
+    height: 100, // Reduced from 120
     borderRadius: designTokens.borderRadius.sm,
     backgroundColor: designTokens.colors.backgroundLight,
   },
@@ -365,16 +377,16 @@ const styles = StyleSheet.create({
   restaurantInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: designTokens.spacing.sm,
-    padding: designTokens.spacing.sm,
+    marginBottom: compactDesign.card.gap,
+    padding: compactDesign.card.gap,
     backgroundColor: designTokens.colors.backgroundGray,
-    borderRadius: designTokens.borderRadius.md,
+    borderRadius: designTokens.borderRadius.sm,
   },
   restaurantImage: {
-    width: 50,
-    height: 50,
+    width: 40, // Reduced from 50
+    height: 40,
     borderRadius: designTokens.borderRadius.sm,
-    marginRight: designTokens.spacing.sm,
+    marginRight: compactDesign.card.gap,
   },
   restaurantDetails: {
     flex: 1,
@@ -415,71 +427,75 @@ const styles = StyleSheet.create({
     gap: designTokens.spacing.xs,
   },
   visitTypeText: {
-    ...designTokens.typography.smallText,
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
   },
   priceInfo: {
-    ...designTokens.typography.smallText,
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
   },
   ratingInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: designTokens.spacing.xs,
+    gap: 2,
   },
   ratingText: {
-    ...designTokens.typography.smallText,
+    fontSize: 10,
     color: designTokens.colors.textDark,
     fontFamily: 'Inter_600SemiBold',
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: designTokens.spacing.xs,
-    marginBottom: designTokens.spacing.sm,
+    gap: 4,
+    marginBottom: 8,
   },
   tag: {
     backgroundColor: designTokens.colors.backgroundGray,
-    paddingHorizontal: designTokens.spacing.sm,
-    paddingVertical: designTokens.spacing.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: designTokens.borderRadius.full,
   },
   tagText: {
-    ...designTokens.typography.smallText,
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textDark,
   },
   moreTags: {
-    ...designTokens.typography.smallText,
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingTop: designTokens.spacing.sm,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: designTokens.colors.borderLight,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: designTokens.spacing.xs,
-    padding: designTokens.spacing.sm,
+    gap: 4,
+    padding: 8,
   },
   actionCount: {
-    ...designTokens.typography.smallText,
+    fontSize: 11,
     color: designTokens.colors.textMedium,
     fontFamily: 'Inter_500Medium',
   },
   contentTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: designTokens.spacing.xs,
+    gap: 4,
     backgroundColor: designTokens.colors.backgroundLight,
     alignSelf: 'flex-start',
-    paddingHorizontal: designTokens.spacing.sm,
-    paddingVertical: designTokens.spacing.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: designTokens.borderRadius.full,
-    marginBottom: designTokens.spacing.xs,
+    marginBottom: 4,
   },
   contentTypeText: {
     fontSize: 11,

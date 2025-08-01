@@ -1,180 +1,232 @@
 import { supabase } from '@/lib/supabase';
-import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { uploadImageBase64 } from '@/utils/imageUploadHelper';
 
 interface UploadResult {
-  url: string | null;
-  error: string | null;
+  publicUrl: string;
+  fileName: string;
 }
 
-export const imageUploadService = {
+export class ImageUploadService {
   /**
-   * Request permissions for image picker
+   * Main upload method using base64 encoding (most reliable for React Native)
    */
-  async requestPermissions(): Promise<boolean> {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    return status === 'granted';
-  },
-
-  /**
-   * Pick image from library
-   */
-  async pickImage(): Promise<ImagePicker.ImagePickerResult> {
-    const hasPermission = await this.requestPermissions();
-    
-    if (!hasPermission) {
-      throw new Error('Permission to access media library was denied');
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1200, 630], // Recommended board cover ratio
-      quality: 0.8,
-    });
-
-    return result;
-  },
-
-  /**
-   * Compress and resize image for optimal upload
-   */
-  async compressImage(uri: string, maxWidth: number = 1200): Promise<string> {
-    const manipulatedImage = await manipulateAsync(
-      uri,
-      [{ resize: { width: maxWidth } }],
-      { compress: 0.8, format: SaveFormat.JPEG }
-    );
-    
-    return manipulatedImage.uri;
-  },
-
-  /**
-   * Upload image to Supabase Storage
-   */
-  async uploadImage(
-    uri: string,
+  static async uploadImageSimple(
+    imageUri: string,
     bucket: string,
-    path: string,
-    userId: string
+    path: string
   ): Promise<UploadResult> {
     try {
-      // Compress image before upload
-      const compressedUri = await this.compressImage(uri);
-      
-      // Fetch the image as blob
-      const response = await fetch(compressedUri);
+      console.log('Starting base64 image upload:', { imageUri, bucket, path });
+
+      // Process image first to ensure proper format and size
+      const processedImage = await manipulateAsync(
+        imageUri,
+        [{ resize: { width: 1000 } }], // Resize to max 1000px width
+        { compress: 0.8, format: SaveFormat.JPEG }
+      );
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 9);
+      const fileName = `${path}/${timestamp}-${randomId}.jpg`;
+
+      // Use base64 upload method
+      const publicUrl = await uploadImageBase64(
+        processedImage.uri,
+        bucket,
+        fileName
+      );
+
+      console.log('Base64 upload successful, URL:', publicUrl);
+
+      return {
+        publicUrl,
+        fileName
+      };
+    } catch (error) {
+      console.error('Base64 upload failed, trying fallback method:', error);
+      // Fall back to the alternative method
+      return this.uploadImage(imageUri, bucket, path);
+    }
+  }
+
+  /**
+   * Uploads an image to Supabase storage with proper handling
+   * @param imageUri The local URI of the image to upload
+   * @param bucket The storage bucket name
+   * @param path The path within the bucket (e.g., 'userId/profile')
+   * @returns The public URL of the uploaded image
+   */
+  static async uploadImage(
+    imageUri: string,
+    bucket: string,
+    path: string
+  ): Promise<UploadResult> {
+    try {
+      console.log('Starting image upload:', { imageUri, bucket, path });
+
+      // Validate inputs
+      if (!imageUri || !bucket || !path) {
+        throw new Error('Missing required parameters for image upload');
+      }
+
+      // Process the image (resize if needed, ensure it's in a compatible format)
+      const processedImage = await manipulateAsync(
+        imageUri,
+        [{ resize: { width: 1000 } }], // Resize to max 1000px width while maintaining aspect ratio
+        { compress: 0.8, format: SaveFormat.JPEG }
+      );
+
+      console.log('Image processed:', processedImage.uri);
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 9);
+      const fileName = `${path}/${timestamp}-${randomId}.jpg`;
+
+      // Create form data for fallback method
+      const response = await fetch(processedImage.uri);
       const blob = await response.blob();
       
-      // Generate unique filename
-      const fileExt = 'jpg';
-      const fileName = `${userId}/${path}/${Date.now()}.${fileExt}`;
-      
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
+      console.log('Blob created, size:', blob.size, 'type:', blob.type);
 
-      if (error) {
-        console.error('Upload error:', error);
-        return { url: null, error: error.message };
+      // Create proper FormData
+      const formData = new FormData();
+      const file = {
+        uri: processedImage.uri,
+        type: 'image/jpeg',
+        name: fileName.split('/').pop() || 'image.jpg',
+      } as any;
+      
+      formData.append('file', file);
+
+      // Get Supabase configuration
+      const supabaseUrl = (supabase as any).supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseKey = (supabase as any).supabaseKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase configuration missing');
       }
+
+      // Direct upload using fetch
+      const uploadResponse = await fetch(
+        `${supabaseUrl}/storage/v1/object/${bucket}/${fileName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+          },
+          body: formData,
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Upload response error:', errorText);
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      console.log('FormData upload successful');
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
-        .getPublicUrl(data.path);
+        .getPublicUrl(fileName);
 
-      return { url: publicUrl, error: null };
-    } catch (error: any) {
-      console.error('Image upload error:', error);
-      return { url: null, error: error.message || 'Failed to upload image' };
-    }
-  },
+      console.log('Public URL generated:', publicUrl);
 
-  /**
-   * Upload board cover image
-   */
-  async uploadBoardCover(uri: string, userId: string): Promise<UploadResult> {
-    return this.uploadImage(uri, 'board-covers', 'boards', userId);
-  },
+      // Verify the upload by checking if the file exists
+      const { data: fileList, error: listError } = await supabase.storage
+        .from(bucket)
+        .list(path.split('/')[0], {
+          limit: 100,
+          offset: 0,
+          search: fileName.split('/').pop()
+        });
 
-  /**
-   * Upload post images
-   */
-  async uploadPostImages(
-    uris: string[],
-    userId: string
-  ): Promise<{ urls: string[]; errors: string[] }> {
-    const urls: string[] = [];
-    const errors: string[] = [];
-
-    for (const uri of uris) {
-      const result = await this.uploadImage(uri, 'post-images', 'posts', userId);
-      if (result.url) {
-        urls.push(result.url);
+      if (listError) {
+        console.warn('Could not verify upload:', listError);
       } else {
-        errors.push(result.error || 'Unknown error');
+        const uploadedFile = fileList?.find(f => f.name === fileName.split('/').pop());
+        if (uploadedFile) {
+          console.log('Upload verified, file details:', uploadedFile);
+        } else {
+          console.warn('Upload completed but file not found in listing');
+        }
       }
+
+      return {
+        publicUrl,
+        fileName
+      };
+    } catch (error) {
+      console.error('Image upload service error:', error);
+      throw error;
     }
-
-    return { urls, errors };
-  },
+  }
 
   /**
-   * Upload user avatar
+   * Uploads a profile image for a user
+   * @param userId The user's ID
+   * @param imageUri The local URI of the image
+   * @returns The public URL of the uploaded avatar
    */
-  async uploadUserAvatar(uri: string, userId: string): Promise<UploadResult> {
-    return this.uploadImage(uri, 'avatars', 'profiles', userId);
-  },
-
-  /**
-   * Delete image from Supabase Storage
-   */
-  async deleteImage(url: string, bucket: string): Promise<boolean> {
+  static async uploadProfileImage(userId: string, imageUri: string): Promise<string> {
     try {
-      // Extract file path from URL
-      const urlParts = url.split('/');
-      const bucketIndex = urlParts.indexOf(bucket);
-      if (bucketIndex === -1) return false;
+      console.log('Uploading profile image for user:', userId);
       
-      const filePath = urlParts.slice(bucketIndex + 1).join('/');
+      // Validate inputs
+      if (!imageUri) {
+        throw new Error('No image URI provided');
+      }
       
+      // Use the user ID as the path prefix
+      const { publicUrl } = await this.uploadImageSimple(
+        imageUri,
+        'avatars',
+        userId
+      );
+
+      // Verify the upload by trying to access the URL
+      try {
+        const verifyResponse = await fetch(publicUrl, { method: 'HEAD' });
+        if (!verifyResponse.ok) {
+          console.warn('Upload verification failed, but continuing:', verifyResponse.status);
+        } else {
+          console.log('Upload verified successfully');
+        }
+      } catch (verifyError) {
+        console.warn('Could not verify upload:', verifyError);
+      }
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Profile image upload error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes an image from storage
+   * @param bucket The storage bucket name
+   * @param fileName The file name to delete
+   */
+  static async deleteImage(bucket: string, fileName: string): Promise<void> {
+    try {
       const { error } = await supabase.storage
         .from(bucket)
-        .remove([filePath]);
+        .remove([fileName]);
 
       if (error) {
-        console.error('Delete error:', error);
-        return false;
+        console.error('Delete image error:', error);
+        throw error;
       }
-
-      return true;
     } catch (error) {
-      console.error('Delete image error:', error);
-      return false;
+      console.error('Image deletion error:', error);
+      throw error;
     }
-  },
-
-  /**
-   * Validate image before upload
-   */
-  validateImage(result: ImagePicker.ImagePickerResult): boolean {
-    if (result.canceled) {
-      return false;
-    }
-
-    const asset = result.assets[0];
-    
-    // Check file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
-    if (asset.fileSize && asset.fileSize > maxSize) {
-      throw new Error('Image size must be less than 10MB');
-    }
-
-    return true;
-  },
-};
+  }
+}

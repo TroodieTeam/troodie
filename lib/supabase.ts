@@ -40,6 +40,12 @@ export type Database = {
           profile_completion: number
           default_board_id: string | null
           default_avatar_url: string | null
+          email: string | null
+          location: string | null
+          saves_count: number
+          reviews_count: number
+          followers_count: number
+          following_count: number
           created_at: string
           updated_at: string
         }
@@ -57,6 +63,12 @@ export type Database = {
           profile_completion?: number
           default_board_id?: string | null
           default_avatar_url?: string | null
+          email?: string | null
+          location?: string | null
+          saves_count?: number
+          reviews_count?: number
+          followers_count?: number
+          following_count?: number
           created_at?: string
           updated_at?: string
         }
@@ -74,6 +86,12 @@ export type Database = {
           profile_completion?: number
           default_board_id?: string | null
           default_avatar_url?: string | null
+          email?: string | null
+          location?: string | null
+          saves_count?: number
+          reviews_count?: number
+          followers_count?: number
+          following_count?: number
           created_at?: string
           updated_at?: string
         }
@@ -683,5 +701,31 @@ export type Database = {
         }
       }
     }
+    Functions: {
+      search_users: {
+        Args: {
+          search_query: string
+          limit_count?: number
+          offset_count?: number
+        }
+        Returns: {
+          id: string
+          username: string | null
+          name: string | null
+          bio: string | null
+          avatar_url: string | null
+          is_verified: boolean
+          followers_count: number
+          saves_count: number
+          location: string | null
+        }[]
+      }
+    }
   }
+}
+
+// Type helpers for search results
+export type SearchUserResult = Database['public']['Functions']['search_users']['Returns'][0] & {
+  isFollowing?: boolean
+  isCurrentUser?: boolean
 }

@@ -1,21 +1,23 @@
 import { RestaurantCardWithSave } from '@/components/cards/RestaurantCardWithSave';
 import { ErrorState } from '@/components/ErrorState';
 import QuickSavesBoard from '@/components/home/QuickSavesBoard';
+import { InfoModal } from '@/components/InfoModal';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { applyShadow, designTokens } from '@/constants/designTokens';
+import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
+import { useSmoothDataFetch } from '@/hooks/useSmoothDataFetch';
 import { boardService } from '@/services/boardService';
 import { communityService } from '@/services/communityService';
 import { InviteService } from '@/services/inviteService';
 import { notificationService } from '@/services/notificationService';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
-import { Board } from '@/types/board';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
 import { getErrorType } from '@/types/errors';
 import { Notification } from '@/types/notifications';
@@ -35,7 +37,7 @@ import {
   Users,
   Utensils
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -54,28 +56,64 @@ export default function HomeScreen() {
   const { userState, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, networkProgress, updateNetworkProgress } = useApp();
   const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [trendingRestaurants, setTrendingRestaurants] = useState<any[]>([]);
-  const [featuredRestaurants, setFeaturedRestaurants] = useState<any[]>([]);
-  const [userBoards, setUserBoards] = useState<Board[]>([]);
-  const [error, setError] = useState<Error | null>(null);
-  const [retrying, setRetrying] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [showRecommendationsInfo, setShowRecommendationsInfo] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const persona = onboardingState.persona && personas[onboardingState.persona];
   const inviteService = new InviteService();
 
-  useEffect(() => {
-    loadRestaurants();
-    if (user?.id) {
-      loadUnreadCount();
-      checkUserProgress();
-    }
-  }, [user?.id, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity]);
+  // Data fetching functions
+  const fetchHomeData = useCallback(async () => {
+    const [trending, featured] = await Promise.all([
+      restaurantService.getTrendingRestaurants('Charlotte'),
+      restaurantService.getFeaturedRestaurants(10)
+    ]);
+    
+    return { trending, featured };
+  }, []);
 
-  const checkUserProgress = async () => {
+  const fetchUserBoards = useCallback(async () => {
+    if (!user?.id) return [];
+    try {
+      return await boardService.getUserBoards(user.id);
+    } catch (error) {
+      console.error('Error loading boards:', error);
+      return [];
+    }
+  }, [user?.id]);
+
+  // Use smooth data fetching hooks
+  const { 
+    data: restaurantsData, 
+    loading, 
+    refreshing, 
+    error,
+    refresh: refreshRestaurants 
+  } = useSmoothDataFetch(fetchHomeData, [], {
+    minLoadingTime: 500,
+    showLoadingOnRefetch: false,
+    fetchOnFocus: true,
+    cacheDuration: 30000 // 30 seconds cache
+  });
+
+  const { 
+    data: userBoards = [], 
+    refresh: refreshBoards,
+    silentRefresh: silentRefreshBoards
+  } = useSmoothDataFetch(fetchUserBoards, [user?.id], {
+    minLoadingTime: 300,
+    showLoadingOnRefetch: false,
+    fetchOnFocus: true,
+    cacheDuration: 60000 // 1 minute cache
+  });
+
+  const trendingRestaurants = restaurantsData?.trending || [];
+  const featuredRestaurants = restaurantsData?.featured || [];
+
+  // Check user progress
+  const checkUserProgress = useCallback(async () => {
     if (!user?.id) return;
     
     try {
@@ -97,66 +135,42 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error checking user progress:', error);
     }
-  };
+  }, [user?.id, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, updateNetworkProgress]);
 
-  const loadUnreadCount = async () => {
+  // Load unread count
+  const loadUnreadCount = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const count = await notificationService.getUnreadCount(user!.id);
+      const count = await notificationService.getUnreadCount(user.id);
       setUnreadCount(count);
     } catch (error) {
       console.error('Error loading notification count:', error);
     }
-  };
+  }, [user?.id]);
 
-  const loadRestaurants = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Load trending restaurants for Charlotte
-      const [trending, featured] = await Promise.all([
-        restaurantService.getTrendingRestaurants('Charlotte'),
-        restaurantService.getFeaturedRestaurants(10)
-      ]);
-      
-      setTrendingRestaurants(trending);
-      setFeaturedRestaurants(featured);
-      
-      // Load user boards separately with proper error handling
-      if (user?.id) {
-        try {
-          const boards = await boardService.getUserBoards(user.id);
-          // Boards loaded
-          setUserBoards(boards);
-        } catch (boardError) {
-          console.error('Error loading boards:', boardError);
-          setUserBoards([]); // Set empty array on error
-        }
-      } else {
-        setUserBoards([]);
-      }
-    } catch (err: any) {
-      console.error('Error loading restaurants:', err);
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadRestaurants();
+  // Effects
+  useEffect(() => {
     if (user?.id) {
-      await loadUnreadCount();
-      await checkUserProgress();
+      loadUnreadCount();
+      checkUserProgress();
     }
-    setRefreshing(false);
+  }, [user?.id, loadUnreadCount, checkUserProgress]);
+
+  // Combined refresh function
+  const onRefresh = async () => {
+    await Promise.all([
+      refreshRestaurants(),
+      refreshBoards(),
+      user?.id && loadUnreadCount(),
+      user?.id && checkUserProgress()
+    ]);
   };
 
-  const onRetry = async () => {
-    setRetrying(true);
-    await loadRestaurants();
-    setRetrying(false);
+  const handleBoardUpdate = async () => {
+    // Refresh board data silently
+    await silentRefreshBoards();
+    // Trigger QuickSavesBoard refresh
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleNotificationPress = (notification: Notification) => {
@@ -492,21 +506,26 @@ export default function HomeScreen() {
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {persona ? `Perfect for ${persona.name}s` : 'Recommended for You'}
-          </Text>
-          {persona && (
-            <View style={styles.personaBadge}>
-              <Text style={styles.personaEmoji}>{persona.emoji}</Text>
-            </View>
-          )}
+          <View style={styles.titleContainer}>
+            <Text style={styles.sectionTitle}>
+              What's Hot Right Now
+            </Text>
+            {/* <TouchableOpacity 
+              onPress={() => setShowRecommendationsInfo(true)}
+              style={styles.infoButton}
+              accessibilityLabel="Learn how recommendations work"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Utensils size={16} color={designTokens.colors.textMedium} />
+            </TouchableOpacity> */}
+          </View>
         </View>
         
         {recommendedContent.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>Loading trending spots...</Text>
+            <Text style={styles.emptyStateTitle}>{strings.recommendations.emptyTitle}</Text>
             <Text style={styles.emptyStateDescription}>
-              Discovering Charlotte&apos;s hottest restaurants
+              {strings.recommendations.emptyDescription}
             </Text>
           </View>
         ) : (
@@ -521,6 +540,7 @@ export default function HomeScreen() {
                     params: { id: item.restaurant.id }
                   });
                 }}
+                onRefresh={handleBoardUpdate}
               />
               <View style={styles.trendingHighlights}>
                 {item.highlights.map((highlight, idx) => (
@@ -564,8 +584,8 @@ export default function HomeScreen() {
         <ErrorState
           error={error}
           errorType={getErrorType(error)}
-          onRetry={onRetry}
-          retrying={retrying}
+          onRetry={refreshRestaurants}
+          retrying={refreshing}
           fullScreen
         />
       </SafeAreaView>
@@ -590,7 +610,7 @@ export default function HomeScreen() {
         
         {renderNetworkBuilding()}
         
-        {user && <QuickSavesBoard />}
+        {user && <QuickSavesBoard refreshTrigger={refreshTrigger} />}
         
         {renderYourBoards()}
         
@@ -607,6 +627,13 @@ export default function HomeScreen() {
           onNotificationPress={handleNotificationPress}
         />
       )}
+
+      <InfoModal
+        visible={showRecommendationsInfo}
+        onClose={() => setShowRecommendationsInfo(false)}
+        title={strings.recommendations.modalTitle}
+        content={strings.recommendations.modalDescription}
+      />
     </SafeAreaView>
   );
 }
@@ -700,9 +727,6 @@ const styles = StyleSheet.create({
     marginBottom: designTokens.spacing.xxxl,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.lg,
   },
@@ -1064,5 +1088,20 @@ const styles = StyleSheet.create({
   networkCardCTACompleted: {
     backgroundColor: designTokens.colors.backgroundGray,
     borderColor: designTokens.colors.borderLight,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.xs,
+    flex: 1,
+  },
+  infoButton: {
+    padding: designTokens.spacing.xs,
+    marginLeft: designTokens.spacing.xs,
+  },
+  sectionSubtitle: {
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textMedium,
+    marginTop: 4,
   },
 });

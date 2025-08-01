@@ -6,6 +6,7 @@ import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { theme } from '@/constants/theme';
+import { designTokens, compactDesign } from '@/constants/designTokens';
 import { useRouter } from 'expo-router';
 
 export default function TabLayout() {
@@ -16,7 +17,7 @@ export default function TabLayout() {
       activeOpacity={0.8}
       onPress={() => router.push('/add')}
     >
-      <Plus size={24} color="#FFFFFF" strokeWidth={3} />
+      <Plus size={compactDesign.icon.medium} color="#FFFFFF" strokeWidth={3} />
     </TouchableOpacity>
   );
 
@@ -42,7 +43,7 @@ export default function TabLayout() {
           },
         }),
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10, // Reduced from 11
           fontFamily: 'Inter_500Medium',
           marginTop: -2,
         },
@@ -52,7 +53,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Home size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <Home size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -61,7 +62,7 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
-            <Compass size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <Compass size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -77,7 +78,7 @@ export default function TabLayout() {
         options={{
           title: 'Activity',
           tabBarIcon: ({ color, focused }) => (
-            <Heart size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <Heart size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -86,7 +87,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <User size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <User size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -96,19 +97,12 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   floatingButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: compactDesign.tabBar.height,
+    height: compactDesign.tabBar.height,
+    borderRadius: compactDesign.tabBar.height / 2,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...designTokens.shadows.button,
   },
 });

@@ -23,6 +23,7 @@ interface BoardSelectionModalProps {
   restaurantId: string;
   restaurantName: string;
   onSuccess?: () => void;
+  onRefresh?: () => void;
 }
 
 export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
@@ -30,7 +31,8 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
   onClose,
   restaurantId,
   restaurantName,
-  onSuccess
+  onSuccess,
+  onRefresh
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -111,6 +113,7 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
       
       Alert.alert('Success', message);
       onSuccess?.();
+      onRefresh?.();
       onClose();
     } catch (error: any) {
       if (error.message?.includes('already exists')) {

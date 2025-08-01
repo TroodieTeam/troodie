@@ -1,6 +1,7 @@
 import { ErrorState } from '@/components/ErrorState';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
 import { designTokens } from '@/constants/designTokens';
+import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { postEngagementService } from '@/services/postEngagementService';
 import { postService } from '@/services/postService';
@@ -11,15 +12,15 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Bookmark, Heart, MessageCircle, Share } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -56,12 +57,6 @@ export default function PostDetailScreen() {
       setLoading(true);
       setError(null);
       const postData = await postService.getPost(id);
-      console.log('Post data loaded:', {
-        id: postData?.id,
-        photos: postData?.photos,
-        photosLength: postData?.photos?.length,
-        contentType: (postData as any)?.content_type,
-      });
       setPost(postData);
     } catch (err: any) {
       console.error('Error loading post:', err);
@@ -112,17 +107,53 @@ export default function PostDetailScreen() {
   };
 
   const getTrafficLightColor = (rating: number | null) => {
-    if (!rating) return '#DDD';
-    const colors = {
-      1: '#FF4444', 2: '#FF7744', 3: '#FFAA44', 4: '#44AA44', 5: '#00AA00'
-    };
-    return colors[rating as keyof typeof colors] || '#DDD';
+    if (!rating || rating === 0) return '#DDD';
+    
+    // Handle both 3-point traffic light system and 5-point star system
+    if (rating <= 3) {
+      // Traffic light system: 1=Red, 2=Yellow, 3=Green
+      const trafficColors = {
+        1: '#FF4444', // Red - Poor
+        2: '#FFAA44', // Yellow - Average 
+        3: '#00AA00', // Green - Excellent
+      };
+      return trafficColors[rating as keyof typeof trafficColors] || '#DDD';
+    } else {
+      // 5-star system: 1-5 stars
+      const starColors = {
+        1: '#FF4444', // Red
+        2: '#FF7744', // Orange-Red
+        3: '#FFAA44', // Orange
+        4: '#44AA44', // Light Green
+        5: '#00AA00', // Green
+      };
+      return starColors[rating as keyof typeof starColors] || '#DDD';
+    }
   };
 
   const getTrafficLightLabel = (rating: number | null) => {
-    if (!rating) return 'No rating';
-    const labels = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Great', 5: 'Excellent' };
-    return labels[rating as keyof typeof labels] || 'No rating';
+    if (!rating || rating === 0) return 'No rating';
+    
+    // Handle both 3-point traffic light system and 5-point star system
+    if (rating <= 3) {
+      // Traffic light system: 1=Red, 2=Yellow, 3=Green
+      const trafficLabels = {
+        1: 'Poor',
+        2: 'Average',
+        3: 'Excellent'
+      };
+      return trafficLabels[rating as keyof typeof trafficLabels] || 'No rating';
+    } else {
+      // 5-star system: 1-5 stars
+      const starLabels = {
+        1: 'Poor',
+        2: 'Fair', 
+        3: 'Good',
+        4: 'Great',
+        5: 'Excellent'
+      };
+      return starLabels[rating as keyof typeof starLabels] || 'No rating';
+    }
   };
 
   if (loading) {
@@ -237,7 +268,7 @@ export default function PostDetailScreen() {
 
         {/* Restaurant Card */}
         <View style={styles.restaurantCard}>
-          <Image source={{ uri: post.restaurant.image }} style={styles.restaurantImage} />
+          <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
           <View style={styles.restaurantInfo}>
             <Text style={styles.restaurantName}>{post.restaurant.name}</Text>
             <Text style={styles.restaurantLocation}>{post.restaurant.location}</Text>
@@ -339,7 +370,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 80,
   },
   loadingContainer: {
     flex: 1,

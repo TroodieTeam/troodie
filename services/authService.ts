@@ -374,4 +374,17 @@ export const authService = {
     
     return { limited: false, secondsRemaining: 0 }
   },
+
+  /**
+   * Get the current user ID
+   */
+  async getCurrentUserId(): Promise<string | null> {
+    try {
+      const session = await this.getSession()
+      return session?.user?.id || null
+    } catch (error) {
+      console.error('Error getting current user ID:', error)
+      return null
+    }
+  },
 }

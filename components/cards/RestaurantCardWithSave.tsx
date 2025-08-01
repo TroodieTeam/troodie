@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { Bookmark, MapPin, Star } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
+import { designTokens, compactDesign } from '@/constants/designTokens';
+import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { RestaurantInfo } from '@/types/core';
 import { boardService } from '@/services/boardService';
@@ -25,6 +27,7 @@ interface RestaurantCardWithSaveProps {
   };
   compact?: boolean;
   showSaveButton?: boolean;
+  onRefresh?: () => void;
 }
 
 // Separate components for better modularity
@@ -47,12 +50,12 @@ const SaveButton = ({
     disabled={isLoading}
   >
     {isLoading ? (
-      <ActivityIndicator size="small" color="#FFFFFF" />
+      <ActivityIndicator size="small" color={designTokens.colors.textMedium} />
     ) : (
       <Bookmark 
-        size={20} 
-        color={isSaved ? theme.colors.primary : '#FFFFFF'}
-        fill={isSaved ? theme.colors.primary : 'transparent'}
+        size={18} 
+        color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textLight}
+        fill={isSaved ? designTokens.colors.primaryOrange : 'transparent'}
       />
     )}
   </TouchableOpacity>
@@ -60,14 +63,14 @@ const SaveButton = ({
 
 const RatingSection = ({ rating }: { rating: number }) => (
   <View style={styles.rating}>
-    <Star size={14} color="#FFB800" fill="#FFB800" />
+    <Star size={12} color="#FFB800" fill="#FFB800" />
     <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
   </View>
 );
 
 const LocationSection = ({ location }: { location: string }) => (
   <View style={styles.location}>
-    <MapPin size={14} color="#666" />
+    <MapPin size={12} color={designTokens.colors.textMedium} />
     <Text style={styles.locationText} numberOfLines={1}>
       {location}
     </Text>
@@ -94,7 +97,8 @@ export function RestaurantCardWithSave({
   onPress, 
   stats, 
   compact = false,
-  showSaveButton = true 
+  showSaveButton = true,
+  onRefresh 
 }: RestaurantCardWithSaveProps) {
   const { user } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
@@ -147,6 +151,9 @@ export function RestaurantCardWithSave({
         await boardService.saveRestaurantToQuickSaves(user.id, restaurant.id);
         setIsSaved(true);
         
+        // Call refresh callback if provided
+        onRefresh?.();
+        
         ToastService.showSuccess(
           'Added to Quick Saves',
           {
@@ -198,11 +205,31 @@ export function RestaurantCardWithSave({
         onPress={handleCardPress}
         activeOpacity={0.7}
       >
-        <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: restaurant.image || 'https://via.placeholder.com/300x200' }} 
-            style={[styles.image, compact && styles.compactImage]} 
-          />
+        <Image 
+          source={{ uri: restaurant.image || DEFAULT_IMAGES.restaurant }} 
+          style={[styles.image, compact && styles.compactImage]} 
+        />
+        
+        <View style={styles.content}>
+          <View style={styles.mainInfo}>
+            <Text style={styles.name} numberOfLines={1}>
+              {restaurant.name || 'Restaurant'}
+            </Text>
+            <Text style={styles.cuisine} numberOfLines={1}>
+              {detailsText}
+            </Text>
+            
+            {!compact && (
+              <>
+                {restaurant.rating !== undefined && restaurant.rating > 0 && (
+                  <RatingSection rating={restaurant.rating} />
+                )}
+                {restaurant.location && <LocationSection location={restaurant.location} />}
+                {stats && <StatsSection stats={stats} />}
+              </>
+            )}
+          </View>
+          
           {showSaveButton && (
             <SaveButton 
               onPress={handleSave}
@@ -210,25 +237,6 @@ export function RestaurantCardWithSave({
               isSaved={isSaved} 
               isLoading={isSaving}
             />
-          )}
-        </View>
-        
-        <View style={styles.content}>
-          <Text style={styles.name} numberOfLines={1}>
-            {restaurant.name || 'Restaurant'}
-          </Text>
-          <Text style={styles.cuisine} numberOfLines={1}>
-            {detailsText}
-          </Text>
-          
-          {!compact && (
-            <>
-              {restaurant.rating !== undefined && restaurant.rating > 0 && (
-                <RatingSection rating={restaurant.rating} />
-              )}
-              {restaurant.location && <LocationSection location={restaurant.location} />}
-              {stats && <StatsSection stats={stats} />}
-            </>
           )}
         </View>
       </TouchableOpacity>
@@ -244,6 +252,7 @@ export function RestaurantCardWithSave({
             // Refresh save status after adding to boards
             checkSaveStatus();
           }}
+          onRefresh={onRefresh}
         />
       )}
     </>
@@ -252,82 +261,73 @@ export function RestaurantCardWithSave({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    flexDirection: 'row',
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.sm,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
   },
   compactContainer: {
-    marginBottom: 12,
-  },
-  imageContainer: {
-    position: 'relative',
+    marginBottom: 8,
   },
   image: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#F0F0F0',
+    width: 64,
+    height: 64,
+    backgroundColor: designTokens.colors.backgroundGray,
   },
   compactImage: {
-    height: 150,
+    width: 64,
+    height: 64,
   },
   saveButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 8,
+    alignSelf: 'center',
   },
   content: {
-    padding: 16,
+    flex: 1,
+    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mainInfo: {
+    flex: 1,
+    justifyContent: 'center',
   },
   name: {
-    fontSize: 18,
+    fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
-    color: '#1A1A1A',
-    marginBottom: 4,
+    color: designTokens.colors.textDark,
+    marginBottom: 2,
   },
   cuisine: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginBottom: 8,
+    color: designTokens.colors.textMedium,
+    marginBottom: 2,
   },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 2,
   },
   ratingText: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: 'Inter_500Medium',
-    color: '#1A1A1A',
-    marginLeft: 4,
+    color: designTokens.colors.textDark,
+    marginLeft: 2,
   },
   location: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginTop: 2,
+    gap: 2,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: 'Inter_400Regular',
-    color: '#666',
-    marginLeft: 4,
+    color: designTokens.colors.textMedium,
     flex: 1,
   },
   stats: {
