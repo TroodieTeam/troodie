@@ -1,14 +1,14 @@
-import { theme } from '@/constants/theme';
 import { DEFAULT_IMAGES } from '@/constants/images';
+import { theme } from '@/constants/theme';
 import { PostWithUser } from '@/types/post';
 import { Bookmark, Calendar, Heart, MapPin, MessageCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface ProfilePostCardProps {
@@ -178,7 +178,7 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
                   // Give up after 3 attempts
                   setImageError(true);
                   
-                  // Do detailed analysis on final failure
+                  console.log('Final image failure details:', {
                     isSupabaseStorage: mainPhoto.includes('supabase.co/storage'),
                     hasPublicFolder: mainPhoto.includes('/public/'),
                     bucket: mainPhoto.split('/').find(part => part === 'post-photos'),
@@ -189,6 +189,7 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
                   // Test if we can fetch the URL directly with full headers
                   fetch(mainPhoto, { method: 'HEAD' })
                     .then(response => {
+                      console.log('Direct fetch HEAD response:', {
                         status: response.status,
                         statusText: response.statusText,
                         contentType: response.headers.get('content-type'),
@@ -198,6 +199,7 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
                       });
                     })
                     .catch(err => {
+                        console.error('Direct fetch HEAD failed:', err);
                     });
                 }
               }}
