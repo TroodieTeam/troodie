@@ -23,6 +23,7 @@ export const toastConfig = {
             style={styles.actionButton}
             onPress={props.props?.onActionPress}
             activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={styles.actionText}>{props.props?.actionLabel}</Text>
           </TouchableOpacity>
@@ -37,11 +38,24 @@ export const toastConfig = {
       style={[styles.base, styles.error]}
       contentContainerStyle={styles.contentContainer}
       text1Style={styles.text1}
+      text2Style={styles.text2}
       renderLeadingIcon={() => (
         <View style={styles.iconContainer}>
           <XCircle size={20} color="#fff" />
         </View>
       )}
+      renderTrailingIcon={() => 
+        props.props?.isActionable ? (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.errorActionButton]}
+            onPress={props.props?.onActionPress}
+            activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.actionText}>{props.props?.actionLabel}</Text>
+          </TouchableOpacity>
+        ) : null
+      }
     />
   ),
 
@@ -109,5 +123,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
+  },
+  errorActionButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
 });

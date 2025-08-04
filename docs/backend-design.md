@@ -376,6 +376,286 @@ CREATE TABLE public.external_content_sources (
 - Articles
 - Other
 
+### Restaurant Images System
+
+#### `restaurant_images` Table
+Manages all images associated with restaurants, including user-uploaded photos from posts, direct uploads, and restaurant-provided images.
+
+```sql
+CREATE TABLE public.restaurant_images (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  restaurant_id uuid NOT NULL,
+  user_id uuid,                      -- User who uploaded the image
+  post_id uuid,                      -- Associated post if from a post
+  image_url text NOT NULL,           -- URL of the image in storage
+  caption text,                      -- Optional caption for the image
+  uploaded_at timestamp with time zone DEFAULT now(),
+  is_cover_photo boolean DEFAULT false,  -- Whether this is a cover photo candidate
+  is_approved boolean DEFAULT true,  -- For moderation (auto-approved for now)
+  approved_by uuid,                  -- Admin who approved
+  approved_at timestamp with time zone,
+  source character varying DEFAULT 'user_post' CHECK (source::text = ANY (ARRAY['user_post'::character varying, 'user_upload'::character varying, 'restaurant_upload'::character varying, 'external'::character varying]::text[])),
+  attribution_name text,             -- For external sources
+  attribution_url text,              -- Link to original source
+  privacy character varying DEFAULT 'public' CHECK (privacy::text = ANY (ARRAY['public'::character varying, 'friends'::character varying, 'private'::character varying]::text[])),
+  view_count integer DEFAULT 0,
+  like_count integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT restaurant_images_pkey PRIMARY KEY (id),
+  CONSTRAINT restaurant_images_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES public.restaurants(id) ON DELETE CASCADE,
+  CONSTRAINT restaurant_images_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT restaurant_images_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE
+);
+
+-- Indexes for performance
+CREATE INDEX idx_restaurant_images_restaurant ON restaurant_images(restaurant_id);
+CREATE INDEX idx_restaurant_images_user ON restaurant_images(user_id);
+CREATE INDEX idx_restaurant_images_post ON restaurant_images(post_id);
+CREATE INDEX idx_restaurant_images_cover ON restaurant_images(restaurant_id, is_cover_photo) WHERE is_cover_photo = true;
+```
+
+**Key Features**:
+- **Automatic Post Integration**: When users create posts with photos, those images are automatically added to the restaurant's photo gallery
+- **Privacy Respect**: Images inherit privacy settings from their associated posts
+- **Attribution**: Tracks who uploaded each image and from what source
+- **Cover Photo System**: Intelligently selects and updates restaurant cover photos based on quality and engagement
+- **Real-time Updates**: Photo galleries update in real-time as new images are added
+
+**Image Sources**:
+- `user_post`: Images from user posts (automatic)
+- `user_upload`: Direct uploads to restaurant gallery
+- `restaurant_upload`: Images uploaded by restaurant owners
+- `external`: Images from external sources with attribution
+
+**Functions**:
+```sql
+-- Function to add post images to restaurant gallery
+CREATE OR REPLACE FUNCTION add_post_images_to_restaurant(
+  p_post_id UUID,
+  p_restaurant_id UUID,
+  p_user_id UUID,
+  p_photos TEXT[],
+  p_privacy VARCHAR DEFAULT 'public'
+) RETURNS VOID AS $$
+BEGIN
+  -- Insert each photo from the post into restaurant_images
+  INSERT INTO restaurant_images (
+    restaurant_id, user_id, post_id, image_url, source, privacy
+  )
+  SELECT 
+    p_restaurant_id,
+    p_user_id,
+    p_post_id,
+    unnest(p_photos),
+    'user_post',
+    p_privacy;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update restaurant cover photo
+CREATE OR REPLACE FUNCTION update_restaurant_cover_photo(
+  p_restaurant_id UUID
+) RETURNS VOID AS $$
+DECLARE
+  v_best_photo TEXT;
+BEGIN
+  -- Select best photo based on engagement and recency
+  SELECT image_url INTO v_best_photo
+  FROM restaurant_images
+  WHERE restaurant_id = p_restaurant_id
+    AND privacy = 'public'
+    AND is_approved = true
+  ORDER BY 
+    like_count DESC,
+    view_count DESC,
+    uploaded_at DESC
+  LIMIT 1;
+  
+  -- Update restaurant cover photo if found
+  IF v_best_photo IS NOT NULL THEN
+    UPDATE restaurants 
+    SET cover_photo_url = v_best_photo
+    WHERE id = p_restaurant_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### Intelligent Cover Photo System
+
+The intelligent cover photo system automatically selects and updates restaurant cover images based on quality metrics and user engagement.
+
+##### Schema Updates for Cover Photos
+
+```sql
+-- Add quality tracking fields to restaurant_images
+ALTER TABLE restaurant_images
+ADD COLUMN IF NOT EXISTS quality_score DECIMAL(3,2) DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS width INTEGER,
+ADD COLUMN IF NOT EXISTS height INTEGER,
+ADD COLUMN IF NOT EXISTS aspect_ratio DECIMAL(4,2),
+ADD COLUMN IF NOT EXISTS is_auto_selected BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS brightness_score DECIMAL(3,2),
+ADD COLUMN IF NOT EXISTS sharpness_score DECIMAL(3,2),
+ADD COLUMN IF NOT EXISTS composition_score DECIMAL(3,2),
+ADD COLUMN IF NOT EXISTS engagement_score DECIMAL(5,2) DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS recency_score DECIMAL(3,2) DEFAULT 1.00,
+ADD COLUMN IF NOT EXISTS overall_score DECIMAL(5,2) DEFAULT 0.00;
+
+-- Indexes for performance
+CREATE INDEX idx_restaurant_images_quality ON restaurant_images(restaurant_id, quality_score DESC);
+CREATE INDEX idx_restaurant_images_auto_selected ON restaurant_images(restaurant_id, is_auto_selected);
+CREATE INDEX idx_restaurant_images_overall_score ON restaurant_images(overall_score DESC);
+```
+
+##### Intelligent Selection Functions
+
+```sql
+-- Calculate engagement score for an image
+CREATE OR REPLACE FUNCTION calculate_image_engagement_score(p_image_id UUID)
+RETURNS DECIMAL AS $$
+DECLARE
+  v_engagement_score DECIMAL;
+  v_post_likes INTEGER;
+  v_post_saves INTEGER;
+  v_post_comments INTEGER;
+BEGIN
+  -- Get engagement from associated post
+  SELECT 
+    COALESCE(p.likes_count, 0) + COALESCE(p.saves_count, 0) * 2 + COALESCE(p.comments_count, 0) * 1.5
+  INTO v_engagement_score
+  FROM restaurant_images ri
+  LEFT JOIN posts p ON ri.post_id = p.id
+  WHERE ri.id = p_image_id;
+  
+  -- Normalize to 0-1 scale (assuming 100 engagements is excellent)
+  RETURN LEAST(COALESCE(v_engagement_score, 0) / 100.0, 1.0);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Select best cover photo for a restaurant
+CREATE OR REPLACE FUNCTION select_best_cover_photo(p_restaurant_id UUID)
+RETURNS UUID AS $$
+DECLARE
+  v_best_image_id UUID;
+  v_current_cover_id UUID;
+BEGIN
+  -- Get current cover photo
+  SELECT id INTO v_current_cover_id
+  FROM restaurant_images
+  WHERE restaurant_id = p_restaurant_id AND is_cover_photo = true
+  LIMIT 1;
+  
+  -- Select best photo based on multiple factors
+  WITH scored_images AS (
+    SELECT 
+      id,
+      quality_score,
+      calculate_image_engagement_score(id) as engagement_score,
+      -- Recency score (images from last 30 days get bonus)
+      CASE 
+        WHEN uploaded_at > NOW() - INTERVAL '7 days' THEN 1.0
+        WHEN uploaded_at > NOW() - INTERVAL '30 days' THEN 0.8
+        WHEN uploaded_at > NOW() - INTERVAL '90 days' THEN 0.5
+        ELSE 0.3
+      END as recency_score,
+      -- Calculate overall score
+      (
+        quality_score * 0.4 +  -- 40% quality
+        calculate_image_engagement_score(id) * 0.4 +  -- 40% engagement
+        CASE 
+          WHEN uploaded_at > NOW() - INTERVAL '7 days' THEN 1.0
+          WHEN uploaded_at > NOW() - INTERVAL '30 days' THEN 0.8
+          WHEN uploaded_at > NOW() - INTERVAL '90 days' THEN 0.5
+          ELSE 0.3
+        END * 0.2  -- 20% recency
+      ) as overall_score
+    FROM restaurant_images
+    WHERE restaurant_id = p_restaurant_id
+      AND privacy = 'public'
+      AND is_approved = true
+      AND width >= 800  -- Minimum quality requirements
+      AND height >= 600
+      AND aspect_ratio BETWEEN 1.0 AND 2.0  -- Reasonable aspect ratios
+  )
+  SELECT id INTO v_best_image_id
+  FROM scored_images
+  ORDER BY overall_score DESC
+  LIMIT 1;
+  
+  -- Only update if we found a better image
+  IF v_best_image_id IS NOT NULL AND (v_current_cover_id IS NULL OR v_best_image_id != v_current_cover_id) THEN
+    -- Remove current cover flag
+    UPDATE restaurant_images
+    SET is_cover_photo = false
+    WHERE restaurant_id = p_restaurant_id AND is_cover_photo = true;
+    
+    -- Set new cover
+    UPDATE restaurant_images
+    SET is_cover_photo = true, is_auto_selected = true
+    WHERE id = v_best_image_id;
+    
+    -- Update restaurant cover photo URL
+    UPDATE restaurants
+    SET cover_photo_url = (
+      SELECT image_url FROM restaurant_images WHERE id = v_best_image_id
+    )
+    WHERE id = p_restaurant_id;
+  END IF;
+  
+  RETURN v_best_image_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to update cover photo when new images are added
+CREATE OR REPLACE FUNCTION trigger_update_cover_photo()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only process for restaurants without manual cover or with low quality covers
+  IF EXISTS (
+    SELECT 1 FROM restaurants 
+    WHERE id = NEW.restaurant_id 
+    AND (cover_photo_url IS NULL OR cover_photo_url LIKE '%default%')
+  ) THEN
+    PERFORM select_best_cover_photo(NEW.restaurant_id);
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger
+CREATE TRIGGER update_restaurant_cover_on_image_add
+AFTER INSERT ON restaurant_images
+FOR EACH ROW
+EXECUTE FUNCTION trigger_update_cover_photo();
+```
+
+##### Service Implementation
+
+The intelligent cover photo service (`intelligentCoverPhotoService.ts`) provides:
+
+1. **Image Quality Analysis**:
+   - Resolution and aspect ratio validation
+   - Brightness and contrast assessment  
+   - Sharpness detection
+   - Composition scoring
+
+2. **Multi-Factor Selection Algorithm**:
+   - 40% Image quality score
+   - 40% User engagement (likes, saves, comments)
+   - 20% Recency (newer photos preferred)
+
+3. **Background Processing**:
+   - Asynchronous updates to avoid blocking user actions
+   - Queue system for batch processing
+   - Periodic re-evaluation of cover photos
+
+4. **Manual Override Support**:
+   - Restaurant owners can manually select cover photos
+   - Manual selections are preserved and not auto-updated
+
 ### Social Features
 
 #### Power Users & Critics Definition
@@ -555,11 +835,54 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
-**Features**:
-- Full-text search across username, name, and bio
-- Returns follow status for current user
-- Prioritizes verified users and those with more followers
-- Supports pagination for large result sets
+**Enhanced User Discovery Features**:
+- **Full-text search** across username, name, and bio with ranking
+- **Smart suggestions** based on common food interests and mutual friends  
+- **Location-based discovery** for finding nearby users
+- **Activity-based recommendations** showing recently active users
+- **Follow status enrichment** for current user context
+- **Advanced filtering** with location, verification, and activity filters
+- **Pagination support** for large result sets
+- **Relevance scoring** prioritizing exact matches, verified users, and popularity
+
+#### Enhanced User Discovery System
+
+**Database Functions**:
+
+```sql
+-- Enhanced search with better ranking and filtering
+search_users_enhanced(search_query, limit_count, offset_count, include_location_filter, location_filter)
+
+-- Intelligent user suggestions based on multiple factors
+get_suggested_users(limit_count)
+
+-- Recently active users for discovery
+get_recently_active_users(days_back, limit_count)
+
+-- Location-based user discovery
+get_users_by_location(user_location, limit_count)
+```
+
+**Suggestion Algorithm**:
+The `get_suggested_users` function uses a multi-factor scoring system:
+
+1. **Common Food Interests** (+25 points): Based on shared cuisine preferences from restaurant saves
+2. **Mutual Friends** (+10 points per mutual friend): Users connected through the social graph  
+3. **Location Proximity** (+25 points same area, +10 points nearby): Geographic relevance
+4. **User Verification** (+20 points): Prioritize verified accounts
+5. **Popularity Score** (+0-50 points): Based on followers count (capped for balance)
+6. **Activity Level**: Only suggests users who have saved restaurants (active engagement)
+
+**Location Scoring**:
+- Same location string match: Distance rank 1 (highest priority)
+- Different but known locations: Distance rank 2 (medium priority)  
+- Unknown/null locations: Distance rank 3 (lowest priority)
+
+**Performance Optimizations**:
+- Indexed full-text search with `gin` indexes on user content
+- Optimized mutual friend calculations using CTEs
+- Efficient cuisine preference matching through array operations
+- Cached follower counts for quick popularity scoring
 
 ### Board System
 
@@ -775,6 +1098,297 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
+
+#### Community Discovery Features
+
+The community discovery system helps users find relevant communities through featured, trending, and personalized recommendations.
+
+##### Schema Updates for Discovery
+
+```sql
+-- Add discovery-related fields to communities table
+ALTER TABLE communities 
+ADD COLUMN IF NOT EXISTS post_count INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS trending_score DECIMAL(10,2) DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS cuisines TEXT[] DEFAULT '{}';
+
+-- Community activity tracking
+CREATE TABLE IF NOT EXISTS community_activity (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id),
+  activity_type VARCHAR NOT NULL CHECK (activity_type IN ('post', 'join', 'visit', 'invite')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User community interests
+CREATE TABLE IF NOT EXISTS user_community_interests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
+  interest_score DECIMAL(5,2) DEFAULT 1.00,
+  tags TEXT[] DEFAULT '{}',
+  cuisines TEXT[] DEFAULT '{}',
+  last_interaction TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, community_id)
+);
+
+-- Indexes for performance
+CREATE INDEX idx_community_activity_community ON community_activity(community_id);
+CREATE INDEX idx_community_activity_user ON community_activity(user_id);
+CREATE INDEX idx_community_activity_created ON community_activity(created_at DESC);
+CREATE INDEX idx_user_interests_user ON user_community_interests(user_id);
+CREATE INDEX idx_communities_featured ON communities(is_featured) WHERE is_featured = true;
+CREATE INDEX idx_communities_trending ON communities(trending_score DESC);
+```
+
+##### Discovery Functions
+
+```sql
+-- Get featured communities
+CREATE OR REPLACE FUNCTION get_featured_communities(p_limit INTEGER DEFAULT 5)
+RETURNS TABLE (
+  id UUID,
+  name VARCHAR,
+  description TEXT,
+  location VARCHAR,
+  category VARCHAR,
+  cover_image_url TEXT,
+  member_count INTEGER,
+  post_count INTEGER,
+  tags TEXT[],
+  cuisines TEXT[],
+  is_featured BOOLEAN
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    c.id,
+    c.name,
+    c.description,
+    c.location,
+    c.category,
+    c.cover_image_url,
+    c.member_count,
+    c.post_count,
+    c.tags,
+    c.cuisines,
+    c.is_featured
+  FROM communities c
+  WHERE c.is_active = true
+    AND c.is_featured = true
+  ORDER BY c.member_count DESC, c.activity_level DESC
+  LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Get trending communities
+CREATE OR REPLACE FUNCTION get_trending_communities(
+  p_location TEXT DEFAULT NULL,
+  p_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+  id UUID,
+  name VARCHAR,
+  description TEXT,
+  location VARCHAR,
+  category VARCHAR,
+  cover_image_url TEXT,
+  member_count INTEGER,
+  post_count INTEGER,
+  trending_score DECIMAL,
+  tags TEXT[],
+  cuisines TEXT[]
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH recent_activity AS (
+    SELECT 
+      community_id,
+      COUNT(*) as activity_count
+    FROM community_activity
+    WHERE created_at > NOW() - INTERVAL '7 days'
+    GROUP BY community_id
+  )
+  SELECT 
+    c.id,
+    c.name,
+    c.description,
+    c.location,
+    c.category,
+    c.cover_image_url,
+    c.member_count,
+    c.post_count,
+    c.trending_score,
+    c.tags,
+    c.cuisines
+  FROM communities c
+  LEFT JOIN recent_activity ra ON c.id = ra.community_id
+  WHERE c.is_active = true
+    AND (p_location IS NULL OR c.location ILIKE '%' || p_location || '%')
+  ORDER BY 
+    COALESCE(ra.activity_count, 0) DESC,
+    c.trending_score DESC,
+    c.member_count DESC
+  LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Get personalized community recommendations
+CREATE OR REPLACE FUNCTION get_recommended_communities(
+  p_user_id UUID,
+  p_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+  id UUID,
+  name VARCHAR,
+  description TEXT,
+  location VARCHAR,
+  category VARCHAR,
+  cover_image_url TEXT,
+  member_count INTEGER,
+  post_count INTEGER,
+  relevance_score DECIMAL,
+  tags TEXT[],
+  cuisines TEXT[],
+  recommendation_reason TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH user_preferences AS (
+    -- Get user's interests from their community interactions
+    SELECT DISTINCT
+      unnest(tags) as tag,
+      unnest(cuisines) as cuisine
+    FROM user_community_interests
+    WHERE user_id = p_user_id
+  ),
+  user_location AS (
+    -- Get user's location
+    SELECT location FROM users WHERE id = p_user_id
+  ),
+  already_member AS (
+    -- Communities user is already a member of
+    SELECT community_id FROM community_members 
+    WHERE user_id = p_user_id AND status = 'active'
+  )
+  SELECT 
+    c.id,
+    c.name,
+    c.description,
+    c.location,
+    c.category,
+    c.cover_image_url,
+    c.member_count,
+    c.post_count,
+    -- Calculate relevance score based on multiple factors
+    (
+      -- Location match (40%)
+      CASE 
+        WHEN c.location = (SELECT location FROM user_location) THEN 0.4
+        WHEN c.location ILIKE '%' || COALESCE((SELECT location FROM user_location), '') || '%' THEN 0.2
+        ELSE 0
+      END +
+      -- Tag match (30%)
+      (SELECT COUNT(DISTINCT tag) * 0.1 FROM user_preferences up WHERE up.tag = ANY(c.tags)) +
+      -- Cuisine match (30%)
+      (SELECT COUNT(DISTINCT cuisine) * 0.1 FROM user_preferences up WHERE up.cuisine = ANY(c.cuisines))
+    )::DECIMAL as relevance_score,
+    c.tags,
+    c.cuisines,
+    -- Generate recommendation reason
+    CASE
+      WHEN c.location = (SELECT location FROM user_location) THEN 'Popular in your area'
+      WHEN EXISTS (SELECT 1 FROM user_preferences up WHERE up.tag = ANY(c.tags)) THEN 'Based on your interests'
+      WHEN EXISTS (SELECT 1 FROM user_preferences up WHERE up.cuisine = ANY(c.cuisines)) THEN 'Matches your cuisine preferences'
+      ELSE 'You might like this'
+    END as recommendation_reason
+  FROM communities c
+  WHERE c.is_active = true
+    AND c.id NOT IN (SELECT community_id FROM already_member)
+  ORDER BY relevance_score DESC, c.member_count DESC
+  LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Track community activity
+CREATE OR REPLACE FUNCTION track_community_activity(
+  p_community_id UUID,
+  p_user_id UUID,
+  p_activity_type VARCHAR
+) RETURNS VOID AS $$
+BEGIN
+  INSERT INTO community_activity (community_id, user_id, activity_type)
+  VALUES (p_community_id, p_user_id, p_activity_type);
+  
+  -- Update trending score
+  UPDATE communities
+  SET trending_score = trending_score + 
+    CASE p_activity_type
+      WHEN 'post' THEN 2.0
+      WHEN 'join' THEN 1.5
+      WHEN 'visit' THEN 0.5
+      WHEN 'invite' THEN 1.0
+      ELSE 0.1
+    END
+  WHERE id = p_community_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Update user community interests
+CREATE OR REPLACE FUNCTION update_user_community_interests(
+  p_user_id UUID,
+  p_community_id UUID,
+  p_action VARCHAR
+) RETURNS VOID AS $$
+DECLARE
+  v_tags TEXT[];
+  v_cuisines TEXT[];
+BEGIN
+  -- Get community tags and cuisines
+  SELECT tags, cuisines INTO v_tags, v_cuisines
+  FROM communities WHERE id = p_community_id;
+  
+  -- Insert or update user interests
+  INSERT INTO user_community_interests (
+    user_id, community_id, interest_score, tags, cuisines, last_interaction
+  ) VALUES (
+    p_user_id, p_community_id, 1.0, v_tags, v_cuisines, NOW()
+  )
+  ON CONFLICT (user_id, community_id) DO UPDATE
+  SET 
+    interest_score = user_community_interests.interest_score + 
+      CASE p_action
+        WHEN 'join' THEN 5.0
+        WHEN 'post' THEN 2.0
+        WHEN 'visit' THEN 0.5
+        ELSE 0.1
+      END,
+    last_interaction = NOW();
+END;
+$$ LANGUAGE plpgsql;
+```
+
+##### Discovery Service Implementation
+
+The community discovery service (`communityDiscoveryService.ts`) provides:
+
+1. **Featured Communities**: Hand-picked communities shown to all users
+2. **Trending Communities**: Communities with high recent activity, optionally filtered by location
+3. **Personalized Recommendations**: Communities suggested based on user's interests, location, and activity
+
+**Caching Strategy**:
+- Featured communities: 30 minutes
+- Trending communities: 10 minutes  
+- Personalized recommendations: 5 minutes
+
+**Integration Points**:
+- Explore page shows mixed community sections between restaurant content
+- User visits to communities are tracked for improving recommendations
+- Activity tracking happens asynchronously to not impact performance
 
 ### Engagement & Interactions
 
@@ -1445,6 +2059,6 @@ supabase
 
 ---
 
-**Last Updated**: 2025-07-30
-**Version**: 1.2
+**Last Updated**: 2025-08-04
+**Version**: 1.3
 **Maintainer**: Engineering Team

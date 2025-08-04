@@ -22,7 +22,9 @@ import { NetworkStatusBanner } from '@/components/NetworkStatusBanner';
 import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
+import { BackgroundTaskManager } from '@/utils/backgroundTasks';
 import * as Sentry from '@sentry/react-native';
+import { useEffect } from 'react';
 
 Sentry.init({
   dsn: 'https://154af650ab170036784f1db10af4e5b8@o4509745606230016.ingest.us.sentry.io/4509745609900032',
@@ -53,6 +55,17 @@ export default Sentry.wrap(function RootLayout() {
     Inter_700Bold,
   });
 
+  useEffect(() => {
+    // Initialize background tasks
+    const backgroundTaskManager = BackgroundTaskManager.getInstance();
+    backgroundTaskManager.startBackgroundTasks();
+
+    // Cleanup on unmount
+    return () => {
+      backgroundTaskManager.cleanup();
+    };
+  }, []);
+
   if (!loaded) {
     // Async font loading only occurs in development.
     return null;
@@ -72,6 +85,7 @@ export default Sentry.wrap(function RootLayout() {
               <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="find-friends" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="dark" />

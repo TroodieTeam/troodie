@@ -75,6 +75,8 @@ export default function CommunityDetailScreen() {
 
   const loadCommunityData = async () => {
     if (!communityId) {
+      console.error('No communityId provided to community-detail screen');
+      Alert.alert('Error', 'Community ID is missing');
       router.back();
       return;
     }
@@ -82,25 +84,34 @@ export default function CommunityDetailScreen() {
     try {
       setRefreshing(true);
       
-      const communityData = await communityService.getCommunityById(communityId);
+      // Get community with membership info if user is logged in
+      let communityData;
+      if (user) {
+        communityData = await communityService.getCommunityWithMembership(communityId, user.id);
+        if (communityData) {
+          // Check if user is a member based on having a role
+          setIsMember(!!communityData.user_role);
+        }
+      } else {
+        communityData = await communityService.getCommunity(communityId);
+      }
+      
       if (!communityData) {
         Alert.alert('Error', 'Community not found');
         router.back();
         return;
       }
-      
       setCommunity(communityData);
       
-      if (user) {
-        const membership = await communityService.isUserMember(user.id, communityId);
-        setIsMember(membership.isMember);
-      }
-      
-      const membersData = await communityService.getCommunityMembersWithDetails(communityId, 50);
+      // Get community members
+      const membersData = await communityService.getCommunityMembers(communityId);
+      console.log('Loaded members:', membersData.length, 'members');
+      console.log('Members data:', membersData);
       setMembers(membersData);
       
-      const postsData = await communityService.getCommunityPosts(communityId, 20);
-      setPosts(postsData);
+      // TODO: Implement getCommunityPosts in communityService
+      // const postsData = await communityService.getCommunityPosts(communityId, 20);
+      setPosts([]); // Temporary empty array until posts method is implemented
       
     } catch (error) {
       console.error('Error fetching community data:', error);

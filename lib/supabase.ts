@@ -668,6 +668,123 @@ export type Database = {
           created_at?: string
         }
       }
+      communities: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          cover_image_url: string | null
+          category: string | null
+          location: string | null
+          admin_id: string | null
+          type: 'public' | 'private' | 'paid'
+          price: number | null
+          currency: string
+          billing_cycle: string | null
+          member_count: number
+          activity_level: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          cover_image_url?: string | null
+          category?: string | null
+          location?: string | null
+          admin_id?: string | null
+          type?: 'public' | 'private' | 'paid'
+          price?: number | null
+          currency?: string
+          billing_cycle?: string | null
+          member_count?: number
+          activity_level?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          cover_image_url?: string | null
+          category?: string | null
+          location?: string | null
+          admin_id?: string | null
+          type?: 'public' | 'private' | 'paid'
+          price?: number | null
+          currency?: string
+          billing_cycle?: string | null
+          member_count?: number
+          activity_level?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      community_members: {
+        Row: {
+          id: string
+          community_id: string
+          user_id: string
+          role: 'owner' | 'admin' | 'moderator' | 'member'
+          status: 'pending' | 'active' | 'declined'
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          community_id: string
+          user_id: string
+          role?: 'owner' | 'admin' | 'moderator' | 'member'
+          status?: 'pending' | 'active' | 'declined'
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          community_id?: string
+          user_id?: string
+          role?: 'owner' | 'admin' | 'moderator' | 'member'
+          status?: 'pending' | 'active' | 'declined'
+          joined_at?: string
+        }
+      }
+      community_posts: {
+        Row: {
+          id: string
+          community_id: string
+          user_id: string
+          content: string
+          images: string[] | null
+          deleted_at: string | null
+          deleted_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          community_id: string
+          user_id: string
+          content: string
+          images?: string[] | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          community_id?: string
+          user_id?: string
+          content?: string
+          images?: string[] | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       community_admin_logs: {
         Row: {
           id: string
@@ -700,6 +817,71 @@ export type Database = {
           created_at?: string
         }
       }
+      restaurant_images: {
+        Row: {
+          id: string
+          restaurant_id: string
+          user_id: string | null
+          post_id: string | null
+          image_url: string
+          caption: string | null
+          uploaded_at: string
+          is_cover_photo: boolean
+          is_approved: boolean
+          approved_by: string | null
+          approved_at: string | null
+          source: 'user_post' | 'user_upload' | 'restaurant_upload' | 'external'
+          attribution_name: string | null
+          attribution_url: string | null
+          privacy: 'public' | 'friends' | 'private'
+          view_count: number
+          like_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          user_id?: string | null
+          post_id?: string | null
+          image_url: string
+          caption?: string | null
+          uploaded_at?: string
+          is_cover_photo?: boolean
+          is_approved?: boolean
+          approved_by?: string | null
+          approved_at?: string | null
+          source?: 'user_post' | 'user_upload' | 'restaurant_upload' | 'external'
+          attribution_name?: string | null
+          attribution_url?: string | null
+          privacy?: 'public' | 'friends' | 'private'
+          view_count?: number
+          like_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          user_id?: string | null
+          post_id?: string | null
+          image_url?: string
+          caption?: string | null
+          uploaded_at?: string
+          is_cover_photo?: boolean
+          is_approved?: boolean
+          approved_by?: string | null
+          approved_at?: string | null
+          source?: 'user_post' | 'user_upload' | 'restaurant_upload' | 'external'
+          attribution_name?: string | null
+          attribution_url?: string | null
+          privacy?: 'public' | 'friends' | 'private'
+          view_count?: number
+          like_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Functions: {
       search_users: {
@@ -720,6 +902,63 @@ export type Database = {
           location: string | null
         }[]
       }
+      get_featured_communities: {
+        Args: {
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          location: string | null
+          category: string | null
+          cover_image_url: string | null
+          member_count: number
+          post_count: number
+          tags: string[]
+          cuisines: string[]
+          is_featured: boolean
+        }[]
+      }
+      get_trending_communities: {
+        Args: {
+          p_location?: string | null
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          location: string | null
+          category: string | null
+          cover_image_url: string | null
+          member_count: number
+          post_count: number
+          trending_score: number
+          tags: string[]
+          cuisines: string[]
+        }[]
+      }
+      get_recommended_communities: {
+        Args: {
+          p_user_id: string
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          location: string | null
+          category: string | null
+          cover_image_url: string | null
+          member_count: number
+          post_count: number
+          relevance_score: number
+          tags: string[]
+          cuisines: string[]
+          recommendation_reason: string
+        }[]
+      }
     }
   }
 }
@@ -729,3 +968,8 @@ export type SearchUserResult = Database['public']['Functions']['search_users']['
   isFollowing?: boolean
   isCurrentUser?: boolean
 }
+
+// Community discovery types
+export type FeaturedCommunity = Database['public']['Functions']['get_featured_communities']['Returns'][0]
+export type TrendingCommunity = Database['public']['Functions']['get_trending_communities']['Returns'][0]
+export type RecommendedCommunity = Database['public']['Functions']['get_recommended_communities']['Returns'][0]

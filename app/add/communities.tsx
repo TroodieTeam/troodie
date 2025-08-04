@@ -63,8 +63,9 @@ export default function CommunitiesScreen() {
       
       // Fetch user's joined communities if logged in
       if (user) {
-        const joined = await communityService.getUserCommunities(user.id);
-        setUserCommunities(joined);
+        const { joined, created } = await communityService.getUserCommunities(user.id);
+        // Combine joined and created communities
+        setUserCommunities([...joined, ...created]);
       } else {
         setUserCommunities([]);
       }

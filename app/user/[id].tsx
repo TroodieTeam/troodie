@@ -2,11 +2,13 @@ import { BoardCard } from '@/components/BoardCard';
 import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import FollowButton from '@/components/FollowButton';
+import { CommunityTab } from '@/components/profile/CommunityTab';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { personas } from '@/data/personas';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
+import { communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
 import { restaurantService } from '@/services/restaurantService';
@@ -24,9 +26,10 @@ import {
     MessageSquare,
     MoreVertical,
     Share2,
-    User
+    User,
+    Users
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -34,6 +37,7 @@ import {
     Image,
     RefreshControl,
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -47,7 +51,7 @@ import {
     MenuTrigger,
 } from 'react-native-popup-menu';
 
-type TabType = 'boards' | 'posts' | 'quicksaves';
+type TabType = 'boards' | 'posts' | 'quicksaves' | 'communities';
 
 export default function UserDetailScreen() {
   const router = useRouter();
@@ -66,6 +70,11 @@ export default function UserDetailScreen() {
   const [loadingQuickSaves, setLoadingQuickSaves] = useState(true);
   const [refreshingQuickSaves, setRefreshingQuickSaves] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [communities, setCommunities] = useState<{ joined: any[], created: any[] }>({ joined: [], created: [] });
+  const [loadingCommunities, setLoadingCommunities] = useState(true);
+  const [refreshingCommunities, setRefreshingCommunities] = useState(false);
+  const [communityStats, setCommunityStats] = useState({ joined_count: 0, created_count: 0, admin_count: 0, moderator_count: 0 });
+  const tabScrollRef = useRef<ScrollView>(null);
   
   const isOwnProfile = currentUser?.id === id;
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : null;
@@ -78,6 +87,8 @@ export default function UserDetailScreen() {
       loadBoards();
       loadPosts();
       loadQuickSaves();
+      loadCommunities();
+      loadCommunityStats();
       checkFollowStatus();
     }
   }, [id]);
@@ -175,6 +186,43 @@ export default function UserDetailScreen() {
     } finally {
       setLoadingPosts(false);
     }
+  };
+
+  const loadCommunities = async (isRefreshing = false) => {
+    if (!id) return;
+    
+    try {
+      if (!isRefreshing) {
+        setLoadingCommunities(true);
+      }
+      const userCommunities = await communityService.getUserCommunities(id);
+      setCommunities(userCommunities);
+    } catch (error) {
+      console.error('Error loading communities:', error);
+      setCommunities({ joined: [], created: [] });
+    } finally {
+      setLoadingCommunities(false);
+      setRefreshingCommunities(false);
+    }
+  };
+
+  const loadCommunityStats = async () => {
+    if (!id) return;
+    
+    try {
+      const stats = await communityService.getUserCommunityStats(id);
+      setCommunityStats(stats);
+    } catch (error) {
+      console.error('Error loading community stats:', error);
+    }
+  };
+
+  const onRefreshCommunities = async () => {
+    setRefreshingCommunities(true);
+    await Promise.all([
+      loadCommunities(true),
+      loadCommunityStats()
+    ]);
   };
 
   const checkFollowStatus = async () => {
@@ -381,13 +429,18 @@ export default function UserDetailScreen() {
 
   const renderTabs = () => (
     <View style={styles.tabsContainer}>
-      <View style={styles.tabs}>
+      <ScrollView
+        ref={tabScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabs}
+      >
         {(!isOwnProfile || quickSaves.length === 0) ? null : (
           <TouchableOpacity
             style={[styles.tab, activeTab === 'quicksaves' && styles.activeTab]}
             onPress={() => setActiveTab('quicksaves')}
           >
-            <Bookmark size={12} color={activeTab === 'quicksaves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+            <Bookmark size={14} color={activeTab === 'quicksaves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
             <Text style={[styles.tabText, activeTab === 'quicksaves' && styles.activeTabText]}>
               Saves ({quickSaves.length})
             </Text>
@@ -398,7 +451,7 @@ export default function UserDetailScreen() {
           style={[styles.tab, activeTab === 'boards' && styles.activeTab]}
           onPress={() => setActiveTab('boards')}
         >
-          <Grid3X3 size={12} color={activeTab === 'boards' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <Grid3X3 size={14} color={activeTab === 'boards' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'boards' && styles.activeTabText]}>
             Boards ({boards.length})
           </Text>
@@ -408,12 +461,22 @@ export default function UserDetailScreen() {
           style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
           onPress={() => setActiveTab('posts')}
         >
-          <MessageSquare size={12} color={activeTab === 'posts' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <MessageSquare size={14} color={activeTab === 'posts' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'posts' && styles.activeTabText]}>
             Posts ({posts.length})
           </Text>
         </TouchableOpacity>
-      </View>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'communities' && styles.activeTab]}
+          onPress={() => setActiveTab('communities')}
+        >
+          <Users size={14} color={activeTab === 'communities' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <Text style={[styles.tabText, activeTab === 'communities' && styles.activeTabText]}>
+            Communities ({communityStats.joined_count})
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 
@@ -591,6 +654,16 @@ export default function UserDetailScreen() {
           {activeTab === 'quicksaves' && renderQuickSavesTab()}
           {activeTab === 'boards' && renderBoardsTab()}
           {activeTab === 'posts' && renderPostsTab()}
+          {activeTab === 'communities' && (
+            <CommunityTab
+              userId={id || ''}
+              communities={communities}
+              stats={communityStats}
+              loading={loadingCommunities}
+              refreshing={refreshingCommunities}
+              onRefresh={onRefreshCommunities}
+            />
+          )}
         </View>
       </SafeAreaView>
     </MenuProvider>
@@ -774,17 +847,19 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: designTokens.colors.backgroundLight,
-    borderRadius: 8,
+    borderRadius: designTokens.borderRadius.sm,
     padding: 2,
+    gap: 2,
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 6,
-    gap: 4,
+    paddingHorizontal: 16,
+    borderRadius: designTokens.borderRadius.sm - 2,
+    gap: 6,
+    minWidth: 90,
   },
   activeTab: {
     backgroundColor: designTokens.colors.white,
@@ -793,7 +868,7 @@ const styles = StyleSheet.create({
     ...designTokens.shadows.card,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textMedium,
   },

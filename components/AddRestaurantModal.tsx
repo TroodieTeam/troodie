@@ -1,22 +1,23 @@
-import React, { useState, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { X, Search, MapPin, AlertCircle, CheckCircle } from 'lucide-react-native';
+import { compactDesign, designTokens } from '@/constants/designTokens';
+import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
-import { designTokens, compactDesign } from '@/constants/designTokens';
-import { googlePlacesService, GooglePlaceResult, GooglePlaceDetails } from '@/services/googlePlacesService';
 import { supabase } from '@/lib/supabase';
+import { GooglePlaceDetails, GooglePlaceResult, googlePlacesService } from '@/services/googlePlacesService';
 import { debounce } from 'lodash';
+import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 interface AddRestaurantModalProps {
   visible: boolean;
@@ -116,14 +117,14 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
       if (data && data.error) {
         if (data.error.includes('already exists') || data.error.includes('Similar restaurant')) {
           setSubmissionStatus('duplicate');
-          setSubmissionMessage('This restaurant is already in our system!');
+          setSubmissionMessage(strings.addRestaurant.duplicateMessage);
         } else {
           setSubmissionStatus('error');
           setSubmissionMessage(data.error);
         }
       } else if (data && data.success) {
         setSubmissionStatus('success');
-        setSubmissionMessage('Restaurant added successfully! It will be available shortly.');
+        setSubmissionMessage(strings.addRestaurant.successMessage);
         
         // Reset session token for next search
         sessionToken.current = `${Date.now()}`;
@@ -216,7 +217,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
         <View style={styles.backdrop}>
           <View style={styles.modalContent}>
             <View style={styles.header}>
-              <Text style={styles.title}>Add New Restaurant</Text>
+              <Text style={styles.title}>{strings.addRestaurant.title}</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <X size={compactDesign.icon.medium} color={designTokens.colors.textDark} />
               </TouchableOpacity>
@@ -224,14 +225,14 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
 
             <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
               <Text style={styles.description}>
-                Can't find a restaurant? Add it to our database and help the community discover new places!
+                {strings.addRestaurant.description}
               </Text>
 
               <View style={styles.searchContainer}>
                 <Search size={compactDesign.icon.medium} color={designTokens.colors.textLight} style={styles.searchIcon} />
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search for restaurant on Google..."
+                  placeholder={strings.addRestaurant.searchPlaceholder}
                   value={searchQuery}
                   onChangeText={handleSearchChange}
                   placeholderTextColor="#999"
@@ -241,7 +242,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
               {isSearching && (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={theme.colors.primary} />
-                  <Text style={styles.loadingText}>Searching...</Text>
+                  <Text style={styles.loadingText}>{strings.addRestaurant.searchingText}</Text>
                 </View>
               )}
 
@@ -269,7 +270,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
 
               {selectedPlace && placeDetails && (
                 <View style={styles.selectedContainer}>
-                  <Text style={styles.selectedTitle}>Selected Restaurant</Text>
+                  <Text style={styles.selectedTitle}>{strings.addRestaurant.selectedTitle}</Text>
                   <View style={styles.selectedCard}>
                     <Text style={styles.selectedName}>{placeDetails.name}</Text>
                     <Text style={styles.selectedAddress}>{placeDetails.formatted_address}</Text>
@@ -290,7 +291,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
                 style={[styles.cancelButton]} 
                 onPress={onClose}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>{strings.addRestaurant.cancelButton}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -304,7 +305,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
                 {isSubmitting ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
-                  <Text style={styles.submitText}>Add Restaurant</Text>
+                  <Text style={styles.submitText}>{strings.addRestaurant.manualAddButton}</Text>
                 )}
               </TouchableOpacity>
             </View>

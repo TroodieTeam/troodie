@@ -15,7 +15,7 @@ export class UserSearchService {
     offset = 0
   ): Promise<SearchUserResult[]> {
     try {
-      // Call the search_users function
+      // Call the existing search_users function
       const { data, error } = await supabase
         .rpc('search_users', {
           search_query: query,

@@ -254,7 +254,7 @@ export default function HomeScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerTop}>
-        <Text style={styles.brandName}>Troodie</Text>
+        <Text style={styles.brandName}>{strings.app.name}</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/explore')}>
             <Search size={24} color={designTokens.colors.textDark} />
@@ -284,9 +284,9 @@ export default function HomeScreen() {
             <Sparkles size={20} color={designTokens.colors.white} />
           </View>
           <View style={styles.welcomeTextContainer}>
-            <Text style={styles.welcomeTitle}>Welcome to troodie!</Text>
+            <Text style={styles.welcomeTitle}>Welcome to {strings.app.name}!</Text>
             <Text style={styles.welcomeDescription}>
-              Discover amazing restaurants and build your food network
+              {strings.app.tagline}
             </Text>
           </View>
           <TouchableOpacity 
@@ -409,7 +409,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
       
-      {userBoards.length === 0 ? (
+      {(userBoards || []).length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyStateIcon}>
             <Bookmark size={32} color="#DDD" />
@@ -424,7 +424,7 @@ export default function HomeScreen() {
         </View>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {userBoards.slice(0, 5).map((board) => (
+          {(userBoards || []).slice(0, 5).map((board) => (
             <TouchableOpacity 
               key={board.id} 
               style={styles.boardCard}
@@ -531,24 +531,18 @@ export default function HomeScreen() {
         ) : (
           recommendedContent.map((item, index) => (
             <View key={index} style={styles.trendingCard}>
-              <RestaurantCardWithSave 
-                restaurant={item.restaurant}
-                stats={item.stats}
-                onPress={() => {
-                  router.push({
-                    pathname: '/restaurant/[id]',
-                    params: { id: item.restaurant.id }
-                  });
-                }}
-                onRefresh={handleBoardUpdate}
-              />
-              <View style={styles.trendingHighlights}>
-                {item.highlights.map((highlight, idx) => (
-                  <View key={idx} style={styles.highlightBadge}>
-                    <Text style={styles.highlightText}>{highlight}</Text>
-                  </View>
-                ))}
-              </View>
+              <RestaurantCardWithSave
+  restaurant={item.restaurant}
+  stats={item.stats}
+  onPress={() => {
+    router.push({
+      pathname: '/restaurant/[id]',
+      params: { id: item.restaurant.id },
+    });
+  }}
+  onRefresh={handleBoardUpdate}
+  highlights={item.highlights}
+/>
             </View>
           ))
         )}
@@ -928,22 +922,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: designTokens.spacing.lg,
     marginBottom: designTokens.spacing.lg,
   },
-  trendingHighlights: {
-    flexDirection: 'row',
-    gap: designTokens.spacing.sm,
-    marginTop: designTokens.spacing.sm,
-  },
-  highlightBadge: {
-    backgroundColor: designTokens.colors.backgroundGray,
-    paddingHorizontal: designTokens.spacing.md,
-    paddingVertical: designTokens.spacing.sm,
-    borderRadius: designTokens.borderRadius.lg,
-  },
-  highlightText: {
-    ...designTokens.typography.smallText,
-    fontFamily: 'Inter_500Medium',
-    color: designTokens.colors.textMedium,
-  },
+
   quickActions: {
     position: 'absolute',
     bottom: 20,

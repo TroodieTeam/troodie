@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: "troodie",
+    name: "Troodie",
     slug: "troodie",
     version: "1.0.0",
     orientation: "portrait",

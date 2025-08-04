@@ -9,8 +9,8 @@ import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Bookmark, Heart, MessageCircle, Share } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Bookmark, Heart, MessageCircle, Share, ChevronRight } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -69,6 +69,26 @@ export default function PostDetailScreen() {
   const handleBack = () => {
     router.back();
   };
+
+  const handleUserPress = useCallback(() => {
+    if (post?.user?.id) {
+      console.log('Navigating to user:', post.user.id);
+      router.push({
+        pathname: '/user/[id]',
+        params: { id: post.user.id }
+      });
+    }
+  }, [post, router]);
+
+  const handleRestaurantPress = useCallback(() => {
+    if (post?.restaurant?.id) {
+      console.log('Navigating to restaurant:', post.restaurant.id);
+      router.push({
+        pathname: '/restaurant/[id]',
+        params: { id: post.restaurant.id }
+      });
+    }
+  }, [post, router]);
 
   const handleLike = async () => {
     if (!user?.id || !post) return;
@@ -195,10 +215,15 @@ export default function PostDetailScreen() {
       </TouchableOpacity>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* User Header */}
-        <View style={styles.userHeader}>
+        {/* User Header - Clickable */}
+        <TouchableOpacity 
+          style={styles.userHeader}
+          onPress={handleUserPress}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Image 
-            source={{ uri: post.user.avatar || 'https://i.pravatar.cc/150?img=1' }} 
+            source={{ uri: post.user.avatar || DEFAULT_IMAGES.avatar }} 
             style={styles.avatar} 
           />
           <View style={styles.userInfo}>
@@ -211,7 +236,7 @@ export default function PostDetailScreen() {
             <Text style={styles.userPersona}>{post.user.persona || 'Food Explorer'}</Text>
             <Text style={styles.timestamp}>{formatTimeAgo(post.created_at)}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* External Content Badge */}
         {(post as any).content_type === 'external' && (
@@ -266,8 +291,13 @@ export default function PostDetailScreen() {
           </View>
         )}
 
-        {/* Restaurant Card */}
-        <View style={styles.restaurantCard}>
+        {/* Restaurant Card - Clickable */}
+        <TouchableOpacity 
+          style={styles.restaurantCard}
+          onPress={handleRestaurantPress}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
           <View style={styles.restaurantInfo}>
             <Text style={styles.restaurantName}>{post.restaurant.name}</Text>
@@ -277,7 +307,8 @@ export default function PostDetailScreen() {
               <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
             </View>
           </View>
-        </View>
+          <ChevronRight size={20} color={designTokens.colors.textMedium} />
+        </TouchableOpacity>
 
         {/* Rating & Visit Info */}
         <View style={styles.visitCard}>
@@ -389,6 +420,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 16,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   avatar: {
     width: 50,
@@ -409,6 +441,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: designTokens.colors.textDark,
     fontFamily: 'Inter_600SemiBold',
+    textDecorationLine: 'underline',
   },
   userPersona: {
     fontSize: 14,
@@ -477,6 +510,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
   },
   restaurantImage: {
     width: 60,

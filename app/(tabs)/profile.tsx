@@ -3,6 +3,7 @@ import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
+import { CommunityTab } from '@/components/profile/CommunityTab';
 import { designTokens, compactDesign } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +12,7 @@ import { personas } from '@/data/personas';
 import { useSmoothDataFetch, useSmoothMultiDataFetch } from '@/hooks/useSmoothDataFetch';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
+import { communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
 import { restaurantService } from '@/services/restaurantService';
@@ -30,22 +32,24 @@ import {
   Plus,
   Settings,
   Share2,
-  User
+  User,
+  Users
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Image,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
 
-type TabType = 'boards' | 'posts' | 'quicksaves';
+type TabType = 'boards' | 'posts' | 'quicksaves' | 'communities';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -55,6 +59,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('quicksaves');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const tabScrollRef = useRef<ScrollView>(null);
 
   // Data fetching functions
   const fetchProfile = useCallback(async () => {
@@ -136,6 +141,26 @@ export default function ProfileScreen() {
     }
   }, [user?.id]);
 
+  const fetchCommunities = useCallback(async () => {
+    if (!user?.id) return { joined: [], created: [] };
+    try {
+      return await communityService.getUserCommunities(user.id);
+    } catch (error) {
+      console.error('Error fetching communities:', error);
+      return { joined: [], created: [] };
+    }
+  }, [user?.id]);
+
+  const fetchCommunityStats = useCallback(async () => {
+    if (!user?.id) return { joined_count: 0, created_count: 0, admin_count: 0, moderator_count: 0 };
+    try {
+      return await communityService.getUserCommunityStats(user.id);
+    } catch (error) {
+      console.error('Error fetching community stats:', error);
+      return { joined_count: 0, created_count: 0, admin_count: 0, moderator_count: 0 };
+    }
+  }, [user?.id]);
+
   // Use smooth data fetching
   const { data: profile, loading: loadingProfile } = useSmoothDataFetch(
     fetchProfile, 
@@ -192,11 +217,42 @@ export default function ProfileScreen() {
     }
   );
 
+  const { 
+    data: communities, 
+    loading: loadingCommunities,
+    refreshing: refreshingCommunities,
+    refresh: refreshCommunities 
+  } = useSmoothDataFetch(
+    fetchCommunities, 
+    [user?.id], 
+    { 
+      minLoadingTime: 300, 
+      fetchOnFocus: true,
+      cacheDuration: 60000 
+    }
+  );
+
+  const { 
+    data: communityStats, 
+    loading: loadingCommunityStats,
+    refresh: refreshCommunityStats 
+  } = useSmoothDataFetch(
+    fetchCommunityStats, 
+    [user?.id], 
+    { 
+      minLoadingTime: 300, 
+      fetchOnFocus: true,
+      cacheDuration: 60000 
+    }
+  );
+
   // Ensure data is always an array to prevent null errors
   const safeAchievements = achievements || [];
   const safeBoards = boards || [];
   const safePosts = posts || [];
   const safeQuickSaves = quickSaves || [];
+  const safeCommunities = communities || { joined: [], created: [] };
+  const safeCommunityStats = communityStats || { joined_count: 0, created_count: 0, admin_count: 0, moderator_count: 0 };
 
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
                  (onboardingState.persona ? personas[onboardingState.persona] : null);
@@ -211,6 +267,9 @@ export default function ProfileScreen() {
         refreshPosts();
       } else if (activeTab === 'boards' && !loadingBoards) {
         refreshBoards();
+      } else if (activeTab === 'communities' && !loadingCommunities) {
+        refreshCommunities();
+        refreshCommunityStats();
       }
     }
   }, [activeTab, user?.id, loadingProfile]);
@@ -382,12 +441,17 @@ export default function ProfileScreen() {
 
   const renderTabs = () => (
     <View style={styles.tabsContainer}>
-      <View style={styles.tabs}>
+      <ScrollView
+        ref={tabScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabs}
+      >
         <TouchableOpacity
           style={[styles.tab, activeTab === 'quicksaves' && styles.activeTab]}
           onPress={() => setActiveTab('quicksaves')}
         >
-          <Bookmark size={12} color={activeTab === 'quicksaves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <Bookmark size={14} color={activeTab === 'quicksaves' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'quicksaves' && styles.activeTabText]}>
             Saves ({safeQuickSaves.length})
           </Text>
@@ -397,7 +461,7 @@ export default function ProfileScreen() {
           style={[styles.tab, activeTab === 'boards' && styles.activeTab]}
           onPress={() => setActiveTab('boards')}
         >
-          <Grid3X3 size={12} color={activeTab === 'boards' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <Grid3X3 size={14} color={activeTab === 'boards' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'boards' && styles.activeTabText]}>
             Boards ({safeBoards.length})
           </Text>
@@ -407,12 +471,22 @@ export default function ProfileScreen() {
           style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
           onPress={() => setActiveTab('posts')}
         >
-          <MessageSquare size={12} color={activeTab === 'posts' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <MessageSquare size={14} color={activeTab === 'posts' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
           <Text style={[styles.tabText, activeTab === 'posts' && styles.activeTabText]}>
             Posts ({safePosts.length})
           </Text>
         </TouchableOpacity>
-      </View>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'communities' && styles.activeTab]}
+          onPress={() => setActiveTab('communities')}
+        >
+          <Users size={14} color={activeTab === 'communities' ? designTokens.colors.textDark : designTokens.colors.textMedium} />
+          <Text style={[styles.tabText, activeTab === 'communities' && styles.activeTabText]}>
+            Communities ({safeCommunityStats.joined_count})
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 
@@ -607,6 +681,19 @@ export default function ProfileScreen() {
         {activeTab === 'quicksaves' && renderQuickSavesTab()}
         {activeTab === 'boards' && renderBoardsTab()}
         {activeTab === 'posts' && renderPostsTab()}
+        {activeTab === 'communities' && (
+          <CommunityTab
+            userId={user?.id || ''}
+            communities={safeCommunities}
+            stats={safeCommunityStats}
+            loading={loadingCommunities}
+            refreshing={refreshingCommunities}
+            onRefresh={() => {
+              refreshCommunities();
+              refreshCommunityStats();
+            }}
+          />
+        )}
       </View>
 
       <SettingsModal 
@@ -654,9 +741,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatar: {
-    width: 48, // Reduced from 56
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
     borderColor: designTokens.colors.primaryOrange + '33',
   },
@@ -665,9 +752,9 @@ const styles = StyleSheet.create({
     bottom: -2,
     right: -2,
     backgroundColor: designTokens.colors.primaryOrange,
-    width: 18, // Reduced from 20
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -853,15 +940,17 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.backgroundLight,
     borderRadius: designTokens.borderRadius.sm,
     padding: 2,
+    gap: 2,
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: designTokens.borderRadius.sm - 2,
-    gap: 4,
+    gap: 6,
+    minWidth: 90,
   },
   activeTab: {
     backgroundColor: designTokens.colors.white,
@@ -870,7 +959,7 @@ const styles = StyleSheet.create({
     ...designTokens.shadows.card,
   },
   tabText: {
-    ...designTokens.typography.smallText,
+    fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textMedium,
   },

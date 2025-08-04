@@ -3,20 +3,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
-  Camera,
-  FolderPlus,
-  Search,
-  UserPlus,
-  Users2
+    Camera,
+    FolderPlus,
+    Search,
+    UserPlus,
+    Users2
 } from 'lucide-react-native';
 import React from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 export default function AddScreen() {
@@ -114,7 +114,7 @@ export default function AddScreen() {
           <Search size={16} color={designTokens.colors.textMedium} />
           <Text style={styles.quickActionText}>Search Places</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/explore')}>
+        <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/find-friends')}>
           <UserPlus size={16} color={designTokens.colors.textMedium} />
           <Text style={styles.quickActionText}>Find Friends</Text>
         </TouchableOpacity>

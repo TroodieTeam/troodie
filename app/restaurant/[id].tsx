@@ -2,9 +2,14 @@ import { BoardSelectionModal } from '@/components/BoardSelectionModal';
 import { ErrorState } from '@/components/ErrorState';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { restaurantImageSyncService } from '@/services/restaurantImageSyncService';
+import { restaurantPhotosService } from '@/services/restaurantPhotosService';
 import { restaurantService } from '@/services/restaurantService';
+import { saveService } from '@/services/saveService';
 import { FriendVisit, PowerUserReview, RecentActivity, socialActivityService } from '@/services/socialActivityService';
+import { ToastService } from '@/services/toastService';
 import { getErrorType } from '@/types/errors';
+import { BackgroundTaskManager } from '@/utils/backgroundTasks';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -25,7 +30,7 @@ import {
   TrendingUp,
   Users
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -35,6 +40,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Vibration,
   View
 } from 'react-native';
 
@@ -50,6 +56,7 @@ export default function RestaurantDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('info');
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [showBoardModal, setShowBoardModal] = useState(false);
@@ -64,6 +71,11 @@ export default function RestaurantDetailScreen() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [socialDataLoading, setSocialDataLoading] = useState(false);
   const [socialDataError, setSocialDataError] = useState<Error | null>(null);
+  
+  // Photo gallery states
+  const [restaurantPhotos, setRestaurantPhotos] = useState<any[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [updatingCover, setUpdatingCover] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -72,10 +84,22 @@ export default function RestaurantDetailScreen() {
   }, [id]);
 
   useEffect(() => {
+    if (id && user) {
+      checkSaveStatus(id as string);
+    }
+  }, [id, user]);
+
+  useEffect(() => {
     if (id && activeTab === 'social' && user) {
       loadSocialData(id as string);
     }
   }, [id, activeTab, user]);
+
+  useEffect(() => {
+    if (id && activeTab === 'photos') {
+      loadPhotos(id as string);
+    }
+  }, [id, activeTab]);
 
   const loadRestaurant = async (restaurantId: string) => {
     try {
@@ -84,6 +108,18 @@ export default function RestaurantDetailScreen() {
       const data = await restaurantService.getRestaurantDetails(restaurantId);
       if (data) {
         setRestaurant(data);
+        
+        // If no cover photo, check if we can update it from existing photos
+        if (!data.cover_photo_url) {
+          console.log('No cover photo found, checking for available photos...');
+          const photos = await restaurantPhotosService.getRestaurantPhotos(restaurantId, user?.id);
+          if (photos.length > 0) {
+            console.log(`Found ${photos.length} photos, updating cover...`);
+            // The background task will handle the actual update
+            const backgroundTaskManager = BackgroundTaskManager.getInstance();
+            backgroundTaskManager.updateRestaurantCover(restaurantId, true);
+          }
+        }
       } else {
         // Restaurant not found
         setError(new Error('Restaurant not found'));
@@ -142,6 +178,42 @@ export default function RestaurantDetailScreen() {
     }
   };
 
+  const loadPhotos = async (restaurantId: string) => {
+    try {
+      setPhotosLoading(true);
+      
+      // First, sync any posts that might not have been properly synced
+      console.log('Syncing restaurant posts for photos...');
+      const syncedCount = await restaurantImageSyncService.syncAllRestaurantPosts(restaurantId);
+      if (syncedCount > 0) {
+        console.log(`Synced ${syncedCount} posts to restaurant gallery`);
+      }
+      
+      // Then load the photos
+      const photos = await restaurantPhotosService.getCachedRestaurantPhotos(restaurantId, user?.id);
+      setRestaurantPhotos(photos);
+      
+      // Subscribe to real-time updates
+      const unsubscribe = restaurantPhotosService.subscribeToPhotoUpdates(
+        restaurantId,
+        (newPhoto) => {
+          setRestaurantPhotos(prev => [newPhoto, ...prev]);
+        },
+        (deletedPhotoId) => {
+          setRestaurantPhotos(prev => prev.filter(p => p.id !== deletedPhotoId));
+        }
+      );
+      
+      return () => {
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('Error loading photos:', error);
+    } finally {
+      setPhotosLoading(false);
+    }
+  };
+
   const handleCall = () => {
     if (restaurant?.phone) {
       Linking.openURL(`tel:${restaurant.phone}`);
@@ -166,13 +238,60 @@ export default function RestaurantDetailScreen() {
     // Reserve table functionality
   };
 
-  const handleSave = () => {
+  const checkSaveStatus = async (restaurantId: string) => {
+    if (!user) return;
+    
+    try {
+      const saveState = await saveService.getSaveState(restaurantId, user.id);
+      setIsSaved(saveState.isSaved && saveState.quickSavesBoardId ? 
+        saveState.boards.includes(saveState.quickSavesBoardId) : false);
+    } catch (error) {
+      console.error('Error checking save status:', error);
+    }
+  };
+
+  const handleSave = useCallback(async () => {
     if (!user) {
-      router.push('/login');
+      ToastService.showError('Please sign in to save restaurants');
       return;
     }
+
+    if (!restaurant?.id) return;
+
+    setIsSaving(true);
+
+    try {
+      await saveService.toggleSave({
+        userId: user.id,
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name,
+        onBoardSelection: () => {
+          setShowBoardModal(true);
+        },
+        onSuccess: () => {
+          // Update local state
+          setIsSaved(!isSaved);
+        },
+        onError: (error) => {
+          console.error('Save error:', error);
+          // Refresh save status to sync with server
+          checkSaveStatus(restaurant.id);
+        }
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [user, restaurant, isSaved]);
+
+  const handleLongPress = useCallback(() => {
+    if (!user) {
+      ToastService.showError('Please sign in to save restaurants');
+      return;
+    }
+    
+    Vibration.vibrate(20);
     setShowBoardModal(true);
-  };
+  }, [user]);
 
   const handleCreatePost = () => {
     if (!user) {
@@ -187,6 +306,29 @@ export default function RestaurantDetailScreen() {
           selectedRestaurant: JSON.stringify(restaurant)
         }
       });
+    }
+  };
+
+  const handleUpdateCoverPhoto = async () => {
+    if (!restaurant?.id || updatingCover) return;
+    
+    setUpdatingCover(true);
+    try {
+      const backgroundTaskManager = BackgroundTaskManager.getInstance();
+      const result = await backgroundTaskManager.updateRestaurantCover(restaurant.id, true);
+      
+      if (result.success) {
+        // Reload restaurant to show new cover
+        await loadRestaurant(restaurant.id);
+        // Show success message
+        console.log('Cover photo updated successfully:', result.newCoverUrl);
+      } else {
+        console.error('Failed to update cover photo:', result.error || result.reason);
+      }
+    } catch (error) {
+      console.error('Error updating cover photo:', error);
+    } finally {
+      setUpdatingCover(false);
     }
   };
 
@@ -285,11 +427,22 @@ export default function RestaurantDetailScreen() {
   const renderActionButtons = () => (
     <View style={styles.actionButtons}>
       <TouchableOpacity 
-        style={[styles.actionButton, styles.saveButton]} 
+        style={styles.saveButtonContainer}
         onPress={handleSave}
+        onLongPress={handleLongPress}
+        activeOpacity={0.7}
+        disabled={isSaving}
       >
-        <Bookmark size={18} color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textDark} />
-        <Text style={styles.actionButtonText}>Save</Text>
+        <Bookmark 
+          size={20} 
+          color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textDark}
+          fill={isSaved ? designTokens.colors.primaryOrange : 'transparent'}
+        />
+        {isSaving ? (
+          <ActivityIndicator size="small" color={designTokens.colors.textMedium} />
+        ) : (
+          <Text style={styles.actionButtonText}>Save</Text>
+        )}
       </TouchableOpacity>
       
       <TouchableOpacity style={styles.actionButton} onPress={handleCreatePost}>
@@ -403,29 +556,75 @@ export default function RestaurantDetailScreen() {
   );
 
   const renderPhotosTab = () => {
-    const photos = restaurant?.photos || [];
+    if (photosLoading) {
+      return (
+        <View style={styles.tabContent}>
+          <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+        </View>
+      );
+    }
     
     return (
       <View style={styles.tabContent}>
-        {photos.length > 0 ? (
-          <View style={styles.photosGrid}>
-            {photos.map((photo: any, index: number) => {
-              // Handle both string and object photo formats
-              const photoUrl = typeof photo === 'string' ? photo : photo?.url;
-              if (!photoUrl) return null;
-              
-              return (
-                <TouchableOpacity key={index} style={styles.photoItem}>
-                  <Image source={{ uri: photoUrl }} style={styles.photo} />
+        {restaurantPhotos.length > 0 ? (
+          <View style={styles.photosContainer}>
+            <View style={styles.photoStats}>
+              <Text style={styles.photoStatsText}>
+                {restaurantPhotos.length} photos from {new Set(restaurantPhotos.map(p => p.user_id)).size} contributors
+              </Text>
+              {/* Add update cover photo button for restaurant owners/admins */}
+              {restaurant && (restaurant.owner_id === user?.id || user?.is_admin) && (
+                <TouchableOpacity 
+                  style={styles.updateCoverButton}
+                  onPress={handleUpdateCoverPhoto}
+                  disabled={updatingCover}
+                >
+                  {updatingCover ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Camera size={16} color="white" />
+                      <Text style={styles.updateCoverButtonText}>Update Cover</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
-              );
-            })}
+              )}
+            </View>
+            <View style={styles.photosGrid}>
+              {restaurantPhotos.map((photo) => (
+                <TouchableOpacity key={photo.id} style={styles.photoItem}>
+                  <Image source={{ uri: photo.image_url }} style={styles.photo} />
+                  {photo.user && (
+                    <View style={styles.photoAttribution}>
+                      <Image 
+                        source={{ uri: photo.user.avatar_url || 'https://i.pravatar.cc/150' }} 
+                        style={styles.photoUserAvatar} 
+                      />
+                      <Text style={styles.photoUserName} numberOfLines={1}>
+                        {photo.user.name || photo.user.username || 'Anonymous'}
+                      </Text>
+                    </View>
+                  )}
+                  {photo.caption && (
+                    <View style={styles.photoCaptionContainer}>
+                      <Text style={styles.photoCaption} numberOfLines={2}>{photo.caption}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         ) : (
           <View style={styles.emptyPhotos}>
             <Camera size={48} color={designTokens.colors.textLight} />
             <Text style={styles.emptyPhotosText}>No photos available yet</Text>
-            <Text style={styles.emptyPhotosSubtext}>Be the first to add photos!</Text>
+            <Text style={styles.emptyPhotosSubtext}>Share your experience to add photos!</Text>
+            <TouchableOpacity 
+              style={styles.addPhotoButton}
+              onPress={handleCreatePost}
+            >
+              <Text style={styles.addPhotoButtonText}>Create Post</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -586,14 +785,30 @@ export default function RestaurantDetailScreen() {
                              {recentActivity.map((activity) => {
                  const getTrafficLightColor = (rating: number | null) => {
                    if (!rating) return '#DDD';
-                   const colors = { 1: '#FF4444', 2: '#FF7744', 3: '#FFAA44', 4: '#44AA44', 5: '#00AA00' };
-                   return colors[rating as keyof typeof colors] || '#DDD';
+                   // Check if it's a traffic light system (1-3) or star system (1-5)
+                   if (rating <= 3) {
+                     // Traffic light system colors: 1=Red, 2=Yellow, 3=Green
+                     const trafficColors = { 1: '#FF4444', 2: '#FFAA44', 3: '#00AA00' };
+                     return trafficColors[rating as keyof typeof trafficColors] || '#DDD';
+                   } else {
+                     // 5-star system colors
+                     const starColors = { 1: '#FF4444', 2: '#FF7744', 3: '#FFAA44', 4: '#44AA44', 5: '#00AA00' };
+                     return starColors[rating as keyof typeof starColors] || '#DDD';
+                   }
                  };
 
                  const getTrafficLightLabel = (rating: number | null) => {
                    if (!rating) return '';
-                   const labels = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Great', 5: 'Excellent' };
-                   return labels[rating as keyof typeof labels] || '';
+                   // Check if it's a traffic light system (1-3) or star system (1-5)
+                   if (rating <= 3) {
+                     // Traffic light system mapping
+                     const trafficLabels = { 1: 'Poor', 2: 'Average', 3: 'Excellent' };
+                     return trafficLabels[rating as keyof typeof trafficLabels] || '';
+                   } else {
+                     // 5-star system mapping
+                     const starLabels = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Great', 5: 'Excellent' };
+                     return starLabels[rating as keyof typeof starLabels] || '';
+                   }
                  };
 
                                  
@@ -760,8 +975,9 @@ export default function RestaurantDetailScreen() {
           restaurantId={id as string}
           restaurantName={restaurant.name}
           onSuccess={() => {
-            setIsSaved(true);
             setShowBoardModal(false);
+            // Refresh save status after adding to boards
+            checkSaveStatus(restaurant.id);
           }}
         />
       )}
@@ -930,6 +1146,19 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 1,
   },
+  saveButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    borderRadius: designTokens.borderRadius.md,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'white',
+    flex: 1,
+  },
   actionButtonText: {
     ...designTokens.typography.detailText,
     fontFamily: 'Inter_500Medium',
@@ -1088,6 +1317,84 @@ const styles = StyleSheet.create({
   emptyPhotosSubtext: {
     ...designTokens.typography.detailText,
     color: designTokens.colors.textMedium,
+  },
+  photosContainer: {
+    flex: 1,
+  },
+  photoStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.colors.borderLight,
+  },
+  photoStatsText: {
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.textMedium,
+  },
+  photoAttribution: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: designTokens.spacing.xs,
+    borderBottomLeftRadius: designTokens.borderRadius.md,
+    borderBottomRightRadius: designTokens.borderRadius.md,
+  },
+  photoUserAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginRight: designTokens.spacing.xs,
+  },
+  photoUserName: {
+    ...designTokens.typography.captionText,
+    color: designTokens.colors.white,
+    flex: 1,
+  },
+  photoCaptionContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: designTokens.spacing.xs,
+    borderTopLeftRadius: designTokens.borderRadius.md,
+    borderTopRightRadius: designTokens.borderRadius.md,
+  },
+  photoCaption: {
+    ...designTokens.typography.captionText,
+    color: designTokens.colors.white,
+  },
+  addPhotoButton: {
+    marginTop: designTokens.spacing.md,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.full,
+  },
+  addPhotoButtonText: {
+    ...designTokens.typography.buttonText,
+    color: designTokens.colors.white,
+  },
+  updateCoverButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: designTokens.borderRadius.full,
+  },
+  updateCoverButtonText: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_600SemiBold',
+    color: 'white',
   },
   ratingSection: {
     backgroundColor: 'white',

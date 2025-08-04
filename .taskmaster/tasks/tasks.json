@@ -1,0 +1,204 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "created": "2025-01-30T20:30:00.000Z",
+    "lastUpdated": "2025-01-30T20:30:00.000Z",
+    "totalTasks": 10,
+    "completedTasks": 0
+  },
+  "tags": {
+    "master": {
+      "name": "master",
+      "description": "Main task list for Troodie app development - Fresh UI/UX and Feature Improvements",
+      "tasks": [
+        {
+          "id": "1",
+          "title": "Add User Images to Restaurant Photos Tab When Posting",
+          "description": "When a user makes a post with a restaurant attached, automatically add the user's image within the photos tab of that restaurant to build user-generated content gallery.",
+          "details": "- Implement automatic photo addition when user creates post with restaurant\n- Add photos to restaurant's Photos tab\n- Ensure proper attribution to the posting user\n- Handle image resizing and quality optimization\n- Implement privacy settings for photo visibility",
+          "status": "pending",
+          "priority": "high",
+          "tags": ["ui", "restaurants", "posts", "photos"],
+          "estimatedHours": 16,
+          "dependencies": [],
+          "testStrategy": "Test posting with restaurant attachment, verify photo appears in restaurant's Photos tab with proper attribution",
+          "acceptanceCriteria": [
+            "User posts with restaurant show images in restaurant Photos tab",
+            "Images are properly attributed to the posting user",
+            "Privacy settings are respected",
+            "Image quality is optimized for mobile viewing"
+          ]
+        },
+        {
+          "id": "2", 
+          "title": "Implement Save to Board Toast with Homescreen Pattern",
+          "description": "When a user saves a restaurant from the detail page, show a toast notification with the option to add to a different board, using the same pattern as the homescreen.",
+          "details": "- Create toast notification component for save actions\n- Implement board selection modal using homescreen pattern\n- Add 'Add to Board' action in toast\n- Handle Quick Saves as default with option to change\n- Ensure consistent UX across the app",
+          "status": "pending",
+          "priority": "high", 
+          "tags": ["ui", "boards", "saves", "toast"],
+          "estimatedHours": 12,
+          "dependencies": [],
+          "testStrategy": "Test saving restaurant, verify toast appears with board selection option matching homescreen pattern",
+          "acceptanceCriteria": [
+            "Toast notification appears when saving restaurant",
+            "Board selection follows homescreen pattern",
+            "Default save to Quick Saves works",
+            "User can select different board from toast",
+            "UI is consistent with existing patterns"
+          ]
+        },
+        {
+          "id": "3",
+          "title": "Auto-Set Restaurant Cover Photo from User Posts", 
+          "description": "Restaurant detail pages should never have empty cover photos. When a user posts with a photo attached, that photo should become the cover image if none exists or only a default is used.",
+          "details": "- Implement automatic cover photo selection from user posts\n- Prioritize high-quality user-generated images\n- Fall back to default images when no user content exists\n- Handle multiple candidate images with smart selection\n- Ensure proper image sizing and cropping",
+          "status": "pending",
+          "priority": "medium",
+          "tags": ["ui", "restaurants", "images", "automation"],
+          "estimatedHours": 10,
+          "dependencies": [],
+          "testStrategy": "Test restaurant with no cover photo, post image, verify it becomes cover photo",
+          "acceptanceCriteria": [
+            "Restaurants never show empty cover photos",
+            "User post images become cover photos when appropriate",
+            "Image quality and sizing is optimized",
+            "Smart selection prioritizes best images",
+            "Fallback to defaults works properly"
+          ]
+        },
+        {
+          "id": "4",
+          "title": "Remove Google Reference from Add Restaurant Modal",
+          "description": "Update the Add New Restaurant modal to remove Google-specific references and make the search more generic.",
+          "details": "- Change placeholder text from 'Search for restaurant on Google...' to 'Search for restaurant...'\n- Remove any Google branding or references\n- Update help text to be platform-agnostic\n- Ensure search functionality remains intact\n- Update any related documentation",
+          "status": "pending", 
+          "priority": "low",
+          "tags": ["ui", "branding", "search", "modal"],
+          "estimatedHours": 2,
+          "dependencies": [],
+          "testStrategy": "Verify Add New Restaurant modal shows generic search text without Google references",
+          "acceptanceCriteria": [
+            "No Google references in placeholder text",
+            "Search functionality works as before",
+            "UI is consistent with app branding",
+            "Help text is platform-agnostic"
+          ]
+        },
+        {
+          "id": "5",
+          "title": "Uppercase T in Troodie Brand Name",
+          "description": "Update the home screen header to capitalize the T in 'troodie' to make it 'Troodie' for better brand consistency.",
+          "details": "- Update home screen header text\n- Ensure consistent capitalization across the app\n- Check other instances of the brand name\n- Update any related assets or constants\n- Maintain consistent typography",
+          "status": "pending",
+          "priority": "low",
+          "tags": ["branding", "ui", "typography"],
+          "estimatedHours": 1,
+          "dependencies": [],
+          "testStrategy": "Verify home screen shows 'Troodie' with capital T",
+          "acceptanceCriteria": [
+            "Home screen header shows 'Troodie' with capital T",
+            "Brand name is consistent across app",
+            "Typography follows design guidelines"
+          ]
+        },
+        {
+          "id": "6",
+          "title": "Improve Find Friends Workflow",
+          "description": "Enhance the 'find friends' workflow in the Add Content screen to make it easier and more intuitive for users to discover and connect with others.",
+          "details": "- Redesign find friends interface for better UX\n- Add search functionality for finding users\n- Implement friend suggestions based on interests/location\n- Improve visual design and information architecture\n- Add onboarding hints and guidance",
+          "status": "pending",
+          "priority": "medium",
+          "tags": ["social", "ui", "discovery", "friends"],
+          "estimatedHours": 14,
+          "dependencies": [],
+          "testStrategy": "Test friend discovery flow, verify improved usability and clear user paths",
+          "acceptanceCriteria": [
+            "Find friends interface is intuitive and easy to use",
+            "Search functionality works effectively", 
+            "Friend suggestions are relevant and helpful",
+            "Visual design is improved and consistent",
+            "Onboarding guidance helps new users"
+          ]
+        },
+        {
+          "id": "7",
+          "title": "Implement Navigation Links in Post Detail Screen",
+          "description": "Add clickable navigation to usernames and restaurants in the post detail screen, allowing users to navigate to profile and restaurant pages respectively.",
+          "details": "- Make usernames clickable to navigate to profile pages\n- Make restaurant names/images clickable to navigate to restaurant pages\n- Implement proper touch targets and visual feedback\n- Ensure accessibility compliance\n- Handle navigation state management",
+          "status": "pending",
+          "priority": "high", 
+          "tags": ["navigation", "ui", "posts", "profiles"],
+          "estimatedHours": 8,
+          "dependencies": [],
+          "testStrategy": "Test clicking usernames and restaurants in post detail, verify proper navigation",
+          "acceptanceCriteria": [
+            "Usernames are clickable and navigate to profile pages",
+            "Restaurant names/images navigate to restaurant pages", 
+            "Touch targets are appropriately sized",
+            "Visual feedback indicates clickable elements",
+            "Navigation works smoothly without issues"
+          ]
+        },
+        {
+          "id": "8",
+          "title": "Add Community Tab to User Profile Page",
+          "description": "Add a community tab to user profile pages showing communities they're part of, communities they've created, and providing easy navigation to community features.",
+          "details": "- Add Communities tab to profile page layout\n- Display user's joined communities\n- Show communities created by the user\n- Implement community creation shortcuts\n- Add community activity indicators\n- Ensure proper permissions and privacy",
+          "status": "pending", 
+          "priority": "high",
+          "tags": ["communities", "profiles", "ui", "social"],
+          "estimatedHours": 12,
+          "dependencies": [],
+          "testStrategy": "Test community tab shows correct communities, creation options work properly",
+          "acceptanceCriteria": [
+            "Community tab appears on user profile pages",
+            "Shows joined and created communities correctly",
+            "Community creation shortcuts work",
+            "Privacy settings are respected",
+            "Navigation to communities is smooth"
+          ]
+        },
+        {
+          "id": "9", 
+          "title": "Add Communities to Explore Page Creatively",
+          "description": "Enhance the explore page by creatively integrating communities, including featured communities, trending communities, or personalized recommendations.",
+          "details": "- Design creative community discovery section\n- Implement featured communities showcase\n- Add trending communities based on activity\n- Create personalized community recommendations\n- Integrate with existing explore page layout\n- Add community preview cards with key info",
+          "status": "pending",
+          "priority": "medium",
+          "tags": ["communities", "discovery", "ui", "explore"],
+          "estimatedHours": 16,
+          "dependencies": [],
+          "testStrategy": "Test explore page shows relevant communities, recommendations work properly",
+          "acceptanceCriteria": [
+            "Communities are creatively integrated into explore page",
+            "Featured communities are prominently displayed",
+            "Trending communities show based on real activity",
+            "Personalized recommendations are relevant",
+            "Community preview cards provide useful information"
+          ]
+        },
+        {
+          "id": "10",
+          "title": "Move Tags Within Restaurant Card in What's Hot Section",
+          "description": "Redesign the 'what's hot right now' section on the home screen to place tags within the restaurant card box instead of outside it for better visual hierarchy.",
+          "details": "- Redesign restaurant cards in 'what's hot' section\n- Move tags inside card boundaries\n- Improve information hierarchy and visual design\n- Ensure tags don't interfere with other card elements\n- Maintain readability and accessibility\n- Update card layout to accommodate tags",
+          "status": "pending",
+          "priority": "medium", 
+          "tags": ["ui", "design", "cards", "tags"],
+          "estimatedHours": 6,
+          "dependencies": [],
+          "testStrategy": "Verify tags appear within restaurant cards in what's hot section with good visual hierarchy",
+          "acceptanceCriteria": [
+            "Tags are positioned within restaurant card boundaries",
+            "Visual hierarchy is improved and clear", 
+            "Tags don't interfere with other card elements",
+            "Card layout accommodates tags properly",
+            "Design is consistent with app aesthetics"
+          ]
+        }
+      ]
+    }
+  },
+  "currentTag": "master"
+}

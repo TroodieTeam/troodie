@@ -82,6 +82,7 @@ export const boardService = {
       const { data, error } = await supabase
         .from('user_boards')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
       if (error) throw error

@@ -10,8 +10,82 @@ import {
     PostWithUser,
     TrendingPost
 } from '@/types/post';
+import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
+import { restaurantImageSyncService } from './restaurantImageSyncService';
 
 class PostService {
+  /**
+   * Get a single post by ID
+   */
+  async getPostById(postId: string): Promise<PostWithUser | null> {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          user:users!posts_user_id_fkey(id, name, username, avatar_url, is_verified, persona),
+          restaurant:restaurants!posts_restaurant_id_fkey(id, name, cover_photo_url, city, cuisine_types, price_range),
+          post_likes!left(user_id),
+          post_saves!left(user_id)
+        `)
+        .eq('id', postId)
+        .single();
+
+      if (error) throw error;
+      if (!data) return null;
+
+      // Get current user to check if they liked/saved
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      const isLikedByUser = currentUser ? 
+        data.post_likes?.some((like: any) => like.user_id === currentUser.id) : false;
+      const isSavedByUser = currentUser ? 
+        data.post_saves?.some((save: any) => save.user_id === currentUser.id) : false;
+
+      // Transform the post data
+      const transformedPost: PostWithUser = {
+        id: data.id,
+        user_id: data.user_id,
+        restaurant_id: data.restaurant_id,
+        caption: data.caption,
+        photos: data.photos || [],
+        rating: data.rating,
+        visit_date: data.visit_date,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        visibility: data.visibility || 'public',
+        is_external: data.is_external || false,
+        content_type: data.content_type || 'original',
+        external_source: data.external_source,
+        external_url: data.external_url,
+        external_title: data.external_title,
+        external_description: data.external_description,
+        external_thumbnail: data.external_thumbnail,
+        external_author: data.external_author,
+        likes_count: data.post_likes?.length || 0,
+        comments_count: data.comments_count || 0,
+        saves_count: data.post_saves?.length || 0,
+        shares_count: data.shares_count || 0,
+        is_liked_by_user: isLikedByUser,
+        is_saved_by_user: isSavedByUser,
+        user: this.transformUser(data),
+        restaurant: {
+          id: data.restaurant.id,
+          name: data.restaurant.name,
+          image: data.restaurant.cover_photo_url || '',
+          cuisine: data.restaurant.cuisine_types?.[0] || 'Restaurant',
+          rating: 0,
+          location: data.restaurant.city || '',
+          priceRange: data.restaurant.price_range || '$'
+        }
+      };
+
+      return transformedPost;
+    } catch (error) {
+      console.error('Error fetching post:', error);
+      throw error;
+    }
+  }
   /**
    * Helper to transform user data from DB to UserInfo type
    */
@@ -102,6 +176,22 @@ class PostService {
     if (error) {
       console.error('Error creating post:', error);
       throw new Error(`Failed to create post: ${error.message}`);
+    }
+
+    // If post has photos and a restaurant, sync images and trigger cover photo update
+    if (data && postData.photos && postData.photos.length > 0 && postData.restaurantId) {
+      // Sync images to restaurant gallery
+      console.log('Syncing post images to restaurant gallery...');
+      const synced = await restaurantImageSyncService.syncPostImages(data.id);
+      if (synced) {
+        console.log('Successfully synced post images to restaurant gallery');
+      } else {
+        console.error('Failed to sync post images to restaurant gallery');
+      }
+      
+      // Trigger intelligent cover photo update
+      const coverPhotoService = IntelligentCoverPhotoService.getInstance();
+      coverPhotoService.handleNewPostImages(data.id, postData.restaurantId);
     }
 
     return data;

@@ -1,65 +1,54 @@
-# Troodie Engineering Tasks Organization
+# Troodie Engineering Tasks Organization - Fresh Feature Set
 
-This folder contains a comprehensive task management system for the Troodie app development project, with individual task files and a master tracking system.
+This folder contains a comprehensive task management system for the latest Troodie app improvements, focusing on UI/UX enhancements, community features, and user experience optimization.
 
 ## 📁 File Structure
 
 ```
 tasks/
-├── README.md                          # This file - organization guide
-├── TODO.md                            # Master task tracking and progress
-├── task-1-1-supabase-setup.md         # Individual task files
-├── task-1-2-email-auth.md
-├── task-2-1-restaurant-seeding.md
-├── task-6-1-restaurant-detail.md
-└── ... (additional task files)
-
-docs/
-├── backend-design.md                   # Living database schema documentation
-├── frontend-design-language.md         # Living UI/UX design system
-└── ... (additional documentation)
+├── README.md                               # This file - organization guide
+├── TODO.md                                 # Master task tracking and progress
+├── task-9-1-user-images-restaurant-photos.md    # User content in restaurant galleries
+├── task-9-2-save-board-toast-homescreen-pattern.md  # Enhanced save workflow
+├── task-9-3-auto-restaurant-cover-photo.md      # Automatic cover photo system
+├── task-9-4-remove-google-reference.md          # Clean up third-party references
+├── task-9-5-uppercase-troodie-brand.md          # Brand consistency fix
+├── task-9-6-improve-find-friends-workflow.md    # Better social discovery
+├── task-10-1-post-detail-navigation-links.md    # Clickable navigation elements
+├── task-10-2-community-tab-user-profile.md      # Profile community integration
+├── task-10-3-communities-explore-page.md        # Community discovery features
+├── task-10-4-tags-within-restaurant-cards.md    # Visual hierarchy improvements
+└── ... (additional task files as needed)
 ```
 
 ## 🎯 Task Naming Convention
 
 Tasks follow a structured naming pattern:
 - `task-{epic}-{sequence}-{short-name}.md`
-- Example: `task-1-1-supabase-setup.md`
-  - Epic 1 (Backend Infrastructure)
+- Example: `task-9-1-user-images-restaurant-photos.md`
+  - Epic 9 (UI/UX Improvements and Content Integration)
   - Task 1 in that epic
   - Short descriptive name
 
 ## 📊 Epic Organization
 
-### Epic 1: Backend Infrastructure & Database Setup
-- **1.1** - Supabase Backend Setup
-- **1.2** - Email OTP Authentication
+### Epic 9: UI/UX Improvements and Content Integration
+Focus on enhancing existing features with better user experience patterns and visual improvements.
 
-### Epic 2: Restaurant Data Management System  
-- **2.1** - Charlotte Restaurant Seeding
-- **2.2** - Restaurant Search & Discovery
+- **9.1** - Add User Images to Restaurant Photos Tab When Posting
+- **9.2** - Implement Save to Board Toast with Homescreen Pattern
+- **9.3** - Auto-Set Restaurant Cover Photo from User Posts
+- **9.4** - Remove Google Reference from Add Restaurant Modal
+- **9.5** - Uppercase T in Troodie Brand Name
+- **9.6** - Improve Find Friends Workflow
 
-### Epic 3: Core Social Features
-- **3.1** - Restaurant Save Functionality
-- **3.2** - User Profiles & Social Network
-- **3.3** - Activity Feed & Interactions
+### Epic 10: Enhanced Navigation and User Experience
+Focus on improving app navigation, community features, and user interaction patterns.
 
-### Epic 4: Board and Community Features
-- **4.1** - Board Creation & Management
-- **4.2** - Community Features
-
-### Epic 5: Search and Discovery Enhancement
-- **5.1** - Enhanced Restaurant Search
-- **5.2** - Personalized Recommendations
-
-### Epic 6: Missing Core Screens and Functionality
-- **6.1** - Restaurant Detail Screen ✅
-- **6.2** - Post Creation & Management
-- **6.3** - Notifications System
-
-### Epic 7: Performance and Polish
-- **7.1** - Real-time Features
-- **7.2** - Offline Support & Caching
+- **10.1** - Implement Navigation Links in Post Detail Screen
+- **10.2** - Add Community Tab to User Profile Page
+- **10.3** - Add Communities to Explore Page Creatively
+- **10.4** - Move Tags Within Restaurant Card in What's Hot Section
 
 ## 📋 Task File Structure
 
@@ -162,34 +151,22 @@ The `TODO.md` file provides:
 4. Update **Epic Progress** in `TODO.md`
 5. After review approval, mark as 🟢 **Completed**
 
-## 🔗 Dependencies and Blocking
+## 🔗 Dependencies and Task Relationships
 
-### Critical Path Items
-Tasks marked as **Critical** priority are on the critical path:
-- Task 1.1: Supabase Backend Setup (blocks everything)
-- Task 1.2: Email Authentication (blocks user features)
-- Task 6.1: Restaurant Detail Screen (referenced throughout)
+### Epic 9 Dependencies
+- Most tasks are independent and can run in parallel
+- Task 9.1 may benefit from existing post creation system being stable
+- Task 9.2 requires understanding of current homescreen save patterns
 
-### Dependency Chain
-```
-1.1 (Supabase Setup) 
- ├── 1.2 (Email Auth)
- ├── 2.1 (Restaurant Seeding)
- └── 3.1 (Restaurant Save)
+### Epic 10 Dependencies
+- Task 10.1 requires post detail screen to be implemented
+- Task 10.2 requires user profile system and community system
+- Task 10.3 requires explore page and community system
+- Task 10.4 is independent visual design improvement
 
-2.1 (Restaurant Seeding)
- └── 2.2 (Restaurant Search)
-
-3.1 (Restaurant Save) + 3.2 (User Profiles)
- └── 3.3 (Activity Feed)
-```
-
-### Managing Blockers
-If a task becomes blocked:
-1. Update status to ⏸️ **Blocked**
-2. Document the blocker in **Notes**
-3. Identify alternative work streams
-4. Communicate with dependent task owners
+### Cross-Epic Dependencies
+- Community-related tasks (10.2, 10.3) may share implementation patterns
+- UI consistency tasks (9.4, 9.5, 10.4) should follow consistent design principles
 
 ## 📝 Best Practices
 
@@ -214,69 +191,38 @@ If a task becomes blocked:
 
 ## 🎯 Sprint Planning
 
-### Phase 1: Core Infrastructure (Weeks 1-4)
-**Focus**: Foundation that enables all other features
-- Tasks 1.1, 1.2, 2.1, 2.2
-- Total: 16 days estimated
+### Phase 1: Quick Wins and Polish (Week 1)
+**Focus**: Low-effort, high-impact improvements
+- Task 9.4: Remove Google Reference (0.25 days)
+- Task 9.5: Uppercase Troodie Brand (0.25 days)
+- Task 10.4: Tags Within Restaurant Cards (0.75 days)
 
-### Phase 2: Core Features (Weeks 5-8)  
-**Focus**: Essential user functionality
-- Tasks 3.1, 3.2, 6.1, 6.2
-- Total: 15 days estimated
+### Phase 2: User Experience Enhancements (Week 2-3)
+**Focus**: Improving existing user flows
+- Task 9.2: Save Board Toast Pattern (1.5 days)
+- Task 10.1: Post Detail Navigation Links (1 day)
+- Task 9.3: Auto Restaurant Cover Photo (1.5 days)
 
-### Phase 3: Social Features (Weeks 9-12)
-**Focus**: Social engagement and interaction
-- Tasks 3.3, 4.1, 6.3, 5.1
-- Total: 15 days estimated
+### Phase 3: Community and Social Features (Week 3-4)
+**Focus**: Enhancing social engagement
+- Task 10.2: Community Tab User Profile (1.5 days)
+- Task 10.3: Communities Explore Page (2 days)
+- Task 9.6: Improve Find Friends Workflow (2 days)
 
-### Phase 4: Advanced Features (Weeks 13-16)
-**Focus**: Enhancement and optimization
-- Tasks 4.2, 5.2, 7.1, 7.2
-- Total: 15 days estimated
+### Phase 4: Content Integration (Week 4-5)
+**Focus**: User-generated content improvements
+- Task 9.1: User Images Restaurant Photos (2 days)
 
 ## 📞 Support and Questions
 
 ### For Task Clarification
-- Review the **PRD documents** in `/prd` folder
-- Check **Backend Design** in `/docs/backend-design.md` for database schema and architecture
-- Consult **Acceptance Criteria** in task files
-
-### Backend Design Documentation
-The **`/docs/backend-design.md`** file serves as the living documentation for Troodie's database schema and backend architecture. It includes:
-
-- **Complete database schema** with all tables and relationships
-- **Row Level Security (RLS) policies** for data protection
-- **API design patterns** and RESTful endpoints
-- **Real-time subscription** configurations
-- **Performance optimization** strategies
-- **Security considerations** and best practices
-
-**Always reference this document when:**
-- Creating new engineering tasks that involve database changes
-- Implementing new features that require backend integration
-- Debugging data-related issues
-- Planning API endpoints and data flows
-
-### Frontend Design Language Documentation
-The **`/docs/frontend-design-language.md`** file serves as the living design system for Troodie's UI/UX implementation. It includes:
-
-- **Complete color palette** and semantic color system
-- **Typography hierarchy** and font families
-- **Component patterns** for buttons, inputs, cards, and navigation
-- **Screen layout patterns** and common structures
-- **Animation patterns** and performance guidelines
-- **Accessibility standards** and responsive design principles
-
-**Always reference this document when:**
-- Creating new screens without specific design requirements
-- Implementing UI components that need to match existing patterns
-- Ensuring consistent styling across the application
-- Planning user interactions and animations
-- Maintaining accessibility and performance standards
+- Review the **acceptance criteria** and **technical implementation** sections
+- Check **business value** to understand the task's purpose
+- Consult with project lead for scope questions
 
 ### For Technical Issues
-- Reference **Technical Implementation** sections
-- Check **Resources** links in task files
+- Reference **technical implementation** sections for code patterns
+- Check **resources** links in task files
 - Review related task dependencies
 
 ### For Process Questions
@@ -288,10 +234,14 @@ The **`/docs/frontend-design-language.md`** file serves as the living design sys
 
 ## 📊 Current Status Summary
 
-**Total Tasks**: 15  
+**Total Tasks**: 10  
 **Completed**: 0  
 **In Progress**: 0  
-**Not Started**: 15  
-**Total Estimated Duration**: 61 days (~12 weeks)
+**Not Started**: 10  
+**Total Estimated Duration**: 12.75 days (~2.5 weeks)
 
-Last Updated: [Current Date] 
+### Epic Breakdown
+- **Epic 9**: 6 tasks, 8.25 days estimated
+- **Epic 10**: 4 tasks, 4.5 days estimated
+
+Last Updated: January 30, 2025

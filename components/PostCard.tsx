@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { postEngagementService } from '@/services/postEngagementService';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     Dimensions,
     Image,
@@ -14,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
+import { useRouter } from 'expo-router';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -38,6 +39,7 @@ export function PostCard({
   showActions = true,
 }: PostCardProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [isLiked, setIsLiked] = useState(post.is_liked_by_user || false);
   const [isSaved, setIsSaved] = useState(post.is_saved_by_user || false);
   const [likesCount, setLikesCount] = useState(post.likes_count);
@@ -77,6 +79,20 @@ export function PostCard({
     onShare?.(post.id);
   };
 
+  const handleUserPress = useCallback((e: any) => {
+    e.stopPropagation();
+    if (post.user?.id) {
+      router.push(`/user/${post.user.id}`);
+    }
+  }, [post.user, router]);
+
+  const handleRestaurantPress = useCallback((e: any) => {
+    e.stopPropagation();
+    if (post.restaurant?.id) {
+      router.push(`/restaurant/${post.restaurant.id}`);
+    }
+  }, [post.restaurant, router]);
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -109,9 +125,13 @@ export function PostCard({
     >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
+        <TouchableOpacity 
+          style={styles.userInfo}
+          onPress={handleUserPress}
+          activeOpacity={0.7}
+        >
           <Image 
-            source={{ uri: post.user.avatar || 'https://i.pravatar.cc/150?img=1' }} 
+            source={{ uri: post.user.avatar || DEFAULT_IMAGES.avatar }} 
             style={styles.avatar} 
           />
           <View style={styles.userDetails}>
@@ -125,7 +145,7 @@ export function PostCard({
             </View>
             <Text style={styles.userPersona}>{post.user.persona || 'Food Explorer'}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <Text style={styles.timestamp}>{formatTimeAgo(post.created_at)}</Text>
       </View>
 
@@ -188,7 +208,11 @@ export function PostCard({
       )}
 
       {/* Restaurant Info */}
-      <View style={styles.restaurantInfo}>
+      <TouchableOpacity 
+        style={styles.restaurantInfo}
+        onPress={handleRestaurantPress}
+        activeOpacity={0.7}
+      >
         <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
         <View style={styles.restaurantDetails}>
           <Text style={styles.restaurantName} numberOfLines={1}>
@@ -204,7 +228,7 @@ export function PostCard({
             <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Visit Info */}
       {(post.visit_type || post.price_range || post.rating) && (

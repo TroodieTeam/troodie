@@ -2,29 +2,29 @@ import { ErrorState } from '@/components/ErrorState';
 import { RestaurantCardSkeleton } from '@/components/LoadingSkeleton';
 import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
-import { designTokens, compactDesign } from '@/constants/designTokens';
-import { theme } from '@/constants/theme';
+import { compactDesign, designTokens } from '@/constants/designTokens';
+import { useAuth } from '@/contexts/AuthContext';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Search, Users, SlidersHorizontal } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Dimensions,
   FlatList,
+  Pressable,
   RefreshControl,
   SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Pressable,
-  Dimensions
+  View
 } from 'react-native';
 
-type TabType = 'restaurants' | 'posts';
+type TabType = 'restaurants' | 'posts' | 'communities';
 
 interface TabState<T> {
   data: T[];
@@ -89,12 +89,14 @@ const useTabData = <T extends any>(
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('restaurants');
   const [refreshing, setRefreshing] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isReRandomizing, setIsReRandomizing] = useState(false);
+  
   
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -106,7 +108,6 @@ export default function ExploreScreen() {
       return items.filter(r => 
         r.name?.toLowerCase().includes(q) ||
         r.cuisine_types?.some((c: string) => c.toLowerCase().includes(q)) ||
-        r.neighborhood?.toLowerCase().includes(q) ||
         r.city?.toLowerCase().includes(q) ||
         r.state?.toLowerCase().includes(q) ||
         r.address?.toLowerCase().includes(q)
@@ -167,6 +168,7 @@ export default function ExploreScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await currentTab.load();
+    
     // Ensure we mark as initially loaded after refresh
     if (activeTab === 'restaurants' && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true);
@@ -182,7 +184,7 @@ export default function ExploreScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => router.push('/search')}
+            onPress={() => router.push('/find-friends')}
           >
             <Users size={compactDesign.icon.small} color={designTokens.colors.textLight} />
           </TouchableOpacity>
@@ -213,11 +215,17 @@ export default function ExploreScreen() {
 
       {/* Minimal Tab Switcher */}
       <View style={styles.tabBar}>
-        {(['restaurants', 'posts'] as const).map(tab => (
+        {(['restaurants', 'posts', 'communities'] as const).map(tab => (
           <Pressable
             key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => {
+              if (tab === 'communities') {
+                router.push('/add/communities');
+              } else {
+                setActiveTab(tab);
+              }
+            }}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -228,24 +236,29 @@ export default function ExploreScreen() {
     </View>
   ), [searchQuery, activeTab, router, searchFocused]);
 
+
+
   const renderItem = useCallback(({ item }: { item: any }) => {
+    // Handle regular items
     if (activeTab === 'restaurants') {
       return (
-        <RestaurantCard
-          restaurant={{
-            id: item.id,
-            name: item.name,
-            image: restaurantService.getRestaurantImage(item),
-            cuisine: item.cuisine_types?.[0] || 'Restaurant',
-            rating: item.google_rating || item.troodie_rating || 0,
-            location: item.neighborhood || item.city || 'Charlotte',
-            priceRange: item.price_range || '$$',
-          }}
-          onPress={() => router.push({
-            pathname: '/restaurant/[id]',
-            params: { id: item.id }
-          })}
-        />
+        <View style={styles.restaurantCardWrapper}>
+          <RestaurantCard
+            restaurant={{
+              id: item.id,
+              name: item.name,
+              image: restaurantService.getRestaurantImage(item),
+              cuisine: item.cuisine_types?.[0] || 'Restaurant',
+              rating: item.google_rating || item.troodie_rating || 0,
+              location: item.neighborhood || item.city || 'Charlotte',
+              priceRange: item.price_range || '$$',
+            }}
+            onPress={() => router.push({
+              pathname: '/restaurant/[id]',
+              params: { id: item.id }
+            })}
+          />
+        </View>
       );
     }
     
@@ -421,7 +434,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 8,
-    paddingHorizontal: compactDesign.content.padding,
     paddingBottom: compactDesign.content.padding,
   },
   emptyContainer: {
@@ -443,5 +455,8 @@ const styles = StyleSheet.create({
     ...designTokens.typography.bodyRegular,
     color: designTokens.colors.textMedium,
     textAlign: 'center',
+  },
+  restaurantCardWrapper: {
+    paddingHorizontal: compactDesign.content.padding,
   },
 });
