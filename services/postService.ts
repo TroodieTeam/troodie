@@ -164,7 +164,6 @@ class PostService {
     if (postData.communityId) {
       // Note: community_id field would need to be added to posts table schema
       // insertData.community_id = postData.communityId;
-      console.log('Community posts not yet implemented in database schema');
     }
 
     const { data, error } = await supabase
@@ -181,10 +180,8 @@ class PostService {
     // If post has photos and a restaurant, sync images and trigger cover photo update
     if (data && postData.photos && postData.photos.length > 0 && postData.restaurantId) {
       // Sync images to restaurant gallery
-      console.log('Syncing post images to restaurant gallery...');
       const synced = await restaurantImageSyncService.syncPostImages(data.id);
       if (synced) {
-        console.log('Successfully synced post images to restaurant gallery');
       } else {
         console.error('Failed to sync post images to restaurant gallery');
       }

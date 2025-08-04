@@ -140,7 +140,6 @@ export class NotificationService implements NotificationServiceInterface {
     }
 
     if (!tokens || tokens.length === 0) {
-      console.log('No push tokens found for user:', userId);
       return;
     }
 
@@ -183,8 +182,6 @@ export class NotificationService implements NotificationServiceInterface {
   async sendBulkPushNotifications(tokens: string[], notification: PushNotification): Promise<void> {
     // This would integrate with a push notification service like Expo Notifications
     // For now, we'll log the notification
-    console.log('Sending push notifications to tokens:', tokens);
-    console.log('Notification:', notification);
     
     // TODO: Implement actual push notification sending
     // This would typically use Expo Notifications or a similar service

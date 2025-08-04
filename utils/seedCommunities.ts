@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase';
 
 export async function seedCommunities() {
   try {
-    console.log('Checking existing communities...');
     
     // Check if communities already exist
     const { data: existingCommunities, error: checkError } = await supabase
@@ -16,11 +15,9 @@ export async function seedCommunities() {
     }
     
     if (existingCommunities && existingCommunities.length > 0) {
-      console.log('Communities already exist, skipping seed');
       return true;
     }
     
-    console.log('Seeding communities...');
     
     // Featured communities
     const featuredCommunities = [
@@ -227,7 +224,6 @@ export async function seedCommunities() {
       return false;
     }
     
-    console.log(`Successfully seeded ${allCommunities.length} communities!`);
     
     // Add some community activity for trending
     const { data: { user } } = await supabase.auth.getUser();
@@ -264,7 +260,6 @@ export async function clearCommunities() {
       return false;
     }
     
-    console.log('Communities cleared successfully');
     return true;
   } catch (error) {
     console.error('Error in clearCommunities:', error);

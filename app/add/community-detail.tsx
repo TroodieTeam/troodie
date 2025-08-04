@@ -105,8 +105,6 @@ export default function CommunityDetailScreen() {
       
       // Get community members
       const membersData = await communityService.getCommunityMembers(communityId);
-      console.log('Loaded members:', membersData.length, 'members');
-      console.log('Members data:', membersData);
       setMembers(membersData);
       
       // TODO: Implement getCommunityPosts in communityService

@@ -14,7 +14,6 @@ async function uriToBase64(uri: string): Promise<string> {
       });
       return base64;
     } catch (fsError) {
-      console.log('FileSystem method failed, trying fetch:', fsError);
     }
     
     // Fallback to fetch method
@@ -47,14 +46,11 @@ export async function uploadImageBase64(
   fileName: string
 ): Promise<string> {
   try {
-    console.log('Converting image to base64...', { imageUri, bucket, fileName });
     const base64 = await uriToBase64(imageUri);
     
-    console.log('Base64 conversion complete, length:', base64.length);
     
     // Decode base64 to ArrayBuffer
     const arrayBuffer = decode(base64);
-    console.log('ArrayBuffer size:', arrayBuffer.byteLength);
     
     // Upload using base64-arraybuffer
     const { data, error } = await supabase.storage
@@ -70,14 +66,12 @@ export async function uploadImageBase64(
       throw error;
     }
 
-    console.log('Upload successful:', data);
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
       .getPublicUrl(fileName);
 
-    console.log('Public URL:', publicUrl);
 
     return publicUrl;
   } catch (error) {
@@ -95,16 +89,13 @@ export async function uploadImageBlob(
   fileName: string
 ): Promise<string> {
   try {
-    console.log('Fetching image as blob...');
     const response = await fetch(imageUri);
     const blob = await response.blob();
     
-    console.log('Blob fetched, size:', blob.size, 'type:', blob.type);
     
     // Create a new blob with explicit type if needed
     const imageBlob = new Blob([blob], { type: 'image/jpeg' });
     
-    console.log('Uploading blob to Supabase...');
     
     const { data, error } = await supabase.storage
       .from(bucket)
@@ -118,7 +109,6 @@ export async function uploadImageBlob(
       throw error;
     }
 
-    console.log('Upload successful:', data);
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage

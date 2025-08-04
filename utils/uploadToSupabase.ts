@@ -37,7 +37,6 @@ class ImageUploadService {
     const config = { ...this.defaultOptions, ...options };
     
     try {
-      console.log(`Starting ${type} image upload:`, { imageUri, userId, additionalPath });
       
       // Determine bucket and path based on type
       const { bucket, path } = this.getStorageConfig(type, userId, additionalPath);
@@ -52,7 +51,6 @@ class ImageUploadService {
       // Upload to Supabase
       const publicUrl = await this.uploadToStorage(processedUri, filename, config.bucket);
       
-      console.log(`${type} image uploaded successfully:`, publicUrl);
       return publicUrl;
     } catch (error) {
       console.error(`Error uploading ${type} image:`, error);
@@ -103,7 +101,6 @@ class ImageUploadService {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      console.log(`Uploading to ${bucket}/${filename}, size: ${base64.length}`);
 
       // Convert base64 to ArrayBuffer using base64-arraybuffer library
       const arrayBuffer = decode(base64);

@@ -111,10 +111,8 @@ export default function RestaurantDetailScreen() {
         
         // If no cover photo, check if we can update it from existing photos
         if (!data.cover_photo_url) {
-          console.log('No cover photo found, checking for available photos...');
           const photos = await restaurantPhotosService.getRestaurantPhotos(restaurantId, user?.id);
           if (photos.length > 0) {
-            console.log(`Found ${photos.length} photos, updating cover...`);
             // The background task will handle the actual update
             const backgroundTaskManager = BackgroundTaskManager.getInstance();
             backgroundTaskManager.updateRestaurantCover(restaurantId, true);
@@ -183,10 +181,8 @@ export default function RestaurantDetailScreen() {
       setPhotosLoading(true);
       
       // First, sync any posts that might not have been properly synced
-      console.log('Syncing restaurant posts for photos...');
       const syncedCount = await restaurantImageSyncService.syncAllRestaurantPosts(restaurantId);
       if (syncedCount > 0) {
-        console.log(`Synced ${syncedCount} posts to restaurant gallery`);
       }
       
       // Then load the photos
@@ -321,7 +317,6 @@ export default function RestaurantDetailScreen() {
         // Reload restaurant to show new cover
         await loadRestaurant(restaurant.id);
         // Show success message
-        console.log('Cover photo updated successfully:', result.newCoverUrl);
       } else {
         console.error('Failed to update cover photo:', result.error || result.reason);
       }

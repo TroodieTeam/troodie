@@ -9,28 +9,20 @@ export function SessionDebugger() {
   const { user, session, isAuthenticated } = useAuth()
   
   const handleDebugStorage = async () => {
-    console.log('=== SESSION DEBUG START ===')
     await debugStorage.logAllStorage()
     await debugStorage.getSupabaseSession()
-    console.log('=== SESSION DEBUG END ===')
   }
   
   const handleForceRefresh = async () => {
-    console.log('Forcing session refresh...')
     const newSession = await sessionPersistence.forceRefreshSession()
-    console.log('Force refresh result:', newSession ? 'Success' : 'Failed')
   }
   
   const handleManualRestore = async () => {
-    console.log('Attempting manual session restore...')
     const restoredSession = await sessionPersistence.restoreSession()
-    console.log('Manual restore result:', restoredSession ? 'Success' : 'Failed')
   }
   
   const handleGetSession = async () => {
-    console.log('Getting session via Supabase...')
     const { data: { session }, error } = await supabase.auth.getSession()
-    console.log('getSession result:', {
       hasSession: !!session,
       error: error?.message,
       userId: session?.user?.id,

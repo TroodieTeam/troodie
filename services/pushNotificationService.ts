@@ -33,14 +33,12 @@ export class PushNotificationService implements PushNotificationServiceInterface
       }
       
       if (finalStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
         return;
       }
 
       // Get push token
       const token = await this.getPushToken();
       if (token) {
-        console.log('Push token:', token);
       }
 
       // Set up notification listeners
@@ -56,7 +54,6 @@ export class PushNotificationService implements PushNotificationServiceInterface
   async getPushToken(): Promise<string | null> {
     try {
       if (!Device.isDevice) {
-        console.log('Must use physical device for Push Notifications');
         return null;
       }
 
@@ -185,7 +182,6 @@ export class PushNotificationService implements PushNotificationServiceInterface
    * Handle notification received while app is in foreground
    */
   async handleNotificationReceived(notification: Notifications.Notification): Promise<void> {
-    console.log('Notification received:', notification);
     
     // You can add custom logic here, such as:
     // - Updating local state
@@ -199,7 +195,6 @@ export class PushNotificationService implements PushNotificationServiceInterface
    */
   async handleNotificationOpened(response: Notifications.NotificationResponse): Promise<void> {
     const data = response.notification.request.content.data;
-    console.log('Notification opened:', data);
     
     // You can add navigation logic here based on the notification data
     // For example, navigate to a specific screen based on notification type

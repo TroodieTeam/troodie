@@ -17,7 +17,6 @@ export class ImageUploadServiceFormData {
     path: string
   ): Promise<UploadResult> {
     try {
-      console.log('Starting FormData image upload:', { imageUri, bucket, path });
 
       // Generate unique filename
       const timestamp = Date.now();
@@ -48,7 +47,6 @@ export class ImageUploadServiceFormData {
       // Upload using fetch with FormData
       const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${fileName}`;
       
-      console.log('Uploading to:', uploadUrl);
 
       const response = await fetch(uploadUrl, {
         method: 'POST',
@@ -66,14 +64,12 @@ export class ImageUploadServiceFormData {
       }
 
       const result = await response.json();
-      console.log('Upload response:', result);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(fileName);
 
-      console.log('Public URL generated:', publicUrl);
 
       return {
         publicUrl,
@@ -94,7 +90,6 @@ export class ImageUploadServiceFormData {
     path: string
   ): Promise<UploadResult> {
     try {
-      console.log('Starting direct blob upload:', { imageUri, bucket, path });
 
       // Generate unique filename
       const timestamp = Date.now();
@@ -105,7 +100,6 @@ export class ImageUploadServiceFormData {
       const response = await fetch(imageUri);
       const blob = await response.blob();
 
-      console.log('Blob created, size:', blob.size, 'type:', blob.type);
 
       // Create a File from the blob
       const file = new File([blob], fileName.split('/').pop() || 'image.jpg', {
@@ -125,14 +119,12 @@ export class ImageUploadServiceFormData {
         throw new Error(`Failed to upload image: ${error.message}`);
       }
 
-      console.log('Upload successful:', data);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(fileName);
 
-      console.log('Public URL generated:', publicUrl);
 
       return {
         publicUrl,

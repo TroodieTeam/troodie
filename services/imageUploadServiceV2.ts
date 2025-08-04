@@ -17,7 +17,6 @@ export class ImageUploadServiceV2 {
     bucket: string,
     path: string
   ): Promise<UploadResult> {
-    console.log('[ImageUploadV2] Starting upload process', { imageUri, bucket, path });
     
     // Try different upload methods in order of reliability
     const methods = [
@@ -30,9 +29,7 @@ export class ImageUploadServiceV2 {
     
     for (const method of methods) {
       try {
-        console.log(`[ImageUploadV2] Trying ${method.name} method...`);
         const result = await method.fn();
-        console.log(`[ImageUploadV2] ${method.name} method succeeded!`, result);
         return result;
       } catch (error) {
         console.error(`[ImageUploadV2] ${method.name} method failed:`, error);
@@ -66,11 +63,9 @@ export class ImageUploadServiceV2 {
       encoding: FileSystem.EncodingType.Base64,
     });
     
-    console.log('[Base64FileSystem] Base64 length:', base64.length);
     
     // Convert to ArrayBuffer
     const arrayBuffer = decode(base64);
-    console.log('[Base64FileSystem] ArrayBuffer size:', arrayBuffer.byteLength);
     
     // Upload to Supabase
     const { data, error } = await supabase.storage
@@ -118,7 +113,6 @@ export class ImageUploadServiceV2 {
     const response = await fetch(processedImage.uri);
     const blob = await response.blob();
     
-    console.log('[DirectBlob] Blob size:', blob.size, 'type:', blob.type);
     
     // Create a new blob with explicit type
     const imageBlob = new Blob([blob], { type: 'image/jpeg' });
@@ -226,14 +220,12 @@ export class ImageUploadServiceV2 {
    */
   private static async verifyUpload(publicUrl: string): Promise<void> {
     try {
-      console.log('[Verify] Checking upload at:', publicUrl);
       const response = await fetch(publicUrl, { method: 'HEAD' });
       
       if (!response.ok) {
         console.warn('[Verify] Upload verification failed:', response.status);
         // Don't throw - sometimes verification fails but upload succeeds
       } else {
-        console.log('[Verify] Upload verified successfully');
       }
     } catch (error) {
       console.warn('[Verify] Could not verify upload:', error);
@@ -249,7 +241,6 @@ export class ImageUploadServiceV2 {
       throw new Error('No image URI provided');
     }
     
-    console.log('[ProfileImage] Starting upload for user:', userId);
     
     const { publicUrl } = await this.uploadImage(
       imageUri,
@@ -257,7 +248,6 @@ export class ImageUploadServiceV2 {
       userId
     );
     
-    console.log('[ProfileImage] Upload complete:', publicUrl);
     
     return publicUrl;
   }

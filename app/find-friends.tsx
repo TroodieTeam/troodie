@@ -141,7 +141,6 @@ export default function FindFriendsScreen() {
           allResults.push(...results)
         } catch (error) {
           // Continue with other terms if one fails
-          console.log(`Search for ${term} failed:`, error)
         }
       }
       

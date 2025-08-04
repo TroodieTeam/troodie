@@ -69,13 +69,11 @@ export class BackgroundTaskManager {
 
   private async runCoverPhotoUpdate() {
     try {
-      console.log('Starting background cover photo update...');
       
       // Batch update restaurants with missing or default covers
       const updatedCount = await this.coverPhotoService.batchUpdateRestaurantCovers(20);
       
       if (updatedCount > 0) {
-        console.log(`Updated ${updatedCount} restaurant cover photos`);
       }
     } catch (error) {
       console.error('Error in background cover photo update:', error);
@@ -93,7 +91,6 @@ export class BackgroundTaskManager {
       );
       
       if (result.success) {
-        console.log(`Successfully updated cover photo for restaurant ${restaurantId}`);
       }
       
       return result;

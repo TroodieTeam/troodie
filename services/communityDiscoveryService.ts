@@ -38,7 +38,6 @@ class CommunityDiscoveryService {
         .limit(limit);
       
       if (!directError && directData) {
-        console.log('Direct query found featured communities:', directData.length);
         // If direct query works, try RPC
       }
 
@@ -66,7 +65,6 @@ class CommunityDiscoveryService {
       }
 
       const communities = data || [];
-      console.log('Featured communities fetched via RPC:', communities.length);
       
       // Cache the results
       this.cache.featured = {
@@ -106,7 +104,6 @@ class CommunityDiscoveryService {
         .limit(limit);
       
       if (!directError && directData) {
-        console.log('Direct query found communities:', directData.length);
       }
 
       const { data, error } = await supabase.rpc('get_trending_communities', {
@@ -135,7 +132,6 @@ class CommunityDiscoveryService {
       }
 
       const communities = data || [];
-      console.log('Trending communities fetched via RPC:', communities.length);
       
       // Cache the results
       this.cache.trending.set(cacheKey, {
@@ -176,7 +172,6 @@ class CommunityDiscoveryService {
       }
 
       const communities = data || [];
-      console.log('Recommended communities fetched:', communities.length);
       
       // Cache the results
       this.cache.recommended.set(userId, {

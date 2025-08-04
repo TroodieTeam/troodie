@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
  * Test function to verify image upload functionality
  */
 export async function testImageUpload() {
-  console.log('=== Starting Image Upload Test ===');
   
   try {
     // 1. Check if we're authenticated
@@ -14,7 +13,6 @@ export async function testImageUpload() {
       console.error('Authentication error:', authError);
       return false;
     }
-    console.log('✓ Authenticated as user:', user.id);
     
     // 2. Check if avatars bucket is accessible
     const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
@@ -23,7 +21,6 @@ export async function testImageUpload() {
     } else {
       const avatarsBucket = buckets?.find(b => b.id === 'avatars');
       if (avatarsBucket) {
-        console.log('✓ Avatars bucket found:', avatarsBucket);
       } else {
         console.error('✗ Avatars bucket not found');
       }
@@ -40,7 +37,6 @@ export async function testImageUpload() {
     if (listError) {
       console.error('List error:', listError);
     } else {
-      console.log('✓ Current files in avatars/' + user.id + ':', files?.length || 0);
     }
     
     // 4. Try to create a test file
@@ -57,14 +53,12 @@ export async function testImageUpload() {
       return false;
     }
     
-    console.log('✓ Test file uploaded successfully:', uploadData);
     
     // 5. Get public URL of test file
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
       .getPublicUrl(testFileName);
       
-    console.log('✓ Public URL:', publicUrl);
     
     // 6. Delete test file
     const { error: deleteError } = await supabase.storage
@@ -74,10 +68,8 @@ export async function testImageUpload() {
     if (deleteError) {
       console.error('Delete error:', deleteError);
     } else {
-      console.log('✓ Test file deleted');
     }
     
-    console.log('=== Image Upload Test Complete ===');
     return true;
     
   } catch (error) {
@@ -106,13 +98,6 @@ export async function debugUserProfile() {
     if (error) {
       console.error('Profile fetch error:', error);
     } else {
-      console.log('Current profile:', {
-        id: profile.id,
-        username: profile.username,
-        avatar_url: profile.avatar_url,
-        profile_image_url: profile.profile_image_url,
-        updated_at: profile.updated_at
-      });
     }
   } catch (error) {
     console.error('Debug error:', error);

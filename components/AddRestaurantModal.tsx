@@ -79,11 +79,6 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
     setSubmissionStatus('idle');
 
     try {
-      console.log('Submitting restaurant:', {
-        name: placeDetails.name,
-        address: placeDetails.formatted_address,
-        placeId: placeDetails.place_id
-      });
 
       // Use Supabase's functions.invoke which handles auth automatically
       const { data, error } = await supabase.functions.invoke('add-restaurant', {
@@ -95,7 +90,6 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
         },
       });
 
-      console.log('Supabase response:', { data, error });
 
       if (error) {
         console.error('Supabase error:', error);

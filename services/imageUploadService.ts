@@ -18,7 +18,6 @@ export class ImageUploadService {
     path: string
   ): Promise<UploadResult> {
     try {
-      console.log('Starting base64 image upload:', { imageUri, bucket, path });
 
       // Process image first to ensure proper format and size
       const processedImage = await manipulateAsync(
@@ -39,7 +38,6 @@ export class ImageUploadService {
         fileName
       );
 
-      console.log('Base64 upload successful, URL:', publicUrl);
 
       return {
         publicUrl,
@@ -65,7 +63,6 @@ export class ImageUploadService {
     path: string
   ): Promise<UploadResult> {
     try {
-      console.log('Starting image upload:', { imageUri, bucket, path });
 
       // Validate inputs
       if (!imageUri || !bucket || !path) {
@@ -79,7 +76,6 @@ export class ImageUploadService {
         { compress: 0.8, format: SaveFormat.JPEG }
       );
 
-      console.log('Image processed:', processedImage.uri);
 
       // Generate unique filename
       const timestamp = Date.now();
@@ -90,7 +86,6 @@ export class ImageUploadService {
       const response = await fetch(processedImage.uri);
       const blob = await response.blob();
       
-      console.log('Blob created, size:', blob.size, 'type:', blob.type);
 
       // Create proper FormData
       const formData = new FormData();
@@ -129,14 +124,12 @@ export class ImageUploadService {
         throw new Error(`Upload failed: ${uploadResponse.status}`);
       }
 
-      console.log('FormData upload successful');
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(fileName);
 
-      console.log('Public URL generated:', publicUrl);
 
       // Verify the upload by checking if the file exists
       const { data: fileList, error: listError } = await supabase.storage
@@ -152,7 +145,6 @@ export class ImageUploadService {
       } else {
         const uploadedFile = fileList?.find(f => f.name === fileName.split('/').pop());
         if (uploadedFile) {
-          console.log('Upload verified, file details:', uploadedFile);
         } else {
           console.warn('Upload completed but file not found in listing');
         }
@@ -176,7 +168,6 @@ export class ImageUploadService {
    */
   static async uploadProfileImage(userId: string, imageUri: string): Promise<string> {
     try {
-      console.log('Uploading profile image for user:', userId);
       
       // Validate inputs
       if (!imageUri) {
@@ -196,7 +187,6 @@ export class ImageUploadService {
         if (!verifyResponse.ok) {
           console.warn('Upload verification failed, but continuing:', verifyResponse.status);
         } else {
-          console.log('Upload verified successfully');
         }
       } catch (verifyError) {
         console.warn('Could not verify upload:', verifyError);

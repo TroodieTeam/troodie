@@ -198,7 +198,6 @@ function extractFeatures(types: string[]): string[] {
 }
 
 async function seedRestaurant(restaurant: any, index: number) {
-  console.log(`[${index + 1}/100] Processing ${restaurant.name}...`)
 
   try {
     // Check if restaurant already exists
@@ -210,21 +209,18 @@ async function seedRestaurant(restaurant: any, index: number) {
       .single()
 
     if (existing) {
-      console.log(`  → Already exists, skipping`)
       return
     }
 
     // Search for place on Google
     const placeId = await searchGooglePlace(restaurant.name, restaurant.area)
     if (!placeId) {
-      console.log(`  → Not found on Google Places`)
       return
     }
 
     // Get detailed information
     const details = await getPlaceDetails(placeId)
     if (!details) {
-      console.log(`  → Could not get details`)
       return
     }
 
@@ -270,7 +266,6 @@ async function seedRestaurant(restaurant: any, index: number) {
     if (error) {
       console.error(`  → Error inserting:`, error.message)
     } else {
-      console.log(`  → Successfully added`)
     }
 
   } catch (error) {
@@ -282,9 +277,6 @@ async function seedRestaurant(restaurant: any, index: number) {
 }
 
 async function seedAllRestaurants() {
-  console.log('Starting Charlotte restaurant seeding...')
-  console.log(`Total restaurants to seed: ${restaurantData.restaurants.length}`)
-  console.log('---')
 
   let successCount = 0
   let errorCount = 0
@@ -298,10 +290,6 @@ async function seedAllRestaurants() {
     }
   }
 
-  console.log('---')
-  console.log('Seeding complete!')
-  console.log(`Success: ${successCount}`)
-  console.log(`Errors: ${errorCount}`)
 }
 
 // Add popular categories
@@ -326,7 +314,6 @@ async function seedCategories() {
       .single()
 
     if (!error) {
-      console.log(`Added category: ${category.name}`)
     }
   }
 }
@@ -334,9 +321,7 @@ async function seedCategories() {
 // Run the seeding process
 async function main() {
   // First, seed categories
-  console.log('Seeding restaurant categories...')
   await seedCategories()
-  console.log('---')
 
   // Then seed restaurants
   await seedAllRestaurants()

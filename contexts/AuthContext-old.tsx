@@ -38,20 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        console.log('[AuthContext] Starting auth initialization...')
         
         // Debug storage before attempting to get session
         await debugStorage.getSupabaseSession()
         
         // First attempt: Try to get the session normally
-        console.log('[AuthContext] Attempting to get session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
           console.error('[AuthContext] getSession() error:', error)
         }
         
-        console.log('[AuthContext] Initial getSession() result:', {
           hasSession: !!session,
           userId: session?.user?.id,
           email: session?.user?.email,
@@ -60,13 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // If no session found, try multiple recovery methods
         if (!session) {
-          console.log('[AuthContext] No session found, attempting recovery...')
           
           // Method 1: Try to refresh the session
           const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
           
           if (refreshedSession) {
-            console.log('[AuthContext] Session refreshed successfully!')
             setSession(refreshedSession)
             setUser(refreshedSession.user)
             await loadUserProfile(refreshedSession.user.id)
@@ -74,16 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await sessionPersistence.saveSession(refreshedSession)
           } else {
             // Method 2: Try to restore from manual storage
-            console.log('[AuthContext] Refresh failed, trying manual restore...')
             const restoredSession = await sessionPersistence.restoreSession()
             
             if (restoredSession) {
-              console.log('[AuthContext] Session restored from storage!')
               setSession(restoredSession)
               setUser(restoredSession.user)
               await loadUserProfile(restoredSession.user.id)
             } else {
-              console.log('[AuthContext] No session available after all recovery attempts')
               setSession(null)
               setUser(null)
             }
@@ -109,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes with a more defensive approach
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('[AuthContext] onAuthStateChange:', {
         event: _event,
         hasSession: !!session,
         userId: session?.user?.id,
@@ -120,7 +111,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // CRITICAL: During OTP verification, completely ignore auth state changes
       // We'll handle the session manually in verifyOtp
       if (isVerifyingOtp.current) {
-        console.log('[AuthContext] Ignoring auth state change during OTP verification')
         return
       }
       
@@ -129,26 +119,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check if this is within 10 seconds of sign-in
         const timeSinceSignIn = Date.now() - lastSignInTime.current
         if (timeSinceSignIn < 10000) {
-          console.log('[AuthContext] Ignoring SIGNED_OUT within 10s of sign-in')
           return
         }
         
         // Double-check with getSession before clearing
         const { data: { session: currentSession } } = await supabase.auth.getSession()
         if (currentSession) {
-          console.log('[AuthContext] Ignoring SIGNED_OUT - session still exists')
           return
         }
         
         // Only now clear the session
-        console.log('[AuthContext] Clearing session due to SIGNED_OUT')
         setSession(null)
         setUser(null)
         setProfile(null)
       } else if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
         // Don't update if we're already signed in with the same user
         if (session?.user?.id === user?.id && _event === 'SIGNED_IN') {
-          console.log('[AuthContext] Already signed in with this user, skipping update')
           return
         }
         
@@ -179,10 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserProfile = async (userId: string) => {
     try {
-      console.log('[AuthContext] Loading profile for user:', userId)
       const profile = await userService.getProfile(userId)
       if (!profile) {
-        console.log('[AuthContext] No profile found, creating new profile')
         // Create profile if it doesn't exist
         const newProfile = await userService.createProfile({
           id: userId,
@@ -191,7 +175,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
         setProfile(newProfile)
       } else {
-        console.log('[AuthContext] Profile loaded successfully')
         setProfile(profile)
       }
     } catch (error) {
@@ -223,11 +206,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isVerifyingOtp.current = true
     
     try {
-      console.log('[AuthContext] Verifying OTP for:', email)
       const result = await authService.verifyOtp(email, token)
       
       if (result.success && result.session) {
-        console.log('[AuthContext] OTP verified successfully')
         
         // Mark the sign-in time
         lastSignInTime.current = Date.now()
@@ -238,19 +219,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Save the session manually
         await sessionPersistence.saveSession(result.session)
-        console.log('[AuthContext] Session saved after OTP verification')
         
         // Load user profile
         await loadUserProfile(result.session.user.id)
         
         // Double-check session is still valid
         const { data: { session: currentSession } } = await supabase.auth.getSession()
-        console.log('[AuthContext] Session check after OTP:', {
           hasSession: !!currentSession,
           userId: currentSession?.user?.id
         })
       } else {
-        console.log('[AuthContext] OTP verification failed:', result.error)
         setError(result.error || 'Verification failed')
       }
       

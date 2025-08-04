@@ -14,7 +14,6 @@ export const restaurantImageSyncService = {
         .single();
 
       if (!post || !post.photos || post.photos.length === 0) {
-        console.log('No photos in post or post not found');
         return false;
       }
 
@@ -28,7 +27,6 @@ export const restaurantImageSyncService = {
       const missingPhotos = post.photos.filter(photo => !existingUrls.has(photo));
 
       if (missingPhotos.length > 0) {
-        console.log(`Found ${missingPhotos.length} missing photos for post ${postId}`);
         return false;
       }
 
@@ -57,7 +55,6 @@ export const restaurantImageSyncService = {
         return isSynced;
       }
 
-      console.log('Successfully synced post images to restaurant gallery');
       return true;
     } catch (error) {
       console.error('Error syncing post images:', error);

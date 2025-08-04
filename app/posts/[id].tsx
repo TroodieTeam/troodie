@@ -72,7 +72,6 @@ export default function PostDetailScreen() {
 
   const handleUserPress = useCallback(() => {
     if (post?.user?.id) {
-      console.log('Navigating to user:', post.user.id);
       router.push({
         pathname: '/user/[id]',
         params: { id: post.user.id }
@@ -82,7 +81,6 @@ export default function PostDetailScreen() {
 
   const handleRestaurantPress = useCallback(() => {
     if (post?.restaurant?.id) {
-      console.log('Navigating to restaurant:', post.restaurant.id);
       router.push({
         pathname: '/restaurant/[id]',
         params: { id: post.restaurant.id }

@@ -173,15 +173,12 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
                 
                 if (retryAttempt < 2) {
                   // Try again with cache-busting
-                  console.log(`🔄 Retrying image load (attempt ${retryAttempt + 2})...`);
                   setRetryAttempt(prev => prev + 1);
                 } else {
                   // Give up after 3 attempts
-                  console.log('🚫 Giving up after 3 attempts');
                   setImageError(true);
                   
                   // Do detailed analysis on final failure
-                  console.log('🔍 Final image URL analysis:', {
                     isSupabaseStorage: mainPhoto.includes('supabase.co/storage'),
                     hasPublicFolder: mainPhoto.includes('/public/'),
                     bucket: mainPhoto.split('/').find(part => part === 'post-photos'),
@@ -192,7 +189,6 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
                   // Test if we can fetch the URL directly with full headers
                   fetch(mainPhoto, { method: 'HEAD' })
                     .then(response => {
-                      console.log('🌐 Direct fetch analysis:', {
                         status: response.status,
                         statusText: response.statusText,
                         contentType: response.headers.get('content-type'),
@@ -202,20 +198,16 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
                       });
                     })
                     .catch(err => {
-                      console.log('🚫 Direct fetch failed:', err.message);
                     });
                 }
               }}
               onLoad={() => {
-                console.log('✅ Image loaded successfully:', getImageUrl(mainPhoto, retryAttempt));
                 setImageError(false);
                 setRetryAttempt(0);
               }}
               onLoadStart={() => {
-                console.log('🔄 Started loading image:', getImageUrl(mainPhoto, retryAttempt));
               }}
               onLoadEnd={() => {
-                console.log('🏁 Finished loading attempt for:', getImageUrl(mainPhoto, retryAttempt));
               }}
             />
           </View>

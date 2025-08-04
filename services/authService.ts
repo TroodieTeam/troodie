@@ -20,7 +20,6 @@ export const authService = {
    */
   async signUpWithEmail(email: string): Promise<OtpResponse> {
     try {
-      console.log('[AuthService] Attempting to sign up user with email:', email)
       
       // Use signInWithOtp which will create the user automatically
       // Don't check users table first as it might not have the profile yet
@@ -60,7 +59,6 @@ export const authService = {
         }
       }
       
-      console.log('[AuthService] Sign up OTP sent successfully, messageId:', data?.messageId)
       
       return {
         success: true,
@@ -80,7 +78,6 @@ export const authService = {
    */
   async signInWithEmail(email: string): Promise<OtpResponse> {
     try {
-      console.log('[AuthService] Attempting to sign in user with email:', email)
       
       // Use signInWithOtp with shouldCreateUser: false for login
       const { data, error } = await supabase.auth.signInWithOtp({
@@ -110,7 +107,6 @@ export const authService = {
         }
       }
       
-      console.log('[AuthService] Sign in OTP sent successfully, messageId:', data?.messageId)
       return {
         success: true,
         messageId: data?.messageId,
@@ -153,7 +149,6 @@ export const authService = {
       
       // After successful verification, ensure user profile exists
       if (data.user) {
-        console.log('[AuthService] Ensuring user profile exists...')
         
         // Use the ensure_user_profile function to handle this properly
         const { error: profileError } = await supabase.rpc('ensure_user_profile', {
@@ -165,7 +160,6 @@ export const authService = {
           console.error('[AuthService] Error ensuring profile exists:', profileError)
           // Don't fail the login, profile creation is not critical
         } else {
-          console.log('[AuthService] User profile ensured successfully')
         }
       }
       
@@ -257,7 +251,6 @@ export const authService = {
    */
   async resendOtp(email: string, type: 'signup' | 'login' = 'login'): Promise<OtpResponse> {
     try {
-      console.log('[AuthService] Resending OTP for:', email, 'type:', type)
       
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
@@ -287,7 +280,6 @@ export const authService = {
         }
       }
       
-      console.log('[AuthService] OTP resent successfully, messageId:', data?.messageId)
       return {
         success: true,
         messageId: data?.messageId,

@@ -26,7 +26,6 @@ export class FollowService {
       if (error) {
         // Check if it's a duplicate key error
         if (error.code === '23505') {
-          console.log('Already following this user')
           return
         }
         throw error

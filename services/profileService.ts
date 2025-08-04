@@ -80,9 +80,6 @@ class ProfileService {
 
       // Log avatar URLs for debugging
       if (data) {
-        console.log('Profile fetched for user:', userId);
-        console.log('avatar_url:', data.avatar_url);
-        console.log('profile_image_url:', data.profile_image_url);
       }
 
       return data;
@@ -154,7 +151,6 @@ class ProfileService {
 
   async uploadProfileImage(userId: string, imageUri: string): Promise<string> {
     try {
-      console.log('Starting profile image upload for user:', userId);
       
       // Ensure user exists first
       await this.ensureUserExists(userId);
@@ -162,7 +158,6 @@ class ProfileService {
       // Use the new V2 image upload service
       const publicUrl = await ImageUploadServiceV2.uploadProfileImage(userId, imageUri);
       
-      console.log('Image uploaded successfully, URL:', publicUrl);
 
       // Update profile with new image URL
       const updatedProfile = await this.updateProfile(userId, {
@@ -173,12 +168,10 @@ class ProfileService {
         throw new Error('Failed to update profile with image URL');
       }
 
-      console.log('Profile updated with new avatar URL');
 
       // Unlock achievement for adding profile image
       try {
         await achievementService.unlockAchievement(userId, 'profile_image_added');
-        console.log('Profile image achievement unlocked');
       } catch (achievementError) {
         console.warn('Achievement unlock failed:', achievementError);
       }

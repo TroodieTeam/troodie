@@ -54,11 +54,9 @@ async function runApifyActor(restaurantName: string, location: string) {
   };
   
   try {
-    console.log(`🚀 Running Apify actor for: ${restaurantName} in ${location}`);
     const run = await client.actor(ACTOR_ID).call(input);
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
     
-    console.log(`📊 Apify returned ${items.length} results`);
     
     const filteredResults = items.filter((item: any) => {
       const nameMatch = item.restaurant_name?.toLowerCase().includes(restaurantName.toLowerCase());
@@ -351,7 +349,6 @@ serve(async (req) => {
         });
       }
       
-      console.log(`✅ Restaurant added successfully: ${insertedRestaurant.name}`);
       
       return new Response(JSON.stringify({
         success: true,
@@ -368,7 +365,6 @@ serve(async (req) => {
     // If Apify is available, use it
     if (APIFY_TOKEN) {
       // Run Apify actor to scrape restaurant data
-      console.log(`🔍 Scraping data for: ${restaurantName} at ${address}`);
       const apifyResults = await runApifyActor(restaurantName, address);
       
       if (!apifyResults || apifyResults.length === 0) {
@@ -384,7 +380,6 @@ serve(async (req) => {
       }
       
       // Process and clean the scraped data
-      console.log(`🧹 Processing scraped data...`);
       const processedRestaurant = processApifyData(apifyResults[0], {
         restaurantName,
         address,
@@ -412,7 +407,6 @@ serve(async (req) => {
         });
       }
       
-      console.log(`✅ Restaurant added successfully: ${insertedRestaurant.name}`);
       
       return new Response(JSON.stringify({
         success: true,

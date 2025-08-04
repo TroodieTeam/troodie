@@ -153,13 +153,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       // Upload image if changed
       if (imageUri && imageUri !== getAvatarUrl(currentProfile)) {
-        console.log('Uploading new profile image...');
-        console.log('Current image:', getAvatarUrl(currentProfile));
-        console.log('New image URI:', imageUri);
         
         try {
           const uploadedUrl = await profileService.uploadProfileImage(user.id, imageUri);
-          console.log('Image uploaded successfully:', uploadedUrl);
           
           // Refresh profile to get updated avatar URL
           updatedProfile = await profileService.getProfile(user.id);

@@ -17,10 +17,8 @@ export const sessionPersistence = {
           expiresAt: session.expires_at,
         }
         await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(sessionData))
-        console.log('[SessionPersistence] Session saved manually')
       } else {
         await AsyncStorage.removeItem(SESSION_KEY)
-        console.log('[SessionPersistence] Session cleared')
       }
     } catch (error) {
       console.error('[SessionPersistence] Error saving session:', error)
@@ -43,7 +41,6 @@ export const sessionPersistence = {
         const now = new Date().getTime()
         
         if (expiresAt > now) {
-          console.log('[SessionPersistence] Valid session found in storage')
           // Set the session manually
           await supabase.auth.setSession({
             access_token: session.access_token,
@@ -51,7 +48,6 @@ export const sessionPersistence = {
           })
           return session
         } else {
-          console.log('[SessionPersistence] Session expired, attempting refresh')
           // Try to refresh the expired session
           const { data: { session: refreshedSession } } = await supabase.auth.refreshSession({
             refresh_token: session.refresh_token,

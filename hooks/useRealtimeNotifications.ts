@@ -34,7 +34,6 @@ export const useRealtimeNotifications = ({
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('Notification change:', payload);
 
           switch (payload.eventType) {
             case 'INSERT':
@@ -57,7 +56,6 @@ export const useRealtimeNotifications = ({
         }
       )
       .subscribe((status) => {
-        console.log('Notification subscription status:', status);
       });
 
     return () => {
