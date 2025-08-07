@@ -56,15 +56,9 @@ export function CommunitySelector({
   const loadUserCommunities = async () => {
     if (!user) return;
     
-    console.log('🏘️  Loading user communities...');
     setLoading(true);
     try {
       const { joined, created } = await communityService.getUserCommunities(user.id);
-      console.log('📊 Communities loaded:', { 
-        joined: joined.length, 
-        created: created.length,
-        total: joined.length + created.length 
-      });
       
       // Combine both joined and created communities
       const allCommunities = [...created, ...joined].map(c => ({
@@ -75,9 +69,7 @@ export function CommunitySelector({
         cover_image_url: c.cover_image_url,
       }));
       setCommunities(allCommunities);
-      console.log('🏘️  Available communities:', allCommunities.map(c => c.name));
     } catch (error) {
-      console.error('❌ Error loading communities:', error);
     } finally {
       setLoading(false);
     }
@@ -89,17 +81,11 @@ export function CommunitySelector({
     
     if (newSelected.has(communityId)) {
       newSelected.delete(communityId);
-      console.log('❌ Deselected community:', communityName);
     } else if (newSelected.size < maxSelections) {
       newSelected.add(communityId);
-      console.log('✅ Selected community:', communityName);
     } else {
-      console.log('⚠️ Max selections reached, cannot select:', communityName);
     }
     
-    console.log('🏘️  Currently selected:', Array.from(newSelected).map(id => 
-      communities.find(c => c.id === id)?.name || id
-    ));
     setSelected(newSelected);
   };
 
@@ -107,11 +93,6 @@ export function CommunitySelector({
     const selectedIds = Array.from(selected);
     const selectedNames = selectedIds.map(id => communities.find(c => c.id === id)?.name || id);
     
-    console.log('✅ Final community selection:', {
-      ids: selectedIds,
-      names: selectedNames,
-      count: selectedIds.length
-    });
     
     onSelect(selectedIds);
     onClose();

@@ -22,7 +22,6 @@ class PostService {
       // Use the same approach as getPost method to avoid foreign key issues
       return await this.getPost(postId);
     } catch (error) {
-      console.error('Error fetching post:', error);
       throw error;
     }
   }
@@ -115,13 +114,11 @@ class PostService {
       .single();
 
     if (error) {
-      console.error('Error creating post:', error);
       throw new Error(`Failed to create post: ${error.message}`);
     }
 
     // Handle cross-posting to communities
     if (data && postData.communityIds && postData.communityIds.length > 0) {
-      console.log(`📡 Cross-posting to ${postData.communityIds.length} communities:`, postData.communityIds);
       try {
         const { data: crossPostResults, error: crossPostError } = await supabase
           .rpc('cross_post_to_communities', {
@@ -131,15 +128,11 @@ class PostService {
           });
 
         if (crossPostError) {
-          console.error('Cross-posting RPC error:', crossPostError);
           // Check if it's just a missing function error
           if (crossPostError.code === 'PGRST202' || crossPostError.message?.includes('Could not find the function')) {
-            console.warn('Cross-posting function not available yet. Please run migration 20250808_add_cross_post_function.sql');
             // Try fallback to direct insert
-            console.log('Using fallback method to add posts to communities...');
             let successCount = 0;
             for (const communityId of postData.communityIds) {
-              console.log(`Attempting to add post ${data.id} to community ${communityId}...`);
               try {
                 const { data: insertResult, error: insertError } = await supabase
                   .from('post_communities')
@@ -151,18 +144,16 @@ class PostService {
                   .select();
                 
                 if (insertError) {
-                  console.error(`Failed to add post to community ${communityId}:`, insertError);
+                  // Handle error silently
                 } else {
                   successCount++;
-                  console.log(`✅ Successfully added post to community ${communityId}:`, insertResult);
                 }
               } catch (err) {
-                console.error(`Exception adding post to community ${communityId}:`, err);
+                // Handle error silently
               }
             }
-            console.log(`📊 Post cross-posted to ${successCount}/${postData.communityIds.length} communities via fallback`);
           } else {
-            console.error('Error cross-posting to communities:', crossPostError);
+            // Handle other errors silently
           }
           // Don't fail the whole post creation, just log the error
         } else {
@@ -170,21 +161,9 @@ class PostService {
           const successful = crossPostResults?.filter((r: any) => r.success || r.result_success) || [];
           const failed = crossPostResults?.filter((r: any) => !(r.success || r.result_success)) || [];
           
-          if (successful.length > 0) {
-            console.log(`✅ Post cross-posted to ${successful.length} communities via RPC`);
-            successful.forEach(result => {
-              console.log(`  - Community ${result.result_community_id || result.community_id}: SUCCESS`);
-            });
-          }
-          if (failed.length > 0) {
-            console.warn(`❌ Failed to cross-post to ${failed.length} communities:`, failed);
-            failed.forEach(result => {
-              console.warn(`  - Community ${result.result_community_id || result.community_id}: ${result.result_error_message || result.error_message}`);
-            });
-          }
+          // Handle success and failed cross-posts silently
         }
       } catch (crossPostError) {
-        console.error('Exception in cross-posting:', crossPostError);
         // Continue anyway - the main post was created successfully
       }
     }
@@ -201,10 +180,10 @@ class PostService {
           });
 
         if (legacyCrossPostError) {
-          console.error('Error adding to community:', legacyCrossPostError);
+          // Handle error silently
         }
       } catch (err) {
-        console.error('Error in legacy community posting:', err);
+        // Handle error silently
       }
     }
 
@@ -214,15 +193,14 @@ class PostService {
       try {
         const synced = await restaurantImageSyncService.syncPostImages(data.id);
         if (!synced) {
-          console.error('Failed to sync post images to restaurant gallery');
+          // Handle sync failure silently
         }
         
         // Trigger intelligent cover photo update
         const coverPhotoService = IntelligentCoverPhotoService.getInstance();
         coverPhotoService.handleNewPostImages(data.id, postData.restaurantId);
       } catch (error) {
-        console.error('Error syncing images:', error);
-        // Don't fail the post creation, just log the error
+        // Don't fail the post creation, just handle the error silently
       }
     }
 
@@ -240,7 +218,6 @@ class PostService {
       .single();
 
     if (postError) {
-      console.error('Error fetching post:', postError);
       return null;
     }
 
@@ -256,7 +233,7 @@ class PostService {
       .single();
 
     if (userError) {
-      console.error('Error fetching user:', userError);
+      // Handle error silently
     }
 
     // Fetch restaurant data
@@ -301,7 +278,6 @@ class PostService {
       .range(offset, offset + limit - 1);
 
     if (postsError) {
-      console.error('Error fetching user posts:', postsError);
       return [];
     }
 
@@ -317,7 +293,7 @@ class PostService {
       .single();
 
     if (userError) {
-      console.error('Error fetching user:', userError);
+      // Handle error silently
     }
 
     // Get unique restaurant IDs
@@ -379,7 +355,6 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
-      console.error('Error fetching explore posts:', postsError);
       throw postsError;
     }
 
@@ -398,7 +373,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
       throw usersError;
     }
 
@@ -453,7 +428,6 @@ class PostService {
       .single();
 
     if (error) {
-      console.error('Error updating post:', error);
       throw new Error(`Failed to update post: ${error.message}`);
     }
 
@@ -470,7 +444,6 @@ class PostService {
       .eq('id', postId);
 
     if (error) {
-      console.error('Error deleting post:', error);
       throw new Error(`Failed to delete post: ${error.message}`);
     }
   }
@@ -488,7 +461,6 @@ class PostService {
       .limit(limit);
 
     if (postsError) {
-      console.error('Error fetching trending posts:', postsError);
       return [];
     }
 
@@ -506,7 +478,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup
@@ -585,7 +557,6 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
-      console.error('Error searching posts:', postsError);
       return [];
     }
 
@@ -603,7 +574,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup
@@ -629,7 +600,6 @@ class PostService {
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error fetching user post stats:', error);
       return {
         totalPosts: 0,
         totalLikes: 0,
@@ -674,7 +644,7 @@ class PostService {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error checking post like:', error);
+      // Handle error silently
     }
 
     return !!data;
@@ -692,7 +662,7 @@ class PostService {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error checking post save:', error);
+      // Handle error silently
     }
 
     return !!data;
@@ -709,7 +679,6 @@ class PostService {
       .order('name');
 
     if (error) {
-      console.error('Error fetching external content sources:', error);
       return [];
     }
 
@@ -745,7 +714,6 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
-      console.error('Error fetching posts by content type:', postsError);
       return [];
     }
 
@@ -763,7 +731,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup
@@ -794,7 +762,6 @@ class PostService {
       .limit(limit);
 
     if (postsError) {
-      console.error('Error fetching posts by external source:', postsError);
       return [];
     }
 
@@ -812,7 +779,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup

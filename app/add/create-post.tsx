@@ -101,7 +101,6 @@ export default function CreatePostScreen() {
         setSelectedRestaurant(restaurant);
         updateFormField('restaurantId', restaurant.id.toString());
       } catch (error) {
-        console.error('Error parsing selected restaurant:', error);
       }
     }
   }, [params.selectedRestaurant]);
@@ -150,17 +149,12 @@ export default function CreatePostScreen() {
       return;
     }
 
-    console.log('🚀 Starting post creation...');
-    console.log('📊 Selected communities:', selectedCommunities);
-    console.log('📊 Community count:', selectedCommunities.length);
 
     setLoading(true);
     try {
       let uploadedPhotos: string[] = [];
       if (formData.photos.length > 0) {
-        console.log('📸 Uploading photos...');
         uploadedPhotos = await postMediaService.uploadPostPhotos(formData.photos, user.id);
-        console.log('✅ Photos uploaded:', uploadedPhotos.length);
       }
 
       const postData: PostCreationData = {
@@ -178,12 +172,6 @@ export default function CreatePostScreen() {
         communityIds: selectedCommunities.length > 0 ? selectedCommunities : undefined
       };
 
-      console.log('📝 Final post data:', {
-        postType: postData.postType,
-        hasRestaurant: !!postData.restaurantId,
-        communityIds: postData.communityIds,
-        communityCount: postData.communityIds?.length || 0
-      });
 
       // Add external content if applicable
       if (formData.contentType === 'external' && formData.externalUrl) {
@@ -197,9 +185,7 @@ export default function CreatePostScreen() {
         };
       }
 
-      console.log('📡 Calling postService.createPost...');
       const post = await postService.createPost(postData);
-      console.log('✅ Post created successfully:', post.id);
 
       // Update network progress
       await updateNetworkProgress('post');
@@ -216,7 +202,6 @@ export default function CreatePostScreen() {
       }, 1500);
 
     } catch (error) {
-      console.error('Error creating post:', error);
       Alert.alert('Error', 'Failed to create post. Please try again.');
     } finally {
       setLoading(false);
@@ -238,7 +223,6 @@ export default function CreatePostScreen() {
         updateFormField('photos', [...formData.photos, ...selectedPhotos]);
       }
     } catch (error) {
-      console.error('Error selecting photos:', error);
     }
   };
 
@@ -263,7 +247,6 @@ export default function CreatePostScreen() {
       const results = await restaurantService.searchRestaurants(searchQuery);
       setSearchResults(results);
     } catch (error) {
-      console.error('Error searching restaurants:', error);
       Alert.alert('Error', 'Failed to search restaurants');
     } finally {
       setIsSearching(false);

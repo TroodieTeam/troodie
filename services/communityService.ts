@@ -93,7 +93,6 @@ class CommunityService {
       this.setCache(cacheKey, communities);
       return communities;
     } catch (error) {
-      console.error('Error fetching communities:', error);
       return [];
     }
   }
@@ -138,7 +137,6 @@ class CommunityService {
       this.setCache(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Error fetching user communities:', error);
       return { joined: [], created: [] };
     }
   }
@@ -185,7 +183,6 @@ class CommunityService {
       this.setCache(cacheKey, stats);
       return stats;
     } catch (error) {
-      console.error('Error fetching community stats:', error);
       return {
         joined_count: 0,
         created_count: 0,
@@ -215,7 +212,6 @@ class CommunityService {
       this.setCache(cacheKey, data);
       return data;
     } catch (error) {
-      console.error('Error fetching community:', error);
       return null;
     }
   }
@@ -256,7 +252,6 @@ class CommunityService {
         membership_status: membership?.status,
       };
     } catch (error) {
-      console.error('Error fetching community with membership:', error);
       return null;
     }
   }
@@ -285,7 +280,6 @@ class CommunityService {
           .eq('id', existingMember.id);
 
         if (updateError) {
-          console.error('Error reactivating membership:', updateError);
           return { success: false, error: 'Failed to rejoin community' };
         }
       } else {
@@ -302,7 +296,6 @@ class CommunityService {
           if (insertError.code === '23505') {
             return { success: true }; // Already joined, treat as success
           }
-          console.error('Error joining community:', insertError);
           return { success: false, error: 'Failed to join community' };
         }
       }
@@ -316,7 +309,6 @@ class CommunityService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error joining community:', error);
       return { success: false, error: error.message || 'Failed to join community' };
     }
   }
@@ -350,8 +342,7 @@ class CommunityService {
         .eq('community_id', communityId);
 
       if (error) {
-        console.error('Error leaving community:', error);
-        return { success: false, error: 'Failed to leave community' };
+          return { success: false, error: 'Failed to leave community' };
       }
 
       // Clear cache
@@ -363,7 +354,6 @@ class CommunityService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error leaving community:', error);
       return { success: false, error: error.message || 'Failed to leave community' };
     }
   }
@@ -407,7 +397,6 @@ class CommunityService {
         .single();
 
       if (createError) {
-        console.error('Error creating community:', createError);
         return { community: null, error: 'Failed to create community' };
       }
 
@@ -426,7 +415,6 @@ class CommunityService {
         });
 
       if (memberError) {
-        console.error('Error adding creator as owner:', memberError);
         // Still return the community since it was created
         return { community, error: null };
       }
@@ -437,7 +425,6 @@ class CommunityService {
 
       return { community, error: null };
     } catch (error: any) {
-      console.error('Error creating community:', error);
       return { community: null, error: error.message || 'Failed to create community' };
     }
   }
@@ -454,8 +441,7 @@ class CommunityService {
         .eq('id', communityId);
 
       if (error) {
-        console.error('Error deleting community:', error);
-        return { success: false, error: 'Failed to delete community' };
+          return { success: false, error: 'Failed to delete community' };
       }
 
       // Clear all cache since community relationships might have changed
@@ -463,7 +449,6 @@ class CommunityService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error deleting community:', error);
       return { success: false, error: error.message || 'Failed to delete community' };
     }
   }
@@ -484,7 +469,6 @@ class CommunityService {
         .update({ member_count: count || 0 })
         .eq('id', communityId);
     } catch (error) {
-      console.error('Error updating member count:', error);
     }
   }
 
@@ -512,7 +496,6 @@ class CommunityService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error fetching community members:', error);
       return [];
     }
   }
@@ -536,7 +519,6 @@ class CommunityService {
       if (error) return false;
       return data?.role === 'owner' || data?.role === 'admin';
     } catch (error) {
-      console.error('Error checking admin permission:', error);
       return false;
     }
   }
@@ -550,7 +532,6 @@ class CommunityService {
     offset: number = 0
   ): Promise<any[]> {
     try {
-      console.log(`🔍 Fetching posts for community ${communityId}...`);
       
       // First check if post_communities table has any data at all
       const { data: allPostCommunities, error: checkError } = await supabase
@@ -559,12 +540,9 @@ class CommunityService {
         .limit(5);
       
       if (checkError) {
-        console.error('❌ Error checking post_communities table:', checkError);
+        // Handle error silently
       } else {
-        console.log(`📊 Total post_communities records (first 5): ${allPostCommunities?.length || 0}`);
-        allPostCommunities?.forEach(pc => {
-          console.log(`  - Post ${pc.post_id} → Community ${pc.community_id} (${pc.community_id === communityId ? 'MATCH' : 'different'})`);
-        });
+        // Handle success silently
       }
 
       // Now get cross-posted posts with proper joins
@@ -601,14 +579,11 @@ class CommunityService {
         .range(offset, offset + limit - 1);
 
       if (crossPostError) {
-        console.error('❌ Error fetching cross-posted content:', crossPostError);
         return [];
       }
 
-      console.log(`📊 Found ${crossPostedData?.length || 0} cross-posted items for community ${communityId}`);
 
       if (!crossPostedData || crossPostedData.length === 0) {
-        console.log('No posts found in community');
         return [];
       }
 
@@ -694,7 +669,6 @@ class CommunityService {
 
       return posts;
     } catch (error) {
-      console.error('Error fetching community posts:', error);
       return [];
     }
   }

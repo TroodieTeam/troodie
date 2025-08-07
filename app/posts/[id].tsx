@@ -61,10 +61,6 @@ export default function PostDetailScreen() {
   useEffect(() => {
     if (post && refreshStats) {
       // Force update engagement stats with fresh post data
-      console.log('Post data changed, updating engagement stats:', {
-        comments_count: post.comments_count,
-        likes_count: post.likes_count
-      });
       refreshStats({
         likes_count: post.likes_count || 0,
         comments_count: post.comments_count || 0,
@@ -88,7 +84,6 @@ export default function PostDetailScreen() {
       const postData = await postService.getPost(id);
       setPost(postData);
     } catch (err: any) {
-      console.error('Error loading post:', err);
       setError(err);
     } finally {
       setLoading(false);
@@ -324,7 +319,7 @@ export default function PostDetailScreen() {
                 source={{ uri: post.photos[0] }} 
                 style={styles.singlePhoto}
                 resizeMode="cover"
-                onError={(e) => console.error('Image load error:', e.nativeEvent.error)}
+                onError={() => {}}
               />
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
@@ -334,7 +329,7 @@ export default function PostDetailScreen() {
                     source={{ uri: photo }} 
                     style={styles.multiPhoto}
                     resizeMode="cover"
-                    onError={(e) => console.error(`Image ${index} load error:`, e.nativeEvent.error)}
+                    onError={() => {}}
                   />
                 ))}
               </ScrollView>
@@ -440,7 +435,6 @@ export default function PostDetailScreen() {
               showInput={false} // Don't show input in the comments component
               onCommentAdded={() => {
                 // Just update the comment count without reloading the entire screen
-                console.log('Comment added - updating comment count');
                 if (refreshStats && post) {
                   refreshStats({
                     likes_count: post.likes_count || 0,
@@ -457,7 +451,6 @@ export default function PostDetailScreen() {
               }}
               onCommentDeleted={() => {
                 // Update the comment count when comment is deleted
-                console.log('Comment deleted - updating comment count');
                 if (refreshStats && post) {
                   refreshStats({
                     likes_count: post.likes_count || 0,

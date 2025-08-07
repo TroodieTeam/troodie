@@ -90,7 +90,6 @@ export default function AddScreen() {
 
   const handleRestaurantAdded = (restaurant: any) => {
     // Could navigate to the restaurant page or show a success message
-    console.log('Restaurant added:', restaurant);
   };
 
   const renderHeader = () => (

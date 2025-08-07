@@ -13,7 +13,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.troodie.troodie.com",
-      buildNumber: "7",
+      buildNumber: "8",
       infoPlist: {
         NSLocationWhenInUseUsageDescription: "Troodie uses your location to show nearby restaurants and recommendations.",
         NSCameraUsageDescription: "Troodie uses your camera to take photos of restaurants and food.",

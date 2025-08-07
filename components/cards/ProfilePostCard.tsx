@@ -175,53 +175,18 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
               source={{ uri: getImageUrl(mainPhoto, retryAttempt) }} 
               style={styles.photo}
               resizeMode="cover"
-              onError={(e) => {
-                console.error(`❌ ProfilePostCard image failed (attempt ${retryAttempt + 1}):`, {
-                  uri: getImageUrl(mainPhoto, retryAttempt),
-                  originalUri: mainPhoto,
-                  error: e.nativeEvent.error,
-                  retryAttempt
-                });
-                
+              onError={() => {
                 if (retryAttempt < 2) {
                   // Try again with cache-busting
                   setRetryAttempt(prev => prev + 1);
                 } else {
                   // Give up after 3 attempts
                   setImageError(true);
-                  
-                  console.log('Final image failure details:', {
-                    isSupabaseStorage: mainPhoto.includes('supabase.co/storage'),
-                    hasPublicFolder: mainPhoto.includes('/public/'),
-                    bucket: mainPhoto.split('/').find(part => part === 'post-photos'),
-                    path: mainPhoto.split('/public/')[1] || 'no-public-path',
-                    fullUrl: mainPhoto
-                  });
-                  
-                  // Test if we can fetch the URL directly with full headers
-                  fetch(mainPhoto, { method: 'HEAD' })
-                    .then(response => {
-                      console.log('Direct fetch HEAD response:', {
-                        status: response.status,
-                        statusText: response.statusText,
-                        contentType: response.headers.get('content-type'),
-                        contentLength: response.headers.get('content-length'),
-                        cacheControl: response.headers.get('cache-control'),
-                        etag: response.headers.get('etag')
-                      });
-                    })
-                    .catch(err => {
-                        console.error('Direct fetch HEAD failed:', err);
-                    });
                 }
               }}
               onLoad={() => {
                 setImageError(false);
                 setRetryAttempt(0);
-              }}
-              onLoadStart={() => {
-              }}
-              onLoadEnd={() => {
               }}
             />
           </View>

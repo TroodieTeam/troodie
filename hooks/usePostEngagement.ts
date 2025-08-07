@@ -68,7 +68,6 @@ export function usePostEngagement({
   // Initialize from initial stats or cache
   useEffect(() => {
     if (initialStats) {
-      console.log('Setting initial stats:', initialStats);
       setLikesCount(initialStats.likes_count || 0);
       setCommentsCount(initialStats.comments_count || 0);
       setSavesCount(initialStats.saves_count || 0);
@@ -149,7 +148,6 @@ export function usePostEngagement({
         }
       );
     } catch (error) {
-      console.error('Error toggling like:', error);
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +177,6 @@ export function usePostEngagement({
         }
       );
     } catch (error) {
-      console.error('Error toggling save:', error);
     } finally {
       setIsLoading(false);
     }
@@ -224,7 +221,6 @@ export function usePostEngagement({
         }
       );
     } catch (error) {
-      console.error('Error adding comment:', error);
     } finally {
       setIsLoading(false);
     }
@@ -246,7 +242,6 @@ export function usePostEngagement({
         setShareCount((prev) => prev + 1);
       }
     } catch (error) {
-      console.error('Error sharing post:', error);
       Alert.alert('Error', 'Failed to share post. Please try again.');
     } finally {
       setIsLoading(false);
@@ -270,7 +265,6 @@ export function usePostEngagement({
         Alert.alert('Error', 'Failed to copy link');
       }
     } catch (error) {
-      console.error('Error copying link:', error);
       Alert.alert('Error', 'Failed to copy link');
     } finally {
       setIsLoading(false);
@@ -289,7 +283,6 @@ export function usePostEngagement({
       // For now, we'll just set hasMoreComments to false
       setHasMoreComments(false);
     } catch (error) {
-      console.error('Error loading comments:', error);
     } finally {
       setIsLoadingComments(false);
     }
@@ -297,7 +290,6 @@ export function usePostEngagement({
   
   // Refresh stats manually
   const refreshStats = useCallback((newStats: PostEngagementStats) => {
-    console.log('Refreshing engagement stats:', newStats);
     setLikesCount(newStats.likes_count || 0);
     setCommentsCount(newStats.comments_count || 0);
     setSavesCount(newStats.saves_count || 0);
