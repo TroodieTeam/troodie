@@ -84,7 +84,7 @@ export function PostCard({
   const handleShare = async () => {
     await sharePost(
       post.caption || 'Check out this post',
-      post.restaurant?.name || 'Restaurant'
+      post.restaurant?.name || 'Troodie'
     );
     onShare?.(post.id);
   };
@@ -98,7 +98,7 @@ export function PostCard({
 
   const handleRestaurantPress = useCallback((e: any) => {
     e.stopPropagation();
-    if (post.restaurant?.id) {
+    if (post.restaurant && post.restaurant.id) {
       router.push(`/restaurant/${post.restaurant.id}`);
     }
   }, [post.restaurant, router]);
@@ -244,7 +244,9 @@ export function PostCard({
               <View style={styles.ratingContainer}>
                 {getRatingStars(post.rating)}
               </View>
-              <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
+              {post.restaurant.priceRange && (
+                <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
+              )}
             </View>
           </View>
         </TouchableOpacity>

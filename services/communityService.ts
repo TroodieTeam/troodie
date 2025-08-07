@@ -550,6 +550,8 @@ class CommunityService {
     offset: number = 0
   ): Promise<any[]> {
     try {
+      console.log(`Fetching posts for community ${communityId}...`);
+      
       // First get cross-posted posts with proper joins
       const { data: crossPostedData, error: crossPostError } = await supabase
         .from('post_communities')
@@ -588,7 +590,10 @@ class CommunityService {
         return [];
       }
 
+      console.log(`Found ${crossPostedData?.length || 0} cross-posted items`);
+
       if (!crossPostedData || crossPostedData.length === 0) {
+        console.log('No posts found in community');
         return [];
       }
 

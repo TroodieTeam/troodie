@@ -17,7 +17,7 @@ export type PostSaveInsert = Database['public']['Tables']['post_saves']['Insert'
 
 export interface PostWithUser extends Post {
   user: UserInfo;
-  restaurant: RestaurantInfo;
+  restaurant?: RestaurantInfo | null;  // Make restaurant optional for simple posts
   is_liked_by_user?: boolean;
   is_saved_by_user?: boolean;
 }

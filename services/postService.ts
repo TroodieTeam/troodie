@@ -114,7 +114,12 @@ class PostService {
   /**
    * Helper to transform restaurant data
    */
-  private transformRestaurant(post: any): RestaurantInfo {
+  private transformRestaurant(post: any): RestaurantInfo | null {
+    // Return null if there's no restaurant_id
+    if (!post.restaurant_id) {
+      return null;
+    }
+    
     return {
       id: post.restaurant_id,
       name: 'Restaurant', // This should be fetched from restaurants table
@@ -189,19 +194,29 @@ class PostService {
           if (crossPostError.code === 'PGRST202' || crossPostError.message?.includes('Could not find the function')) {
             console.warn('Cross-posting function not available yet. Please run migration 20250808_add_cross_post_function.sql');
             // Try fallback to direct insert
+            console.log('Using fallback method to add posts to communities...');
+            let successCount = 0;
             for (const communityId of postData.communityIds) {
               try {
-                await supabase
+                const { error: insertError } = await supabase
                   .from('post_communities')
                   .insert({
                     post_id: data.id,
                     community_id: communityId,
                     added_by: user.id
                   });
+                
+                if (insertError) {
+                  console.warn(`Could not add post to community ${communityId}:`, insertError);
+                } else {
+                  successCount++;
+                  console.log(`Successfully added post to community ${communityId}`);
+                }
               } catch (err) {
-                console.warn(`Could not add post to community ${communityId}:`, err);
+                console.warn(`Error adding post to community ${communityId}:`, err);
               }
             }
+            console.log(`Post cross-posted to ${successCount}/${postData.communityIds.length} communities via fallback`);
           } else {
             console.error('Error cross-posting to communities:', crossPostError);
           }
