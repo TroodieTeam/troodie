@@ -139,8 +139,12 @@ export default function PostDetailScreen() {
     if (!post) return;
 
     try {
+      const shareMessage = post.restaurant 
+        ? `Check out this post about ${post.restaurant.name} on TROODIE!`
+        : `Check out this post on TROODIE!`;
+        
       const result = await Share.share({
-        message: `Check out this post about ${post.restaurant.name} on TROODIE!`,
+        message: shareMessage,
         url: `https://troodie.com/post/${post.id}`, // Replace with actual URL
       });
 
@@ -299,38 +303,40 @@ export default function PostDetailScreen() {
           </View>
         )}
 
-        {/* Restaurant Info - Clickable */}
-        <TouchableOpacity 
-          style={styles.restaurantInfo}
-          onPress={handleRestaurantPress}
-          activeOpacity={0.6}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Image 
-            source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} 
-            style={styles.restaurantImage} 
-          />
-          <View style={styles.restaurantDetails}>
-            <Text style={styles.restaurantName} numberOfLines={1}>
-              {post.restaurant.name}
-            </Text>
-            <Text style={styles.restaurantLocation} numberOfLines={1}>
-              {post.restaurant.location}
-            </Text>
-            <View style={styles.restaurantMeta}>
-              <View style={styles.ratingContainer}>
-                {getRatingStars(post.rating)}
-              </View>
-              <Text style={styles.restaurantDot}>•</Text>
-              <Text style={styles.restaurantCuisine}>
-                {post.restaurant.cuisine}
+        {/* Restaurant Info - Only show if restaurant exists */}
+        {post.restaurant && (
+          <TouchableOpacity 
+            style={styles.restaurantInfo}
+            onPress={handleRestaurantPress}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Image 
+              source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} 
+              style={styles.restaurantImage} 
+            />
+            <View style={styles.restaurantDetails}>
+              <Text style={styles.restaurantName} numberOfLines={1}>
+                {post.restaurant.name}
               </Text>
+              <Text style={styles.restaurantLocation} numberOfLines={1}>
+                {post.restaurant.location}
+              </Text>
+              <View style={styles.restaurantMeta}>
+                <View style={styles.ratingContainer}>
+                  {getRatingStars(post.rating)}
+                </View>
+                <Text style={styles.restaurantDot}>•</Text>
+                <Text style={styles.restaurantCuisine}>
+                  {post.restaurant.cuisine}
+                </Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.restaurantArrow}>
-            <Ionicons name="chevron-forward" size={20} color={designTokens.colors.textMedium} />
-          </View>
-        </TouchableOpacity>
+            <View style={styles.restaurantArrow}>
+              <Ionicons name="chevron-forward" size={20} color={designTokens.colors.textMedium} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Actions */}
         <View style={styles.actions}>

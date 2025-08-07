@@ -454,7 +454,7 @@ export default function CommunityDetailScreen() {
     <View style={styles.postWrapper}>
       <PostCard 
         post={item}
-        onPress={() => router.push(`/post/${item.id}`)}
+        onPress={() => router.push(`/posts/${item.id}`)}
         showActions={true}
       />
     </View>

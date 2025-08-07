@@ -1,5 +1,5 @@
 import { BoardCard } from '@/components/BoardCard';
-import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
+import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
@@ -635,10 +635,13 @@ export default function ProfileScreen() {
           renderItem={({ item }: { item: PostWithUser }) => {
             
             return (
-              <ProfilePostCard
+              <PostCard
                 post={item}
                 onPress={() => handlePostPress(item.id)}
-                onEdit={() => handleEditPost(item.id)}
+                onLike={handleLike}
+                onComment={handleComment}
+                onSave={handleSave}
+                showActions={true}
               />
             );
           }}

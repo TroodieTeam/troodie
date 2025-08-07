@@ -107,28 +107,40 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
           {getTrafficLightRating(post.rating)}
         </View>
 
-        {/* Restaurant Info */}
-        <View style={styles.restaurantSection}>
-          <Image 
-            source={{ uri: post.restaurant?.image || DEFAULT_IMAGES.restaurant }} 
-            style={styles.restaurantImage}
-            resizeMode="cover"
-          />
-          <View style={styles.restaurantInfo}>
-            <Text style={styles.restaurantName} numberOfLines={1}>
-              {post.restaurant?.name || 'Restaurant'}
-            </Text>
-            {post.restaurant?.location && (
-              <View style={styles.locationRow}>
-                <MapPin size={10} color={theme.colors.text.tertiary} />
-                <Text style={styles.location} numberOfLines={1}>{post.restaurant.location}</Text>
-              </View>
-            )}
-            {post.restaurant?.cuisine && (
-              <Text style={styles.cuisine} numberOfLines={1}>{post.restaurant.cuisine}</Text>
-            )}
+        {/* Restaurant Info - Only show if restaurant exists */}
+        {post.restaurant && (
+          <View style={styles.restaurantSection}>
+            <Image 
+              source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} 
+              style={styles.restaurantImage}
+              resizeMode="cover"
+            />
+            <View style={styles.restaurantInfo}>
+              <Text style={styles.restaurantName} numberOfLines={1}>
+                {post.restaurant.name}
+              </Text>
+              {post.restaurant.location && (
+                <View style={styles.locationRow}>
+                  <MapPin size={10} color={theme.colors.text.tertiary} />
+                  <Text style={styles.location} numberOfLines={1}>{post.restaurant.location}</Text>
+                </View>
+              )}
+              {post.restaurant.cuisine && (
+                <Text style={styles.cuisine} numberOfLines={1}>{post.restaurant.cuisine}</Text>
+              )}
+            </View>
           </View>
-        </View>
+        )}
+
+        {/* Simple Post Badge - Show for posts without restaurants */}
+        {!post.restaurant && (
+          <View style={styles.postTypeSection}>
+            <View style={styles.discussionBadge}>
+              <MessageCircle size={14} color={theme.colors.primary} />
+              <Text style={styles.discussionText}>Discussion</Text>
+            </View>
+          </View>
+        )}
 
         {/* Post Details */}
         {(post.visit_type || post.price_range) && (
@@ -331,6 +343,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     color: theme.colors.primary,
     marginTop: 2,
+  },
+  postTypeSection: {
+    marginBottom: 8,
+  },
+  discussionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.backgroundLight || '#F8F9FA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+  },
+  discussionText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.primary,
   },
   postDetails: {
     flexDirection: 'row',

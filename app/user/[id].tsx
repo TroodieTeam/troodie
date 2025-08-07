@@ -1,5 +1,5 @@
 import { BoardCard } from '@/components/BoardCard';
-import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
+import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import FollowButton from '@/components/FollowButton';
 import { CommunityTab } from '@/components/profile/CommunityTab';
@@ -597,10 +597,13 @@ export default function UserDetailScreen() {
         <FlatList
           data={posts}
           renderItem={({ item }: { item: PostWithUser }) => (
-            <ProfilePostCard
+            <PostCard
               post={item}
               onPress={() => handlePostPress(item.id)}
-              onEdit={() => {}} // No edit for other users
+              onLike={() => {}}
+              onComment={() => handlePostPress(item.id)}
+              onSave={() => {}}
+              showActions={true}
             />
           )}
           keyExtractor={(item: PostWithUser) => item.id}

@@ -115,16 +115,56 @@ export function PostCard({
     return date.toLocaleDateString();
   };
 
-  const getRatingStars = (rating: number | null) => {
-    const ratingValue = rating || 0;
-    return Array.from({ length: 5 }, (_, i) => (
-      <Ionicons
-        key={i}
-        name={i < ratingValue ? 'star' : 'star-outline'}
-        size={12}
-        color={i < ratingValue ? designTokens.colors.primaryOrange : designTokens.colors.textMedium}
-      />
-    ));
+  const getTrafficLightRating = (rating: number | null) => {
+    if (!rating || rating === 0) return null;
+    
+    // Handle both 3-point traffic light system and 5-point star system
+    let color, label;
+    
+    if (rating <= 3) {
+      // Traffic light system: 1=Red, 2=Yellow, 3=Green
+      const trafficColors = {
+        1: '#FF4444', // Red - Poor
+        2: '#FFAA44', // Yellow - Average 
+        3: '#00AA00', // Green - Excellent
+      };
+      
+      const trafficLabels = {
+        1: 'Poor',
+        2: 'Average',
+        3: 'Excellent'
+      };
+      
+      color = trafficColors[rating as keyof typeof trafficColors];
+      label = trafficLabels[rating as keyof typeof trafficLabels];
+    } else {
+      // 5-star system: 1-5 stars
+      const starColors = {
+        1: '#FF4444', // Red
+        2: '#FF7744', // Orange-Red
+        3: '#FFAA44', // Orange
+        4: '#44AA44', // Light Green
+        5: '#00AA00', // Green
+      };
+      
+      const starLabels = {
+        1: 'Poor',
+        2: 'Fair', 
+        3: 'Good',
+        4: 'Great',
+        5: 'Excellent'
+      };
+      
+      color = starColors[rating as keyof typeof starColors];
+      label = starLabels[rating as keyof typeof starLabels];
+    }
+    
+    return (
+      <View style={styles.trafficLight}>
+        <View style={[styles.trafficDot, { backgroundColor: color }]} />
+        <Text style={styles.ratingText}>{label}</Text>
+      </View>
+    );
   };
 
   return (
@@ -241,9 +281,7 @@ export function PostCard({
               {post.restaurant.location}
             </Text>
             <View style={styles.restaurantMeta}>
-              <View style={styles.ratingContainer}>
-                {getRatingStars(post.rating)}
-              </View>
+              {getTrafficLightRating(post.rating)}
               {post.restaurant.priceRange && (
                 <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
               )}
@@ -276,7 +314,6 @@ export function PostCard({
           )}
           {post.rating && post.rating > 0 && (
             <View style={styles.ratingInfo}>
-              <Ionicons name="star" size={compactDesign.icon.small} color={designTokens.colors.primaryOrange} />
               <Text style={styles.ratingText}>{post.rating}</Text>
             </View>
           )}
@@ -563,5 +600,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Inter_500Medium',
     color: '#666',
+  },
+  trafficLight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trafficDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  ratingText: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textMedium,
   },
 }); 
