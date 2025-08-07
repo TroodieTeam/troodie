@@ -31,26 +31,8 @@ export class FollowService {
         throw error
       }
 
-      // Get current user info for notification
-      const { data: currentUser } = await supabase
-        .from('users')
-        .select('name, username')
-        .eq('id', currentUserId)
-        .single()
-
-      // Send notification using the instance method
-      try {
-        const { notificationService } = await import('./notificationService')
-        await notificationService.createFollowNotification(
-          userId,
-          currentUserId,
-          currentUser?.name || currentUser?.username || 'Someone',
-          currentUser?.avatar_url
-        )
-      } catch (notificationError) {
-        // Don't fail the follow operation if notification fails
-        console.error('Failed to send follow notification:', notificationError)
-      }
+      // Notification is handled by database trigger (notify_on_follow)
+      // No need to create notification here as it would be duplicate
 
       // Update cached counts
       await this.updateFollowerCounts(userId, 1)
