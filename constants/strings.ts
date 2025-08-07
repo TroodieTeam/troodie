@@ -30,6 +30,7 @@ export const strings = {
   },
   addRestaurant: {
     title: 'Add New Restaurant',
+    buttonLabel: 'Add Restaurant', // For button/CTA text
     description: "Can't find a restaurant? Add it to our database and help the community discover new places!",
     searchPlaceholder: 'Search for restaurant...',
     helpText: 'Enter the restaurant name to search our database',
@@ -39,7 +40,8 @@ export const strings = {
     selectedTitle: 'Selected Restaurant',
     successMessage: 'Restaurant added successfully! It will be available shortly.',
     duplicateMessage: 'This restaurant is already in our system!',
-    errorMessage: 'Failed to add restaurant. Please try again.'
+    errorMessage: 'Failed to add restaurant. Please try again.',
+    quickActionDescription: 'Share a new restaurant discovery'
   },
   saves: {
     title: 'Your Saves',
@@ -49,6 +51,16 @@ export const strings = {
     toastMessage: 'Added to Your Saves',
     removeToastMessage: 'Removed from Your Saves',
     errorMessage: 'Error loading Your Saves'
+  },
+  discoveryActions: {
+    addRestaurant: {
+      title: 'Add Restaurant',
+      description: 'Share a new restaurant discovery'
+    },
+    findFriends: {
+      title: 'Find Friends',
+      description: 'Connect with fellow food lovers'
+    }
   },
   // Keep old strings for migration compatibility
   deprecated: {
