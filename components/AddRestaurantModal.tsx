@@ -110,9 +110,13 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
       }
 
       if (data && data.error) {
-        if (data.error.includes('already exists') || data.error.includes('Similar restaurant')) {
+        // Check for duplicate restaurant errors
+        if (data.error.includes('already exists') || 
+            data.error.includes('Similar restaurant') ||
+            data.error.includes('duplicate key') ||
+            data.error.includes('restaurants_google_place_id_key')) {
           setSubmissionStatus('duplicate');
-          setSubmissionMessage(strings.addRestaurant.duplicateMessage);
+          setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
         } else {
           setSubmissionStatus('error');
           setSubmissionMessage(data.error);
@@ -141,17 +145,25 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
       }
     } catch (error: any) {
       console.error('Error submitting restaurant:', error);
-      setSubmissionStatus('error');
       
-      // Provide more specific error messages
-      if (error.message?.includes('Authentication required')) {
+      // Check for duplicate key errors in the catch block too
+      if (error.message?.includes('duplicate key') || 
+          error.message?.includes('restaurants_google_place_id_key') ||
+          error.message?.includes('already exists')) {
+        setSubmissionStatus('duplicate');
+        setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+      } else if (error.message?.includes('Authentication required')) {
+        setSubmissionStatus('error');
         setSubmissionMessage('Please log in to add restaurants.');
       } else if (error.message?.includes('configuration error')) {
+        setSubmissionStatus('error');
         setSubmissionMessage('App configuration error. Please contact support.');
       } else if (error.message?.includes('network')) {
+        setSubmissionStatus('error');
         setSubmissionMessage('Network error. Please check your connection.');
       } else {
-        setSubmissionMessage(error.message || 'Failed to add restaurant. Please try again.');
+        setSubmissionStatus('error');
+        setSubmissionMessage('Unable to add restaurant at this time. Please try again later.');
       }
     } finally {
       setIsSubmitting(false);

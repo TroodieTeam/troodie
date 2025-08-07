@@ -39,7 +39,7 @@ export const strings = {
     searchingText: 'Searching...',
     selectedTitle: 'Selected Restaurant',
     successMessage: 'Restaurant added successfully! It will be available shortly.',
-    duplicateMessage: 'This restaurant is already in our system!',
+    duplicateMessage: 'This restaurant is already in our system! You can find it by searching.',
     errorMessage: 'Failed to add restaurant. Please try again.',
     quickActionDescription: 'Share a new restaurant discovery'
   },
