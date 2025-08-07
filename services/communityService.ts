@@ -375,34 +375,68 @@ class CommunityService {
     }
   ): Promise<{ community: Community | null; error: string | null }> {
     try {
-      // Create the community
+      console.log('[CommunityService] Creating community with data:', {
+        userId,
+        formData: {
+          ...formData,
+          is_event_based: formData.is_event_based || false
+        }
+      });
+
+      // Create the community - start with core fields only
+      const coreData: any = {
+        name: formData.name,
+        description: formData.description,
+        location: formData.location,
+        type: formData.type,
+        admin_id: userId,
+        member_count: 1,
+        activity_level: 0,
+        is_active: true,
+        currency: 'USD',
+      };
+
+      // Only add event-based fields if they're provided (defensive approach)
+      if (formData.cover_image_url) {
+        coreData.cover_image_url = formData.cover_image_url;
+      }
+
+      // Try to include event fields, but be prepared for them to not exist in schema
+      if (formData.is_event_based !== undefined) {
+        coreData.is_event_based = formData.is_event_based;
+      }
+      if (formData.event_name) {
+        coreData.event_name = formData.event_name;
+      }
+      if (formData.event_date) {
+        coreData.event_date = formData.event_date;
+      }
+
+      console.log('[CommunityService] Inserting data:', coreData);
+
       const { data: community, error: createError } = await supabase
         .from('communities')
-        .insert({
-          name: formData.name,
-          description: formData.description,
-          location: formData.location,
-          type: formData.type,
-          is_event_based: formData.is_event_based || false,
-          event_name: formData.event_name,
-          event_date: formData.event_date,
-          cover_image_url: formData.cover_image_url,
-          admin_id: userId,
-          member_count: 1,
-          activity_level: 0,
-          is_active: true,
-          currency: 'USD',
-        })
+        .insert(coreData)
         .select()
         .single();
 
       if (createError) {
-        return { community: null, error: 'Failed to create community' };
+        console.error('[CommunityService] Failed to create community:', {
+          error: createError,
+          code: createError.code,
+          message: createError.message,
+          details: createError.details,
+          hint: createError.hint,
+        });
+        return { community: null, error: createError.message || 'Failed to create community' };
       }
 
       if (!community) {
+        console.error('[CommunityService] Community creation returned null data');
         return { community: null, error: 'Community creation failed' };
       }
+
+      console.log('[CommunityService] Community created successfully:', community.id);
 
       // Add creator as owner
       const { error: memberError } = await supabase
@@ -415,9 +449,16 @@ class CommunityService {
         });
 
       if (memberError) {
+        console.error('[CommunityService] Failed to add creator as owner:', {
+          error: memberError,
+          userId,
+          communityId: community.id
+        });
         // Still return the community since it was created
         return { community, error: null };
       }
+
+      console.log('[CommunityService] Creator added as owner successfully');
 
       // Clear cache
       this.clearUserCache(userId);
@@ -425,6 +466,13 @@ class CommunityService {
 
       return { community, error: null };
     } catch (error: any) {
+      console.error('[CommunityService] Unexpected error creating community:', {
+        error,
+        message: error.message,
+        stack: error.stack,
+        userId,
+        formData
+      });
       return { community: null, error: error.message || 'Failed to create community' };
     }
   }

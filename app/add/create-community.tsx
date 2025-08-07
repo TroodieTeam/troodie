@@ -73,8 +73,12 @@ export default function CreateCommunityScreen() {
     }
 
     if (!validateForm()) {
+      console.log('[CreateCommunity] Form validation failed:', errors);
       return;
     }
+
+    console.log('[CreateCommunity] Starting community creation with user:', user.id);
+    console.log('[CreateCommunity] Form data:', formData);
 
     setLoading(true);
     try {
@@ -83,12 +87,16 @@ export default function CreateCommunityScreen() {
         formData
       );
 
+      console.log('[CreateCommunity] Service response:', { community, error });
+
       if (error) {
+        console.error('[CreateCommunity] Community creation failed:', error);
         Alert.alert('Error', error);
         return;
       }
 
       if (community) {
+        console.log('[CreateCommunity] Community created successfully:', community);
         Alert.alert(
           'Success',
           `Your community "${community.name}" has been created successfully!`,
@@ -103,7 +111,12 @@ export default function CreateCommunityScreen() {
           ]
         );
       }
-    } catch {
+    } catch (unexpectedError: any) {
+      console.error('[CreateCommunity] Unexpected error:', {
+        error: unexpectedError,
+        message: unexpectedError.message,
+        stack: unexpectedError.stack
+      });
       Alert.alert('Error', 'Failed to create community. Please try again.');
     } finally {
       setLoading(false);
