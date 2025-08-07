@@ -1,4 +1,5 @@
 import { Database, supabase } from '@/lib/supabase'
+import { boardService } from './boardService'
 
 type User = Database['public']['Tables']['users']['Row']
 type UserInsert = Database['public']['Tables']['users']['Insert']
@@ -34,11 +35,12 @@ export const userService = {
     // Ensure Your Saves board is created for new user
     if (data) {
       try {
-        const { data: boardId } = await supabase
-          .rpc('ensure_quick_saves_board', { p_user_id: data.id })
+        const boardId = await boardService.ensureQuickSavesBoard(data.id)
         
         if (boardId) {
-          // Your Saves board created successfully
+          console.log('Your Saves board created successfully for new user:', data.id)
+        } else {
+          console.error('Failed to create Your Saves board for new user:', data.id)
         }
       } catch (error) {
         console.error('Error creating Your Saves board:', error)
