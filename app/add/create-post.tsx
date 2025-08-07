@@ -69,6 +69,7 @@ export default function CreatePostScreen() {
   // Modal state
   const [showRestaurantModal, setShowRestaurantModal] = useState(false);
   const [showContentTypeInfo, setShowContentTypeInfo] = useState(false);
+  const [showPostTypeInfo, setShowPostTypeInfo] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<RestaurantInfo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -101,7 +102,13 @@ export default function CreatePostScreen() {
   }, [params.selectedRestaurant]);
 
   const handlePublish = async () => {
-    if (!user || !selectedRestaurant) return;
+    if (!user) return;
+    
+    // For restaurant posts, we need a restaurant
+    if (formData.postType === 'restaurant' && !selectedRestaurant) {
+      Alert.alert('Restaurant Required', 'Please select a restaurant for your review.');
+      return;
+    }
 
     // Check validation before proceeding
     if (!isValid) {
@@ -131,11 +138,12 @@ export default function CreatePostScreen() {
       const postData: PostCreationData = {
         caption: formData.caption,
         photos: uploadedPhotos,
-        restaurantId: selectedRestaurant.id.toString(),
+        restaurantId: formData.postType === 'restaurant' && selectedRestaurant ? selectedRestaurant.id.toString() : undefined,
+        postType: formData.postType || 'simple',
         rating: formData.rating && formData.rating > 0 ? formData.rating : undefined,
-        visitDate: new Date(),
-        priceRange: priceRange || undefined,
-        visitType,
+        visitDate: formData.postType === 'restaurant' ? new Date() : undefined,
+        priceRange: formData.postType === 'restaurant' ? priceRange : undefined,
+        visitType: formData.postType === 'restaurant' ? visitType : undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         privacy,
         contentType: formData.contentType || 'original',
@@ -287,28 +295,29 @@ export default function CreatePostScreen() {
 
         {/* Post Type Selector */}
         <View style={styles.postTypeSelector}>
-          <Text style={styles.postTypeLabel}>What would you like to share?</Text>
+          <View style={styles.postTypeLabelRow}>
+            <Text style={styles.postTypeLabel}>What would you like to share?</Text>
+            <TouchableOpacity 
+              onPress={() => setShowPostTypeInfo(true)}
+              style={styles.infoButton}
+            >
+              <Ionicons name="information-circle-outline" size={20} color={designTokens.colors.textMedium} />
+            </TouchableOpacity>
+          </View>
           <View style={styles.postTypeOptions}>
             <TouchableOpacity
               style={[styles.postTypeOption, formData.postType === 'simple' && styles.postTypeOptionActive]}
               onPress={() => updateFormField('postType', 'simple')}
             >
-              <Ionicons name="chatbubble-outline" size={20} color={formData.postType === 'simple' ? '#FFF' : designTokens.colors.textDark} />
-              <Text style={[styles.postTypeText, formData.postType === 'simple' && styles.postTypeTextActive]}>Text Post</Text>
+              <Ionicons name="create-outline" size={20} color={formData.postType === 'simple' ? '#FFF' : designTokens.colors.textDark} />
+              <Text style={[styles.postTypeText, formData.postType === 'simple' && styles.postTypeTextActive]}>Share</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.postTypeOption, formData.postType === 'restaurant' && styles.postTypeOptionActive]}
               onPress={() => updateFormField('postType', 'restaurant')}
             >
               <Ionicons name="restaurant" size={20} color={formData.postType === 'restaurant' ? '#FFF' : designTokens.colors.textDark} />
-              <Text style={[styles.postTypeText, formData.postType === 'restaurant' && styles.postTypeTextActive]}>Restaurant</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.postTypeOption, formData.postType === 'question' && styles.postTypeOptionActive]}
-              onPress={() => updateFormField('postType', 'question')}
-            >
-              <Ionicons name="help-circle-outline" size={20} color={formData.postType === 'question' ? '#FFF' : designTokens.colors.textDark} />
-              <Text style={[styles.postTypeText, formData.postType === 'question' && styles.postTypeTextActive]}>Question</Text>
+              <Text style={[styles.postTypeText, formData.postType === 'restaurant' && styles.postTypeTextActive]}>Restaurant Review</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -823,6 +832,45 @@ export default function CreatePostScreen() {
     </Modal>
   );
 
+  const renderPostTypeInfoModal = () => (
+    <Modal
+      visible={showPostTypeInfo}
+      animationType="fade"
+      transparent={true}
+    >
+      <TouchableOpacity 
+        style={styles.infoModalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowPostTypeInfo(false)}
+      >
+        <View style={styles.infoModalContent}>
+          <TouchableOpacity 
+            onPress={() => setShowPostTypeInfo(false)}
+            style={styles.infoModalClose}
+          >
+            <Ionicons name="close" size={20} color="#999" />
+          </TouchableOpacity>
+          
+          <Text style={styles.infoModalTitle}>Post Types</Text>
+          
+          <View style={styles.infoOption}>
+            <Text style={styles.infoOptionTitle}>✍️ Share</Text>
+            <Text style={styles.infoOptionText}>
+              Share your thoughts, ask questions, or start discussions about food. Perfect for quick updates, food questions, or general food-related conversations without needing to review a specific restaurant.
+            </Text>
+          </View>
+          
+          <View style={styles.infoOption}>
+            <Text style={styles.infoOptionTitle}>🍽️ Restaurant Review</Text>
+            <Text style={styles.infoOptionText}>
+              Write a detailed review of a restaurant you've visited. Rate your experience, add photos, and help others discover great places to eat.
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   const renderContentTypeInfoModal = () => (
     <Modal
       visible={showContentTypeInfo}
@@ -891,6 +939,7 @@ export default function CreatePostScreen() {
         {renderLinkSheet()}
         {renderDetailsSheet()}
         {renderRestaurantModal()}
+        {renderPostTypeInfoModal()}
         {renderContentTypeInfoModal()}
         {renderSuccessOverlay()}
         
@@ -1579,11 +1628,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
+  postTypeLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   postTypeLabel: {
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textDark,
-    marginBottom: 12,
   },
   postTypeOptions: {
     flexDirection: 'row',

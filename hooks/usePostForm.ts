@@ -49,7 +49,8 @@ export const usePostForm = (initialData?: Partial<PostFormData>): UsePostFormRet
   const getRequiredFieldsForPostType = () => {
     // Simple posts only require caption
     if (formData.postType === 'simple' || formData.postType === 'thought' || 
-        formData.postType === 'question' || formData.postType === 'announcement') {
+        formData.postType === 'question' || formData.postType === 'announcement' ||
+        !formData.postType) {
       return ['caption'];
     }
     
