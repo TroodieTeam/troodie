@@ -1,3 +1,4 @@
+import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +11,7 @@ import {
     UserPlus,
     Users2
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     SafeAreaView,
     ScrollView,
@@ -23,6 +24,7 @@ import {
 export default function AddScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
 
   // Core discovery actions - shown prominently
   const discoveryActions = [
@@ -32,7 +34,7 @@ export default function AddScreen() {
       description: strings.discoveryActions.addRestaurant.description,
       icon: MapPin,
       color: designTokens.colors.primaryOrange,
-      navigateTo: '/explore',
+      onPress: () => setShowAddRestaurantModal(true), // Show modal instead of navigation
       isPrimary: true
     },
     {
@@ -41,7 +43,7 @@ export default function AddScreen() {
       description: strings.discoveryActions.findFriends.description,
       icon: UserPlus,
       color: '#10B981',
-      navigateTo: '/find-friends',
+      onPress: () => router.push('/find-friends'),
       isPrimary: true
     }
   ];
@@ -50,27 +52,27 @@ export default function AddScreen() {
   const addOptions: AddOption[] = [
     {
       id: 'post',
-      title: 'Create a Post',
-      description: 'Share your restaurant experience',
+      title: strings.createContent.createPost.title,
+      description: strings.createContent.createPost.description,
       icon: Camera,
       color: '#3B82F6',
       navigateTo: '/add/create-post'
     },
     {
       id: 'board',
-      title: 'Create a Board',
-      description: 'Curate a themed collection',
+      title: strings.createContent.createBoard.title,
+      description: strings.createContent.createBoard.description,
       icon: FolderPlus,
       color: '#7C3AED',
       navigateTo: '/add/create-board'
     },
     {
       id: 'community',
-      title: 'Join Communities',
-      description: 'Connect with like-minded Troodies',
+      title: strings.createContent.createCommunity.title,
+      description: strings.createContent.createCommunity.description,
       icon: Users2,
       color: '#EC4899',
-      navigateTo: '/add/communities'
+      navigateTo: '/add/create-community' // Changed from /add/communities
     }
   ];
 
@@ -84,6 +86,11 @@ export default function AddScreen() {
     },
     reward: '+50 points',
     cta: 'Create Another Board'
+  };
+
+  const handleRestaurantAdded = (restaurant: any) => {
+    // Could navigate to the restaurant page or show a success message
+    console.log('Restaurant added:', restaurant);
   };
 
   const renderHeader = () => (
@@ -101,7 +108,7 @@ export default function AddScreen() {
           <TouchableOpacity
             key={action.id}
             style={[styles.discoveryCard, { borderColor: action.color + '33' }]}
-            onPress={() => router.push(action.navigateTo as any)}
+            onPress={action.onPress}
             activeOpacity={0.8}
             accessibilityLabel={action.title}
             accessibilityHint={action.description}
@@ -179,6 +186,13 @@ export default function AddScreen() {
         {renderProgressGamification()}
         <View style={styles.bottomPadding} />
       </ScrollView>
+      
+      {/* Add Restaurant Modal */}
+      <AddRestaurantModal
+        visible={showAddRestaurantModal}
+        onClose={() => setShowAddRestaurantModal(false)}
+        onRestaurantAdded={handleRestaurantAdded}
+      />
     </SafeAreaView>
   );
 }

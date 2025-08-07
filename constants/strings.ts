@@ -62,6 +62,20 @@ export const strings = {
       description: 'Connect with fellow food lovers'
     }
   },
+  createContent: {
+    createPost: {
+      title: 'Create a Post',
+      description: 'Share your restaurant experience'
+    },
+    createBoard: {
+      title: 'Create a Board',
+      description: 'Curate a themed collection'
+    },
+    createCommunity: {
+      title: 'Create a Community',
+      description: 'Start your own food community'
+    }
+  },
   // Keep old strings for migration compatibility
   deprecated: {
     recommendedForYou: "Recommended for You",
