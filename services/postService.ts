@@ -134,9 +134,10 @@ class PostService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Only require restaurant_id for restaurant posts (simple posts can have null)
     const insertData: any = {
       user_id: user.id,
-      restaurant_id: postData.restaurantId || null,
+      restaurant_id: postData.restaurantId || null, // Optional for simple posts
       // post_type field removed - not in database schema
       caption: postData.caption,
       photos: postData.photos,

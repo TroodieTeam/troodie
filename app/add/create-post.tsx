@@ -15,6 +15,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    InputAccessoryView,
     Keyboard,
     KeyboardAvoidingView,
     Modal,
@@ -125,7 +126,7 @@ export default function CreatePostScreen() {
   const handlePublish = async () => {
     if (!user) return;
     
-    // For restaurant posts, we need a restaurant
+    // Only restaurant posts require a restaurant
     if (formData.postType === 'restaurant' && !selectedRestaurant) {
       Alert.alert('Restaurant Required', 'Please select a restaurant for your review.');
       return;
@@ -159,7 +160,7 @@ export default function CreatePostScreen() {
       const postData: PostCreationData = {
         caption: formData.caption,
         photos: uploadedPhotos,
-        restaurantId: formData.postType === 'restaurant' && selectedRestaurant ? selectedRestaurant.id.toString() : undefined,
+        restaurantId: selectedRestaurant ? selectedRestaurant.id.toString() : undefined,
         postType: formData.postType || 'simple',
         rating: formData.rating && formData.rating > 0 ? formData.rating : undefined,
         visitDate: formData.postType === 'restaurant' ? new Date() : undefined,
@@ -310,6 +311,7 @@ export default function CreatePostScreen() {
             multiline
             maxLength={500}
             autoFocus
+            inputAccessoryViewID={Platform.OS === 'ios' ? 'keyboardDoneAccessory' : undefined}
           />
           <Text style={styles.charCounter}>{formData.caption.length}/500</Text>
         </View>
@@ -988,18 +990,37 @@ export default function CreatePostScreen() {
           onSelect={setSelectedCommunities}
           selectedCommunities={selectedCommunities}
         />
-        
-        {/* Keyboard Done Button */}
-        {isKeyboardVisible && (
-          <TouchableOpacity
-            style={styles.keyboardDoneButton}
-            onPress={() => Keyboard.dismiss()}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.keyboardDoneText}>Done</Text>
-          </TouchableOpacity>
-        )}
       </SafeAreaView>
+      
+      {/* Keyboard Accessory View for iOS */}
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID="keyboardDoneAccessory">
+          <View style={styles.keyboardAccessoryBar}>
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity
+              style={styles.keyboardAccessoryButton}
+              onPress={() => Keyboard.dismiss()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.keyboardAccessoryText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </InputAccessoryView>
+      )}
+      
+      {/* Android Done Button - appears above keyboard */}
+      {Platform.OS === 'android' && isKeyboardVisible && (
+        <View style={styles.androidKeyboardBar}>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={styles.keyboardAccessoryButton}
+            onPress={() => Keyboard.dismiss()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.keyboardAccessoryText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -1933,23 +1954,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  keyboardDoneButton: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 340 : 320,
-    right: 20,
-    backgroundColor: designTokens.colors.primaryOrange,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-    zIndex: 1000,
+  keyboardAccessoryBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderTopWidth: 1,
+    borderTopColor: designTokens.colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  keyboardDoneText: {
-    fontSize: 14,
+  androidKeyboardBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderTopWidth: 1,
+    borderTopColor: designTokens.colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  keyboardAccessoryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: designTokens.colors.primaryOrange,
+    borderRadius: 16,
+  },
+  keyboardAccessoryText: {
+    fontSize: 15,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
   },
