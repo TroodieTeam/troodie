@@ -5,6 +5,7 @@ import FollowButton from '@/components/FollowButton';
 import { CommunityTab } from '@/components/profile/CommunityTab';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFollowState } from '@/hooks/useFollowState';
 import { personas } from '@/data/personas';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
@@ -69,7 +70,6 @@ export default function UserDetailScreen() {
   const [quickSaves, setQuickSaves] = useState<Array<BoardRestaurant & { restaurant?: RestaurantInfo }>>([]);
   const [loadingQuickSaves, setLoadingQuickSaves] = useState(true);
   const [refreshingQuickSaves, setRefreshingQuickSaves] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [communities, setCommunities] = useState<{ joined: any[], created: any[] }>({ joined: [], created: [] });
   const [loadingCommunities, setLoadingCommunities] = useState(true);
   const [refreshingCommunities, setRefreshingCommunities] = useState(false);
@@ -77,6 +77,32 @@ export default function UserDetailScreen() {
   const tabScrollRef = useRef<ScrollView>(null);
   
   const isOwnProfile = currentUser?.id === id;
+  
+  // Use follow state hook for real-time updates
+  const {
+    isFollowing,
+    followersCount,
+    followingCount,
+    loading: followLoading,
+    toggleFollow,
+    refreshCounts
+  } = useFollowState({
+    userId: id || '',
+    initialIsFollowing: false,
+    initialFollowersCount: profile?.followers_count || 0,
+    initialFollowingCount: profile?.following_count || 0,
+    onFollowChange: (following) => {
+      // Update local profile state
+      if (profile) {
+        setProfile({
+          ...profile,
+          followers_count: following 
+            ? (profile.followers_count || 0) + 1 
+            : Math.max(0, (profile.followers_count || 0) - 1)
+        });
+      }
+    }
+  });
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : null;
 
   // Load profile data
@@ -89,7 +115,6 @@ export default function UserDetailScreen() {
       loadQuickSaves();
       loadCommunities();
       loadCommunityStats();
-      checkFollowStatus();
     }
   }, [id]);
 
@@ -390,11 +415,11 @@ export default function UserDetailScreen() {
 
       <View style={styles.stats}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.followers}</Text>
+          <Text style={styles.statValue}>{followersCount}</Text>
           <Text style={styles.statLabel}>Followers</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{userData.stats.following}</Text>
+          <Text style={styles.statValue}>{followingCount}</Text>
           <Text style={styles.statLabel}>Following</Text>
         </View>
         <View style={styles.statItem}>
@@ -411,10 +436,8 @@ export default function UserDetailScreen() {
         <View style={styles.actionButtons}>
           <FollowButton
             isFollowing={isFollowing}
-            onPress={async () => {
-              // TODO: Implement follow/unfollow logic
-              setIsFollowing(!isFollowing);
-            }}
+            isLoading={followLoading}
+            onPress={toggleFollow}
             size="large"
             style={styles.followButtonCustom}
           />

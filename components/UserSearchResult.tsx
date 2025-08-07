@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import React, { useState } from 'react'
+import React from 'react'
 import {
   Image,
   StyleSheet,
@@ -8,19 +8,27 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import Toast from 'react-native-toast-message'
 import { SearchUserResult } from '../lib/supabase'
-import { FollowService } from '../services/followService'
+import { useFollowState } from '../hooks/useFollowState'
 import FollowButton from './FollowButton'
 
 interface UserSearchResultProps {
   user: SearchUserResult
-  onFollowToggle: () => void
+  onFollowToggle?: () => void
 }
 
 export default function UserSearchResult({ user, onFollowToggle }: UserSearchResultProps) {
-  const [isFollowing, setIsFollowing] = useState(user.isFollowing || false)
-  const [isLoading, setIsLoading] = useState(false)
+  const {
+    isFollowing,
+    followersCount,
+    loading,
+    toggleFollow
+  } = useFollowState({
+    userId: user.id,
+    initialIsFollowing: user.isFollowing || false,
+    initialFollowersCount: user.followers_count || 0,
+    onFollowChange: () => onFollowToggle?.()
+  })
 
   const handlePress = () => {
     router.push(`/user/${user.id}`)
@@ -28,29 +36,7 @@ export default function UserSearchResult({ user, onFollowToggle }: UserSearchRes
 
   const handleFollowPress = async () => {
     if (user.isCurrentUser) return
-
-    setIsLoading(true)
-    const optimisticState = !isFollowing
-    setIsFollowing(optimisticState)
-
-    try {
-      if (optimisticState) {
-        await FollowService.followUser(user.id)
-      } else {
-        await FollowService.unfollowUser(user.id)
-      }
-      onFollowToggle()
-    } catch (error) {
-      // Revert optimistic update
-      setIsFollowing(!optimisticState)
-      Toast.show({
-        type: 'error',
-        text1: 'Action failed',
-        text2: 'Please try again',
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    await toggleFollow()
   }
 
   const getInitials = (name: string | null) => {
@@ -100,14 +86,14 @@ export default function UserSearchResult({ user, onFollowToggle }: UserSearchRes
         )}
         
         <Text style={styles.stats}>
-          {user.followers_count || 0} followers · {user.saves_count || 0} saves
+          {followersCount} followers · {user.saves_count || 0} saves
         </Text>
       </View>
 
       {!user.isCurrentUser && (
         <FollowButton
           isFollowing={isFollowing}
-          isLoading={isLoading}
+          isLoading={loading}
           onPress={handleFollowPress}
         />
       )}

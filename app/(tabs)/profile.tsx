@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { useSmoothDataFetch, useSmoothMultiDataFetch } from '@/hooks/useSmoothDataFetch';
+import { supabase } from '@/lib/supabase';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
 import { communityService } from '@/services/communityService';
@@ -60,6 +61,8 @@ export default function ProfileScreen() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const tabScrollRef = useRef<ScrollView>(null);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
 
   // Data fetching functions
   const fetchProfile = useCallback(async () => {
@@ -257,6 +260,40 @@ export default function ProfileScreen() {
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
                  (onboardingState.persona ? personas[onboardingState.persona] : null);
 
+  // Subscribe to real-time updates for following/followers count
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Set initial counts
+    if (profile) {
+      setFollowingCount(profile.following_count || 0);
+      setFollowersCount(profile.followers_count || 0);
+    }
+
+    // Subscribe to user stats updates
+    const channel = supabase
+      .channel(`user-stats-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          const newData = payload.new;
+          setFollowersCount(newData.followers_count || 0);
+          setFollowingCount(newData.following_count || 0);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, profile]);
+
   // Refresh data when tab changes
   useEffect(() => {
     if (user?.id && !loadingProfile) {
@@ -326,8 +363,8 @@ export default function ProfileScreen() {
     avatar: getAvatarUrl(profile),
     bio: profile?.bio || '',
     stats: {
-      followers: profile?.followers_count || 0,
-      following: profile?.following_count || 0,
+      followers: followersCount,
+      following: followingCount,
       posts: safePosts.length // Use actual posts count instead of reviews_count
     }
   };
@@ -343,6 +380,13 @@ export default function ProfileScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
+      <TouchableOpacity 
+        style={styles.headerButton} 
+        onPress={() => router.push('/find-friends')}
+      >
+        <Users size={24} color={designTokens.colors.textDark} />
+      </TouchableOpacity>
+      <View style={styles.headerSpacer} />
       <TouchableOpacity 
         style={styles.headerButton} 
         onPress={() => setShowSettingsModal(true)}
@@ -408,14 +452,14 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.stats}>
-        <View style={styles.statItem}>
+        <TouchableOpacity style={styles.statItem} onPress={() => router.push('/find-friends')}>
           <Text style={styles.statValue}>{userData.stats.followers}</Text>
           <Text style={styles.statLabel}>Followers</Text>
-        </View>
-        <View style={styles.statItem}>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.statItem} onPress={() => router.push('/find-friends')}>
           <Text style={styles.statValue}>{userData.stats.following}</Text>
           <Text style={styles.statLabel}>Following</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{safeBoards.length}</Text>
           <Text style={styles.statLabel}>Boards</Text>
@@ -721,7 +765,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: compactDesign.header.paddingHorizontal,
     paddingVertical: compactDesign.header.paddingVertical,
   },
@@ -730,6 +774,9 @@ const styles = StyleSheet.create({
     height: compactDesign.button.height,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerSpacer: {
+    flex: 1,
   },
   profileInfo: {
     paddingHorizontal: compactDesign.content.padding,

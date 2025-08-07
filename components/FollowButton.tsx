@@ -22,10 +22,13 @@ export default function FollowButton({
   size = 'medium',
   style,
 }: FollowButtonProps) {
+  const [showUnfollow, setShowUnfollow] = React.useState(false);
+  
   const buttonStyle = [
     styles.button,
     styles[size],
     isFollowing ? styles.followingButton : styles.followButton,
+    showUnfollow && styles.unfollowButton,
     style,
   ]
 
@@ -33,6 +36,7 @@ export default function FollowButton({
     styles.buttonText,
     styles[`${size}Text`],
     isFollowing ? styles.followingText : styles.followText,
+    showUnfollow && styles.unfollowText,
   ]
 
   return (
@@ -41,6 +45,8 @@ export default function FollowButton({
       onPress={onPress}
       disabled={isLoading}
       activeOpacity={0.7}
+      onPressIn={() => isFollowing && setShowUnfollow(true)}
+      onPressOut={() => setShowUnfollow(false)}
     >
       {isLoading ? (
         <ActivityIndicator
@@ -49,7 +55,7 @@ export default function FollowButton({
         />
       ) : (
         <Text style={textStyle}>
-          {isFollowing ? 'Following' : 'Follow'}
+          {showUnfollow ? 'Unfollow' : isFollowing ? 'Following' : 'Follow'}
         </Text>
       )}
     </TouchableOpacity>
@@ -105,5 +111,12 @@ const styles = StyleSheet.create({
   },
   followingText: {
     color: '#666',
+  },
+  unfollowButton: {
+    backgroundColor: '#ff4444',
+    borderWidth: 0,
+  },
+  unfollowText: {
+    color: '#fff',
   },
 })
