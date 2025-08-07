@@ -542,6 +542,120 @@ class CommunityService {
   }
 
   /**
+   * Get posts from a community (including cross-posted content)
+   */
+  async getCommunityPosts(
+    communityId: string,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<any[]> {
+    try {
+      // First get cross-posted posts
+      const { data: crossPostedData, error: crossPostError } = await supabase
+        .from('post_communities')
+        .select(`
+          post_id,
+          added_at,
+          posts!inner(
+            id,
+            user_id,
+            restaurant_id,
+            post_type,
+            caption,
+            photos,
+            rating,
+            visit_date,
+            created_at,
+            updated_at,
+            likes_count,
+            comments_count,
+            saves_count,
+            content_type,
+            external_url,
+            external_source,
+            external_title,
+            external_description,
+            external_thumbnail,
+            external_author,
+            users!posts_user_id_fkey(
+              id,
+              name,
+              username,
+              avatar_url,
+              is_verified,
+              persona
+            ),
+            restaurants(
+              id,
+              name,
+              cuisine_types,
+              price_range,
+              address,
+              cover_photo_url
+            )
+          )
+        `)
+        .eq('community_id', communityId)
+        .order('added_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (crossPostError) {
+        console.error('Error fetching cross-posted content:', crossPostError);
+        return [];
+      }
+
+      // Transform the data structure
+      const posts = crossPostedData?.map(item => {
+        const post = item.posts as any;
+        return {
+          id: post.id,
+          user_id: post.user_id,
+          restaurant_id: post.restaurant_id,
+          post_type: post.post_type,
+          caption: post.caption,
+          photos: post.photos,
+          rating: post.rating,
+          visit_date: post.visit_date,
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+          likes_count: post.likes_count,
+          comments_count: post.comments_count,
+          saves_count: post.saves_count,
+          content_type: post.content_type,
+          external_url: post.external_url,
+          external_source: post.external_source,
+          external_title: post.external_title,
+          external_description: post.external_description,
+          external_thumbnail: post.external_thumbnail,
+          external_author: post.external_author,
+          cross_posted_at: item.added_at,
+          user: post.users ? {
+            id: post.users.id,
+            name: post.users.name,
+            username: post.users.username,
+            avatar: post.users.avatar_url,
+            verified: post.users.is_verified,
+            persona: post.users.persona
+          } : null,
+          restaurant: post.restaurants ? {
+            id: post.restaurants.id,
+            name: post.restaurants.name,
+            cuisine: post.restaurants.cuisine_types?.[0] || 'Restaurant',
+            priceRange: post.restaurants.price_range,
+            location: post.restaurants.address,
+            image: post.restaurants.cover_photo_url
+          } : null
+        };
+      }) || [];
+
+      return posts;
+    } catch (error) {
+      console.error('Error fetching community posts:', error);
+      return [];
+    }
+  }
+
+  /**
    * Subscribe to real-time community updates
    */
   subscribeToCommunityUpdates(

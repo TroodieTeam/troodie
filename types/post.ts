@@ -31,6 +31,17 @@ export interface ExternalContent {
   author?: string;
 }
 
+export interface PostEngagementStats {
+  post_id?: string;
+  user_id?: string;
+  likes_count: number;
+  comments_count: number;
+  saves_count: number;
+  share_count: number;
+  is_liked_by_user?: boolean;
+  is_saved_by_user?: boolean;
+}
+
 export interface PostCreationData {
   caption?: string;
   photos?: string[];

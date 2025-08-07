@@ -1,7 +1,8 @@
 import { designTokens, compactDesign } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
-import { postEngagementService } from '@/services/postEngagementService';
+import { enhancedPostEngagementService } from '@/services/enhancedPostEngagementService';
+import { usePostEngagement } from '@/hooks/usePostEngagement';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useCallback } from 'react';
@@ -40,42 +41,52 @@ export function PostCard({
 }: PostCardProps) {
   const { user } = useAuth();
   const router = useRouter();
-  const [isLiked, setIsLiked] = useState(post.is_liked_by_user || false);
-  const [isSaved, setIsSaved] = useState(post.is_saved_by_user || false);
-  const [likesCount, setLikesCount] = useState(post.likes_count);
-  const [savesCount, setSavesCount] = useState(post.saves_count);
+  
+  // Use the enhanced post engagement hook
+  const {
+    isLiked,
+    isSaved,
+    likesCount,
+    commentsCount,
+    savesCount,
+    shareCount,
+    isLoading,
+    toggleLike,
+    toggleSave,
+    sharePost,
+    copyLink,
+  } = usePostEngagement({
+    postId: post.id,
+    initialStats: {
+      likes_count: post.likes_count,
+      comments_count: post.comments_count,
+      saves_count: post.saves_count,
+      share_count: post.share_count || 0,
+    },
+    initialIsLiked: post.is_liked_by_user || false,
+    initialIsSaved: post.is_saved_by_user || false,
+    enableRealtime: true,
+  });
 
   const handleLike = async () => {
-    if (!user?.id) return;
-
-    try {
-      const newLikedState = await postEngagementService.togglePostLike(post.id, user.id);
-      setIsLiked(newLikedState);
-      setLikesCount(prev => newLikedState ? prev + 1 : prev - 1);
-      onLike?.(post.id, newLikedState);
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    }
+    await toggleLike();
+    onLike?.(post.id, isLiked);
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
-
-    try {
-      const newSavedState = await postEngagementService.togglePostSave(post.id, user.id);
-      setIsSaved(newSavedState);
-      setSavesCount(prev => newSavedState ? prev + 1 : prev - 1);
-      onSave?.(post.id);
-    } catch (error) {
-      console.error('Error toggling save:', error);
-    }
+    await toggleSave();
+    onSave?.(post.id);
   };
 
   const handleComment = () => {
     onComment?.(post.id);
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    await sharePost(
+      post.caption || 'Check out this post',
+      post.restaurant?.name || 'Restaurant'
+    );
     onShare?.(post.id);
   };
 
@@ -156,6 +167,14 @@ export function PostCard({
           <Text style={styles.contentTypeText}>External Content</Text>
         </View>
       )}
+      
+      {/* Post Type Badge for Simple Posts */}
+      {(post as any).post_type === 'simple' && !post.restaurant && (
+        <View style={styles.simplePostBadge}>
+          <Ionicons name="chatbubble-ellipses-outline" size={14} color={designTokens.colors.textMedium} />
+          <Text style={styles.simplePostText}>Discussion</Text>
+        </View>
+      )}
 
       {/* Content */}
       {post.caption && (
@@ -207,28 +226,30 @@ export function PostCard({
         </View>
       )}
 
-      {/* Restaurant Info */}
-      <TouchableOpacity 
-        style={styles.restaurantInfo}
-        onPress={handleRestaurantPress}
-        activeOpacity={0.7}
-      >
-        <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
-        <View style={styles.restaurantDetails}>
-          <Text style={styles.restaurantName} numberOfLines={1}>
-            {post.restaurant.name}
-          </Text>
-          <Text style={styles.restaurantLocation} numberOfLines={1}>
-            {post.restaurant.location}
-          </Text>
-          <View style={styles.restaurantMeta}>
-            <View style={styles.ratingContainer}>
-              {getRatingStars(post.rating)}
+      {/* Restaurant Info - Only show if restaurant exists */}
+      {post.restaurant && post.restaurant.id && (
+        <TouchableOpacity 
+          style={styles.restaurantInfo}
+          onPress={handleRestaurantPress}
+          activeOpacity={0.7}
+        >
+          <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
+          <View style={styles.restaurantDetails}>
+            <Text style={styles.restaurantName} numberOfLines={1}>
+              {post.restaurant.name}
+            </Text>
+            <Text style={styles.restaurantLocation} numberOfLines={1}>
+              {post.restaurant.location}
+            </Text>
+            <View style={styles.restaurantMeta}>
+              <View style={styles.ratingContainer}>
+                {getRatingStars(post.rating)}
+              </View>
+              <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
             </View>
-            <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      )}
 
       {/* Visit Info */}
       {(post.visit_type || post.price_range || post.rating) && (
@@ -520,6 +541,22 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: designTokens.borderRadius.full,
     marginBottom: 4,
+  },
+  simplePostBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0F8FF',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: designTokens.borderRadius.full,
+    marginBottom: 8,
+  },
+  simplePostText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textMedium,
   },
   contentTypeText: {
     fontSize: 11,

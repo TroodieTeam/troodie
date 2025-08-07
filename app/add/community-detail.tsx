@@ -1,5 +1,6 @@
 import { CreatePostButton } from '@/components/community/CreatePostButton';
 import { ReasonModal } from '@/components/community/ReasonModal';
+import { PostCard } from '@/components/PostCard';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Community, communityService } from '@/services/communityService';
@@ -107,9 +108,9 @@ export default function CommunityDetailScreen() {
       const membersData = await communityService.getCommunityMembers(communityId);
       setMembers(membersData);
       
-      // TODO: Implement getCommunityPosts in communityService
-      // const postsData = await communityService.getCommunityPosts(communityId, 20);
-      setPosts([]); // Temporary empty array until posts method is implemented
+      // Load community posts (including cross-posted content)
+      const postsData = await communityService.getCommunityPosts(communityId, 20);
+      setPosts(postsData);
       
     } catch (error) {
       console.error('Error fetching community data:', error);
@@ -450,59 +451,13 @@ export default function CommunityDetailScreen() {
   );
 
   const renderPostItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.postCard}
-      onPress={() => router.push(`/post/${item.id}`)}
-    >
-      <View style={styles.postHeader}>
-        <Image 
-          source={{ uri: item.user?.avatar_url || item.user?.profile_image_url || 'https://i.pravatar.cc/100' }} 
-          style={styles.postAvatar} 
-        />
-        <View style={styles.postInfo}>
-          <Text style={styles.postAuthor}>
-            {item.user?.name || item.user?.username || 'User'}
-          </Text>
-          <Text style={styles.postTime}>
-            {item.user?.username ? `@${item.user.username} · ${formatDate(item.created_at)}` : formatDate(item.created_at)}
-          </Text>
-        </View>
-        {(hasPermission('delete_post') || item.user?.id === user?.id) && (
-          <Menu>
-            <MenuTrigger>
-              <TouchableOpacity style={styles.postMenu}>
-                <MoreVertical size={16} color={theme.colors.text.tertiary} />
-              </TouchableOpacity>
-            </MenuTrigger>
-            <MenuOptions customStyles={menuOptionsStyles}>
-              <MenuOption onSelect={() => handleDeletePost(item.id)}>
-                <View style={styles.menuItem}>
-                  <Trash2 size={14} color={theme.colors.error} />
-                  <Text style={[styles.menuText, { color: theme.colors.error }]}>Delete Post</Text>
-                </View>
-              </MenuOption>
-            </MenuOptions>
-          </Menu>
-        )}
-      </View>
-      
-      {item.caption && <Text style={styles.postContent} numberOfLines={3}>{item.caption}</Text>}
-      
-      {item.photos && item.photos.length > 0 && (
-        <Image source={{ uri: item.photos[0] }} style={styles.postImage} />
-      )}
-      
-      <View style={styles.postActions}>
-        <View style={styles.postAction}>
-          <Heart size={16} color={theme.colors.text.tertiary} />
-          <Text style={styles.postActionText}>{item.likes || 0}</Text>
-        </View>
-        <View style={styles.postAction}>
-          <MessageCircle size={16} color={theme.colors.text.tertiary} />
-          <Text style={styles.postActionText}>{item.commentCount || 0}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+    <View style={styles.postWrapper}>
+      <PostCard 
+        post={item}
+        onPress={() => router.push(`/post/${item.id}`)}
+        showActions={true}
+      />
+    </View>
   );
 
   const renderMemberItem = ({ item }: { item: any }) => (
@@ -845,6 +800,9 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 100,
+  },
+  postWrapper: {
+    marginBottom: 8,
   },
   postCard: {
     backgroundColor: '#FFFFFF',
