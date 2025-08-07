@@ -354,6 +354,7 @@ export default function CreatePostScreen() {
             </TouchableOpacity>
           )}
         </View>
+        )}
 
         {/* Optional additions */}
         <View style={styles.optionalSection}>
@@ -1537,6 +1538,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
+  },
+  
+  // Post type selector
+  postTypeSelector: {
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  postTypeLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+    marginBottom: 12,
+  },
+  postTypeOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  postTypeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    gap: 6,
+  },
+  postTypeOptionActive: {
+    backgroundColor: designTokens.colors.primaryOrange,
+  },
+  postTypeText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
+  },
+  postTypeTextActive: {
+    color: '#FFF',
   },
   
   // Community selector

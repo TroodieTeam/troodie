@@ -319,7 +319,8 @@ export type Database = {
         Row: {
           id: string
           user_id: string | null
-          restaurant_id: string
+          restaurant_id: string | null
+          post_type: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement'
           caption: string | null
           photos: string[] | null
           rating: number | null
@@ -348,7 +349,8 @@ export type Database = {
         Insert: {
           id?: string
           user_id?: string | null
-          restaurant_id: string
+          restaurant_id?: string | null
+          post_type?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement'
           caption?: string | null
           photos?: string[] | null
           rating?: number | null
@@ -377,7 +379,8 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string
-          restaurant_id?: string
+          restaurant_id?: string | null
+          post_type?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement'
           caption?: string | null
           photos?: string[] | null
           rating?: number | null

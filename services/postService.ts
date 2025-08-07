@@ -136,7 +136,8 @@ class PostService {
 
     const insertData: any = {
       user_id: user.id,
-      restaurant_id: postData.restaurantId,
+      restaurant_id: postData.restaurantId || null,
+      post_type: postData.postType || (postData.restaurantId ? 'restaurant' : 'simple'),
       caption: postData.caption,
       photos: postData.photos,
       rating: postData.rating,
@@ -225,15 +226,19 @@ class PostService {
     // If post has photos and a restaurant, sync images and trigger cover photo update
     if (data && postData.photos && postData.photos.length > 0 && postData.restaurantId) {
       // Sync images to restaurant gallery
-      const synced = await restaurantImageSyncService.syncPostImages(data.id);
-      if (synced) {
-      } else {
-        console.error('Failed to sync post images to restaurant gallery');
+      try {
+        const synced = await restaurantImageSyncService.syncPostImages(data.id);
+        if (!synced) {
+          console.error('Failed to sync post images to restaurant gallery');
+        }
+        
+        // Trigger intelligent cover photo update
+        const coverPhotoService = IntelligentCoverPhotoService.getInstance();
+        coverPhotoService.handleNewPostImages(data.id, postData.restaurantId);
+      } catch (error) {
+        console.error('Error syncing images:', error);
+        // Don't fail the post creation, just log the error
       }
-      
-      // Trigger intelligent cover photo update
-      const coverPhotoService = IntelligentCoverPhotoService.getInstance();
-      coverPhotoService.handleNewPostImages(data.id, postData.restaurantId);
     }
 
     return data;

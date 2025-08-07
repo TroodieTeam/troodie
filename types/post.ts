@@ -34,7 +34,8 @@ export interface ExternalContent {
 export interface PostCreationData {
   caption?: string;
   photos?: string[];
-  restaurantId: string;
+  restaurantId?: string; // Now optional for simple posts
+  postType?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement';
   rating?: number;
   visitDate?: Date;
   priceRange?: string;
