@@ -100,11 +100,15 @@ export default function CommunitiesScreen() {
       return;
     }
 
+    // Optimistic update - immediately add to user communities
+    const previousUserCommunities = [...userCommunities];
+    setUserCommunities([...userCommunities, community]);
+
     try {
       const { success, error } = await communityService.joinCommunity(user.id, community.id);
       
       if (success) {
-        // Update network progress
+        // Update network progress in background
         try {
           await userService.updateNetworkProgress(user.id, 'community');
           updateNetworkProgress('community');
@@ -112,14 +116,23 @@ export default function CommunitiesScreen() {
           console.error('Error updating network progress:', error);
         }
         
-        Alert.alert('Success', `You've joined ${community.name}!`);
-        // Refresh communities to update membership status
+        // Don't show alert for successful join - the UI already reflects the change
+        // Refresh communities in background to sync any other changes
         fetchCommunities();
       } else {
-        Alert.alert('Error', error || 'Failed to join community');
+        // Revert optimistic update on failure
+        setUserCommunities(previousUserCommunities);
+        
+        // Only show error if it's a real failure, not a duplicate join
+        if (error && !error.includes('already')) {
+          Alert.alert('Unable to join', error);
+        }
       }
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      // Revert optimistic update on network error
+      setUserCommunities(previousUserCommunities);
+      console.error('Error joining community:', err);
+      // Don't show error for network issues, just revert the UI
     }
   };
 

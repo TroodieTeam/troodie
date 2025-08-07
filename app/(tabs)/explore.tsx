@@ -2,6 +2,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { RestaurantCardSkeleton } from '@/components/LoadingSkeleton';
 import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { postService } from '@/services/postService';
@@ -9,7 +10,7 @@ import { restaurantService } from '@/services/restaurantService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Search, SlidersHorizontal, Users } from 'lucide-react-native';
+import { Search, SlidersHorizontal, Users, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
@@ -96,6 +97,7 @@ export default function ExploreScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isReRandomizing, setIsReRandomizing] = useState(false);
+  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
   
   
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -288,6 +290,9 @@ export default function ExploreScreen() {
       );
     }
 
+    // Show Add Restaurant CTA for restaurant search with no results
+    const showAddRestaurantCTA = activeTab === 'restaurants' && debouncedSearch && debouncedSearch.length > 0;
+
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>{activeTab === 'restaurants' ? '🍴' : '📝'}</Text>
@@ -296,12 +301,25 @@ export default function ExploreScreen() {
         </Text>
         <Text style={styles.emptyText}>
           {debouncedSearch 
-            ? 'Try adjusting your search'
+            ? showAddRestaurantCTA
+              ? `Can't find "${debouncedSearch}"?`
+              : 'Try adjusting your search'
             : activeTab === 'restaurants' 
               ? 'Check back soon for new restaurants'
               : 'Be the first to share your experience'
           }
         </Text>
+        
+        {showAddRestaurantCTA && (
+          <TouchableOpacity
+            style={styles.addRestaurantButton}
+            onPress={() => setShowAddRestaurantModal(true)}
+            activeOpacity={0.8}
+          >
+            <Plus size={compactDesign.icon.small} color="#FFFFFF" />
+            <Text style={styles.addRestaurantButtonText}>Add Restaurant</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }, [currentTab, activeTab, debouncedSearch]);
@@ -342,6 +360,19 @@ export default function ExploreScreen() {
         maxToRenderPerBatch={10}
         windowSize={10}
         removeClippedSubviews
+      />
+      
+      {/* Add Restaurant Modal */}
+      <AddRestaurantModal
+        visible={showAddRestaurantModal}
+        onClose={() => setShowAddRestaurantModal(false)}
+        initialSearchQuery={searchQuery}
+        onRestaurantAdded={(restaurant) => {
+          // Reload the restaurants list after adding a new one
+          if (activeTab === 'restaurants') {
+            restaurants.load();
+          }
+        }}
       />
     </SafeAreaView>
   );
@@ -458,5 +489,20 @@ const styles = StyleSheet.create({
   },
   restaurantCardWrapper: {
     paddingHorizontal: compactDesign.content.padding,
+  },
+  addRestaurantButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: designTokens.borderRadius.md,
+    marginTop: 20,
+    gap: 8,
+  },
+  addRestaurantButtonText: {
+    ...designTokens.typography.buttonText,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

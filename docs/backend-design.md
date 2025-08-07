@@ -87,6 +87,80 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS default_avatar_url TEXT;
 
 The Quick Saves board is created automatically when needed through `boardService.getUserQuickSavesBoard()` and `boardService.saveRestaurantToQuickSaves()`.
 
+## Activity Feed System
+
+### Overview
+The activity feed provides a unified, real-time stream of platform activities including posts, saves, follows, community joins, likes, and comments. It supports filtering by "All" vs "Friends" and implements efficient pagination for infinite scrolling.
+
+### `activity_feed` View
+A materialized view that aggregates activities from multiple tables into a unified feed.
+
+```sql
+CREATE OR REPLACE VIEW public.activity_feed AS
+-- Aggregates posts, saves, follows, community_joins, likes, and comments
+-- See migrations/create_activity_feed_view.sql for full implementation
+```
+
+**Key Features**:
+- **Unified Schema**: All activity types share a common structure
+- **Privacy Aware**: Respects post and save privacy settings
+- **Performance Optimized**: Indexed on created_at and privacy fields
+- **Real-time Ready**: Designed for subscription-based updates
+
+**Activity Types**:
+- `post`: User created a review
+- `save`: User saved a restaurant
+- `follow`: User followed another user
+- `community_join`: User joined a community
+- `like`: User liked a post
+- `comment`: User commented on a post
+
+### `get_activity_feed` Function
+Provides filtered access to the activity feed with friend filtering and pagination.
+
+```sql
+CREATE OR REPLACE FUNCTION get_activity_feed(
+  p_user_id UUID DEFAULT NULL,
+  p_filter VARCHAR DEFAULT 'all', -- 'all' or 'friends'
+  p_limit INT DEFAULT 50,
+  p_offset INT DEFAULT 0,
+  p_after_timestamp TIMESTAMPTZ DEFAULT NULL
+) RETURNS TABLE (...)
+```
+
+**Parameters**:
+- `p_user_id`: Current user ID for friend filtering
+- `p_filter`: 'all' for global feed, 'friends' for friend activities only
+- `p_limit`: Number of items to return (default 50)
+- `p_offset`: Pagination offset
+- `p_after_timestamp`: For fetching new activities since last check
+
+### Real-time Subscriptions
+The activity feed supports real-time updates through Supabase channels:
+
+```javascript
+// Subscribe to new activities
+supabase
+  .channel('activity-feed')
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'posts'
+  }, handleNewPost)
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'user_relationships'
+  }, handleNewFollow)
+  .subscribe()
+```
+
+### Performance Considerations
+- **Indexes**: Created on all timestamp and privacy fields
+- **Pagination**: Use cursor-based pagination with `p_after_timestamp` for best performance
+- **Caching**: Client-side caching recommended for viewed activities
+- **Batch Loading**: Fetch 50 items at a time for optimal balance
+
 ## Storage Configuration
 
 ### Storage Buckets

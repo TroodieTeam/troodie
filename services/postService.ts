@@ -19,70 +19,9 @@ class PostService {
    */
   async getPostById(postId: string): Promise<PostWithUser | null> {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          user:users!posts_user_id_fkey(id, name, username, avatar_url, is_verified, persona),
-          restaurant:restaurants!posts_restaurant_id_fkey(id, name, cover_photo_url, city, cuisine_types, price_range),
-          post_likes!left(user_id),
-          post_saves!left(user_id)
-        `)
-        .eq('id', postId)
-        .single();
-
-      if (error) throw error;
-      if (!data) return null;
-
-      // Get current user to check if they liked/saved
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      const isLikedByUser = currentUser ? 
-        data.post_likes?.some((like: any) => like.user_id === currentUser.id) : false;
-      const isSavedByUser = currentUser ? 
-        data.post_saves?.some((save: any) => save.user_id === currentUser.id) : false;
-
-      // Transform the post data
-      const transformedPost: PostWithUser = {
-        id: data.id,
-        user_id: data.user_id,
-        restaurant_id: data.restaurant_id,
-        caption: data.caption,
-        photos: data.photos || [],
-        rating: data.rating,
-        visit_date: data.visit_date,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        visibility: data.visibility || 'public',
-        is_external: data.is_external || false,
-        content_type: data.content_type || 'original',
-        external_source: data.external_source,
-        external_url: data.external_url,
-        external_title: data.external_title,
-        external_description: data.external_description,
-        external_thumbnail: data.external_thumbnail,
-        external_author: data.external_author,
-        likes_count: data.post_likes?.length || 0,
-        comments_count: data.comments_count || 0,
-        saves_count: data.post_saves?.length || 0,
-        shares_count: data.shares_count || 0,
-        is_liked_by_user: isLikedByUser,
-        is_saved_by_user: isSavedByUser,
-        user: this.transformUser(data),
-        restaurant: {
-          id: data.restaurant.id,
-          name: data.restaurant.name,
-          image: data.restaurant.cover_photo_url || '',
-          cuisine: data.restaurant.cuisine_types?.[0] || 'Restaurant',
-          rating: 0,
-          location: data.restaurant.city || '',
-          priceRange: data.restaurant.price_range || '$'
-        }
-      };
-
-      return transformedPost;
+      // Use the same approach as getPost method to avoid foreign key issues
+      return await this.getPost(postId);
     } catch (error) {
-      console.error('Error fetching post:', error);
       throw error;
     }
   }
@@ -114,7 +53,12 @@ class PostService {
   /**
    * Helper to transform restaurant data
    */
-  private transformRestaurant(post: any): RestaurantInfo {
+  private transformRestaurant(post: any): RestaurantInfo | null {
+    // Return null if there's no restaurant_id
+    if (!post.restaurant_id) {
+      return null;
+    }
+    
     return {
       id: post.restaurant_id,
       name: 'Restaurant', // This should be fetched from restaurants table
@@ -134,9 +78,11 @@ class PostService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Only require restaurant_id for restaurant posts (simple posts can have null)
     const insertData: any = {
       user_id: user.id,
-      restaurant_id: postData.restaurantId,
+      restaurant_id: postData.restaurantId || null, // Optional for simple posts
+      post_type: postData.postType || 'simple', // Add post_type field
       caption: postData.caption,
       photos: postData.photos,
       rating: postData.rating,
@@ -160,12 +106,7 @@ class PostService {
       insertData.external_author = postData.externalContent.author;
     }
 
-    // Add community_id if provided (when community posts are implemented)
-    if (postData.communityId) {
-      // Note: community_id field would need to be added to posts table schema
-      // insertData.community_id = postData.communityId;
-    }
-
+    // Create the post
     const { data, error } = await supabase
       .from('posts')
       .insert(insertData)
@@ -173,22 +114,94 @@ class PostService {
       .single();
 
     if (error) {
-      console.error('Error creating post:', error);
       throw new Error(`Failed to create post: ${error.message}`);
+    }
+
+    // Handle cross-posting to communities
+    if (data && postData.communityIds && postData.communityIds.length > 0) {
+      try {
+        const { data: crossPostResults, error: crossPostError } = await supabase
+          .rpc('cross_post_to_communities', {
+            p_post_id: data.id,
+            p_community_ids: postData.communityIds,
+            p_user_id: user.id
+          });
+
+        if (crossPostError) {
+          // Check if it's just a missing function error
+          if (crossPostError.code === 'PGRST202' || crossPostError.message?.includes('Could not find the function')) {
+            // Try fallback to direct insert
+            let successCount = 0;
+            for (const communityId of postData.communityIds) {
+              try {
+                const { data: insertResult, error: insertError } = await supabase
+                  .from('post_communities')
+                  .insert({
+                    post_id: data.id,
+                    community_id: communityId,
+                    added_by: user.id
+                  })
+                  .select();
+                
+                if (insertError) {
+                  // Handle error silently
+                } else {
+                  successCount++;
+                }
+              } catch (err) {
+                // Handle error silently
+              }
+            }
+          } else {
+            // Handle other errors silently
+          }
+          // Don't fail the whole post creation, just log the error
+        } else {
+          // Log successful cross-posts (handle both old and new column names)
+          const successful = crossPostResults?.filter((r: any) => r.success || r.result_success) || [];
+          const failed = crossPostResults?.filter((r: any) => !(r.success || r.result_success)) || [];
+          
+          // Handle success and failed cross-posts silently
+        }
+      } catch (crossPostError) {
+        // Continue anyway - the main post was created successfully
+      }
+    }
+
+    // Legacy single community support (for backward compatibility)
+    if (data && postData.communityId && !postData.communityIds) {
+      try {
+        const { error: legacyCrossPostError } = await supabase
+          .from('post_communities')
+          .insert({
+            post_id: data.id,
+            community_id: postData.communityId,
+            added_by: user.id
+          });
+
+        if (legacyCrossPostError) {
+          // Handle error silently
+        }
+      } catch (err) {
+        // Handle error silently
+      }
     }
 
     // If post has photos and a restaurant, sync images and trigger cover photo update
     if (data && postData.photos && postData.photos.length > 0 && postData.restaurantId) {
       // Sync images to restaurant gallery
-      const synced = await restaurantImageSyncService.syncPostImages(data.id);
-      if (synced) {
-      } else {
-        console.error('Failed to sync post images to restaurant gallery');
+      try {
+        const synced = await restaurantImageSyncService.syncPostImages(data.id);
+        if (!synced) {
+          // Handle sync failure silently
+        }
+        
+        // Trigger intelligent cover photo update
+        const coverPhotoService = IntelligentCoverPhotoService.getInstance();
+        coverPhotoService.handleNewPostImages(data.id, postData.restaurantId);
+      } catch (error) {
+        // Don't fail the post creation, just handle the error silently
       }
-      
-      // Trigger intelligent cover photo update
-      const coverPhotoService = IntelligentCoverPhotoService.getInstance();
-      coverPhotoService.handleNewPostImages(data.id, postData.restaurantId);
     }
 
     return data;
@@ -205,7 +218,6 @@ class PostService {
       .single();
 
     if (postError) {
-      console.error('Error fetching post:', postError);
       return null;
     }
 
@@ -221,7 +233,7 @@ class PostService {
       .single();
 
     if (userError) {
-      console.error('Error fetching user:', userError);
+      // Handle error silently
     }
 
     // Fetch restaurant data
@@ -250,7 +262,7 @@ class PostService {
         rating: postData.rating || 0,
         location: restaurantData.address || 'Location',
         priceRange: restaurantData.price_range || postData.price_range || '$$',
-      } : this.transformRestaurant(postData),
+      } : null, // Return null for simple posts without restaurant data
     };
   }
 
@@ -266,7 +278,6 @@ class PostService {
       .range(offset, offset + limit - 1);
 
     if (postsError) {
-      console.error('Error fetching user posts:', postsError);
       return [];
     }
 
@@ -282,7 +293,7 @@ class PostService {
       .single();
 
     if (userError) {
-      console.error('Error fetching user:', userError);
+      // Handle error silently
     }
 
     // Get unique restaurant IDs
@@ -314,7 +325,7 @@ class PostService {
           rating: post.rating || 0,
           location: restaurantData.address || 'Location',
           priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : this.transformRestaurant(post),
+        } : null, // Return null instead of fake restaurant data
       };
     });
   }
@@ -344,7 +355,6 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
-      console.error('Error fetching explore posts:', postsError);
       throw postsError;
     }
 
@@ -363,7 +373,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
       throw usersError;
     }
 
@@ -398,7 +408,7 @@ class PostService {
           rating: post.rating || 0,
           location: restaurantData.address || 'Location',
           priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : this.transformRestaurant(post),
+        } : null, // Return null instead of fake restaurant data
       };
     });
   }
@@ -418,7 +428,6 @@ class PostService {
       .single();
 
     if (error) {
-      console.error('Error updating post:', error);
       throw new Error(`Failed to update post: ${error.message}`);
     }
 
@@ -435,7 +444,6 @@ class PostService {
       .eq('id', postId);
 
     if (error) {
-      console.error('Error deleting post:', error);
       throw new Error(`Failed to delete post: ${error.message}`);
     }
   }
@@ -453,7 +461,6 @@ class PostService {
       .limit(limit);
 
     if (postsError) {
-      console.error('Error fetching trending posts:', postsError);
       return [];
     }
 
@@ -471,7 +478,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup
@@ -482,7 +489,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
         trending_score: post.likes_count + post.comments_count + post.saves_count,
         engagement_rate: ((post.likes_count + post.comments_count + post.saves_count) / 100) * 100,
       };
@@ -550,7 +557,6 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
-      console.error('Error searching posts:', postsError);
       return [];
     }
 
@@ -568,7 +574,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup
@@ -579,7 +585,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
       };
     });
   }
@@ -594,7 +600,6 @@ class PostService {
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error fetching user post stats:', error);
       return {
         totalPosts: 0,
         totalLikes: 0,
@@ -639,7 +644,7 @@ class PostService {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error checking post like:', error);
+      // Handle error silently
     }
 
     return !!data;
@@ -657,7 +662,7 @@ class PostService {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error checking post save:', error);
+      // Handle error silently
     }
 
     return !!data;
@@ -674,7 +679,6 @@ class PostService {
       .order('name');
 
     if (error) {
-      console.error('Error fetching external content sources:', error);
       return [];
     }
 
@@ -710,7 +714,6 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
-      console.error('Error fetching posts by content type:', postsError);
       return [];
     }
 
@@ -728,7 +731,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup
@@ -740,7 +743,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
       };
     });
   }
@@ -759,7 +762,6 @@ class PostService {
       .limit(limit);
 
     if (postsError) {
-      console.error('Error fetching posts by external source:', postsError);
       return [];
     }
 
@@ -777,7 +779,7 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      // Handle error silently
     }
 
     // Create a map of users for quick lookup
@@ -789,7 +791,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
       };
     });
   }

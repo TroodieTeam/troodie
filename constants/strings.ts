@@ -30,6 +30,7 @@ export const strings = {
   },
   addRestaurant: {
     title: 'Add New Restaurant',
+    buttonLabel: 'Add Restaurant', // For button/CTA text
     description: "Can't find a restaurant? Add it to our database and help the community discover new places!",
     searchPlaceholder: 'Search for restaurant...',
     helpText: 'Enter the restaurant name to search our database',
@@ -38,8 +39,42 @@ export const strings = {
     searchingText: 'Searching...',
     selectedTitle: 'Selected Restaurant',
     successMessage: 'Restaurant added successfully! It will be available shortly.',
-    duplicateMessage: 'This restaurant is already in our system!',
-    errorMessage: 'Failed to add restaurant. Please try again.'
+    duplicateMessage: 'This restaurant is already in our system! You can find it by searching.',
+    errorMessage: 'Failed to add restaurant. Please try again.',
+    quickActionDescription: 'Share a new restaurant discovery'
+  },
+  saves: {
+    title: 'Your Saves',
+    emptyTitle: 'No Saves Yet',
+    emptyDescription: 'Tap the save button on any restaurant to add it to Your Saves',
+    boardName: 'Your Saves', // Used for the actual board title in the database
+    toastMessage: 'Added to Your Saves',
+    removeToastMessage: 'Removed from Your Saves',
+    errorMessage: 'Error loading Your Saves'
+  },
+  discoveryActions: {
+    addRestaurant: {
+      title: 'Add Restaurant',
+      description: 'Share a new restaurant discovery'
+    },
+    findFriends: {
+      title: 'Find Friends',
+      description: 'Connect with fellow food lovers'
+    }
+  },
+  createContent: {
+    createPost: {
+      title: 'Create a Post',
+      description: 'Share your restaurant experience'
+    },
+    createBoard: {
+      title: 'Create a Board',
+      description: 'Curate a themed collection'
+    },
+    createCommunity: {
+      title: 'Create a Community',
+      description: 'Start your own food community'
+    }
   },
   // Keep old strings for migration compatibility
   deprecated: {

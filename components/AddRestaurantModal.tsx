@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { GooglePlaceDetails, GooglePlaceResult, googlePlacesService } from '@/services/googlePlacesService';
 import { debounce } from 'lodash';
 import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -23,10 +23,11 @@ interface AddRestaurantModalProps {
   visible: boolean;
   onClose: () => void;
   onRestaurantAdded?: (restaurant: any) => void;
+  initialSearchQuery?: string;
 }
 
-export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddRestaurantModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initialSearchQuery = '' }: AddRestaurantModalProps) {
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [searchResults, setSearchResults] = useState<GooglePlaceResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +49,6 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
         const results = await googlePlacesService.autocomplete(query, sessionToken.current);
         setSearchResults(results);
       } catch (error) {
-        console.error('Error searching places:', error);
       } finally {
         setIsSearching(false);
       }
@@ -92,12 +92,23 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
 
 
       if (error) {
-        console.error('Supabase error:', error);
         // Try to parse the error response if it's a FunctionsHttpError
         if (error.name === 'FunctionsHttpError' && error.context) {
           try {
             const errorData = await error.context.json();
-            console.error('Edge function error details:', errorData);
+            
+            // Check if this is a duplicate restaurant error
+            if (errorData.details?.includes('duplicate key') || 
+                errorData.details?.includes('restaurants_google_place_id_key') ||
+                errorData.error?.includes('already exists')) {
+              // This is expected behavior - restaurant already exists
+              setSubmissionStatus('duplicate');
+              setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+              setIsSubmitting(false);
+              return; // Exit early, don't throw
+            }
+            
+            // Handle unexpected errors
             throw new Error(errorData.error || errorData.message || 'Failed to add restaurant');
           } catch (parseError) {
             // If parsing fails, use the original error message
@@ -109,9 +120,13 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
       }
 
       if (data && data.error) {
-        if (data.error.includes('already exists') || data.error.includes('Similar restaurant')) {
+        // Check for duplicate restaurant errors
+        if (data.error.includes('already exists') || 
+            data.error.includes('Similar restaurant') ||
+            data.error.includes('duplicate key') ||
+            data.error.includes('restaurants_google_place_id_key')) {
           setSubmissionStatus('duplicate');
-          setSubmissionMessage(strings.addRestaurant.duplicateMessage);
+          setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
         } else {
           setSubmissionStatus('error');
           setSubmissionMessage(data.error);
@@ -139,18 +154,25 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
         setSubmissionMessage('Unexpected response from server. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error submitting restaurant:', error);
-      setSubmissionStatus('error');
-      
-      // Provide more specific error messages
-      if (error.message?.includes('Authentication required')) {
+      // Check for duplicate key errors in the catch block too
+      if (error.message?.includes('duplicate key') || 
+          error.message?.includes('restaurants_google_place_id_key') ||
+          error.message?.includes('already exists')) {
+        // This should have been handled above, but just in case
+        setSubmissionStatus('duplicate');
+        setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+      } else if (error.message?.includes('Authentication required')) {
+        setSubmissionStatus('error');
         setSubmissionMessage('Please log in to add restaurants.');
       } else if (error.message?.includes('configuration error')) {
+        setSubmissionStatus('error');
         setSubmissionMessage('App configuration error. Please contact support.');
       } else if (error.message?.includes('network')) {
+        setSubmissionStatus('error');
         setSubmissionMessage('Network error. Please check your connection.');
       } else {
-        setSubmissionMessage(error.message || 'Failed to add restaurant. Please try again.');
+        setSubmissionStatus('error');
+        setSubmissionMessage('Unable to add restaurant at this time. Please try again later.');
       }
     } finally {
       setIsSubmitting(false);
@@ -158,13 +180,20 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
   };
 
   const resetModal = () => {
-    setSearchQuery('');
+    setSearchQuery(initialSearchQuery);
     setSearchResults([]);
     setSelectedPlace(null);
     setPlaceDetails(null);
     setSubmissionStatus('idle');
     setSubmissionMessage('');
   };
+
+  // Auto-search when modal opens with initial query
+  useEffect(() => {
+    if (visible && initialSearchQuery && initialSearchQuery.length >= 3) {
+      searchPlaces(initialSearchQuery);
+    }
+  }, [visible, initialSearchQuery]);
 
   const renderStatusMessage = () => {
     if (submissionStatus === 'idle') return null;

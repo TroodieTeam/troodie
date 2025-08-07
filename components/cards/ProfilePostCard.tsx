@@ -107,28 +107,40 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
           {getTrafficLightRating(post.rating)}
         </View>
 
-        {/* Restaurant Info */}
-        <View style={styles.restaurantSection}>
-          <Image 
-            source={{ uri: post.restaurant?.image || DEFAULT_IMAGES.restaurant }} 
-            style={styles.restaurantImage}
-            resizeMode="cover"
-          />
-          <View style={styles.restaurantInfo}>
-            <Text style={styles.restaurantName} numberOfLines={1}>
-              {post.restaurant?.name || 'Restaurant'}
-            </Text>
-            {post.restaurant?.location && (
-              <View style={styles.locationRow}>
-                <MapPin size={10} color={theme.colors.text.tertiary} />
-                <Text style={styles.location} numberOfLines={1}>{post.restaurant.location}</Text>
-              </View>
-            )}
-            {post.restaurant?.cuisine && (
-              <Text style={styles.cuisine} numberOfLines={1}>{post.restaurant.cuisine}</Text>
-            )}
+        {/* Restaurant Info - Only show if restaurant exists */}
+        {post.restaurant && (
+          <View style={styles.restaurantSection}>
+            <Image 
+              source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} 
+              style={styles.restaurantImage}
+              resizeMode="cover"
+            />
+            <View style={styles.restaurantInfo}>
+              <Text style={styles.restaurantName} numberOfLines={1}>
+                {post.restaurant.name}
+              </Text>
+              {post.restaurant.location && (
+                <View style={styles.locationRow}>
+                  <MapPin size={10} color={theme.colors.text.tertiary} />
+                  <Text style={styles.location} numberOfLines={1}>{post.restaurant.location}</Text>
+                </View>
+              )}
+              {post.restaurant.cuisine && (
+                <Text style={styles.cuisine} numberOfLines={1}>{post.restaurant.cuisine}</Text>
+              )}
+            </View>
           </View>
-        </View>
+        )}
+
+        {/* Simple Post Badge - Show for posts without restaurants */}
+        {!post.restaurant && (
+          <View style={styles.postTypeSection}>
+            <View style={styles.discussionBadge}>
+              <MessageCircle size={14} color={theme.colors.primary} />
+              <Text style={styles.discussionText}>Discussion</Text>
+            </View>
+          </View>
+        )}
 
         {/* Post Details */}
         {(post.visit_type || post.price_range) && (
@@ -163,53 +175,18 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
               source={{ uri: getImageUrl(mainPhoto, retryAttempt) }} 
               style={styles.photo}
               resizeMode="cover"
-              onError={(e) => {
-                console.error(`❌ ProfilePostCard image failed (attempt ${retryAttempt + 1}):`, {
-                  uri: getImageUrl(mainPhoto, retryAttempt),
-                  originalUri: mainPhoto,
-                  error: e.nativeEvent.error,
-                  retryAttempt
-                });
-                
+              onError={() => {
                 if (retryAttempt < 2) {
                   // Try again with cache-busting
                   setRetryAttempt(prev => prev + 1);
                 } else {
                   // Give up after 3 attempts
                   setImageError(true);
-                  
-                  console.log('Final image failure details:', {
-                    isSupabaseStorage: mainPhoto.includes('supabase.co/storage'),
-                    hasPublicFolder: mainPhoto.includes('/public/'),
-                    bucket: mainPhoto.split('/').find(part => part === 'post-photos'),
-                    path: mainPhoto.split('/public/')[1] || 'no-public-path',
-                    fullUrl: mainPhoto
-                  });
-                  
-                  // Test if we can fetch the URL directly with full headers
-                  fetch(mainPhoto, { method: 'HEAD' })
-                    .then(response => {
-                      console.log('Direct fetch HEAD response:', {
-                        status: response.status,
-                        statusText: response.statusText,
-                        contentType: response.headers.get('content-type'),
-                        contentLength: response.headers.get('content-length'),
-                        cacheControl: response.headers.get('cache-control'),
-                        etag: response.headers.get('etag')
-                      });
-                    })
-                    .catch(err => {
-                        console.error('Direct fetch HEAD failed:', err);
-                    });
                 }
               }}
               onLoad={() => {
                 setImageError(false);
                 setRetryAttempt(0);
-              }}
-              onLoadStart={() => {
-              }}
-              onLoadEnd={() => {
               }}
             />
           </View>
@@ -331,6 +308,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     color: theme.colors.primary,
     marginTop: 2,
+  },
+  postTypeSection: {
+    marginBottom: 8,
+  },
+  discussionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.backgroundLight || '#F8F9FA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+  },
+  discussionText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: theme.colors.primary,
   },
   postDetails: {
     flexDirection: 'row',

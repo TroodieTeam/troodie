@@ -89,8 +89,8 @@ export const BoardSelectionToast: React.FC<BoardSelectionToastProps> = ({
         boardService.getBoardsForRestaurant(restaurantId, user.id)
       ]);
       
-      // Filter out Quick Saves board
-      const regularBoards = userBoards.filter(b => b.title !== 'Quick Saves');
+      // Filter out Your Saves board
+      const regularBoards = userBoards.filter(b => b.title !== 'Your Saves');
       setBoards(regularBoards);
       setBoardsWithRestaurant(restaurantBoards.map(b => b.id));
     } catch (error) {
@@ -126,7 +126,7 @@ export const BoardSelectionToast: React.FC<BoardSelectionToastProps> = ({
         user.id,
         restaurantId,
         selectedBoardIds,
-        false, // Don't include Quick Saves
+        false, // Don't include Your Saves
         restaurantName
       );
       

@@ -319,7 +319,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string | null
-          restaurant_id: string
+          restaurant_id: string | null
           caption: string | null
           photos: string[] | null
           rating: number | null
@@ -348,7 +348,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id?: string | null
-          restaurant_id: string
+          restaurant_id?: string | null
           caption?: string | null
           photos?: string[] | null
           rating?: number | null
@@ -377,7 +377,7 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string
-          restaurant_id?: string
+          restaurant_id?: string | null
           caption?: string | null
           photos?: string[] | null
           rating?: number | null
@@ -817,6 +817,29 @@ export type Database = {
           created_at?: string
         }
       }
+      post_communities: {
+        Row: {
+          id: string
+          post_id: string
+          community_id: string
+          added_by: string
+          added_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          community_id: string
+          added_by: string
+          added_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          community_id?: string
+          added_by?: string
+          added_at?: string
+        }
+      }
       restaurant_images: {
         Row: {
           id: string
@@ -957,6 +980,43 @@ export type Database = {
           tags: string[]
           cuisines: string[]
           recommendation_reason: string
+        }[]
+      }
+      get_community_feed: {
+        Args: {
+          p_community_id: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          post_id: string
+          user_id: string
+          restaurant_id: string
+          caption: string | null
+          photos: string[] | null
+          rating: number | null
+          visit_date: string | null
+          likes_count: number
+          comments_count: number
+          saves_count: number
+          created_at: string
+          is_cross_posted: boolean
+          cross_posted_at: string | null
+          username: string | null
+          user_avatar: string | null
+          restaurant_name: string
+        }[]
+      }
+      cross_post_to_communities: {
+        Args: {
+          p_post_id: string
+          p_community_ids: string[]
+          p_user_id: string
+        }
+        Returns: {
+          community_id: string
+          success: boolean
+          error_message: string | null
         }[]
       }
     }

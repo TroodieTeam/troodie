@@ -1,7 +1,7 @@
 import { designTokens, compactDesign } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
-import { postEngagementService } from '@/services/postEngagementService';
+import { usePostEngagement } from '@/hooks/usePostEngagement';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useCallback } from 'react';
@@ -40,42 +40,52 @@ export function PostCard({
 }: PostCardProps) {
   const { user } = useAuth();
   const router = useRouter();
-  const [isLiked, setIsLiked] = useState(post.is_liked_by_user || false);
-  const [isSaved, setIsSaved] = useState(post.is_saved_by_user || false);
-  const [likesCount, setLikesCount] = useState(post.likes_count);
-  const [savesCount, setSavesCount] = useState(post.saves_count);
+  
+  // Use the enhanced post engagement hook
+  const {
+    isLiked,
+    isSaved,
+    likesCount,
+    commentsCount,
+    savesCount,
+    shareCount,
+    isLoading,
+    toggleLike,
+    toggleSave,
+    sharePost,
+    copyLink,
+  } = usePostEngagement({
+    postId: post.id,
+    initialStats: {
+      likes_count: post.likes_count,
+      comments_count: post.comments_count,
+      saves_count: post.saves_count,
+      share_count: post.share_count || 0,
+    },
+    initialIsLiked: post.is_liked_by_user || false,
+    initialIsSaved: post.is_saved_by_user || false,
+    enableRealtime: true,
+  });
 
   const handleLike = async () => {
-    if (!user?.id) return;
-
-    try {
-      const newLikedState = await postEngagementService.togglePostLike(post.id, user.id);
-      setIsLiked(newLikedState);
-      setLikesCount(prev => newLikedState ? prev + 1 : prev - 1);
-      onLike?.(post.id, newLikedState);
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    }
+    await toggleLike();
+    onLike?.(post.id, isLiked);
   };
 
   const handleSave = async () => {
-    if (!user?.id) return;
-
-    try {
-      const newSavedState = await postEngagementService.togglePostSave(post.id, user.id);
-      setIsSaved(newSavedState);
-      setSavesCount(prev => newSavedState ? prev + 1 : prev - 1);
-      onSave?.(post.id);
-    } catch (error) {
-      console.error('Error toggling save:', error);
-    }
+    await toggleSave();
+    onSave?.(post.id);
   };
 
   const handleComment = () => {
     onComment?.(post.id);
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    await sharePost(
+      post.caption || 'Check out this post',
+      post.restaurant?.name || 'Troodie'
+    );
     onShare?.(post.id);
   };
 
@@ -88,7 +98,7 @@ export function PostCard({
 
   const handleRestaurantPress = useCallback((e: any) => {
     e.stopPropagation();
-    if (post.restaurant?.id) {
+    if (post.restaurant && post.restaurant.id) {
       router.push(`/restaurant/${post.restaurant.id}`);
     }
   }, [post.restaurant, router]);
@@ -105,16 +115,56 @@ export function PostCard({
     return date.toLocaleDateString();
   };
 
-  const getRatingStars = (rating: number | null) => {
-    const ratingValue = rating || 0;
-    return Array.from({ length: 5 }, (_, i) => (
-      <Ionicons
-        key={i}
-        name={i < ratingValue ? 'star' : 'star-outline'}
-        size={12}
-        color={i < ratingValue ? designTokens.colors.primaryOrange : designTokens.colors.textMedium}
-      />
-    ));
+  const getTrafficLightRating = (rating: number | null) => {
+    if (!rating || rating === 0) return null;
+    
+    // Handle both 3-point traffic light system and 5-point star system
+    let color, label;
+    
+    if (rating <= 3) {
+      // Traffic light system: 1=Red, 2=Yellow, 3=Green
+      const trafficColors = {
+        1: '#FF4444', // Red - Poor
+        2: '#FFAA44', // Yellow - Average 
+        3: '#00AA00', // Green - Excellent
+      };
+      
+      const trafficLabels = {
+        1: 'Poor',
+        2: 'Average',
+        3: 'Excellent'
+      };
+      
+      color = trafficColors[rating as keyof typeof trafficColors];
+      label = trafficLabels[rating as keyof typeof trafficLabels];
+    } else {
+      // 5-star system: 1-5 stars
+      const starColors = {
+        1: '#FF4444', // Red
+        2: '#FF7744', // Orange-Red
+        3: '#FFAA44', // Orange
+        4: '#44AA44', // Light Green
+        5: '#00AA00', // Green
+      };
+      
+      const starLabels = {
+        1: 'Poor',
+        2: 'Fair', 
+        3: 'Good',
+        4: 'Great',
+        5: 'Excellent'
+      };
+      
+      color = starColors[rating as keyof typeof starColors];
+      label = starLabels[rating as keyof typeof starLabels];
+    }
+    
+    return (
+      <View style={styles.trafficLight}>
+        <View style={[styles.trafficDot, { backgroundColor: color }]} />
+        <Text style={styles.ratingText}>{label}</Text>
+      </View>
+    );
   };
 
   return (
@@ -154,6 +204,14 @@ export function PostCard({
         <View style={styles.contentTypeBadge}>
           <Ionicons name="link" size={12} color="#666" />
           <Text style={styles.contentTypeText}>External Content</Text>
+        </View>
+      )}
+      
+      {/* Post Type Badge for Simple Posts */}
+      {(post as any).post_type === 'simple' && !post.restaurant && (
+        <View style={styles.simplePostBadge}>
+          <Ionicons name="chatbubble-ellipses-outline" size={14} color={designTokens.colors.textMedium} />
+          <Text style={styles.simplePostText}>Discussion</Text>
         </View>
       )}
 
@@ -207,28 +265,30 @@ export function PostCard({
         </View>
       )}
 
-      {/* Restaurant Info */}
-      <TouchableOpacity 
-        style={styles.restaurantInfo}
-        onPress={handleRestaurantPress}
-        activeOpacity={0.7}
-      >
-        <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
-        <View style={styles.restaurantDetails}>
-          <Text style={styles.restaurantName} numberOfLines={1}>
-            {post.restaurant.name}
-          </Text>
-          <Text style={styles.restaurantLocation} numberOfLines={1}>
-            {post.restaurant.location}
-          </Text>
-          <View style={styles.restaurantMeta}>
-            <View style={styles.ratingContainer}>
-              {getRatingStars(post.rating)}
+      {/* Restaurant Info - Only show if restaurant exists */}
+      {post.restaurant && post.restaurant.id && (
+        <TouchableOpacity 
+          style={styles.restaurantInfo}
+          onPress={handleRestaurantPress}
+          activeOpacity={0.7}
+        >
+          <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
+          <View style={styles.restaurantDetails}>
+            <Text style={styles.restaurantName} numberOfLines={1}>
+              {post.restaurant.name}
+            </Text>
+            <Text style={styles.restaurantLocation} numberOfLines={1}>
+              {post.restaurant.location}
+            </Text>
+            <View style={styles.restaurantMeta}>
+              {getTrafficLightRating(post.rating)}
+              {post.restaurant.priceRange && (
+                <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
+              )}
             </View>
-            <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      )}
 
       {/* Visit Info */}
       {(post.visit_type || post.price_range || post.rating) && (
@@ -254,7 +314,6 @@ export function PostCard({
           )}
           {post.rating && post.rating > 0 && (
             <View style={styles.ratingInfo}>
-              <Ionicons name="star" size={compactDesign.icon.small} color={designTokens.colors.primaryOrange} />
               <Text style={styles.ratingText}>{post.rating}</Text>
             </View>
           )}
@@ -278,7 +337,7 @@ export function PostCard({
       {/* Actions */}
       {showActions && (
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleLike} disabled={isLoading}>
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
               size={compactDesign.icon.medium}
@@ -289,10 +348,10 @@ export function PostCard({
 
           <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
             <Ionicons name="chatbubble-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
-            <Text style={styles.actionCount}>{post.comments_count}</Text>
+            <Text style={styles.actionCount}>{commentsCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleSave} disabled={isLoading}>
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
               size={compactDesign.icon.medium}
@@ -303,7 +362,7 @@ export function PostCard({
 
           <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
             <Ionicons name="share-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
-            <Text style={styles.actionCount}>{post.shares_count}</Text>
+            <Text style={styles.actionCount}>{shareCount}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -521,9 +580,40 @@ const styles = StyleSheet.create({
     borderRadius: designTokens.borderRadius.full,
     marginBottom: 4,
   },
+  simplePostBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0F8FF',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: designTokens.borderRadius.full,
+    marginBottom: 8,
+  },
+  simplePostText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textMedium,
+  },
   contentTypeText: {
     fontSize: 11,
     fontFamily: 'Inter_500Medium',
     color: '#666',
+  },
+  trafficLight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trafficDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  ratingText: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textMedium,
   },
 }); 

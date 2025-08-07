@@ -10,6 +10,7 @@ interface PostFormData {
   tags: string[];
   externalUrl?: string;
   contentType?: 'original' | 'external';
+  postType?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement';
 }
 
 interface UsePostFormReturn {
@@ -33,6 +34,7 @@ const initialFormData: PostFormData = {
   photos: [],
   tags: [],
   contentType: 'original',
+  postType: 'simple',
 };
 
 export const usePostForm = (initialData?: Partial<PostFormData>): UsePostFormReturn => {
@@ -43,24 +45,38 @@ export const usePostForm = (initialData?: Partial<PostFormData>): UsePostFormRet
   
   const [touched, setTouched] = useState<Set<string>>(new Set());
   
-  const requiredFields = ['restaurantId'] as const;
-  
-  // For original content, rating is required. For external content, only restaurant and URL are required
-  const getRequiredFieldsForContentType = () => {
-    const baseRequired = ['restaurantId'];
-    if (formData.contentType === 'original') {
-      return [...baseRequired, 'rating'];
-    } else if (formData.contentType === 'external') {
-      return [...baseRequired, 'externalUrl'];
+  // Dynamic required fields based on post type
+  const getRequiredFieldsForPostType = () => {
+    // Simple posts only require caption
+    if (formData.postType === 'simple' || formData.postType === 'thought' || 
+        formData.postType === 'question' || formData.postType === 'announcement' ||
+        !formData.postType) {
+      return ['caption'];
     }
-    return baseRequired;
+    
+    // Restaurant posts require restaurant selection
+    if (formData.postType === 'restaurant') {
+      const baseRequired = ['restaurantId'];
+      if (formData.contentType === 'original') {
+        return [...baseRequired, 'rating'];
+      } else if (formData.contentType === 'external') {
+        return [...baseRequired, 'externalUrl'];
+      }
+      return baseRequired;
+    }
+    
+    // Default to caption only
+    return ['caption'];
   };
   
   const isValid = useMemo(() => {
-    const currentRequiredFields = getRequiredFieldsForContentType();
+    const currentRequiredFields = getRequiredFieldsForPostType();
     return currentRequiredFields.every(field => {
       const value = formData[field as keyof PostFormData];
-      if (field === 'rating' && formData.contentType === 'original') {
+      if (field === 'caption') {
+        return value !== null && value !== undefined && value !== '';
+      }
+      if (field === 'rating' && formData.contentType === 'original' && formData.postType === 'restaurant') {
         return value !== null && value !== undefined && value > 0;
       }
       return value !== null && value !== undefined && value !== '';
@@ -68,10 +84,13 @@ export const usePostForm = (initialData?: Partial<PostFormData>): UsePostFormRet
   }, [formData]);
   
   const getMissingFields = (): string[] => {
-    const currentRequiredFields = getRequiredFieldsForContentType();
+    const currentRequiredFields = getRequiredFieldsForPostType();
     return currentRequiredFields.filter(field => {
       const value = formData[field as keyof PostFormData];
-      if (field === 'rating' && formData.contentType === 'original') {
+      if (field === 'caption') {
+        return value === null || value === undefined || value === '';
+      }
+      if (field === 'rating' && formData.contentType === 'original' && formData.postType === 'restaurant') {
         return value === null || value === undefined || value === 0;
       }
       return value === null || value === undefined || value === '';
@@ -85,10 +104,15 @@ export const usePostForm = (initialData?: Partial<PostFormData>): UsePostFormRet
   };
   
   const completionPercentage = useMemo(() => {
-    const currentRequiredFields = getRequiredFieldsForContentType();
+    const currentRequiredFields = getRequiredFieldsForPostType();
+    if (currentRequiredFields.length === 0) return 100;
+    
     const filledCount = currentRequiredFields.filter(field => {
       const value = formData[field as keyof PostFormData];
-      if (field === 'rating' && formData.contentType === 'original') {
+      if (field === 'caption') {
+        return value !== null && value !== undefined && value !== '';
+      }
+      if (field === 'rating' && formData.contentType === 'original' && formData.postType === 'restaurant') {
         return value !== null && value !== undefined && value > 0;
       }
       return value !== null && value !== undefined && value !== '';

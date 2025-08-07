@@ -1,5 +1,5 @@
 import { BoardCard } from '@/components/BoardCard';
-import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
+import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import FollowButton from '@/components/FollowButton';
 import { CommunityTab } from '@/components/profile/CommunityTab';
@@ -141,7 +141,7 @@ export default function UserDetailScreen() {
         setLoadingQuickSaves(true);
       }
       
-      // Quick saves are private - only show for own profile
+      // Your saves are private - only show for own profile
       if (isOwnProfile) {
         const saves = await boardService.getQuickSavesRestaurants(id);
         
@@ -161,7 +161,7 @@ export default function UserDetailScreen() {
         setQuickSaves([]);
       }
     } catch (error) {
-      console.error('Error loading quick saves:', error);
+      console.error('Error loading your saves:', error);
     } finally {
       setLoadingQuickSaves(false);
       setRefreshingQuickSaves(false);
@@ -520,9 +520,9 @@ export default function UserDetailScreen() {
             <View style={styles.emptyIcon}>
               <Grid3X3 size={32} color="#DDD" />
             </View>
-            <Text style={styles.emptyTitle}>No Quick Saves</Text>
+            <Text style={styles.emptyTitle}>No Saves</Text>
             <Text style={styles.emptyDescription}>
-              Quick saves are private
+              Your saves are private
             </Text>
           </View>
         )}
@@ -597,10 +597,13 @@ export default function UserDetailScreen() {
         <FlatList
           data={posts}
           renderItem={({ item }: { item: PostWithUser }) => (
-            <ProfilePostCard
+            <PostCard
               post={item}
               onPress={() => handlePostPress(item.id)}
-              onEdit={() => {}} // No edit for other users
+              onLike={() => {}}
+              onComment={() => handlePostPress(item.id)}
+              onSave={() => {}}
+              showActions={true}
             />
           )}
           keyExtractor={(item: PostWithUser) => item.id}

@@ -1,5 +1,5 @@
 import { BoardCard } from '@/components/BoardCard';
-import { ProfilePostCard } from '@/components/cards/ProfilePostCard';
+import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
@@ -136,7 +136,7 @@ export default function ProfileScreen() {
       
       return savesWithRestaurants.filter(save => save.restaurant);
     } catch (error) {
-      console.error('Error fetching quick saves:', error);
+      console.error('Error fetching your saves:', error);
       return [];
     }
   }, [user?.id]);
@@ -528,7 +528,7 @@ export default function ProfileScreen() {
           <View style={styles.emptyIcon}>
             <Grid3X3 size={32} color="#DDD" />
           </View>
-          <Text style={styles.emptyTitle}>No Quick Saves Yet</Text>
+          <Text style={styles.emptyTitle}>No Saves Yet</Text>
           <Text style={styles.emptyDescription}>
             Tap the save button on any restaurant to add it here
           </Text>
@@ -635,10 +635,13 @@ export default function ProfileScreen() {
           renderItem={({ item }: { item: PostWithUser }) => {
             
             return (
-              <ProfilePostCard
+              <PostCard
                 post={item}
                 onPress={() => handlePostPress(item.id)}
-                onEdit={() => handleEditPost(item.id)}
+                onLike={handleLike}
+                onComment={handleComment}
+                onSave={handleSave}
+                showActions={true}
               />
             );
           }}

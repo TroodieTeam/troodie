@@ -33,7 +33,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
       setLoading(true)
       setError(null)
 
-      // Get Quick Saves restaurants
+      // Get Your Saves restaurants
       const quickSaves = await boardService.getQuickSavesRestaurants(user.id, 10)
       
       // Load restaurant details for each save
@@ -49,7 +49,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
 
       setSaves(savesWithRestaurants.filter(save => save.restaurant))
     } catch (error) {
-      console.error('Error loading quick saves:', error)
+      console.error('Error loading your saves:', error)
       setError('Failed to load saved restaurants')
     } finally {
       setLoading(false)
@@ -74,7 +74,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Quick Saves</Text>
+          <Text style={styles.title}>Your Saves</Text>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -87,7 +87,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Quick Saves</Text>
+          <Text style={styles.title}>Your Saves</Text>
         </View>
         <Text style={styles.errorText}>{error}</Text>
       </View>
@@ -98,7 +98,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Quick Saves</Text>
+          <Text style={styles.title}>Your Saves</Text>
         </View>
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No saved restaurants yet</Text>
@@ -111,7 +111,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Quick Saves</Text>
+        <Text style={styles.title}>Your Saves</Text>
         <TouchableOpacity onPress={handleViewAll}>
           <Text style={styles.viewAllText}>View All</Text>
         </TouchableOpacity>

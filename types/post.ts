@@ -17,7 +17,7 @@ export type PostSaveInsert = Database['public']['Tables']['post_saves']['Insert'
 
 export interface PostWithUser extends Post {
   user: UserInfo;
-  restaurant: RestaurantInfo;
+  restaurant?: RestaurantInfo | null;  // Make restaurant optional for simple posts
   is_liked_by_user?: boolean;
   is_saved_by_user?: boolean;
 }
@@ -31,10 +31,22 @@ export interface ExternalContent {
   author?: string;
 }
 
+export interface PostEngagementStats {
+  post_id?: string;
+  user_id?: string;
+  likes_count: number;
+  comments_count: number;
+  saves_count: number;
+  share_count: number;
+  is_liked_by_user?: boolean;
+  is_saved_by_user?: boolean;
+}
+
 export interface PostCreationData {
   caption?: string;
   photos?: string[];
-  restaurantId: string;
+  restaurantId?: string; // Now optional for simple posts
+  postType?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement';
   rating?: number;
   visitDate?: Date;
   priceRange?: string;
@@ -45,7 +57,8 @@ export interface PostCreationData {
   locationLng?: number;
   contentType?: 'original' | 'external';
   externalContent?: ExternalContent;
-  communityId?: string;
+  communityId?: string; // Legacy single community support
+  communityIds?: string[]; // New multi-community cross-posting
 }
 
 export interface ExploreFilters {

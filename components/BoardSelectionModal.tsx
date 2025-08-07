@@ -62,13 +62,13 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
         boardService.getUserQuickSavesBoard(user.id)
       ]);
       
-      // Filter out Quick Saves board from regular boards
-      const regularBoards = userBoards.filter(b => b.title !== 'Quick Saves');
+      // Filter out Your Saves board from regular boards
+      const regularBoards = userBoards.filter(b => b.title !== 'Your Saves');
       setBoards(regularBoards);
       setBoardsWithRestaurant(restaurantBoards.map(b => b.id));
       setQuickSavesBoard(quickSaves);
       
-      // Check if Quick Saves already has this restaurant
+      // Check if Your Saves already has this restaurant
       if (quickSaves && restaurantBoards.some(b => b.id === quickSaves.id)) {
         setSaveToQuickSaves(false);
       }
@@ -87,7 +87,7 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
     try {
       const saves = [];
       
-      // Save to Quick Saves if selected
+      // Save to Your Saves if selected
       if (saveToQuickSaves) {
         saves.push(boardService.saveRestaurantToQuickSaves(user.id, restaurantId));
       }
@@ -106,9 +106,9 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
       await Promise.all(saves);
       
       const message = saves.length > 1 
-        ? `Added ${restaurantName} to Quick Saves and your board!`
+        ? `Added ${restaurantName} to Your Saves and your board!`
         : saveToQuickSaves 
-          ? `Added ${restaurantName} to Quick Saves!`
+          ? `Added ${restaurantName} to Your Saves!`
           : `Added ${restaurantName} to your board!`;
       
       Alert.alert('Success', message);
@@ -188,7 +188,7 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
           ) : (
             <>
               <ScrollView style={styles.boardsList} showsVerticalScrollIndicator={false}>
-                {/* Quick Saves option */}
+                {/* Your Saves option */}
                 {quickSavesBoard && (
                   <TouchableOpacity
                     style={[
@@ -200,7 +200,7 @@ export const BoardSelectionModal: React.FC<BoardSelectionModalProps> = ({
                     disabled={boardsWithRestaurant.includes(quickSavesBoard.id)}
                   >
                     <View style={styles.boardInfo}>
-                      <Text style={styles.quickSavesTitle}>Quick Saves</Text>
+                      <Text style={styles.quickSavesTitle}>Your Saves</Text>
                       <Text style={styles.quickSavesMeta}>Your default saved restaurants</Text>
                     </View>
                     {boardsWithRestaurant.includes(quickSavesBoard.id) ? (

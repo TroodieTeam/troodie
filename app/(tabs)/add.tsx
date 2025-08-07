@@ -1,15 +1,17 @@
+import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { designTokens } from '@/constants/designTokens';
+import { strings } from '@/constants/strings';
 import { useAuth } from '@/contexts/AuthContext';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
     Camera,
     FolderPlus,
-    Search,
+    MapPin,
     UserPlus,
     Users2
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     SafeAreaView,
     ScrollView,
@@ -22,31 +24,55 @@ import {
 export default function AddScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
 
+  // Core discovery actions - shown prominently
+  const discoveryActions = [
+    {
+      id: 'add-restaurant',
+      title: strings.discoveryActions.addRestaurant.title,
+      description: strings.discoveryActions.addRestaurant.description,
+      icon: MapPin,
+      color: designTokens.colors.primaryOrange,
+      onPress: () => setShowAddRestaurantModal(true), // Show modal instead of navigation
+      isPrimary: true
+    },
+    {
+      id: 'find-friends',
+      title: strings.discoveryActions.findFriends.title,
+      description: strings.discoveryActions.findFriends.description,
+      icon: UserPlus,
+      color: '#10B981',
+      onPress: () => router.push('/find-friends'),
+      isPrimary: true
+    }
+  ];
+
+  // Regular add options
   const addOptions: AddOption[] = [
     {
       id: 'post',
-      title: 'Create a Post',
-      description: 'Share your restaurant experience',
+      title: strings.createContent.createPost.title,
+      description: strings.createContent.createPost.description,
       icon: Camera,
-      color: designTokens.colors.primaryOrange,
+      color: '#3B82F6',
       navigateTo: '/add/create-post'
     },
     {
       id: 'board',
-      title: 'Create a Board',
-      description: 'Curate a themed collection',
+      title: strings.createContent.createBoard.title,
+      description: strings.createContent.createBoard.description,
       icon: FolderPlus,
-      color: '#3B82F6',
+      color: '#7C3AED',
       navigateTo: '/add/create-board'
     },
     {
       id: 'community',
-      title: 'Join Communities',
-      description: 'Connect with like-minded Troodies',
+      title: strings.createContent.createCommunity.title,
+      description: strings.createContent.createCommunity.description,
       icon: Users2,
-      color: '#7C3AED',
-      navigateTo: '/add/communities'
+      color: '#EC4899',
+      navigateTo: '/add/create-community' // Changed from /add/communities
     }
   ];
 
@@ -62,66 +88,81 @@ export default function AddScreen() {
     cta: 'Create Another Board'
   };
 
+  const handleRestaurantAdded = (restaurant: any) => {
+    // Could navigate to the restaurant page or show a success message
+  };
+
   const renderHeader = () => (
     <View style={styles.header}>
-      <Text style={styles.title}>Add Content</Text>
-      <Text style={styles.subtitle}>What would you like to add?</Text>
+      <Text style={styles.title}>Discover & Create</Text>
+      <Text style={styles.subtitle}>Grow your food network</Text>
     </View>
   );
 
-  const renderPrimaryActions = () => (
-    <View style={styles.primaryActions}>
-      {addOptions.map((option) => (
-        <TouchableOpacity
-          key={option.id}
-          style={[
-            styles.optionCard,
-            option.beta && styles.optionCardBeta
-          ]}
-          onPress={() => router.push(option.navigateTo as any)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.optionContent}>
-            <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
-              <option.icon size={20} color={designTokens.colors.white} />
+  const renderDiscoveryActions = () => (
+    <View style={styles.discoverySection}>
+      <Text style={styles.sectionTitle}>Core Actions</Text>
+      <View style={styles.discoveryActions}>
+        {discoveryActions.map((action) => (
+          <TouchableOpacity
+            key={action.id}
+            style={[styles.discoveryCard, { borderColor: action.color + '33' }]}
+            onPress={action.onPress}
+            activeOpacity={0.8}
+            accessibilityLabel={action.title}
+            accessibilityHint={action.description}
+          >
+            <View style={[styles.discoveryIcon, { backgroundColor: action.color }]}>
+              <action.icon size={24} color={designTokens.colors.white} />
             </View>
-            
-            <View style={styles.optionTextContent}>
-              <View style={styles.optionHeader}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                {option.beta && (
-                  <View style={styles.betaBadge}>
-                    <Text style={styles.betaText}>Beta</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.optionDescription}>{option.description}</Text>
-            </View>
-            
-            <View style={styles.optionIndicator} />
-          </View>
-        </TouchableOpacity>
-      ))}
-
-    </View>
-  );
-
-  const renderQuickActions = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/explore')}>
-          <Search size={16} color={designTokens.colors.textMedium} />
-          <Text style={styles.quickActionText}>Search Places</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/find-friends')}>
-          <UserPlus size={16} color={designTokens.colors.textMedium} />
-          <Text style={styles.quickActionText}>Find Friends</Text>
-        </TouchableOpacity>
+            <Text style={styles.discoveryTitle}>{action.title}</Text>
+            <Text style={styles.discoveryDescription}>{action.description}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
 
+  const renderCreateContent = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Create Content</Text>
+      <View style={styles.createOptions}>
+        {addOptions.map((option) => (
+          <TouchableOpacity
+            key={option.id}
+            style={[
+              styles.optionCard,
+              option.beta && styles.optionCardBeta
+            ]}
+            onPress={() => router.push(option.navigateTo as any)}
+            activeOpacity={0.8}
+            accessibilityLabel={option.title}
+            accessibilityHint={option.description}
+          >
+            <View style={styles.optionContent}>
+              <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
+                <option.icon size={18} color={designTokens.colors.white} />
+              </View>
+              
+              <View style={styles.optionTextContent}>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>{option.title}</Text>
+                  {option.beta && (
+                    <View style={styles.betaBadge}>
+                      <Text style={styles.betaText}>Beta</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.optionDescription}>{option.description}</Text>
+              </View>
+              
+              <View style={styles.optionIndicator} />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
 
   const renderProgressGamification = () => (
     <View style={styles.progressCard}>
@@ -139,11 +180,18 @@ export default function AddScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {renderHeader()}
-        {renderPrimaryActions()}
-        {renderQuickActions()}
+        {renderDiscoveryActions()}
+        {renderCreateContent()}
         {renderProgressGamification()}
         <View style={styles.bottomPadding} />
       </ScrollView>
+      
+      {/* Add Restaurant Modal */}
+      <AddRestaurantModal
+        visible={showAddRestaurantModal}
+        onClose={() => setShowAddRestaurantModal(false)}
+        onRestaurantAdded={handleRestaurantAdded}
+      />
     </SafeAreaView>
   );
 }
@@ -157,7 +205,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: designTokens.spacing.lg,
     paddingTop: designTokens.spacing.lg,
     paddingBottom: designTokens.spacing.xl,
-    marginBottom: designTokens.spacing.xl,
+    marginBottom: designTokens.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: designTokens.colors.borderLight,
     alignItems: 'center',
@@ -171,15 +219,70 @@ const styles = StyleSheet.create({
     ...designTokens.typography.detailText,
     color: designTokens.colors.textMedium,
   },
-  primaryActions: {
+  discoverySection: {
     paddingHorizontal: designTokens.spacing.lg,
-    gap: designTokens.spacing.sm,
     marginBottom: designTokens.spacing.xxl,
+  },
+  sectionTitle: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_700Bold',
+    color: designTokens.colors.textDark,
+    marginBottom: designTokens.spacing.lg,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontSize: 11,
+  },
+  discoveryActions: {
+    flexDirection: 'row',
+    gap: designTokens.spacing.md,
+  },
+  discoveryCard: {
+    flex: 1,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.lg,
+    padding: designTokens.spacing.lg,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: designTokens.colors.primaryOrange + '33',
+    ...designTokens.shadows.card,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  discoveryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: designTokens.spacing.md,
+  },
+  discoveryTitle: {
+    ...designTokens.typography.detailText,
+    fontFamily: 'Inter_700Bold',
+    color: designTokens.colors.textDark,
+    marginBottom: 4,
+    fontSize: 14,
+  },
+  discoveryDescription: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textMedium,
+    textAlign: 'center',
+    fontSize: 11,
+  },
+  section: {
+    paddingHorizontal: designTokens.spacing.lg,
+    marginBottom: designTokens.spacing.xxl,
+  },
+  createOptions: {
+    gap: designTokens.spacing.sm,
   },
   optionCard: {
     backgroundColor: designTokens.colors.white,
     borderRadius: designTokens.borderRadius.lg,
-    padding: designTokens.spacing.lg,
+    padding: designTokens.spacing.md,
     borderWidth: 1,
     borderColor: designTokens.colors.borderLight,
     ...designTokens.shadows.card,
@@ -190,9 +293,9 @@ const styles = StyleSheet.create({
     gap: designTokens.spacing.md,
   },
   optionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: designTokens.borderRadius.lg,
+    width: 36,
+    height: 36,
+    borderRadius: designTokens.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -204,46 +307,37 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textDark,
     marginBottom: 2,
+    fontSize: 13,
   },
   optionDescription: {
     ...designTokens.typography.smallText,
     color: designTokens.colors.textMedium,
+    fontSize: 11,
   },
   optionIndicator: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: designTokens.colors.primaryOrange,
+    backgroundColor: designTokens.colors.borderLight,
   },
-  section: {
-    paddingHorizontal: designTokens.spacing.lg,
-    marginBottom: designTokens.spacing.xxl,
-  },
-  sectionTitle: {
-    ...designTokens.typography.detailText,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.lg,
-  },
-  quickActions: {
+  optionHeader: {
     flexDirection: 'row',
-    gap: designTokens.spacing.sm,
-  },
-  quickActionButton: {
-    flex: 1,
-    backgroundColor: designTokens.colors.white,
-    borderRadius: designTokens.borderRadius.md,
-    padding: designTokens.spacing.md,
     alignItems: 'center',
-    gap: designTokens.spacing.sm,
-    borderWidth: 1,
-    borderColor: designTokens.colors.borderLight,
-    ...designTokens.shadows.card,
   },
-  quickActionText: {
-    ...designTokens.typography.smallText,
-    fontFamily: 'Inter_500Medium',
-    color: designTokens.colors.textDark,
+  betaBadge: {
+    marginLeft: 8,
+    backgroundColor: designTokens.colors.primaryOrange + '1A',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  betaText: {
+    fontSize: 10,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.primaryOrange,
+  },
+  optionCardBeta: {
+    borderColor: designTokens.colors.primaryOrange + '33',
   },
   progressCard: {
     marginHorizontal: designTokens.spacing.lg,
@@ -284,43 +378,5 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 100,
-  },
-  optionCardBeta: {
-    borderColor: designTokens.colors.primaryOrange + '33',
-  },
-  optionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  betaBadge: {
-    marginLeft: 8,
-    backgroundColor: designTokens.colors.primaryOrange + '1A',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  betaText: {
-    fontSize: 10,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.primaryOrange,
-  },
-  betaNotice: {
-    marginTop: designTokens.spacing.lg,
-    padding: designTokens.spacing.lg,
-    backgroundColor: designTokens.colors.backgroundLight,
-    borderRadius: designTokens.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: designTokens.colors.borderLight,
-  },
-  betaNoticeTitle: {
-    ...designTokens.typography.detailText,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.xs,
-  },
-  betaNoticeText: {
-    ...designTokens.typography.smallText,
-    color: designTokens.colors.textMedium,
-    lineHeight: 18,
   },
 });

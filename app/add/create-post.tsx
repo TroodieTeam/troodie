@@ -15,6 +15,8 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    InputAccessoryView,
+    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -27,6 +29,8 @@ import {
     View,
 } from 'react-native';
 import { AddRestaurantModal } from '@/components/AddRestaurantModal';
+import { CommunitySelector } from '@/components/CommunitySelector';
+import { Users } from 'lucide-react-native';
 
 type ContentType = 'original' | 'external';
 type AttachmentType = 'photo' | 'link' | 'restaurant' | 'rating' | 'details';
@@ -67,14 +71,24 @@ export default function CreatePostScreen() {
   // Modal state
   const [showRestaurantModal, setShowRestaurantModal] = useState(false);
   const [showContentTypeInfo, setShowContentTypeInfo] = useState(false);
+  const [showPostTypeInfo, setShowPostTypeInfo] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<RestaurantInfo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
   
+  // Keyboard state
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  
   // Community context
   const communityId = params.communityId as string | undefined;
   const communityName = params.communityName as string | undefined;
+  
+  // Cross-posting state
+  const [selectedCommunities, setSelectedCommunities] = useState<string[]>(
+    communityId ? [communityId] : []
+  );
+  const [showCommunitySelector, setShowCommunitySelector] = useState(false);
 
   // Selected restaurant from formData
   const [selectedRestaurant, setSelectedRestaurant] = useState<RestaurantInfo | null>(null);
@@ -87,13 +101,35 @@ export default function CreatePostScreen() {
         setSelectedRestaurant(restaurant);
         updateFormField('restaurantId', restaurant.id.toString());
       } catch (error) {
-        console.error('Error parsing selected restaurant:', error);
       }
     }
   }, [params.selectedRestaurant]);
 
+  // Keyboard listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
   const handlePublish = async () => {
-    if (!user || !selectedRestaurant) return;
+    if (!user) return;
+    
+    // Only restaurant posts require a restaurant
+    if (formData.postType === 'restaurant' && !selectedRestaurant) {
+      Alert.alert('Restaurant Required', 'Please select a restaurant for your review.');
+      return;
+    }
 
     // Check validation before proceeding
     if (!isValid) {
@@ -113,6 +149,7 @@ export default function CreatePostScreen() {
       return;
     }
 
+
     setLoading(true);
     try {
       let uploadedPhotos: string[] = [];
@@ -123,16 +160,18 @@ export default function CreatePostScreen() {
       const postData: PostCreationData = {
         caption: formData.caption,
         photos: uploadedPhotos,
-        restaurantId: selectedRestaurant.id.toString(),
+        restaurantId: selectedRestaurant ? selectedRestaurant.id.toString() : undefined,
+        postType: formData.postType || 'simple',
         rating: formData.rating && formData.rating > 0 ? formData.rating : undefined,
-        visitDate: new Date(),
-        priceRange: priceRange || undefined,
-        visitType,
+        visitDate: formData.postType === 'restaurant' ? new Date() : undefined,
+        priceRange: formData.postType === 'restaurant' ? priceRange : undefined,
+        visitType: formData.postType === 'restaurant' ? visitType : undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         privacy,
         contentType: formData.contentType || 'original',
-        ...(communityId && { communityId })
+        communityIds: selectedCommunities.length > 0 ? selectedCommunities : undefined
       };
+
 
       // Add external content if applicable
       if (formData.contentType === 'external' && formData.externalUrl) {
@@ -163,7 +202,6 @@ export default function CreatePostScreen() {
       }, 1500);
 
     } catch (error) {
-      console.error('Error creating post:', error);
       Alert.alert('Error', 'Failed to create post. Please try again.');
     } finally {
       setLoading(false);
@@ -185,7 +223,6 @@ export default function CreatePostScreen() {
         updateFormField('photos', [...formData.photos, ...selectedPhotos]);
       }
     } catch (error) {
-      console.error('Error selecting photos:', error);
     }
   };
 
@@ -210,7 +247,6 @@ export default function CreatePostScreen() {
       const results = await restaurantService.searchRestaurants(searchQuery);
       setSearchResults(results);
     } catch (error) {
-      console.error('Error searching restaurants:', error);
       Alert.alert('Error', 'Failed to search restaurants');
     } finally {
       setIsSearching(false);
@@ -273,11 +309,42 @@ export default function CreatePostScreen() {
             multiline
             maxLength={500}
             autoFocus
+            inputAccessoryViewID={Platform.OS === 'ios' ? 'keyboardDoneAccessory' : undefined}
           />
           <Text style={styles.charCounter}>{formData.caption.length}/500</Text>
         </View>
 
-        {/* Required selections */}
+        {/* Post Type Selector */}
+        <View style={styles.postTypeSelector}>
+          <View style={styles.postTypeLabelRow}>
+            <Text style={styles.postTypeLabel}>What would you like to share?</Text>
+            <TouchableOpacity 
+              onPress={() => setShowPostTypeInfo(true)}
+              style={styles.infoButton}
+            >
+              <Ionicons name="information-circle-outline" size={20} color={designTokens.colors.textMedium} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.postTypeOptions}>
+            <TouchableOpacity
+              style={[styles.postTypeOption, formData.postType === 'simple' && styles.postTypeOptionActive]}
+              onPress={() => updateFormField('postType', 'simple')}
+            >
+              <Ionicons name="create-outline" size={20} color={formData.postType === 'simple' ? '#FFF' : designTokens.colors.textDark} />
+              <Text style={[styles.postTypeText, formData.postType === 'simple' && styles.postTypeTextActive]}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.postTypeOption, formData.postType === 'restaurant' && styles.postTypeOptionActive]}
+              onPress={() => updateFormField('postType', 'restaurant')}
+            >
+              <Ionicons name="restaurant" size={20} color={formData.postType === 'restaurant' ? '#FFF' : designTokens.colors.textDark} />
+              <Text style={[styles.postTypeText, formData.postType === 'restaurant' && styles.postTypeTextActive]}>Restaurant Review</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Required selections - only for restaurant posts */}
+        {formData.postType === 'restaurant' && (
         <View style={styles.requiredSection}>
           {/* Restaurant selection */}
           <TouchableOpacity 
@@ -346,77 +413,97 @@ export default function CreatePostScreen() {
             </TouchableOpacity>
           )}
         </View>
+        )}
 
         {/* Optional additions */}
         <View style={styles.optionalSection}>
           <Text style={[styles.sectionTitle, styles.sectionTitlePadding]}>✨ Make it shine (optional)</Text>
           
-          {/* Photos (original posts only) */}
-          {formData.contentType === 'original' && (
+          {/* Photos */}
+          <TouchableOpacity 
+            style={styles.selectionRow}
+            onPress={handlePhotoSelection}
+          >
+            <Ionicons 
+              name="images" 
+              size={20} 
+              color={formData.photos.length > 0 ? designTokens.colors.primaryOrange : '#999'} 
+            />
+            <View style={styles.selectionContent}>
+              <Text style={styles.selectionLabel}>Add photos</Text>
+              <Text style={styles.selectionValue}>
+                {formData.photos.length > 0 ? `📸 ${formData.photos.length} photo${formData.photos.length > 1 ? 's' : ''} added` : 'Show off those delicious shots!'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#999" />
+          </TouchableOpacity>
+
+          {/* More options - only for restaurant posts */}
+          {formData.postType === 'restaurant' && (
             <TouchableOpacity 
               style={styles.selectionRow}
-              onPress={handlePhotoSelection}
+              onPress={() => setActiveAttachment('details')}
             >
-              <Ionicons 
-                name="images" 
-                size={20} 
-                color={formData.photos.length > 0 ? designTokens.colors.primaryOrange : '#999'} 
-              />
+              <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
               <View style={styles.selectionContent}>
-                <Text style={styles.selectionLabel}>Add photos</Text>
-                <Text style={styles.selectionValue}>
-                  {formData.photos.length > 0 ? `📸 ${formData.photos.length} photo${formData.photos.length > 1 ? 's' : ''} added` : 'Show off those delicious shots!'}
-                </Text>
+                <Text style={styles.selectionLabel}>More details</Text>
+                <Text style={styles.selectionValue}>Visit type, privacy & other options</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#999" />
             </TouchableOpacity>
           )}
+        </View>
 
-          {/* More options */}
-          <TouchableOpacity 
-            style={styles.selectionRow}
-            onPress={() => setActiveAttachment('details')}
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
-            <View style={styles.selectionContent}>
-              <Text style={styles.selectionLabel}>More details</Text>
-              <Text style={styles.selectionValue}>Visit type, privacy & other options</Text>
+        {/* Content type switch - only for restaurant posts */}
+        {formData.postType === 'restaurant' && (
+          <View style={styles.contentTypeSection}>
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionTitle}>📝 What are you sharing?</Text>
+              <TouchableOpacity 
+                onPress={() => setShowContentTypeInfo(true)}
+                style={styles.infoButton}
+              >
+                <Ionicons name="information-circle-outline" size={18} color="#999" />
+              </TouchableOpacity>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#999" />
-          </TouchableOpacity>
-        </View>
+            <View style={styles.contentTypeSwitch}>
+              <TouchableOpacity
+                style={[styles.switchOption, formData.contentType === 'original' && styles.switchOptionActive]}
+                onPress={() => updateFormField('contentType', 'original')}
+              >
+                <Text style={[styles.switchText, formData.contentType === 'original' && styles.switchTextActive]}>
+                  🍽️ My Experience
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.switchOption, formData.contentType === 'external' && styles.switchOptionActive]}
+                onPress={() => updateFormField('contentType', 'external')}
+              >
+                <Text style={[styles.switchText, formData.contentType === 'external' && styles.switchTextActive]}>
+                  🔗 Share a Link
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
-        {/* Content type switch */}
-        <View style={styles.contentTypeSection}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>📝 What are you sharing?</Text>
-            <TouchableOpacity 
-              onPress={() => setShowContentTypeInfo(true)}
-              style={styles.infoButton}
-            >
-              <Ionicons name="information-circle-outline" size={18} color="#999" />
-            </TouchableOpacity>
+        {/* Community Selection */}
+        <TouchableOpacity 
+          style={styles.communitySelector}
+          onPress={() => setShowCommunitySelector(true)}
+        >
+          <View style={styles.communitySelectorContent}>
+            <Users size={20} color={designTokens.colors.textMedium} />
+            <Text style={styles.communitySelectorText}>
+              {selectedCommunities.length > 0 
+                ? `Sharing to ${selectedCommunities.length} communit${selectedCommunities.length === 1 ? 'y' : 'ies'}`
+                : 'Select communities to share with'
+              }
+            </Text>
           </View>
-          <View style={styles.contentTypeSwitch}>
-            <TouchableOpacity
-              style={[styles.switchOption, formData.contentType === 'original' && styles.switchOptionActive]}
-              onPress={() => updateFormField('contentType', 'original')}
-            >
-              <Text style={[styles.switchText, formData.contentType === 'original' && styles.switchTextActive]}>
-                🍽️ My Experience
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.switchOption, formData.contentType === 'external' && styles.switchOptionActive]}
-              onPress={() => updateFormField('contentType', 'external')}
-            >
-              <Text style={[styles.switchText, formData.contentType === 'external' && styles.switchTextActive]}>
-                🔗 Share a Link
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          <Ionicons name="chevron-forward" size={20} color={designTokens.colors.textLight} />
+        </TouchableOpacity>
 
         {/* Preview sections */}
         {formData.photos.length > 0 && (
@@ -766,6 +853,45 @@ export default function CreatePostScreen() {
     </Modal>
   );
 
+  const renderPostTypeInfoModal = () => (
+    <Modal
+      visible={showPostTypeInfo}
+      animationType="fade"
+      transparent={true}
+    >
+      <TouchableOpacity 
+        style={styles.infoModalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowPostTypeInfo(false)}
+      >
+        <View style={styles.infoModalContent}>
+          <TouchableOpacity 
+            onPress={() => setShowPostTypeInfo(false)}
+            style={styles.infoModalClose}
+          >
+            <Ionicons name="close" size={20} color="#999" />
+          </TouchableOpacity>
+          
+          <Text style={styles.infoModalTitle}>Post Types</Text>
+          
+          <View style={styles.infoOption}>
+            <Text style={styles.infoOptionTitle}>✍️ Share</Text>
+            <Text style={styles.infoOptionText}>
+              Share your thoughts, ask questions, or start discussions about food. Perfect for quick updates, food questions, or general food-related conversations without needing to review a specific restaurant.
+            </Text>
+          </View>
+          
+          <View style={styles.infoOption}>
+            <Text style={styles.infoOptionTitle}>🍽️ Restaurant Review</Text>
+            <Text style={styles.infoOptionText}>
+              Write a detailed review of a restaurant you've visited. Rate your experience, add photos, and help others discover great places to eat.
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   const renderContentTypeInfoModal = () => (
     <Modal
       visible={showContentTypeInfo}
@@ -834,6 +960,7 @@ export default function CreatePostScreen() {
         {renderLinkSheet()}
         {renderDetailsSheet()}
         {renderRestaurantModal()}
+        {renderPostTypeInfoModal()}
         {renderContentTypeInfoModal()}
         {renderSuccessOverlay()}
         
@@ -854,7 +981,44 @@ export default function CreatePostScreen() {
             setShowAddRestaurantModal(false);
           }}
         />
+        
+        <CommunitySelector
+          visible={showCommunitySelector}
+          onClose={() => setShowCommunitySelector(false)}
+          onSelect={setSelectedCommunities}
+          selectedCommunities={selectedCommunities}
+        />
       </SafeAreaView>
+      
+      {/* Keyboard Accessory View for iOS */}
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView nativeID="keyboardDoneAccessory">
+          <View style={styles.keyboardAccessoryBar}>
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity
+              style={styles.keyboardAccessoryButton}
+              onPress={() => Keyboard.dismiss()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.keyboardAccessoryText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </InputAccessoryView>
+      )}
+      
+      {/* Android Done Button - appears above keyboard */}
+      {Platform.OS === 'android' && isKeyboardVisible && (
+        <View style={styles.androidKeyboardBar}>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={styles.keyboardAccessoryButton}
+            onPress={() => Keyboard.dismiss()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.keyboardAccessoryText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -1506,6 +1670,75 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
   },
+  
+  // Post type selector
+  postTypeSelector: {
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  postTypeLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  postTypeLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textDark,
+  },
+  postTypeOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  postTypeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    gap: 6,
+  },
+  postTypeOptionActive: {
+    backgroundColor: designTokens.colors.primaryOrange,
+  },
+  postTypeText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
+  },
+  postTypeTextActive: {
+    color: '#FFF',
+  },
+  
+  // Community selector
+  communitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  communitySelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  communitySelectorText: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
+    marginLeft: 12,
+  },
 
   // Content type switch
   contentTypeSwitch: {
@@ -1718,5 +1951,40 @@ const styles = StyleSheet.create({
     color: designTokens.colors.textMedium,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  keyboardAccessoryBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderTopWidth: 1,
+    borderTopColor: designTokens.colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  androidKeyboardBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderTopWidth: 1,
+    borderTopColor: designTokens.colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  keyboardAccessoryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: designTokens.colors.primaryOrange,
+    borderRadius: 16,
+  },
+  keyboardAccessoryText: {
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
   },
 });

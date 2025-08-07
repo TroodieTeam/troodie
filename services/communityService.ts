@@ -93,7 +93,6 @@ class CommunityService {
       this.setCache(cacheKey, communities);
       return communities;
     } catch (error) {
-      console.error('Error fetching communities:', error);
       return [];
     }
   }
@@ -138,7 +137,6 @@ class CommunityService {
       this.setCache(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Error fetching user communities:', error);
       return { joined: [], created: [] };
     }
   }
@@ -185,7 +183,6 @@ class CommunityService {
       this.setCache(cacheKey, stats);
       return stats;
     } catch (error) {
-      console.error('Error fetching community stats:', error);
       return {
         joined_count: 0,
         created_count: 0,
@@ -215,7 +212,6 @@ class CommunityService {
       this.setCache(cacheKey, data);
       return data;
     } catch (error) {
-      console.error('Error fetching community:', error);
       return null;
     }
   }
@@ -256,7 +252,6 @@ class CommunityService {
         membership_status: membership?.status,
       };
     } catch (error) {
-      console.error('Error fetching community with membership:', error);
       return null;
     }
   }
@@ -264,16 +259,46 @@ class CommunityService {
   /**
    * Join a community
    */
-  async joinCommunity(userId: string, communityId: string): Promise<boolean> {
+  async joinCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase.from('community_members').insert({
-        user_id: userId,
-        community_id: communityId,
-        role: 'member',
-        status: 'active',
-      });
+      // Check if already a member
+      const { data: existingMember } = await supabase
+        .from('community_members')
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('community_id', communityId)
+        .single();
 
-      if (error) throw error;
+      if (existingMember) {
+        if (existingMember.status === 'active') {
+          return { success: true }; // Already a member, treat as success
+        }
+        // Reactivate membership if it was declined/inactive
+        const { error: updateError } = await supabase
+          .from('community_members')
+          .update({ status: 'active', joined_at: new Date().toISOString() })
+          .eq('id', existingMember.id);
+
+        if (updateError) {
+          return { success: false, error: 'Failed to rejoin community' };
+        }
+      } else {
+        // Create new membership
+        const { error: insertError } = await supabase.from('community_members').insert({
+          user_id: userId,
+          community_id: communityId,
+          role: 'member',
+          status: 'active',
+        });
+
+        if (insertError) {
+          // Handle duplicate key error specifically
+          if (insertError.code === '23505') {
+            return { success: true }; // Already joined, treat as success
+          }
+          return { success: false, error: 'Failed to join community' };
+        }
+      }
 
       // Clear cache
       this.clearUserCache(userId);
@@ -282,17 +307,16 @@ class CommunityService {
       // Update member count
       await this.updateMemberCount(communityId);
 
-      return true;
-    } catch (error) {
-      console.error('Error joining community:', error);
-      return false;
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to join community' };
     }
   }
 
   /**
    * Leave a community
    */
-  async leaveCommunity(userId: string, communityId: string): Promise<boolean> {
+  async leaveCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string }> {
     try {
       // Check if user is owner - owners can't leave
       const { data: membership } = await supabase
@@ -302,9 +326,13 @@ class CommunityService {
         .eq('community_id', communityId)
         .single();
 
-      if (membership?.role === 'owner') {
-        console.error('Owners cannot leave their own community');
-        return false;
+      if (!membership) {
+        // Not a member, treat as success
+        return { success: true };
+      }
+
+      if (membership.role === 'owner') {
+        return { success: false, error: 'Owners cannot leave their own community' };
       }
 
       const { error } = await supabase
@@ -313,7 +341,9 @@ class CommunityService {
         .eq('user_id', userId)
         .eq('community_id', communityId);
 
-      if (error) throw error;
+      if (error) {
+          return { success: false, error: 'Failed to leave community' };
+      }
 
       // Clear cache
       this.clearUserCache(userId);
@@ -322,10 +352,104 @@ class CommunityService {
       // Update member count
       await this.updateMemberCount(communityId);
 
-      return true;
-    } catch (error) {
-      console.error('Error leaving community:', error);
-      return false;
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to leave community' };
+    }
+  }
+
+  /**
+   * Create a new community
+   */
+  async createCommunity(
+    userId: string,
+    formData: {
+      name: string;
+      description: string;
+      location: string;
+      type: 'public' | 'private' | 'paid';
+      is_event_based?: boolean;
+      event_name?: string;
+      event_date?: string;
+      cover_image_url?: string;
+    }
+  ): Promise<{ community: Community | null; error: string | null }> {
+    try {
+      // Create the community
+      const { data: community, error: createError } = await supabase
+        .from('communities')
+        .insert({
+          name: formData.name,
+          description: formData.description,
+          location: formData.location,
+          type: formData.type,
+          is_event_based: formData.is_event_based || false,
+          event_name: formData.event_name,
+          event_date: formData.event_date,
+          cover_image_url: formData.cover_image_url,
+          admin_id: userId,
+          member_count: 1,
+          activity_level: 0,
+          is_active: true,
+          currency: 'USD',
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        return { community: null, error: 'Failed to create community' };
+      }
+
+      if (!community) {
+        return { community: null, error: 'Community creation failed' };
+      }
+
+      // Add creator as owner
+      const { error: memberError } = await supabase
+        .from('community_members')
+        .insert({
+          user_id: userId,
+          community_id: community.id,
+          role: 'owner',
+          status: 'active',
+        });
+
+      if (memberError) {
+        // Still return the community since it was created
+        return { community, error: null };
+      }
+
+      // Clear cache
+      this.clearUserCache(userId);
+      this.clearAllCache();
+
+      return { community, error: null };
+    } catch (error: any) {
+      return { community: null, error: error.message || 'Failed to create community' };
+    }
+  }
+
+  /**
+   * Delete a community (owner only)
+   */
+  async deleteCommunity(communityId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Note: The database should have CASCADE DELETE set up for related records
+      const { error } = await supabase
+        .from('communities')
+        .delete()
+        .eq('id', communityId);
+
+      if (error) {
+          return { success: false, error: 'Failed to delete community' };
+      }
+
+      // Clear all cache since community relationships might have changed
+      this.clearAllCache();
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to delete community' };
     }
   }
 
@@ -345,7 +469,6 @@ class CommunityService {
         .update({ member_count: count || 0 })
         .eq('id', communityId);
     } catch (error) {
-      console.error('Error updating member count:', error);
     }
   }
 
@@ -373,7 +496,6 @@ class CommunityService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error fetching community members:', error);
       return [];
     }
   }
@@ -397,8 +519,157 @@ class CommunityService {
       if (error) return false;
       return data?.role === 'owner' || data?.role === 'admin';
     } catch (error) {
-      console.error('Error checking admin permission:', error);
       return false;
+    }
+  }
+
+  /**
+   * Get posts from a community (including cross-posted content)
+   */
+  async getCommunityPosts(
+    communityId: string,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<any[]> {
+    try {
+      
+      // First check if post_communities table has any data at all
+      const { data: allPostCommunities, error: checkError } = await supabase
+        .from('post_communities')
+        .select('id, post_id, community_id, added_at')
+        .limit(5);
+      
+      if (checkError) {
+        // Handle error silently
+      } else {
+        // Handle success silently
+      }
+
+      // Now get cross-posted posts with proper joins
+      const { data: crossPostedData, error: crossPostError } = await supabase
+        .from('post_communities')
+        .select(`
+          post_id,
+          added_at,
+          posts!inner(
+            id,
+            user_id,
+            restaurant_id,
+            post_type,
+            caption,
+            photos,
+            rating,
+            visit_date,
+            created_at,
+            updated_at,
+            likes_count,
+            comments_count,
+            saves_count,
+            content_type,
+            external_url,
+            external_source,
+            external_title,
+            external_description,
+            external_thumbnail,
+            external_author
+          )
+        `)
+        .eq('community_id', communityId)
+        .order('added_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (crossPostError) {
+        return [];
+      }
+
+
+      if (!crossPostedData || crossPostedData.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs and restaurant IDs
+      const userIds = [...new Set(crossPostedData.map(item => (item.posts as any).user_id).filter(id => id))];
+      const restaurantIds = [...new Set(crossPostedData.map(item => (item.posts as any).restaurant_id).filter(id => id))];
+
+      // Fetch user data
+      let usersMap = new Map();
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, name, username, avatar_url, is_verified, persona')
+          .in('id', userIds);
+        
+        if (usersData) {
+          usersMap = new Map(usersData.map(u => [u.id, u]));
+        }
+      }
+
+      // Fetch restaurant data
+      let restaurantsMap = new Map();
+      if (restaurantIds.length > 0) {
+        const { data: restaurantsData } = await supabase
+          .from('restaurants')
+          .select('id, name, cuisine_types, price_range, address, cover_photo_url')
+          .in('id', restaurantIds);
+        
+        if (restaurantsData) {
+          restaurantsMap = new Map(restaurantsData.map(r => [r.id, r]));
+        }
+      }
+
+      // Transform the data structure
+      const posts = crossPostedData?.map(item => {
+        const post = item.posts as any;
+        const userData = usersMap.get(post.user_id);
+        const restaurantData = restaurantsMap.get(post.restaurant_id);
+        
+        return {
+          id: post.id,
+          user_id: post.user_id,
+          restaurant_id: post.restaurant_id,
+          post_type: post.post_type,
+          caption: post.caption,
+          photos: post.photos,
+          rating: post.rating,
+          visit_date: post.visit_date,
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+          likes_count: post.likes_count,
+          comments_count: post.comments_count,
+          saves_count: post.saves_count,
+          shares_count: 0, // Add default shares_count
+          content_type: post.content_type,
+          external_url: post.external_url,
+          external_source: post.external_source,
+          external_title: post.external_title,
+          external_description: post.external_description,
+          external_thumbnail: post.external_thumbnail,
+          external_author: post.external_author,
+          cross_posted_at: item.added_at,
+          is_liked_by_user: false, // Add default engagement states
+          is_saved_by_user: false,
+          user: userData ? {
+            id: userData.id,
+            name: userData.name,
+            username: userData.username,
+            avatar: userData.avatar_url,
+            verified: userData.is_verified,
+            persona: userData.persona
+          } : null,
+          restaurant: restaurantData ? {
+            id: restaurantData.id,
+            name: restaurantData.name,
+            cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
+            priceRange: restaurantData.price_range,
+            location: restaurantData.address,
+            image: restaurantData.cover_photo_url
+          } : null
+        };
+      }) || [];
+
+      return posts;
+    } catch (error) {
+      return [];
     }
   }
 
