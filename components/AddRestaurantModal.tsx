@@ -93,29 +93,35 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
 
 
       if (error) {
-        console.error('Supabase error:', error);
         // Try to parse the error response if it's a FunctionsHttpError
         if (error.name === 'FunctionsHttpError' && error.context) {
           try {
             const errorData = await error.context.json();
-            console.error('Edge function error details:', errorData);
             
             // Check if this is a duplicate restaurant error
             if (errorData.details?.includes('duplicate key') || 
                 errorData.details?.includes('restaurants_google_place_id_key') ||
                 errorData.error?.includes('already exists')) {
+              // This is expected behavior - restaurant already exists
+              if (__DEV__) {
+                console.log('Restaurant already exists in database:', placeDetails.name);
+              }
               setSubmissionStatus('duplicate');
               setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
               setIsSubmitting(false);
               return; // Exit early, don't throw
             }
             
+            // Only log unexpected errors
+            console.error('Edge function error:', errorData);
             throw new Error(errorData.error || errorData.message || 'Failed to add restaurant');
           } catch (parseError) {
             // If parsing fails, use the original error message
+            console.error('Error parsing edge function response:', parseError);
             throw new Error(error.message || 'Failed to add restaurant');
           }
         } else {
+          console.error('Supabase error:', error);
           throw new Error(error.message || 'Failed to add restaurant');
         }
       }
@@ -155,24 +161,30 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
         setSubmissionMessage('Unexpected response from server. Please try again.');
       }
     } catch (error: any) {
-      console.error('Error submitting restaurant:', error);
-      
       // Check for duplicate key errors in the catch block too
       if (error.message?.includes('duplicate key') || 
           error.message?.includes('restaurants_google_place_id_key') ||
           error.message?.includes('already exists')) {
+        // This should have been handled above, but just in case
+        if (__DEV__) {
+          console.log('Duplicate restaurant detected in catch block');
+        }
         setSubmissionStatus('duplicate');
         setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
       } else if (error.message?.includes('Authentication required')) {
+        console.error('Authentication error:', error.message);
         setSubmissionStatus('error');
         setSubmissionMessage('Please log in to add restaurants.');
       } else if (error.message?.includes('configuration error')) {
+        console.error('Configuration error:', error.message);
         setSubmissionStatus('error');
         setSubmissionMessage('App configuration error. Please contact support.');
       } else if (error.message?.includes('network')) {
+        console.error('Network error:', error.message);
         setSubmissionStatus('error');
         setSubmissionMessage('Network error. Please check your connection.');
       } else {
+        console.error('Unexpected error submitting restaurant:', error);
         setSubmissionStatus('error');
         setSubmissionMessage('Unable to add restaurant at this time. Please try again later.');
       }
