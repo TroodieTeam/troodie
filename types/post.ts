@@ -45,7 +45,8 @@ export interface PostCreationData {
   locationLng?: number;
   contentType?: 'original' | 'external';
   externalContent?: ExternalContent;
-  communityId?: string;
+  communityId?: string; // Legacy single community support
+  communityIds?: string[]; // New multi-community cross-posting
 }
 
 export interface ExploreFilters {

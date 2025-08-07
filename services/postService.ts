@@ -160,12 +160,7 @@ class PostService {
       insertData.external_author = postData.externalContent.author;
     }
 
-    // Add community_id if provided (when community posts are implemented)
-    if (postData.communityId) {
-      // Note: community_id field would need to be added to posts table schema
-      // insertData.community_id = postData.communityId;
-    }
-
+    // Create the post
     const { data, error } = await supabase
       .from('posts')
       .insert(insertData)
@@ -175,6 +170,56 @@ class PostService {
     if (error) {
       console.error('Error creating post:', error);
       throw new Error(`Failed to create post: ${error.message}`);
+    }
+
+    // Handle cross-posting to communities
+    if (data && postData.communityIds && postData.communityIds.length > 0) {
+      try {
+        const { data: crossPostResults, error: crossPostError } = await supabase
+          .rpc('cross_post_to_communities', {
+            p_post_id: data.id,
+            p_community_ids: postData.communityIds,
+            p_user_id: user.id
+          });
+
+        if (crossPostError) {
+          console.error('Error cross-posting to communities:', crossPostError);
+          // Don't fail the whole post creation, just log the error
+        } else {
+          // Log successful cross-posts
+          const successful = crossPostResults?.filter((r: any) => r.success) || [];
+          const failed = crossPostResults?.filter((r: any) => !r.success) || [];
+          
+          if (successful.length > 0) {
+            console.log(`Post cross-posted to ${successful.length} communities`);
+          }
+          if (failed.length > 0) {
+            console.warn(`Failed to cross-post to ${failed.length} communities:`, failed);
+          }
+        }
+      } catch (crossPostError) {
+        console.error('Error in cross-posting:', crossPostError);
+        // Continue anyway - the main post was created successfully
+      }
+    }
+
+    // Legacy single community support (for backward compatibility)
+    if (data && postData.communityId && !postData.communityIds) {
+      try {
+        const { error: legacyCrossPostError } = await supabase
+          .from('post_communities')
+          .insert({
+            post_id: data.id,
+            community_id: postData.communityId,
+            added_by: user.id
+          });
+
+        if (legacyCrossPostError) {
+          console.error('Error adding to community:', legacyCrossPostError);
+        }
+      } catch (err) {
+        console.error('Error in legacy community posting:', err);
+      }
     }
 
     // If post has photos and a restaurant, sync images and trigger cover photo update

@@ -27,6 +27,8 @@ import {
     View,
 } from 'react-native';
 import { AddRestaurantModal } from '@/components/AddRestaurantModal';
+import { CommunitySelector } from '@/components/CommunitySelector';
+import { Users } from 'lucide-react-native';
 
 type ContentType = 'original' | 'external';
 type AttachmentType = 'photo' | 'link' | 'restaurant' | 'rating' | 'details';
@@ -75,6 +77,12 @@ export default function CreatePostScreen() {
   // Community context
   const communityId = params.communityId as string | undefined;
   const communityName = params.communityName as string | undefined;
+  
+  // Cross-posting state
+  const [selectedCommunities, setSelectedCommunities] = useState<string[]>(
+    communityId ? [communityId] : []
+  );
+  const [showCommunitySelector, setShowCommunitySelector] = useState(false);
 
   // Selected restaurant from formData
   const [selectedRestaurant, setSelectedRestaurant] = useState<RestaurantInfo | null>(null);
@@ -131,7 +139,7 @@ export default function CreatePostScreen() {
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         privacy,
         contentType: formData.contentType || 'original',
-        ...(communityId && { communityId })
+        communityIds: selectedCommunities.length > 0 ? selectedCommunities : undefined
       };
 
       // Add external content if applicable
@@ -417,6 +425,23 @@ export default function CreatePostScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Community Selection */}
+        <TouchableOpacity 
+          style={styles.communitySelector}
+          onPress={() => setShowCommunitySelector(true)}
+        >
+          <View style={styles.communitySelectorContent}>
+            <Users size={20} color={designTokens.colors.textMedium} />
+            <Text style={styles.communitySelectorText}>
+              {selectedCommunities.length > 0 
+                ? `Sharing to ${selectedCommunities.length} communit${selectedCommunities.length === 1 ? 'y' : 'ies'}`
+                : 'Select communities to share with'
+              }
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={designTokens.colors.textLight} />
+        </TouchableOpacity>
 
         {/* Preview sections */}
         {formData.photos.length > 0 && (
@@ -853,6 +878,13 @@ export default function CreatePostScreen() {
             });
             setShowAddRestaurantModal(false);
           }}
+        />
+        
+        <CommunitySelector
+          visible={showCommunitySelector}
+          onClose={() => setShowCommunitySelector(false)}
+          onSelect={setSelectedCommunities}
+          selectedCommunities={selectedCommunities}
         />
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -1505,6 +1537,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
+  },
+  
+  // Community selector
+  communitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.lg,
+    backgroundColor: designTokens.colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  communitySelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  communitySelectorText: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textDark,
+    marginLeft: 12,
   },
 
   // Content type switch
