@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { GooglePlaceDetails, GooglePlaceResult, googlePlacesService } from '@/services/googlePlacesService';
 import { debounce } from 'lodash';
 import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -23,10 +23,11 @@ interface AddRestaurantModalProps {
   visible: boolean;
   onClose: () => void;
   onRestaurantAdded?: (restaurant: any) => void;
+  initialSearchQuery?: string;
 }
 
-export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddRestaurantModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initialSearchQuery = '' }: AddRestaurantModalProps) {
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [searchResults, setSearchResults] = useState<GooglePlaceResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -158,13 +159,20 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded }: AddR
   };
 
   const resetModal = () => {
-    setSearchQuery('');
+    setSearchQuery(initialSearchQuery);
     setSearchResults([]);
     setSelectedPlace(null);
     setPlaceDetails(null);
     setSubmissionStatus('idle');
     setSubmissionMessage('');
   };
+
+  // Auto-search when modal opens with initial query
+  useEffect(() => {
+    if (visible && initialSearchQuery && initialSearchQuery.length >= 3) {
+      searchPlaces(initialSearchQuery);
+    }
+  }, [visible, initialSearchQuery]);
 
   const renderStatusMessage = () => {
     if (submissionStatus === 'idle') return null;
