@@ -15,6 +15,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -75,6 +76,9 @@ export default function CreatePostScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
   
+  // Keyboard state
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  
   // Community context
   const communityId = params.communityId as string | undefined;
   const communityName = params.communityName as string | undefined;
@@ -100,6 +104,23 @@ export default function CreatePostScreen() {
       }
     }
   }, [params.selectedRestaurant]);
+
+  // Keyboard listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const handlePublish = async () => {
     if (!user) return;
@@ -967,6 +988,17 @@ export default function CreatePostScreen() {
           onSelect={setSelectedCommunities}
           selectedCommunities={selectedCommunities}
         />
+        
+        {/* Keyboard Done Button */}
+        {isKeyboardVisible && (
+          <TouchableOpacity
+            style={styles.keyboardDoneButton}
+            onPress={() => Keyboard.dismiss()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.keyboardDoneText}>Done</Text>
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -1900,5 +1932,25 @@ const styles = StyleSheet.create({
     color: designTokens.colors.textMedium,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  keyboardDoneButton: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 340 : 320,
+    right: 20,
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  keyboardDoneText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
   },
 });
