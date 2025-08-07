@@ -19,11 +19,16 @@ CREATE INDEX IF NOT EXISTS idx_post_communities_added_by ON post_communities(add
 -- Enable RLS
 ALTER TABLE post_communities ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view post_communities" ON post_communities;
+DROP POLICY IF EXISTS "Users can add their posts to communities" ON post_communities;
+DROP POLICY IF EXISTS "Users can remove their posts from communities" ON post_communities;
+
 -- RLS policies for post_communities
-CREATE POLICY IF NOT EXISTS "Users can view post_communities" ON post_communities
+CREATE POLICY "Users can view post_communities" ON post_communities
   FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "Users can add their posts to communities" ON post_communities
+CREATE POLICY "Users can add their posts to communities" ON post_communities
   FOR INSERT WITH CHECK (
     added_by = auth.uid() 
     AND EXISTS (
@@ -33,7 +38,7 @@ CREATE POLICY IF NOT EXISTS "Users can add their posts to communities" ON post_c
     )
   );
 
-CREATE POLICY IF NOT EXISTS "Users can remove their posts from communities" ON post_communities
+CREATE POLICY "Users can remove their posts from communities" ON post_communities
   FOR DELETE USING (
     added_by = auth.uid()
     OR EXISTS (
