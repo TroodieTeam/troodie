@@ -285,7 +285,36 @@ export default function CreatePostScreen() {
           <Text style={styles.charCounter}>{formData.caption.length}/500</Text>
         </View>
 
-        {/* Required selections */}
+        {/* Post Type Selector */}
+        <View style={styles.postTypeSelector}>
+          <Text style={styles.postTypeLabel}>What would you like to share?</Text>
+          <View style={styles.postTypeOptions}>
+            <TouchableOpacity
+              style={[styles.postTypeOption, formData.postType === 'simple' && styles.postTypeOptionActive]}
+              onPress={() => updateFormField('postType', 'simple')}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color={formData.postType === 'simple' ? '#FFF' : designTokens.colors.textDark} />
+              <Text style={[styles.postTypeText, formData.postType === 'simple' && styles.postTypeTextActive]}>Text Post</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.postTypeOption, formData.postType === 'restaurant' && styles.postTypeOptionActive]}
+              onPress={() => updateFormField('postType', 'restaurant')}
+            >
+              <Ionicons name="restaurant" size={20} color={formData.postType === 'restaurant' ? '#FFF' : designTokens.colors.textDark} />
+              <Text style={[styles.postTypeText, formData.postType === 'restaurant' && styles.postTypeTextActive]}>Restaurant</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.postTypeOption, formData.postType === 'question' && styles.postTypeOptionActive]}
+              onPress={() => updateFormField('postType', 'question')}
+            >
+              <Ionicons name="help-circle-outline" size={20} color={formData.postType === 'question' ? '#FFF' : designTokens.colors.textDark} />
+              <Text style={[styles.postTypeText, formData.postType === 'question' && styles.postTypeTextActive]}>Question</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Required selections - only for restaurant posts */}
+        {formData.postType === 'restaurant' && (
         <View style={styles.requiredSection}>
           {/* Restaurant selection */}
           <TouchableOpacity 
@@ -360,72 +389,74 @@ export default function CreatePostScreen() {
         <View style={styles.optionalSection}>
           <Text style={[styles.sectionTitle, styles.sectionTitlePadding]}>✨ Make it shine (optional)</Text>
           
-          {/* Photos (original posts only) */}
-          {formData.contentType === 'original' && (
+          {/* Photos */}
+          <TouchableOpacity 
+            style={styles.selectionRow}
+            onPress={handlePhotoSelection}
+          >
+            <Ionicons 
+              name="images" 
+              size={20} 
+              color={formData.photos.length > 0 ? designTokens.colors.primaryOrange : '#999'} 
+            />
+            <View style={styles.selectionContent}>
+              <Text style={styles.selectionLabel}>Add photos</Text>
+              <Text style={styles.selectionValue}>
+                {formData.photos.length > 0 ? `📸 ${formData.photos.length} photo${formData.photos.length > 1 ? 's' : ''} added` : 'Show off those delicious shots!'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#999" />
+          </TouchableOpacity>
+
+          {/* More options - only for restaurant posts */}
+          {formData.postType === 'restaurant' && (
             <TouchableOpacity 
               style={styles.selectionRow}
-              onPress={handlePhotoSelection}
+              onPress={() => setActiveAttachment('details')}
             >
-              <Ionicons 
-                name="images" 
-                size={20} 
-                color={formData.photos.length > 0 ? designTokens.colors.primaryOrange : '#999'} 
-              />
+              <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
               <View style={styles.selectionContent}>
-                <Text style={styles.selectionLabel}>Add photos</Text>
-                <Text style={styles.selectionValue}>
-                  {formData.photos.length > 0 ? `📸 ${formData.photos.length} photo${formData.photos.length > 1 ? 's' : ''} added` : 'Show off those delicious shots!'}
-                </Text>
+                <Text style={styles.selectionLabel}>More details</Text>
+                <Text style={styles.selectionValue}>Visit type, privacy & other options</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#999" />
             </TouchableOpacity>
           )}
+        </View>
 
-          {/* More options */}
-          <TouchableOpacity 
-            style={styles.selectionRow}
-            onPress={() => setActiveAttachment('details')}
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
-            <View style={styles.selectionContent}>
-              <Text style={styles.selectionLabel}>More details</Text>
-              <Text style={styles.selectionValue}>Visit type, privacy & other options</Text>
+        {/* Content type switch - only for restaurant posts */}
+        {formData.postType === 'restaurant' && (
+          <View style={styles.contentTypeSection}>
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionTitle}>📝 What are you sharing?</Text>
+              <TouchableOpacity 
+                onPress={() => setShowContentTypeInfo(true)}
+                style={styles.infoButton}
+              >
+                <Ionicons name="information-circle-outline" size={18} color="#999" />
+              </TouchableOpacity>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#999" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Content type switch */}
-        <View style={styles.contentTypeSection}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>📝 What are you sharing?</Text>
-            <TouchableOpacity 
-              onPress={() => setShowContentTypeInfo(true)}
-              style={styles.infoButton}
-            >
-              <Ionicons name="information-circle-outline" size={18} color="#999" />
-            </TouchableOpacity>
+            <View style={styles.contentTypeSwitch}>
+              <TouchableOpacity
+                style={[styles.switchOption, formData.contentType === 'original' && styles.switchOptionActive]}
+                onPress={() => updateFormField('contentType', 'original')}
+              >
+                <Text style={[styles.switchText, formData.contentType === 'original' && styles.switchTextActive]}>
+                  🍽️ My Experience
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.switchOption, formData.contentType === 'external' && styles.switchOptionActive]}
+                onPress={() => updateFormField('contentType', 'external')}
+              >
+                <Text style={[styles.switchText, formData.contentType === 'external' && styles.switchTextActive]}>
+                  🔗 Share a Link
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.contentTypeSwitch}>
-            <TouchableOpacity
-              style={[styles.switchOption, formData.contentType === 'original' && styles.switchOptionActive]}
-              onPress={() => updateFormField('contentType', 'original')}
-            >
-              <Text style={[styles.switchText, formData.contentType === 'original' && styles.switchTextActive]}>
-                🍽️ My Experience
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.switchOption, formData.contentType === 'external' && styles.switchOptionActive]}
-              onPress={() => updateFormField('contentType', 'external')}
-            >
-              <Text style={[styles.switchText, formData.contentType === 'external' && styles.switchTextActive]}>
-                🔗 Share a Link
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
 
         {/* Community Selection */}
         <TouchableOpacity 
