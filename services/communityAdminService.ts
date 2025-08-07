@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import { NotificationService } from './notificationService'
+import { notificationService } from './notificationService'
 import { getCurrentUserId } from './authService'
 
 export type AdminAction = 'remove_member' | 'delete_post' | 'delete_message' | 'update_role' | 'view_audit_logs'
@@ -103,14 +103,14 @@ export class CommunityAdminService {
 
       // Send notification to removed user
       if (targetMember?.user) {
-        await NotificationService.send({
-          userId: memberId,
-          type: 'system',
-          title: 'Removed from Community',
-          message: `You have been removed from "${community?.name || 'the community'}"${reason ? `: ${reason}` : ''}`,
-          relatedId: communityId,
-          relatedType: 'community'
-        })
+        await notificationService.createSystemNotification(
+          memberId,
+          'Removed from Community',
+          `You have been removed from "${community?.name || 'the community'}"${reason ? `: ${reason}` : ''}`,
+          undefined,
+          undefined,
+          { communityId, relatedType: 'community' }
+        )
       }
 
       // Update member count
@@ -180,14 +180,14 @@ export class CommunityAdminService {
 
       // Notify post author
       if (post?.user_id && post.user_id !== adminId) {
-        await NotificationService.send({
-          userId: post.user_id,
-          type: 'system',
-          title: 'Post Removed',
-          message: `Your post has been removed by a community admin: ${reason}`,
-          relatedId: communityId,
-          relatedType: 'community'
-        })
+        await notificationService.createSystemNotification(
+          post.user_id,
+          'Post Removed',
+          `Your post has been removed by a community admin: ${reason}`,
+          undefined,
+          undefined,
+          { communityId, relatedType: 'community' }
+        )
       }
 
       return { success: true }
@@ -301,14 +301,14 @@ export class CommunityAdminService {
       })
 
       // Notify user
-      await NotificationService.send({
-        userId: memberId,
-        type: 'system',
-        title: 'Role Updated',
-        message: `Your role has been updated to ${newRole}`,
-        relatedId: communityId,
-        relatedType: 'community'
-      })
+      await notificationService.createSystemNotification(
+        memberId,
+        'Role Updated',
+        `Your role has been updated to ${newRole}`,
+        undefined,
+        undefined,
+        { communityId, relatedType: 'community' }
+      )
 
       return { success: true }
     } catch (error: any) {

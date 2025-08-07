@@ -38,16 +38,15 @@ export class FollowService {
         .eq('id', currentUserId)
         .single()
 
-      // Send notification
+      // Send notification using the instance method
       try {
-        await NotificationService.send({
+        const { notificationService } = await import('./notificationService')
+        await notificationService.createFollowNotification(
           userId,
-          type: 'follow',
-          title: 'New Follower',
-          message: `${currentUser?.name || currentUser?.username || 'Someone'} started following you`,
-          relatedId: currentUserId,
-          relatedType: 'user'
-        })
+          currentUserId,
+          currentUser?.name || currentUser?.username || 'Someone',
+          currentUser?.avatar_url
+        )
       } catch (notificationError) {
         // Don't fail the follow operation if notification fails
         console.error('Failed to send follow notification:', notificationError)
