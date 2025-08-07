@@ -137,7 +137,7 @@ class PostService {
     const insertData: any = {
       user_id: user.id,
       restaurant_id: postData.restaurantId || null,
-      post_type: postData.postType || (postData.restaurantId ? 'restaurant' : 'simple'),
+      // post_type field removed - not in database schema
       caption: postData.caption,
       photos: postData.photos,
       rating: postData.rating,

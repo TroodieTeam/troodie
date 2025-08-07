@@ -320,7 +320,6 @@ export type Database = {
           id: string
           user_id: string | null
           restaurant_id: string | null
-          post_type: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement'
           caption: string | null
           photos: string[] | null
           rating: number | null
@@ -350,7 +349,6 @@ export type Database = {
           id?: string
           user_id?: string | null
           restaurant_id?: string | null
-          post_type?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement'
           caption?: string | null
           photos?: string[] | null
           rating?: number | null
@@ -380,7 +378,6 @@ export type Database = {
           id?: string
           user_id?: string
           restaurant_id?: string | null
-          post_type?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement'
           caption?: string | null
           photos?: string[] | null
           rating?: number | null
