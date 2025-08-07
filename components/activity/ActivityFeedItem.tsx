@@ -112,7 +112,7 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
     if (onUserPress) {
       onUserPress(activity.actor_id);
     } else {
-      router.push(`/profile/${activity.actor_id}`);
+      router.push(`/user/${activity.actor_id}`);
     }
   };
 
@@ -132,7 +132,7 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
           if (onUserPress) {
             onUserPress(activity.related_user_id);
           } else {
-            router.push(`/profile/${activity.related_user_id}`);
+            router.push(`/user/${activity.related_user_id}`);
           }
         }
         break;
