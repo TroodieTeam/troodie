@@ -99,6 +99,17 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
           try {
             const errorData = await error.context.json();
             console.error('Edge function error details:', errorData);
+            
+            // Check if this is a duplicate restaurant error
+            if (errorData.details?.includes('duplicate key') || 
+                errorData.details?.includes('restaurants_google_place_id_key') ||
+                errorData.error?.includes('already exists')) {
+              setSubmissionStatus('duplicate');
+              setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+              setIsSubmitting(false);
+              return; // Exit early, don't throw
+            }
+            
             throw new Error(errorData.error || errorData.message || 'Failed to add restaurant');
           } catch (parseError) {
             // If parsing fails, use the original error message
