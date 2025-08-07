@@ -3,7 +3,7 @@ import { ExternalContentPreview } from '@/components/posts/ExternalContentPrevie
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
-import { postEngagementService } from '@/services/postEngagementService';
+import { usePostEngagement } from '@/hooks/usePostEngagement';
 import { postService } from '@/services/postService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
@@ -32,10 +32,23 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<PostWithUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [savesCount, setSavesCount] = useState(0);
+  
+  // Use the enhanced post engagement hook with dummy initial values
+  // It will be updated when the post loads
+  const engagement = usePostEngagement({
+    postId: id || '',
+    initialStats: {
+      likes_count: post?.likes_count || 0,
+      comments_count: post?.comments_count || 0,
+      saves_count: post?.saves_count || 0,
+      share_count: post?.share_count || 0,
+    },
+    initialIsLiked: post?.is_liked_by_user || false,
+    initialIsSaved: post?.is_saved_by_user || false,
+    enableRealtime: !!post, // Only enable realtime when post is loaded
+  });
+  
+  const { isLiked, isSaved, likesCount, savesCount, commentsCount, shareCount } = engagement;
 
   useEffect(() => {
     if (id) {
@@ -43,14 +56,6 @@ export default function PostDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    if (post) {
-      setIsLiked(post.is_liked_by_user || false);
-      setIsSaved(post.is_saved_by_user || false);
-      setLikesCount(post.likes_count);
-      setSavesCount(post.saves_count);
-    }
-  }, [post]);
 
   const loadPost = async () => {
     try {
@@ -89,27 +94,26 @@ export default function PostDetailScreen() {
   }, [post, router]);
 
   const handleLike = async () => {
-    if (!user?.id || !post) return;
-
-    try {
-      const newLikedState = await postEngagementService.togglePostLike(post.id, user.id);
-      setIsLiked(newLikedState);
-      setLikesCount(prev => newLikedState ? prev + 1 : prev - 1);
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    }
+    if (!engagement) return;
+    await engagement.toggleLike();
   };
 
   const handleSave = async () => {
-    if (!user?.id || !post) return;
-
-    try {
-      const newSavedState = await postEngagementService.togglePostSave(post.id, user.id);
-      setIsSaved(newSavedState);
-      setSavesCount(prev => newSavedState ? prev + 1 : prev - 1);
-    } catch (error) {
-      console.error('Error toggling save:', error);
-    }
+    if (!engagement) return;
+    await engagement.toggleSave();
+  };
+  
+  const handleShare = async () => {
+    if (!engagement || !post) return;
+    await engagement.sharePost(
+      post.caption || 'Check out this post',
+      post.restaurant?.name || 'Restaurant'
+    );
+  };
+  
+  const handleCopyLink = async () => {
+    if (!engagement) return;
+    await engagement.copyLink();
   };
 
   const formatTimeAgo = (dateString: string) => {

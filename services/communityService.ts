@@ -550,7 +550,7 @@ class CommunityService {
     offset: number = 0
   ): Promise<any[]> {
     try {
-      // First get cross-posted posts
+      // First get cross-posted posts with proper joins
       const { data: crossPostedData, error: crossPostError } = await supabase
         .from('post_communities')
         .select(`
@@ -576,23 +576,7 @@ class CommunityService {
             external_title,
             external_description,
             external_thumbnail,
-            external_author,
-            users!posts_user_id_fkey(
-              id,
-              name,
-              username,
-              avatar_url,
-              is_verified,
-              persona
-            ),
-            restaurants(
-              id,
-              name,
-              cuisine_types,
-              price_range,
-              address,
-              cover_photo_url
-            )
+            external_author
           )
         `)
         .eq('community_id', communityId)
@@ -604,9 +588,46 @@ class CommunityService {
         return [];
       }
 
+      if (!crossPostedData || crossPostedData.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs and restaurant IDs
+      const userIds = [...new Set(crossPostedData.map(item => (item.posts as any).user_id).filter(id => id))];
+      const restaurantIds = [...new Set(crossPostedData.map(item => (item.posts as any).restaurant_id).filter(id => id))];
+
+      // Fetch user data
+      let usersMap = new Map();
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, name, username, avatar_url, is_verified, persona')
+          .in('id', userIds);
+        
+        if (usersData) {
+          usersMap = new Map(usersData.map(u => [u.id, u]));
+        }
+      }
+
+      // Fetch restaurant data
+      let restaurantsMap = new Map();
+      if (restaurantIds.length > 0) {
+        const { data: restaurantsData } = await supabase
+          .from('restaurants')
+          .select('id, name, cuisine_types, price_range, address, cover_photo_url')
+          .in('id', restaurantIds);
+        
+        if (restaurantsData) {
+          restaurantsMap = new Map(restaurantsData.map(r => [r.id, r]));
+        }
+      }
+
       // Transform the data structure
       const posts = crossPostedData?.map(item => {
         const post = item.posts as any;
+        const userData = usersMap.get(post.user_id);
+        const restaurantData = restaurantsMap.get(post.restaurant_id);
+        
         return {
           id: post.id,
           user_id: post.user_id,
@@ -621,6 +642,7 @@ class CommunityService {
           likes_count: post.likes_count,
           comments_count: post.comments_count,
           saves_count: post.saves_count,
+          shares_count: 0, // Add default shares_count
           content_type: post.content_type,
           external_url: post.external_url,
           external_source: post.external_source,
@@ -629,21 +651,23 @@ class CommunityService {
           external_thumbnail: post.external_thumbnail,
           external_author: post.external_author,
           cross_posted_at: item.added_at,
-          user: post.users ? {
-            id: post.users.id,
-            name: post.users.name,
-            username: post.users.username,
-            avatar: post.users.avatar_url,
-            verified: post.users.is_verified,
-            persona: post.users.persona
+          is_liked_by_user: false, // Add default engagement states
+          is_saved_by_user: false,
+          user: userData ? {
+            id: userData.id,
+            name: userData.name,
+            username: userData.username,
+            avatar: userData.avatar_url,
+            verified: userData.is_verified,
+            persona: userData.persona
           } : null,
-          restaurant: post.restaurants ? {
-            id: post.restaurants.id,
-            name: post.restaurants.name,
-            cuisine: post.restaurants.cuisine_types?.[0] || 'Restaurant',
-            priceRange: post.restaurants.price_range,
-            location: post.restaurants.address,
-            image: post.restaurants.cover_photo_url
+          restaurant: restaurantData ? {
+            id: restaurantData.id,
+            name: restaurantData.name,
+            cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
+            priceRange: restaurantData.price_range,
+            location: restaurantData.address,
+            image: restaurantData.cover_photo_url
           } : null
         };
       }) || [];

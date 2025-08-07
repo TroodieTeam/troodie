@@ -1,7 +1,6 @@
 import { designTokens, compactDesign } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
-import { enhancedPostEngagementService } from '@/services/enhancedPostEngagementService';
 import { usePostEngagement } from '@/hooks/usePostEngagement';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
@@ -299,7 +298,7 @@ export function PostCard({
       {/* Actions */}
       {showActions && (
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleLike} disabled={isLoading}>
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
               size={compactDesign.icon.medium}
@@ -310,10 +309,10 @@ export function PostCard({
 
           <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
             <Ionicons name="chatbubble-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
-            <Text style={styles.actionCount}>{post.comments_count}</Text>
+            <Text style={styles.actionCount}>{commentsCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleSave} disabled={isLoading}>
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
               size={compactDesign.icon.medium}
@@ -324,7 +323,7 @@ export function PostCard({
 
           <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
             <Ionicons name="share-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
-            <Text style={styles.actionCount}>{post.shares_count}</Text>
+            <Text style={styles.actionCount}>{shareCount}</Text>
           </TouchableOpacity>
         </View>
       )}
