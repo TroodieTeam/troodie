@@ -1,268 +1,277 @@
-import { EmptyActivityState } from '@/components/EmptyActivityState';
-import { compactDesign, designTokens } from '@/constants/designTokens';
-import { DEFAULT_IMAGES } from '@/constants/images';
-import { strings } from '@/constants/strings';
-import { useApp } from '@/contexts/AppContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSmoothDataFetch } from '@/hooks/useSmoothDataFetch';
-import { restaurantService } from '@/services/restaurantService';
-import { ActivityItem } from '@/types/core';
-import { useRouter } from 'expo-router';
-import { Bell, TrendingUp } from 'lucide-react-native';
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
-  Image,
+  RefreshControl,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Mock data for demonstration
-const MOCK_ACTIVITIES: ActivityItem[] = [
-  {
-    id: 1,
-    type: 'like',
-    user: {
-      id: 1,
-      name: 'Sarah Chen',
-      username: 'sarahchen',
-      avatar: 'https://i.pravatar.cc/150?img=1'
-    },
-    action: 'liked your save',
-    target: 'The Italian Place',
-    time: '2h',
-    restaurant: {
-      id: 1,
-      name: 'The Italian Place',
-      image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800',
-      cuisine: 'Italian',
-      rating: 4.8,
-      location: 'West Village',
-      priceRange: '$$$'
-    }
-  },
-  {
-    id: 2,
-    type: 'follow',
-    user: {
-      id: 2,
-      name: 'Mike Rodriguez',
-      username: 'mikerodriguez',
-      avatar: 'https://i.pravatar.cc/150?img=3'
-    },
-    action: 'started following you',
-    time: '5h'
-  },
-  {
-    id: 3,
-    type: 'comment',
-    user: {
-      id: 3,
-      name: 'Emma Davis',
-      username: 'emmadavis',
-      avatar: 'https://i.pravatar.cc/150?img=5'
-    },
-    action: 'commented on your post',
-    target: 'Sushi Paradise',
-    time: '1d',
-  },
-];
+import { Bell } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
+import { activityFeedService, ActivityFeedItem } from '@/services/activityFeedService';
+import { ActivityFeedItemComponent } from '@/components/activity/ActivityFeedItem';
+import { EmptyActivityState } from '@/components/EmptyActivityState';
+import { designTokens, compactDesign } from '@/constants/designTokens';
 
 export default function ActivityScreen() {
   const router = useRouter();
-  const { userState } = useApp();
   const { user } = useAuth();
-  const [activeFilter, setActiveFilter] = useState<'all' | 'likes' | 'follows' | 'comments'>('all');
-  const [userSaves, setUserSaves] = useState<any[]>([]);
+  const { userState } = useApp();
+  
+  const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
+  const [filter, setFilter] = useState<'all' | 'friends'>('all');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const offset = useRef(0);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const lastActivityTimestamp = useRef<string | null>(null);
 
-  // Fetch trending restaurants with smooth loading
-  const fetchTrendingRestaurants = useCallback(async () => {
-    const trending = await restaurantService.getTrendingRestaurants('Charlotte');
-    return trending.slice(0, 5);
-  }, []);
+  // Fetch activity feed
+  const fetchActivities = useCallback(async (isRefresh = false) => {
+    try {
+      setError(null);
+      
+      if (isRefresh) {
+        offset.current = 0;
+        setHasMore(true);
+      }
 
-  const { 
-    data: trendingRestaurants = [], 
-    loading 
-  } = useSmoothDataFetch(fetchTrendingRestaurants, [], {
-    minLoadingTime: 400,
-    showLoadingOnRefetch: false,
-    fetchOnFocus: true,
-    cacheDuration: 120000 // 2 minutes cache
-  });
-
-  // Fetch user saves to determine if they have saved any restaurants
-  useEffect(() => {
-    const fetchUserSaves = async () => {
-      if (user?.id) {
-        try {
-          const saves = await restaurantService.getUserSaves(user.id);
-          setUserSaves(saves);
-        } catch (error) {
-          console.error('Error fetching user saves:', error);
+      const { data, error: fetchError } = await activityFeedService.getActivityFeed(
+        user?.id || null,
+        {
+          filter,
+          limit: 50,
+          offset: offset.current,
         }
+      );
+
+      if (fetchError) {
+        setError(fetchError);
+        return;
+      }
+
+      if (isRefresh) {
+        setActivities(data);
+        // Store timestamp of most recent activity for real-time updates
+        if (data.length > 0) {
+          lastActivityTimestamp.current = data[0].created_at;
+        }
+      } else {
+        setActivities(prev => [...prev, ...data]);
+      }
+
+      // Check if we have more data
+      if (data.length < 50) {
+        setHasMore(false);
+      }
+
+      offset.current += data.length;
+    } catch (err) {
+      console.error('Error fetching activities:', err);
+      setError('Failed to load activities');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+    }
+  }, [user?.id, filter]);
+
+  // Initial load
+  useEffect(() => {
+    setLoading(true);
+    fetchActivities(true);
+  }, [filter]);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!user) return;
+
+    // Clean up previous subscription
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+
+    // Subscribe to real-time updates
+    unsubscribeRef.current = activityFeedService.subscribeToActivityFeed(
+      user.id,
+      (newActivity) => {
+        // Check if activity matches current filter
+        if (filter === 'friends') {
+          // TODO: Check if actor is a friend
+          // For now, we'll add all activities in friends mode
+        }
+
+        // Add new activity to the top of the list
+        setActivities(prev => {
+          // Avoid duplicates - check both type and id
+          if (prev.some(a => 
+            a.activity_type === newActivity.activity_type && 
+            a.activity_id === newActivity.activity_id
+          )) {
+            return prev;
+          }
+          return [newActivity, ...prev];
+        });
+
+        // Update last activity timestamp
+        lastActivityTimestamp.current = newActivity.created_at;
+      }
+    );
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
-    
-    fetchUserSaves();
-  }, [user?.id]);
+  }, [user, filter]);
 
-  const handleExploreAction = () => router.push('/explore');
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+      activityFeedService.cleanup();
+    };
+  }, []);
 
-  const filteredActivities = MOCK_ACTIVITIES.filter(item => {
-    if (activeFilter === 'all') return true;
-    return item.type === activeFilter.slice(0, -1); // Remove 's' from filter name
-  });
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchActivities(true);
+  }, [fetchActivities]);
 
-  const ActivityListItem = ({ item }: { item: ActivityItem }) => (
-    <TouchableOpacity style={styles.activityItem}>
-      <View style={styles.activityLeft}>
-        <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
-        <View style={styles.activityIndicator}>
-          {item.type === 'like' && <Text style={styles.activityIcon}>❤️</Text>}
-          {item.type === 'follow' && <Text style={styles.activityIcon}>👤</Text>}
-          {item.type === 'comment' && <Text style={styles.activityIcon}>💬</Text>}
-        </View>
-      </View>
-      
-      <View style={styles.activityContent}>
-        <Text style={styles.activityText} numberOfLines={2}>
-          <Text style={styles.boldText}>{item.user.name}</Text>
-          {' '}{item.action}
-          {item.target && (
-            <>
-              {' '}
-              <Text style={styles.boldText}>{item.target}</Text>
-            </>
-          )}
-        </Text>
-        <Text style={styles.timeText}>{item.time}</Text>
-      </View>
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !refreshing) {
+      setLoadingMore(true);
+      fetchActivities(false);
+    }
+  }, [loadingMore, hasMore, refreshing, fetchActivities]);
 
-      {item.type === 'follow' ? (
-        <TouchableOpacity style={styles.followButton}>
-          <Text style={styles.followButtonText}>Follow</Text>
-        </TouchableOpacity>
-      ) : item.restaurant ? (
-        <Image 
-          source={{ uri: item.restaurant.image || DEFAULT_IMAGES.restaurant }} 
-          style={styles.thumbnail} 
-        />
-      ) : null}
-    </TouchableOpacity>
+  const handleFilterChange = (newFilter: 'all' | 'friends') => {
+    if (newFilter !== filter) {
+      setFilter(newFilter);
+      setActivities([]);
+      offset.current = 0;
+    }
+  };
+
+  const renderActivityItem = ({ item }: { item: ActivityFeedItem }) => (
+    <ActivityFeedItemComponent
+      activity={item}
+      formatTimeAgo={activityFeedService.formatTimeAgo}
+    />
   );
 
-  const TrendingItem = ({ restaurant, index }: { restaurant: any; index: number }) => (
-    <TouchableOpacity 
-      style={styles.trendingItem}
-      onPress={() => router.push(`/restaurant/${restaurant.id}`)}
-    >
-      <Image 
-        source={{ uri: restaurant.photos?.[0] || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800' }} 
-        style={styles.trendingImage} 
-      />
-      <View style={styles.trendingOverlay}>
-        <Text style={styles.trendingRank}>#{index + 1}</Text>
-        <Text style={styles.trendingName} numberOfLines={1}>{restaurant.name}</Text>
-        <Text style={styles.trendingCuisine}>{restaurant.cuisine_types?.[0] || 'Restaurant'}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const hasActivity = !(userState.hasLimitedActivity ?? true) || userSaves.length > 0;
-
-  return (
-    <SafeAreaView style={styles.container}>
+  const renderHeader = () => (
+    <>
       {/* Compact Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Bell size={20} color={designTokens.colors.text} />
           <Text style={styles.title}>Activity</Text>
         </View>
-        <TouchableOpacity style={styles.markAllRead}>
-          <Text style={styles.markAllReadText}>Mark all read</Text>
-        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {hasActivity ? (
-          <>
-            {/* Filter Pills */}
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.filterContainer}
-              contentContainerStyle={styles.filterContent}
-            >
-              {(['all', 'likes', 'follows', 'comments'] as const).map(filter => (
-                <TouchableOpacity
-                  key={filter}
-                  style={[styles.filterPill, activeFilter === filter && styles.filterPillActive]}
-                  onPress={() => setActiveFilter(filter)}
-                >
-                  <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
-                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+      {/* Filter Toggle */}
+      {user && (
+        <View style={styles.filterContainer}>
+          <TouchableOpacity
+            style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+            onPress={() => handleFilterChange('all')}
+          >
+            <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
+              All Troodie
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, filter === 'friends' && styles.filterButtonActive]}
+            onPress={() => handleFilterChange('friends')}
+          >
+            <Text style={[styles.filterText, filter === 'friends' && styles.filterTextActive]}>
+              Friends
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </>
+  );
 
-            {/* Activity List */}
-            <View style={styles.activitySection}>
-              {filteredActivities.map(item => (
-                <ActivityListItem key={item.id} item={item} />
-              ))}
-            </View>
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+      </View>
+    );
+  };
 
-            {/* Trending Section */}
-            <View style={styles.trendingSection}>
-              <View style={styles.sectionHeader}>
-                <TrendingUp size={16} color={designTokens.colors.primaryOrange} />
-                <Text style={styles.sectionTitle}>{strings.trending.title}</Text>
-              </View>
-              {loading ? (
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.trendingList}
-                >
-                  {[1, 2, 3, 4, 5].map((_, index) => (
-                    <View key={index} style={[styles.trendingItem, styles.trendingSkeleton]}>
-                      <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : (
-                <FlatList
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  data={trendingRestaurants}
-                  renderItem={({ item, index }) => (
-                    <TrendingItem restaurant={item} index={index} />
-                  )}
-                  keyExtractor={item => item.id}
-                  contentContainerStyle={styles.trendingList}
-                />
-              )}
-            </View>
-          </>
-        ) : (
-          <EmptyActivityState
-            onExploreRestaurants={handleExploreAction}
-            onSaveRestaurant={userSaves.length === 0 ? handleExploreAction : undefined}
-            onDiscoverGems={handleExploreAction}
-            onShareExperience={handleExploreAction}
+  const renderEmpty = () => {
+    if (loading) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchActivities(true)}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const hasLimitedActivity = userState.hasLimitedActivity ?? true;
+    
+    if (hasLimitedActivity || activities.length === 0) {
+      return (
+        <EmptyActivityState
+          onExploreRestaurants={() => router.push('/explore')}
+          onSaveRestaurant={() => router.push('/explore')}
+          onDiscoverGems={() => router.push('/explore')}
+          onShareExperience={() => router.push('/explore')}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        data={activities}
+        renderItem={renderActivityItem}
+        keyExtractor={(item, index) => `${item.activity_type}-${item.activity_id}-${index}`}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmpty}
+        ListFooterComponent={renderFooter}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={designTokens.colors.primaryOrange}
           />
-        )}
-      </ScrollView>
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={activities.length === 0 ? styles.emptyContent : undefined}
+      />
     </SafeAreaView>
   );
 }
@@ -301,156 +310,61 @@ const styles = StyleSheet.create({
     color: designTokens.colors.primaryOrange,
   },
   filterContainer: {
+    flexDirection: 'row',
     backgroundColor: designTokens.colors.white,
+    paddingHorizontal: compactDesign.content.padding,
     paddingVertical: compactDesign.content.gap,
     borderBottomWidth: 1,
     borderBottomColor: designTokens.colors.borderLight,
+    gap: 12,
   },
-  filterContent: {
-    paddingHorizontal: compactDesign.content.padding,
-    gap: 8,
-  },
-  filterPill: {
-    paddingHorizontal: compactDesign.button.paddingHorizontalSmall,
-    paddingVertical: 6,
+  filterButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: designTokens.borderRadius.full,
     backgroundColor: designTokens.colors.backgroundGray,
+    alignItems: 'center',
   },
-  filterPillActive: {
+  filterButtonActive: {
     backgroundColor: designTokens.colors.primaryOrange,
   },
   filterText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: designTokens.colors.textSecondary,
   },
   filterTextActive: {
     color: '#FFFFFF',
   },
-  activitySection: {
-    backgroundColor: '#FFFFFF',
-    marginTop: 8,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: compactDesign.content.padding,
-    paddingVertical: compactDesign.content.paddingCompact,
-    borderBottomWidth: 1,
-    borderBottomColor: designTokens.colors.borderLight,
-  },
-  activityLeft: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  avatar: {
-    width: 32, // Reduced from 36
-    height: 32,
-    borderRadius: 16,
-  },
-  activityIndicator: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 2,
-  },
-  activityIcon: {
-    ...designTokens.typography.smallText,
-  },
-  activityContent: {
+  centerContainer: {
     flex: 1,
-  },
-  activityText: {
-    ...designTokens.typography.bodyRegular,
-    lineHeight: 18,
-    color: '#333',
-    marginBottom: 2,
-  },
-  boldText: {
-    fontWeight: '600',
-    color: designTokens.colors.textDark,
-  },
-  timeText: {
-    ...designTokens.typography.smallText,
-    color: designTokens.colors.textLight,
-  },
-  followButton: {
-    backgroundColor: designTokens.colors.primaryOrange,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  followButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  thumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-  },
-  trendingSection: {
-    marginTop: 24,
-    paddingBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: designTokens.colors.textDark,
-  },
-  trendingList: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  trendingItem: {
-    width: SCREEN_WIDTH * 0.35,
-    height: 140,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-  trendingImage: {
-    width: '100%',
-    height: '100%',
-  },
-  trendingOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  trendingRank: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: designTokens.colors.primaryOrange,
-    marginBottom: 2,
-  },
-  trendingName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  trendingCuisine: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    opacity: 0.8,
-  },
-  trendingSkeleton: {
-    backgroundColor: '#F5F5F5',
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyContent: {
+    flexGrow: 1,
+  },
+  errorText: {
+    fontSize: 16,
+    color: designTokens.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: designTokens.borderRadius.full,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  footerLoader: {
+    paddingVertical: 16,
     alignItems: 'center',
   },
 });

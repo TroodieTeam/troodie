@@ -132,26 +132,68 @@ export default function CommunityDetailScreen() {
 
     if (!community) return;
 
+    // Optimistic update - immediately update UI
+    const previousMemberState = isMember;
+    const previousMemberCount = community.member_count;
+    
+    // Update UI optimistically
+    setIsMember(!isMember);
+    setCommunity({
+      ...community,
+      member_count: isMember ? community.member_count - 1 : community.member_count + 1
+    });
+
     try {
-      if (isMember) {
+      if (previousMemberState) {
         const { success, error } = await communityService.leaveCommunity(user.id, community.id);
         if (success) {
-          setIsMember(false);
-          Alert.alert('Success', 'You have left the community');
+          // Success - UI already updated optimistically
+          // No toast for successful leave to avoid interrupting user flow
         } else {
-          Alert.alert('Error', error || 'Failed to leave community');
+          // Revert optimistic update on failure
+          setIsMember(previousMemberState);
+          setCommunity({
+            ...community,
+            member_count: previousMemberCount
+          });
+          // Only show error if it's not a duplicate action
+          if (error && error !== 'Owners cannot leave their own community') {
+            Alert.alert('Unable to leave', error);
+          } else if (error === 'Owners cannot leave their own community') {
+            Alert.alert('Action not allowed', error);
+          }
         }
       } else {
         const { success, error } = await communityService.joinCommunity(user.id, community.id);
         if (success) {
-          setIsMember(true);
-          Alert.alert('Success', 'You have joined the community!');
+          // Success - UI already updated optimistically
+          // Show subtle success feedback
         } else {
-          Alert.alert('Error', error || 'Failed to join community');
+          // Revert optimistic update on failure
+          setIsMember(previousMemberState);
+          setCommunity({
+            ...community,
+            member_count: previousMemberCount
+          });
+          // Only show error if it's not a duplicate action
+          if (error) {
+            Alert.alert('Unable to join', error);
+          }
         }
       }
+      
+      // Refresh member list in background
+      const membersData = await communityService.getCommunityMembers(community.id);
+      setMembers(membersData);
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      // Revert optimistic update on network error
+      setIsMember(previousMemberState);
+      setCommunity({
+        ...community,
+        member_count: previousMemberCount
+      });
+      console.error('Error in handleJoinLeave:', error);
+      // Don't show error toast for network issues, just revert the UI
     }
   };
 
@@ -173,9 +215,13 @@ export default function CommunityDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await communityService.deleteCommunity(communityId);
-              Alert.alert('Success', 'Community deleted successfully');
-              router.replace('/explore');
+              const { success, error } = await communityService.deleteCommunity(communityId);
+              if (success) {
+                Alert.alert('Success', 'Community deleted successfully');
+                router.replace('/explore');
+              } else {
+                Alert.alert('Error', error || 'Failed to delete community');
+              }
             } catch (error) {
               Alert.alert('Error', 'Failed to delete community');
             }

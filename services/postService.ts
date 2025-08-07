@@ -185,7 +185,26 @@ class PostService {
           });
 
         if (crossPostError) {
-          console.error('Error cross-posting to communities:', crossPostError);
+          // Check if it's just a missing function error
+          if (crossPostError.code === 'PGRST202' || crossPostError.message?.includes('Could not find the function')) {
+            console.warn('Cross-posting function not available yet. Please run migration 20250808_add_cross_post_function.sql');
+            // Try fallback to direct insert
+            for (const communityId of postData.communityIds) {
+              try {
+                await supabase
+                  .from('post_communities')
+                  .insert({
+                    post_id: data.id,
+                    community_id: communityId,
+                    added_by: user.id
+                  });
+              } catch (err) {
+                console.warn(`Could not add post to community ${communityId}:`, err);
+              }
+            }
+          } else {
+            console.error('Error cross-posting to communities:', crossPostError);
+          }
           // Don't fail the whole post creation, just log the error
         } else {
           // Log successful cross-posts

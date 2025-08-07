@@ -264,16 +264,48 @@ class CommunityService {
   /**
    * Join a community
    */
-  async joinCommunity(userId: string, communityId: string): Promise<boolean> {
+  async joinCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase.from('community_members').insert({
-        user_id: userId,
-        community_id: communityId,
-        role: 'member',
-        status: 'active',
-      });
+      // Check if already a member
+      const { data: existingMember } = await supabase
+        .from('community_members')
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('community_id', communityId)
+        .single();
 
-      if (error) throw error;
+      if (existingMember) {
+        if (existingMember.status === 'active') {
+          return { success: true }; // Already a member, treat as success
+        }
+        // Reactivate membership if it was declined/inactive
+        const { error: updateError } = await supabase
+          .from('community_members')
+          .update({ status: 'active', joined_at: new Date().toISOString() })
+          .eq('id', existingMember.id);
+
+        if (updateError) {
+          console.error('Error reactivating membership:', updateError);
+          return { success: false, error: 'Failed to rejoin community' };
+        }
+      } else {
+        // Create new membership
+        const { error: insertError } = await supabase.from('community_members').insert({
+          user_id: userId,
+          community_id: communityId,
+          role: 'member',
+          status: 'active',
+        });
+
+        if (insertError) {
+          // Handle duplicate key error specifically
+          if (insertError.code === '23505') {
+            return { success: true }; // Already joined, treat as success
+          }
+          console.error('Error joining community:', insertError);
+          return { success: false, error: 'Failed to join community' };
+        }
+      }
 
       // Clear cache
       this.clearUserCache(userId);
@@ -282,17 +314,17 @@ class CommunityService {
       // Update member count
       await this.updateMemberCount(communityId);
 
-      return true;
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error('Error joining community:', error);
-      return false;
+      return { success: false, error: error.message || 'Failed to join community' };
     }
   }
 
   /**
    * Leave a community
    */
-  async leaveCommunity(userId: string, communityId: string): Promise<boolean> {
+  async leaveCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string }> {
     try {
       // Check if user is owner - owners can't leave
       const { data: membership } = await supabase
@@ -302,9 +334,13 @@ class CommunityService {
         .eq('community_id', communityId)
         .single();
 
-      if (membership?.role === 'owner') {
-        console.error('Owners cannot leave their own community');
-        return false;
+      if (!membership) {
+        // Not a member, treat as success
+        return { success: true };
+      }
+
+      if (membership.role === 'owner') {
+        return { success: false, error: 'Owners cannot leave their own community' };
       }
 
       const { error } = await supabase
@@ -313,7 +349,10 @@ class CommunityService {
         .eq('user_id', userId)
         .eq('community_id', communityId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error leaving community:', error);
+        return { success: false, error: 'Failed to leave community' };
+      }
 
       // Clear cache
       this.clearUserCache(userId);
@@ -322,10 +361,110 @@ class CommunityService {
       // Update member count
       await this.updateMemberCount(communityId);
 
-      return true;
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error('Error leaving community:', error);
-      return false;
+      return { success: false, error: error.message || 'Failed to leave community' };
+    }
+  }
+
+  /**
+   * Create a new community
+   */
+  async createCommunity(
+    userId: string,
+    formData: {
+      name: string;
+      description: string;
+      location: string;
+      type: 'public' | 'private' | 'paid';
+      is_event_based?: boolean;
+      event_name?: string;
+      event_date?: string;
+      cover_image_url?: string;
+    }
+  ): Promise<{ community: Community | null; error: string | null }> {
+    try {
+      // Create the community
+      const { data: community, error: createError } = await supabase
+        .from('communities')
+        .insert({
+          name: formData.name,
+          description: formData.description,
+          location: formData.location,
+          type: formData.type,
+          is_event_based: formData.is_event_based || false,
+          event_name: formData.event_name,
+          event_date: formData.event_date,
+          cover_image_url: formData.cover_image_url,
+          admin_id: userId,
+          member_count: 1,
+          activity_level: 0,
+          is_active: true,
+          currency: 'USD',
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating community:', createError);
+        return { community: null, error: 'Failed to create community' };
+      }
+
+      if (!community) {
+        return { community: null, error: 'Community creation failed' };
+      }
+
+      // Add creator as owner
+      const { error: memberError } = await supabase
+        .from('community_members')
+        .insert({
+          user_id: userId,
+          community_id: community.id,
+          role: 'owner',
+          status: 'active',
+        });
+
+      if (memberError) {
+        console.error('Error adding creator as owner:', memberError);
+        // Still return the community since it was created
+        return { community, error: null };
+      }
+
+      // Clear cache
+      this.clearUserCache(userId);
+      this.clearAllCache();
+
+      return { community, error: null };
+    } catch (error: any) {
+      console.error('Error creating community:', error);
+      return { community: null, error: error.message || 'Failed to create community' };
+    }
+  }
+
+  /**
+   * Delete a community (owner only)
+   */
+  async deleteCommunity(communityId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Note: The database should have CASCADE DELETE set up for related records
+      const { error } = await supabase
+        .from('communities')
+        .delete()
+        .eq('id', communityId);
+
+      if (error) {
+        console.error('Error deleting community:', error);
+        return { success: false, error: 'Failed to delete community' };
+      }
+
+      // Clear all cache since community relationships might have changed
+      this.clearAllCache();
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error deleting community:', error);
+      return { success: false, error: error.message || 'Failed to delete community' };
     }
   }
 
