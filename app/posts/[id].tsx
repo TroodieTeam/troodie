@@ -4,17 +4,22 @@ import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePostEngagement } from '@/hooks/usePostEngagement';
+import { PostComments } from '@/components/PostComments';
 import { postService } from '@/services/postService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Bookmark, Heart, MessageCircle, Share, ChevronRight } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { BottomNavigation } from '@/components/BottomNavigation';
 import {
   ActivityIndicator,
   Dimensions,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -29,26 +34,45 @@ export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [post, setPost] = useState<PostWithUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [showComments, setShowComments] = useState(true); // Show comments by default
+  const scrollViewRef = useRef<ScrollView>(null);
   
-  // Use the enhanced post engagement hook with dummy initial values
-  // It will be updated when the post loads
+  // Use the enhanced post engagement hook 
   const engagement = usePostEngagement({
     postId: id || '',
-    initialStats: {
-      likes_count: post?.likes_count || 0,
-      comments_count: post?.comments_count || 0,
-      saves_count: post?.saves_count || 0,
-      share_count: post?.share_count || 0,
-    },
+    initialStats: post ? {
+      likes_count: post.likes_count || 0,
+      comments_count: post.comments_count || 0,
+      saves_count: post.saves_count || 0,
+      share_count: post.share_count || 0,
+    } : undefined,
     initialIsLiked: post?.is_liked_by_user || false,
     initialIsSaved: post?.is_saved_by_user || false,
     enableRealtime: !!post, // Only enable realtime when post is loaded
   });
   
-  const { isLiked, isSaved, likesCount, savesCount, commentsCount, shareCount } = engagement;
+  const { isLiked, isSaved, likesCount, savesCount, commentsCount, shareCount, refreshStats } = engagement;
+  
+  // Update engagement stats when post data changes
+  useEffect(() => {
+    if (post && refreshStats) {
+      // Force update engagement stats with fresh post data
+      console.log('Post data changed, updating engagement stats:', {
+        comments_count: post.comments_count,
+        likes_count: post.likes_count
+      });
+      refreshStats({
+        likes_count: post.likes_count || 0,
+        comments_count: post.comments_count || 0,
+        saves_count: post.saves_count || 0,
+        share_count: post.share_count || 0,
+      });
+    }
+  }, [post?.comments_count, post?.likes_count, post?.saves_count, post?.share_count, refreshStats]);
 
   useEffect(() => {
     if (id) {
@@ -105,13 +129,27 @@ export default function PostDetailScreen() {
   
   const handleShare = async () => {
     if (!engagement || !post) return;
+    
+    // Show share options
+    const options = [
+      { text: 'Share', onPress: () => sharePost() },
+      { text: 'Copy Link', onPress: () => copyLink() },
+      { text: 'Cancel', style: 'cancel' as const }
+    ];
+    
+    const { Alert } = require('react-native');
+    Alert.alert('Share Post', 'How would you like to share?', options);
+  };
+  
+  const sharePost = async () => {
+    if (!engagement || !post) return;
     await engagement.sharePost(
       post.caption || 'Check out this post',
       post.restaurant?.name || 'Restaurant'
     );
   };
   
-  const handleCopyLink = async () => {
+  const copyLink = async () => {
     if (!engagement) return;
     await engagement.copyLink();
   };
@@ -208,7 +246,10 @@ export default function PostDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Floating Back Button */}
@@ -216,7 +257,7 @@ export default function PostDetailScreen() {
         <ArrowLeft size={24} color={designTokens.colors.textDark} />
       </TouchableOpacity>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollViewRef} style={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Header - Clickable */}
         <TouchableOpacity 
           style={styles.userHeader}
@@ -245,6 +286,14 @@ export default function PostDetailScreen() {
           <View style={styles.externalBadge}>
             <Ionicons name="link" size={14} color="#666" />
             <Text style={styles.externalText}>External Content</Text>
+          </View>
+        )}
+
+        {/* Simple Post Badge */}
+        {(post as any).post_type === 'simple' && !post.restaurant && (
+          <View style={styles.simplePostBadge}>
+            <Ionicons name="chatbubble-ellipses-outline" size={14} color={designTokens.colors.textMedium} />
+            <Text style={styles.simplePostText}>Discussion</Text>
           </View>
         )}
 
@@ -293,54 +342,58 @@ export default function PostDetailScreen() {
           </View>
         )}
 
-        {/* Restaurant Card - Clickable */}
-        <TouchableOpacity 
-          style={styles.restaurantCard}
-          onPress={handleRestaurantPress}
-          activeOpacity={0.6}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
-          <View style={styles.restaurantInfo}>
-            <Text style={styles.restaurantName}>{post.restaurant.name}</Text>
-            <Text style={styles.restaurantLocation}>{post.restaurant.location}</Text>
-            <View style={styles.restaurantMeta}>
-              <Text style={styles.restaurantCuisine}>{post.restaurant.cuisine}</Text>
-              <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
+        {/* Restaurant Card - Only show if restaurant exists */}
+        {post.restaurant && (
+          <TouchableOpacity 
+            style={styles.restaurantCard}
+            onPress={handleRestaurantPress}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
+            <View style={styles.restaurantInfo}>
+              <Text style={styles.restaurantName}>{post.restaurant.name}</Text>
+              <Text style={styles.restaurantLocation}>{post.restaurant.location}</Text>
+              <View style={styles.restaurantMeta}>
+                <Text style={styles.restaurantCuisine}>{post.restaurant.cuisine}</Text>
+                <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
+              </View>
             </View>
-          </View>
-          <ChevronRight size={20} color={designTokens.colors.textMedium} />
-        </TouchableOpacity>
+            <ChevronRight size={20} color={designTokens.colors.textMedium} />
+          </TouchableOpacity>
+        )}
 
-        {/* Rating & Visit Info */}
-        <View style={styles.visitCard}>
-          {post.rating && (
-            <View style={styles.ratingSection}>
-              <View style={styles.trafficLight}>
-                <View style={[styles.trafficDot, { backgroundColor: getTrafficLightColor(post.rating) }]} />
-                <Text style={styles.ratingLabel}>{getTrafficLightLabel(post.rating)}</Text>
+        {/* Rating & Visit Info - Only show if any relevant data exists */}
+        {(post.rating || post.visit_type || post.price_range) && (
+          <View style={styles.visitCard}>
+            {post.rating && (
+              <View style={styles.ratingSection}>
+                <View style={styles.trafficLight}>
+                  <View style={[styles.trafficDot, { backgroundColor: getTrafficLightColor(post.rating) }]} />
+                  <Text style={styles.ratingLabel}>{getTrafficLightLabel(post.rating)}</Text>
+                </View>
               </View>
+            )}
+            
+            <View style={styles.visitDetails}>
+              {post.visit_type && (
+                <View style={styles.visitBadge}>
+                  <Ionicons name="restaurant" size={14} color="#666" />
+                  <Text style={styles.visitText}>
+                    {post.visit_type === 'dine_in' ? 'Dine In' : 
+                     post.visit_type === 'takeout' ? 'Takeout' : 'Delivery'}
+                  </Text>
+                </View>
+              )}
+              {post.price_range && (
+                <View style={styles.visitBadge}>
+                  <Ionicons name="cash" size={14} color="#666" />
+                  <Text style={styles.visitText}>{post.price_range}</Text>
+                </View>
+              )}
             </View>
-          )}
-          
-          <View style={styles.visitDetails}>
-            {post.visit_type && (
-              <View style={styles.visitBadge}>
-                <Ionicons name="restaurant" size={14} color="#666" />
-                <Text style={styles.visitText}>
-                  {post.visit_type === 'dine_in' ? 'Dine In' : 
-                   post.visit_type === 'takeout' ? 'Takeout' : 'Delivery'}
-                </Text>
-              </View>
-            )}
-            {post.price_range && (
-              <View style={styles.visitBadge}>
-                <Ionicons name="cash" size={14} color="#666" />
-                <Text style={styles.visitText}>{post.price_range}</Text>
-              </View>
-            )}
           </View>
-        </View>
+        )}
 
         {/* Actions */}
         <View style={styles.actions}>
@@ -353,9 +406,12 @@ export default function PostDetailScreen() {
             <Text style={styles.actionCount}>{likesCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => {
+            // Scroll to comments section
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }}>
             <MessageCircle size={24} color="#666" />
-            <Text style={styles.actionCount}>{post.comments_count}</Text>
+            <Text style={styles.actionCount}>{commentsCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
@@ -367,15 +423,104 @@ export default function PostDetailScreen() {
             <Text style={styles.actionCount}>{savesCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
             <Share size={24} color="#666" />
-            <Text style={styles.actionCount}>{post.shares_count || 0}</Text>
+            <Text style={styles.actionCount}>{shareCount}</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Comments Section - Just the comments list, no input here */}
+        {post && commentsCount > 0 && (
+          <View style={styles.commentsSection}>
+            <View style={styles.commentsSeparator}>
+              <Text style={styles.commentsTitle}>Comments</Text>
+            </View>
+            <PostComments 
+              postId={post.id}
+              showInput={false} // Don't show input in the comments component
+              onCommentAdded={() => {
+                // Just update the comment count without reloading the entire screen
+                console.log('Comment added - updating comment count');
+                if (refreshStats && post) {
+                  refreshStats({
+                    likes_count: post.likes_count || 0,
+                    comments_count: (post.comments_count || 0) + 1, // Increment comment count
+                    saves_count: post.saves_count || 0,
+                    share_count: post.share_count || 0,
+                  });
+                  // Update the local post state too
+                  setPost(prev => prev ? {
+                    ...prev,
+                    comments_count: (prev.comments_count || 0) + 1
+                  } : null);
+                }
+              }}
+              onCommentDeleted={() => {
+                // Update the comment count when comment is deleted
+                console.log('Comment deleted - updating comment count');
+                if (refreshStats && post) {
+                  refreshStats({
+                    likes_count: post.likes_count || 0,
+                    comments_count: Math.max((post.comments_count || 1) - 1, 0), // Decrement comment count
+                    saves_count: post.saves_count || 0,
+                    share_count: post.share_count || 0,
+                  });
+                  // Update the local post state too
+                  setPost(prev => prev ? {
+                    ...prev,
+                    comments_count: Math.max((prev.comments_count || 1) - 1, 0)
+                  } : null);
+                }
+              }}
+            />
+          </View>
+        )}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
-    </View>
+
+      {/* Twitter-style Fixed Comment Input at Bottom */}
+      {post && (
+        <PostComments 
+          postId={post.id}
+          showInput={true} // Only show input
+          showComments={false} // Don't show comments list
+          postAuthorName={post.user?.username || post.user?.name} // For "Replying to" text
+          onCommentAdded={() => {
+            // Update comment count (toast is handled in PostComments component)
+            if (refreshStats && post) {
+              refreshStats({
+                likes_count: post.likes_count || 0,
+                comments_count: (post.comments_count || 0) + 1,
+                saves_count: post.saves_count || 0,
+                share_count: post.share_count || 0,
+              });
+              setPost(prev => prev ? {
+                ...prev,
+                comments_count: (prev.comments_count || 0) + 1
+              } : null);
+            }
+          }}
+          onCommentDeleted={() => {
+            if (refreshStats && post) {
+              refreshStats({
+                likes_count: post.likes_count || 0,
+                comments_count: Math.max((post.comments_count || 1) - 1, 0),
+                saves_count: post.saves_count || 0,
+                share_count: post.share_count || 0,
+              });
+              setPost(prev => prev ? {
+                ...prev,
+                comments_count: Math.max((prev.comments_count || 1) - 1, 0)
+              } : null);
+            }
+          }}
+        />
+      )}
+      
+      {/* Bottom Navigation */}
+      <BottomNavigation />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -473,6 +618,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontFamily: 'Inter_500Medium',
+  },
+  simplePostBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0F8FF',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  simplePostText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.textMedium,
   },
   caption: {
     fontSize: 16,
@@ -614,7 +776,33 @@ const styles = StyleSheet.create({
     color: '#666',
     fontFamily: 'Inter_500Medium',
   },
+  commentsSection: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+    marginTop: 20,
+  },
+  commentsSeparator: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  commentsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  closeButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  closeButtonText: {
+    fontSize: 14,
+    color: designTokens.colors.primaryOrange,
+    fontWeight: '500',
+  },
   bottomSpacer: {
-    height: 40,
+    height: 150, // Increased to account for comment input + bottom navigation
   },
 }); 

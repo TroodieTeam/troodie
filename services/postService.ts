@@ -19,68 +19,8 @@ class PostService {
    */
   async getPostById(postId: string): Promise<PostWithUser | null> {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          user:users!posts_user_id_fkey(id, name, username, avatar_url, is_verified, persona),
-          restaurant:restaurants!posts_restaurant_id_fkey(id, name, cover_photo_url, city, cuisine_types, price_range),
-          post_likes!left(user_id),
-          post_saves!left(user_id)
-        `)
-        .eq('id', postId)
-        .single();
-
-      if (error) throw error;
-      if (!data) return null;
-
-      // Get current user to check if they liked/saved
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      const isLikedByUser = currentUser ? 
-        data.post_likes?.some((like: any) => like.user_id === currentUser.id) : false;
-      const isSavedByUser = currentUser ? 
-        data.post_saves?.some((save: any) => save.user_id === currentUser.id) : false;
-
-      // Transform the post data
-      const transformedPost: PostWithUser = {
-        id: data.id,
-        user_id: data.user_id,
-        restaurant_id: data.restaurant_id,
-        caption: data.caption,
-        photos: data.photos || [],
-        rating: data.rating,
-        visit_date: data.visit_date,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        visibility: data.visibility || 'public',
-        is_external: data.is_external || false,
-        content_type: data.content_type || 'original',
-        external_source: data.external_source,
-        external_url: data.external_url,
-        external_title: data.external_title,
-        external_description: data.external_description,
-        external_thumbnail: data.external_thumbnail,
-        external_author: data.external_author,
-        likes_count: data.post_likes?.length || 0,
-        comments_count: data.comments_count || 0,
-        saves_count: data.post_saves?.length || 0,
-        shares_count: data.shares_count || 0,
-        is_liked_by_user: isLikedByUser,
-        is_saved_by_user: isSavedByUser,
-        user: this.transformUser(data),
-        restaurant: {
-          id: data.restaurant.id,
-          name: data.restaurant.name,
-          image: data.restaurant.cover_photo_url || '',
-          cuisine: data.restaurant.cuisine_types?.[0] || 'Restaurant',
-          rating: 0,
-          location: data.restaurant.city || '',
-          priceRange: data.restaurant.price_range || '$'
-        }
-      };
-
-      return transformedPost;
+      // Use the same approach as getPost method to avoid foreign key issues
+      return await this.getPost(postId);
     } catch (error) {
       console.error('Error fetching post:', error);
       throw error;
@@ -181,6 +121,7 @@ class PostService {
 
     // Handle cross-posting to communities
     if (data && postData.communityIds && postData.communityIds.length > 0) {
+      console.log(`📡 Cross-posting to ${postData.communityIds.length} communities:`, postData.communityIds);
       try {
         const { data: crossPostResults, error: crossPostError } = await supabase
           .rpc('cross_post_to_communities', {
@@ -190,6 +131,7 @@ class PostService {
           });
 
         if (crossPostError) {
+          console.error('Cross-posting RPC error:', crossPostError);
           // Check if it's just a missing function error
           if (crossPostError.code === 'PGRST202' || crossPostError.message?.includes('Could not find the function')) {
             console.warn('Cross-posting function not available yet. Please run migration 20250808_add_cross_post_function.sql');
@@ -197,44 +139,52 @@ class PostService {
             console.log('Using fallback method to add posts to communities...');
             let successCount = 0;
             for (const communityId of postData.communityIds) {
+              console.log(`Attempting to add post ${data.id} to community ${communityId}...`);
               try {
-                const { error: insertError } = await supabase
+                const { data: insertResult, error: insertError } = await supabase
                   .from('post_communities')
                   .insert({
                     post_id: data.id,
                     community_id: communityId,
                     added_by: user.id
-                  });
+                  })
+                  .select();
                 
                 if (insertError) {
-                  console.warn(`Could not add post to community ${communityId}:`, insertError);
+                  console.error(`Failed to add post to community ${communityId}:`, insertError);
                 } else {
                   successCount++;
-                  console.log(`Successfully added post to community ${communityId}`);
+                  console.log(`✅ Successfully added post to community ${communityId}:`, insertResult);
                 }
               } catch (err) {
-                console.warn(`Error adding post to community ${communityId}:`, err);
+                console.error(`Exception adding post to community ${communityId}:`, err);
               }
             }
-            console.log(`Post cross-posted to ${successCount}/${postData.communityIds.length} communities via fallback`);
+            console.log(`📊 Post cross-posted to ${successCount}/${postData.communityIds.length} communities via fallback`);
           } else {
             console.error('Error cross-posting to communities:', crossPostError);
           }
           // Don't fail the whole post creation, just log the error
         } else {
-          // Log successful cross-posts
-          const successful = crossPostResults?.filter((r: any) => r.success) || [];
-          const failed = crossPostResults?.filter((r: any) => !r.success) || [];
+          // Log successful cross-posts (handle both old and new column names)
+          const successful = crossPostResults?.filter((r: any) => r.success || r.result_success) || [];
+          const failed = crossPostResults?.filter((r: any) => !(r.success || r.result_success)) || [];
           
           if (successful.length > 0) {
-            console.log(`Post cross-posted to ${successful.length} communities`);
+            console.log(`✅ Post cross-posted to ${successful.length} communities via RPC`);
+            successful.forEach(result => {
+              console.log(`  - Community ${result.result_community_id || result.community_id}: SUCCESS`);
+            });
           }
           if (failed.length > 0) {
-            console.warn(`Failed to cross-post to ${failed.length} communities:`, failed);
+            console.warn(`❌ Failed to cross-post to ${failed.length} communities:`, failed);
+            failed.forEach(result => {
+              console.warn(`  - Community ${result.result_community_id || result.community_id}: ${result.result_error_message || result.error_message}`);
+            });
           }
         }
       } catch (crossPostError) {
-        console.error('Error in cross-posting:', crossPostError);
+        console.error('Exception in cross-posting:', crossPostError);
         // Continue anyway - the main post was created successfully
       }
     }
@@ -335,7 +285,7 @@ class PostService {
         rating: postData.rating || 0,
         location: restaurantData.address || 'Location',
         priceRange: restaurantData.price_range || postData.price_range || '$$',
-      } : this.transformRestaurant(postData),
+      } : null, // Return null for simple posts without restaurant data
     };
   }
 
@@ -399,7 +349,7 @@ class PostService {
           rating: post.rating || 0,
           location: restaurantData.address || 'Location',
           priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : this.transformRestaurant(post),
+        } : null, // Return null instead of fake restaurant data
       };
     });
   }
@@ -483,7 +433,7 @@ class PostService {
           rating: post.rating || 0,
           location: restaurantData.address || 'Location',
           priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : this.transformRestaurant(post),
+        } : null, // Return null instead of fake restaurant data
       };
     });
   }
@@ -567,7 +517,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
         trending_score: post.likes_count + post.comments_count + post.saves_count,
         engagement_rate: ((post.likes_count + post.comments_count + post.saves_count) / 100) * 100,
       };
@@ -664,7 +614,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
       };
     });
   }
@@ -825,7 +775,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
       };
     });
   }
@@ -874,7 +824,7 @@ class PostService {
       return {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: this.transformRestaurant(post),
+        restaurant: null, // Return null for simple posts without restaurant data
       };
     });
   }

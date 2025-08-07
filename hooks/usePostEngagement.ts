@@ -29,6 +29,7 @@ interface UsePostEngagementReturn {
   addComment: (content: string) => Promise<void>;
   sharePost: (title: string, restaurantName: string) => Promise<void>;
   copyLink: () => Promise<void>;
+  refreshStats: (newStats: PostEngagementStats) => void;
   
   // Comments
   comments: CommentWithUser[];
@@ -64,8 +65,16 @@ export function usePostEngagement({
   const unsubscribeStats = useRef<(() => void) | null>(null);
   const unsubscribeComments = useRef<(() => void) | null>(null);
   
-  // Initialize from cache if available
+  // Initialize from initial stats or cache
   useEffect(() => {
+    if (initialStats) {
+      console.log('Setting initial stats:', initialStats);
+      setLikesCount(initialStats.likes_count || 0);
+      setCommentsCount(initialStats.comments_count || 0);
+      setSavesCount(initialStats.saves_count || 0);
+      setShareCount(initialStats.share_count || 0);
+    }
+    
     if (!user?.id) return;
     
     const cachedLike = enhancedPostEngagementService.getCachedLikeStatus(postId, user.id);
@@ -74,13 +83,13 @@ export function usePostEngagement({
     
     if (cachedLike !== undefined) setIsLiked(cachedLike);
     if (cachedSave !== undefined) setIsSaved(cachedSave);
-    if (cachedStats) {
+    if (cachedStats && !initialStats) {
       setLikesCount(cachedStats.likes_count || 0);
       setCommentsCount(cachedStats.comments_count || 0);
       setSavesCount(cachedStats.saves_count || 0);
       setShareCount(cachedStats.share_count || 0);
     }
-  }, [postId, user?.id]);
+  }, [postId, user?.id, initialStats]);
   
   // Set up real-time subscriptions
   useEffect(() => {
@@ -286,6 +295,15 @@ export function usePostEngagement({
     }
   }, [isLoadingComments, hasMoreComments]);
   
+  // Refresh stats manually
+  const refreshStats = useCallback((newStats: PostEngagementStats) => {
+    console.log('Refreshing engagement stats:', newStats);
+    setLikesCount(newStats.likes_count || 0);
+    setCommentsCount(newStats.comments_count || 0);
+    setSavesCount(newStats.saves_count || 0);
+    setShareCount(newStats.share_count || 0);
+  }, []);
+  
   return {
     // States
     isLiked,
@@ -302,6 +320,7 @@ export function usePostEngagement({
     addComment,
     sharePost,
     copyLink,
+    refreshStats,
     
     // Comments
     comments,

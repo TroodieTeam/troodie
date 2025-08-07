@@ -550,9 +550,24 @@ class CommunityService {
     offset: number = 0
   ): Promise<any[]> {
     try {
-      console.log(`Fetching posts for community ${communityId}...`);
+      console.log(`🔍 Fetching posts for community ${communityId}...`);
       
-      // First get cross-posted posts with proper joins
+      // First check if post_communities table has any data at all
+      const { data: allPostCommunities, error: checkError } = await supabase
+        .from('post_communities')
+        .select('id, post_id, community_id, added_at')
+        .limit(5);
+      
+      if (checkError) {
+        console.error('❌ Error checking post_communities table:', checkError);
+      } else {
+        console.log(`📊 Total post_communities records (first 5): ${allPostCommunities?.length || 0}`);
+        allPostCommunities?.forEach(pc => {
+          console.log(`  - Post ${pc.post_id} → Community ${pc.community_id} (${pc.community_id === communityId ? 'MATCH' : 'different'})`);
+        });
+      }
+
+      // Now get cross-posted posts with proper joins
       const { data: crossPostedData, error: crossPostError } = await supabase
         .from('post_communities')
         .select(`
@@ -586,11 +601,11 @@ class CommunityService {
         .range(offset, offset + limit - 1);
 
       if (crossPostError) {
-        console.error('Error fetching cross-posted content:', crossPostError);
+        console.error('❌ Error fetching cross-posted content:', crossPostError);
         return [];
       }
 
-      console.log(`Found ${crossPostedData?.length || 0} cross-posted items`);
+      console.log(`📊 Found ${crossPostedData?.length || 0} cross-posted items for community ${communityId}`);
 
       if (!crossPostedData || crossPostedData.length === 0) {
         console.log('No posts found in community');
