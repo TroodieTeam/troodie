@@ -519,13 +519,15 @@ export const boardService = {
    */
   async getUserQuickSavesBoard(userId: string): Promise<Board | null> {
     try {
+      // Try both "Your Saves" and "Quick Saves" for compatibility
       const { data, error } = await supabase
         .from('boards')
         .select('*')
         .eq('user_id', userId)
-        .eq('title', 'Your Saves')
+        .in('title', ['Your Saves', 'Quick Saves'])
         .eq('type', 'free')
-        .single()
+        .limit(1)
+        .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching Your Saves board:', error)
@@ -543,14 +545,67 @@ export const boardService = {
    */
   async ensureQuickSavesBoard(userId: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      // First try to get existing board
+      const existingBoard = await this.getUserQuickSavesBoard(userId)
+      if (existingBoard) {
+        return existingBoard.id
+      }
+
+      // Try RPC function first (if migration has been run)
+      const { data: rpcData, error: rpcError } = await supabase
         .rpc('ensure_quick_saves_board', { p_user_id: userId })
 
-      if (error) {
-        console.error('Error ensuring Your Saves board:', error)
-        return null
+      if (!rpcError && rpcData) {
+        return rpcData
       }
-      return data
+
+      // If RPC fails (function doesn't exist), create board manually
+      if (rpcError?.code === 'PGRST202' || rpcError?.message?.includes('Could not find the function')) {
+        console.log('RPC function not found, creating Your Saves board manually')
+        
+        // Create the board manually
+        const { data: boardData, error: boardError } = await supabase
+          .from('boards')
+          .insert({
+            user_id: userId,
+            title: 'Your Saves',
+            description: 'Your default collection of saved restaurants',
+            type: 'free',
+            is_private: true,
+            allow_comments: false,
+            allow_saves: false
+          })
+          .select()
+          .single()
+
+        if (boardError) {
+          console.error('Error creating Your Saves board:', boardError)
+          return null
+        }
+
+        // Add user as owner in board_members
+        await supabase
+          .from('board_members')
+          .insert({
+            board_id: boardData.id,
+            user_id: userId,
+            role: 'owner'
+          })
+          .onConflict('board_id,user_id')
+          .ignore()
+
+        // Update user's default board
+        await supabase
+          .from('users')
+          .update({ default_board_id: boardData.id })
+          .eq('id', userId)
+
+        return boardData.id
+      }
+
+      // For other errors, log and return null
+      console.error('Error ensuring Your Saves board:', rpcError)
+      return null
     } catch (error: any) {
       console.error('Error ensuring Your Saves board:', error)
       return null

@@ -90,10 +90,19 @@ class SaveService {
 
     try {
       const currentState = await this.getSaveState(restaurantId, userId);
-      const quickSavesBoardId = currentState.quickSavesBoardId;
+      let quickSavesBoardId = currentState.quickSavesBoardId;
 
+      // If no Your Saves board exists, try to create it
       if (!quickSavesBoardId) {
-        throw new Error('Your Saves board not found');
+        quickSavesBoardId = await boardService.ensureQuickSavesBoard(userId);
+        
+        if (!quickSavesBoardId) {
+          throw new Error('Could not create Your Saves board');
+        }
+        
+        // Update cached state
+        currentState.quickSavesBoardId = quickSavesBoardId;
+        this.saveStates.set(key, currentState);
       }
 
       const isInQuickSaves = currentState.boards.includes(quickSavesBoardId);
