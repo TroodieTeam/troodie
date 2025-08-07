@@ -515,7 +515,7 @@ export const boardService = {
   },
 
   /**
-   * Get user's Quick Saves board
+   * Get user's Your Saves board
    */
   async getUserQuickSavesBoard(userId: string): Promise<Board | null> {
     try {
@@ -523,23 +523,23 @@ export const boardService = {
         .from('boards')
         .select('*')
         .eq('user_id', userId)
-        .eq('title', 'Quick Saves')
+        .eq('title', 'Your Saves')
         .eq('type', 'free')
         .single()
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching Quick Saves board:', error)
+        console.error('Error fetching Your Saves board:', error)
         return null
       }
       return data
     } catch (error: any) {
-      console.error('Error fetching Quick Saves board:', error)
+      console.error('Error fetching Your Saves board:', error)
       return null
     }
   },
 
   /**
-   * Get or create user's Quick Saves board
+   * Get or create user's Your Saves board
    */
   async ensureQuickSavesBoard(userId: string): Promise<string | null> {
     try {
@@ -547,18 +547,18 @@ export const boardService = {
         .rpc('ensure_quick_saves_board', { p_user_id: userId })
 
       if (error) {
-        console.error('Error ensuring Quick Saves board:', error)
+        console.error('Error ensuring Your Saves board:', error)
         return null
       }
       return data
     } catch (error: any) {
-      console.error('Error ensuring Quick Saves board:', error)
+      console.error('Error ensuring Your Saves board:', error)
       return null
     }
   },
 
   /**
-   * Save restaurant to Quick Saves board
+   * Save restaurant to Your Saves board
    */
   async saveRestaurantToQuickSaves(
     userId: string, 
@@ -567,27 +567,27 @@ export const boardService = {
     rating?: number
   ): Promise<void> {
     try {
-      // Get or create Quick Saves board
+      // Get or create Your Saves board
       const boardId = await this.ensureQuickSavesBoard(userId)
       
       if (!boardId) {
-        throw new Error('Failed to get Quick Saves board')
+        throw new Error('Failed to get Your Saves board')
       }
 
-      // Add restaurant to Quick Saves board
+      // Add restaurant to Your Saves board
       await this.addRestaurantToBoard(boardId, restaurantId, userId, notes, rating)
     } catch (error: any) {
-      console.error('Error saving to Quick Saves:', error)
+      console.error('Error saving to Your Saves:', error)
       throw error
     }
   },
 
   /**
-   * Get Quick Saves restaurants for a user
+   * Get Your Saves restaurants for a user
    */
   async getQuickSavesRestaurants(userId: string, limit?: number): Promise<BoardRestaurant[]> {
     try {
-      // First get the Quick Saves board
+      // First get the Your Saves board
       const board = await this.getUserQuickSavesBoard(userId)
       
       if (!board) {
@@ -609,7 +609,7 @@ export const boardService = {
       if (error) throw error
       return data || []
     } catch (error: any) {
-      console.error('Error fetching Quick Saves restaurants:', error)
+      console.error('Error fetching Your Saves restaurants:', error)
       return []
     }
   }

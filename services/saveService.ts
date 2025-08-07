@@ -93,7 +93,7 @@ class SaveService {
       const quickSavesBoardId = currentState.quickSavesBoardId;
 
       if (!quickSavesBoardId) {
-        throw new Error('Quick Saves board not found');
+        throw new Error('Your Saves board not found');
       }
 
       const isInQuickSaves = currentState.boards.includes(quickSavesBoardId);
@@ -106,10 +106,10 @@ class SaveService {
           quickSavesBoardId
         });
 
-        // Remove from Quick Saves
+        // Remove from Your Saves
         await boardService.removeRestaurantFromBoard(quickSavesBoardId, restaurantId);
         
-        ToastService.showSuccess('Removed from Quick Saves');
+        ToastService.showSuccess('Removed from Your Saves');
         onSuccess?.();
       } else {
         // Optimistic update
@@ -119,12 +119,12 @@ class SaveService {
           quickSavesBoardId
         });
 
-        // Add to Quick Saves
+        // Add to Your Saves
         await boardService.saveRestaurantToQuickSaves(userId, restaurantId);
         
         // Show toast with board selection action
         ToastService.showSuccess(
-          'Added to Quick Saves',
+          'Added to Your Saves',
           {
             label: 'Add to Board',
             onPress: () => {
@@ -245,7 +245,7 @@ class SaveService {
       const message = totalBoards > 1
         ? `Added to ${totalBoards} boards!`
         : includeQuickSaves
-          ? 'Added to Quick Saves!'
+          ? 'Added to Your Saves!'
           : 'Added to board!';
       
       ToastService.showSuccess(message);

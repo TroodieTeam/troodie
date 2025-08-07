@@ -39,7 +39,7 @@ export default function QuickSavesScreen() {
     try {
       setError(null)
       
-      // Get all Quick Saves (no limit)
+      // Get all Your Saves (no limit)
       const quickSaves = await boardService.getQuickSavesRestaurants(user.id)
       
       // Load restaurant details for each save
@@ -55,7 +55,7 @@ export default function QuickSavesScreen() {
 
       setSaves(savesWithRestaurants.filter(save => save.restaurant))
     } catch (error) {
-      console.error('Error loading quick saves:', error)
+      console.error('Error loading your saves:', error)
       setError('Failed to load saved restaurants')
     } finally {
       setLoading(false)
@@ -74,7 +74,7 @@ export default function QuickSavesScreen() {
 
   const handleRemove = async (save: QuickSave) => {
     try {
-      // Get the Quick Saves board
+      // Get the Your Saves board
       const board = await boardService.getUserQuickSavesBoard(user!.id)
       if (board) {
         await boardService.removeRestaurantFromBoard(board.id, save.restaurant_id)
@@ -82,7 +82,7 @@ export default function QuickSavesScreen() {
         await loadQuickSaves()
       }
     } catch (error) {
-      console.error('Error removing from Quick Saves:', error)
+      console.error('Error removing from Your Saves:', error)
     }
   }
 
@@ -91,7 +91,7 @@ export default function QuickSavesScreen() {
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <ArrowLeft size={24} color={designTokens.colors.textDark} />
       </TouchableOpacity>
-      <Text style={styles.headerTitle}>Quick Saves</Text>
+      <Text style={styles.headerTitle}>Your Saves</Text>
       <View style={styles.placeholder} />
     </View>
   )
@@ -155,9 +155,9 @@ export default function QuickSavesScreen() {
       
       {saves.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No Quick Saves Yet</Text>
+          <Text style={styles.emptyTitle}>No Saves Yet</Text>
           <Text style={styles.emptyText}>
-            Tap the save button on any restaurant to add it to your Quick Saves
+            Tap the save button on any restaurant to add it to Your Saves
           </Text>
           <TouchableOpacity 
             style={styles.exploreButton}

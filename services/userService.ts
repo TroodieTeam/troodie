@@ -31,17 +31,17 @@ export const userService = {
       return null
     }
 
-    // Ensure Quick Saves board is created for new user
+    // Ensure Your Saves board is created for new user
     if (data) {
       try {
         const { data: boardId } = await supabase
           .rpc('ensure_quick_saves_board', { p_user_id: data.id })
         
         if (boardId) {
-          // Quick Saves board created successfully
+          // Your Saves board created successfully
         }
       } catch (error) {
-        console.error('Error creating Quick Saves board:', error)
+        console.error('Error creating Your Saves board:', error)
       }
     }
 
@@ -193,7 +193,7 @@ export const userService = {
       .rpc('get_quick_saves_board', { p_user_id: userId })
     
     if (error) {
-      console.error('Error getting Quick Saves board:', error)
+      console.error('Error getting Your Saves board:', error)
       return null
     }
     return data

@@ -107,7 +107,7 @@ INSERT INTO public.boards (
 ) VALUES (
   '89645b9c-dead-40a9-a429-3c48aee9beda',
   'cb1799bf-3afb-44ca-adec-9033f8ec077b',
-  'Quick Saves',
+  'Your Saves',
   'Your personal collection of saved restaurants',
   'free',
   false,

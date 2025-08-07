@@ -141,7 +141,7 @@ export default function UserDetailScreen() {
         setLoadingQuickSaves(true);
       }
       
-      // Quick saves are private - only show for own profile
+      // Your saves are private - only show for own profile
       if (isOwnProfile) {
         const saves = await boardService.getQuickSavesRestaurants(id);
         
@@ -161,7 +161,7 @@ export default function UserDetailScreen() {
         setQuickSaves([]);
       }
     } catch (error) {
-      console.error('Error loading quick saves:', error);
+      console.error('Error loading your saves:', error);
     } finally {
       setLoadingQuickSaves(false);
       setRefreshingQuickSaves(false);
@@ -520,9 +520,9 @@ export default function UserDetailScreen() {
             <View style={styles.emptyIcon}>
               <Grid3X3 size={32} color="#DDD" />
             </View>
-            <Text style={styles.emptyTitle}>No Quick Saves</Text>
+            <Text style={styles.emptyTitle}>No Saves</Text>
             <Text style={styles.emptyDescription}>
-              Quick saves are private
+              Your saves are private
             </Text>
           </View>
         )}

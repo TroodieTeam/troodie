@@ -136,7 +136,7 @@ export default function ProfileScreen() {
       
       return savesWithRestaurants.filter(save => save.restaurant);
     } catch (error) {
-      console.error('Error fetching quick saves:', error);
+      console.error('Error fetching your saves:', error);
       return [];
     }
   }, [user?.id]);
@@ -528,7 +528,7 @@ export default function ProfileScreen() {
           <View style={styles.emptyIcon}>
             <Grid3X3 size={32} color="#DDD" />
           </View>
-          <Text style={styles.emptyTitle}>No Quick Saves Yet</Text>
+          <Text style={styles.emptyTitle}>No Saves Yet</Text>
           <Text style={styles.emptyDescription}>
             Tap the save button on any restaurant to add it here
           </Text>

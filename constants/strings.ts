@@ -41,6 +41,15 @@ export const strings = {
     duplicateMessage: 'This restaurant is already in our system!',
     errorMessage: 'Failed to add restaurant. Please try again.'
   },
+  saves: {
+    title: 'Your Saves',
+    emptyTitle: 'No Saves Yet',
+    emptyDescription: 'Tap the save button on any restaurant to add it to Your Saves',
+    boardName: 'Your Saves', // Used for the actual board title in the database
+    toastMessage: 'Added to Your Saves',
+    removeToastMessage: 'Removed from Your Saves',
+    errorMessage: 'Error loading Your Saves'
+  },
   // Keep old strings for migration compatibility
   deprecated: {
     recommendedForYou: "Recommended for You",
