@@ -48,11 +48,17 @@ export default function FindFriendsScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({})
+  const [currentPage, setCurrentPage] = useState(0)
+  const [hasMoreUsers, setHasMoreUsers] = useState(true)
   
   const searchInputRef = useRef<TextInput>(null)
   const fadeAnim = useRef(new Animated.Value(0)).current
+  const scrollViewRef = useRef<ScrollView>(null)
+  
+  const USERS_PER_PAGE = 50
 
   const tabs: TabOption[] = [
     {
@@ -113,14 +119,14 @@ export default function FindFriendsScreen() {
 
   useEffect(() => {
     if (activeTab === 'suggested') {
-      loadSuggestedUsers()
+      loadSuggestedUsers(true)
     }
   }, [activeTab])
 
   const loadInitialData = async () => {
     setIsLoading(true)
     try {
-      await loadSuggestedUsers()
+      await loadSuggestedUsers(true)
     } catch (error) {
       console.error('Failed to load initial data:', error)
     } finally {
@@ -128,28 +134,36 @@ export default function FindFriendsScreen() {
     }
   }
 
-  const loadSuggestedUsers = async () => {
+  const loadSuggestedUsers = async (reset = false) => {
     try {
-      // Use the existing search function to get all users by searching for common terms
-      // This will give us a diverse set of users from the platform
-      const searchTerms = ['food', 'restaurant', 'chef', 'foodie', 'dining']
-      const allResults: SearchUserResult[] = []
-      
-      for (const term of searchTerms) {
-        try {
-          const results = await UserSearchService.searchUsers(term, {}, 10, 0)
-          allResults.push(...results)
-        } catch (error) {
-          // Continue with other terms if one fails
-        }
+      if (reset) {
+        setCurrentPage(0)
+        setHasMoreUsers(true)
       }
       
-      // Remove duplicates and limit results
-      const uniqueUsers = allResults.filter((user, index, self) => 
-        index === self.findIndex(u => u.id === user.id)
-      ).slice(0, 20)
+      const pageToLoad = reset ? 0 : currentPage
+      const offset = pageToLoad * USERS_PER_PAGE
       
-      setSuggestedUsers(uniqueUsers)
+      // Get all users from the platform, excluding those already followed
+      const results = await UserSearchService.getAllUsers(
+        USERS_PER_PAGE,
+        offset,
+        true // excludeFollowing - don't show users we already follow
+      )
+      
+      if (results.length < USERS_PER_PAGE) {
+        setHasMoreUsers(false)
+      }
+      
+      if (reset) {
+        setSuggestedUsers(results)
+      } else {
+        setSuggestedUsers(prev => [...prev, ...results])
+      }
+      
+      if (!reset) {
+        setCurrentPage(prev => prev + 1)
+      }
     } catch (error) {
       console.error('Failed to load suggested users:', error)
       Toast.show({
@@ -160,11 +174,22 @@ export default function FindFriendsScreen() {
     }
   }
 
+  const loadMoreUsers = async () => {
+    if (!hasMoreUsers || loadingMore || isLoading) return
+    
+    setLoadingMore(true)
+    try {
+      await loadSuggestedUsers(false)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
       if (activeTab === 'suggested') {
-        await loadSuggestedUsers()
+        await loadSuggestedUsers(true)
       }
       // Search results refresh automatically when query changes
     } finally {
@@ -180,10 +205,10 @@ export default function FindFriendsScreen() {
     }
   }
 
-  const handleFollowToggle = async () => {
-    // Refresh the current tab data to update follow states
+  const handleFollowToggle = async (userId: string) => {
+    // Remove the user from suggested list after following
     if (activeTab === 'suggested') {
-      await loadSuggestedUsers()
+      setSuggestedUsers(prev => prev.filter(u => u.id !== userId))
     }
   }
 
@@ -366,19 +391,56 @@ export default function FindFriendsScreen() {
       )
     }
 
-    if (users.length === 0) {
+    if (users.length === 0 && !loadingMore) {
       return renderEmptyState(activeTab)
     }
 
+    // Group users by follow status
+    const newUsers = users.filter(user => !user.isFollowing && !user.isCurrentUser)
+    const followingUsers = users.filter(user => user.isFollowing)
+
     return (
       <View style={styles.userList}>
-        {users.map((userItem) => (
-          <UserSearchResult
-            key={userItem.id}
-            user={userItem}
-            onFollowToggle={() => handleFollowToggle()}
-          />
-        ))}
+        {newUsers.length > 0 && (
+          <View style={styles.userSection}>
+            {activeTab === 'suggested' && (
+              <Text style={styles.sectionTitle}>People to Follow</Text>
+            )}
+            {newUsers.map((userItem) => (
+              <UserSearchResult
+                key={userItem.id}
+                user={userItem}
+                onFollowToggle={() => handleFollowToggle(userItem.id)}
+              />
+            ))}
+          </View>
+        )}
+        
+        {followingUsers.length > 0 && (
+          <View style={styles.userSection}>
+            <Text style={styles.sectionTitle}>Already Following</Text>
+            {followingUsers.map((userItem) => (
+              <UserSearchResult
+                key={userItem.id}
+                user={userItem}
+                onFollowToggle={() => handleFollowToggle(userItem.id)}
+              />
+            ))}
+          </View>
+        )}
+        
+        {/* Load more indicator for suggested tab */}
+        {activeTab === 'suggested' && hasMoreUsers && (
+          <View style={styles.loadMoreContainer}>
+            {loadingMore ? (
+              <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+            ) : (
+              <TouchableOpacity onPress={loadMoreUsers} style={styles.loadMoreButton}>
+                <Text style={styles.loadMoreText}>Load More</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
     )
   }
@@ -392,6 +454,7 @@ export default function FindFriendsScreen() {
         {renderSearchBar()}
         
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           refreshControl={
             <RefreshControl
@@ -401,6 +464,16 @@ export default function FindFriendsScreen() {
             />
           }
           showsVerticalScrollIndicator={false}
+          onScroll={({ nativeEvent }) => {
+            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
+            const paddingToBottom = 20
+            const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom
+            
+            if (isCloseToBottom && activeTab === 'suggested' && hasMoreUsers && !loadingMore && !isLoading) {
+              loadMoreUsers()
+            }
+          }}
+          scrollEventThrottle={400}
         >
           {renderUserList()}
         </ScrollView>
@@ -560,5 +633,31 @@ const styles = StyleSheet.create({
   },
   searchSuggestionsContainer: {
     flex: 1,
+  },
+  userSection: {
+    marginBottom: designTokens.spacing.md,
+  },
+  sectionTitle: {
+    ...designTokens.typography.smallText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.textMedium,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingVertical: designTokens.spacing.sm,
+    backgroundColor: designTokens.colors.backgroundLight,
+  },
+  loadMoreContainer: {
+    alignItems: 'center',
+    paddingVertical: designTokens.spacing.lg,
+  },
+  loadMoreButton: {
+    backgroundColor: designTokens.colors.primaryOrange,
+    paddingHorizontal: designTokens.spacing.xl,
+    paddingVertical: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.md,
+  },
+  loadMoreText: {
+    ...designTokens.typography.bodyText,
+    fontFamily: 'Inter_600SemiBold',
+    color: designTokens.colors.white,
   },
 })

@@ -52,6 +52,39 @@ export class UserSearchService {
     }
   }
 
+  static async getAllUsers(
+    limit = 50,
+    offset = 0,
+    excludeFollowing = false
+  ): Promise<SearchUserResult[]> {
+    try {
+      const currentUserId = await authService.getCurrentUserId()
+      
+      // Get all users from the platform
+      const { data: allUsers, error } = await supabase
+        .from('users')
+        .select('id, username, name, bio, avatar_url, is_verified, followers_count, saves_count, location')
+        .neq('id', currentUserId || '') // Exclude current user
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+
+      // Enrich with follow status
+      const enrichedUsers = await this.enrichWithFollowStatus(allUsers || [])
+      
+      // Filter out already-followed users if requested
+      if (excludeFollowing) {
+        return enrichedUsers.filter(user => !user.isFollowing)
+      }
+      
+      return enrichedUsers
+    } catch (error) {
+      console.error('Error fetching all users:', error)
+      throw error
+    }
+  }
+
   private static async enrichWithFollowStatus(
     users: any[]
   ): Promise<SearchUserResult[]> {
@@ -63,23 +96,24 @@ export class UserSearchService {
         return users.map(user => ({
           ...user,
           isFollowing: false,
-          isCurrentUser: false
+          isCurrentUser: false,
+          canFollow: true
         }))
       }
 
-      // Get relationships for current user
+      // Get all following relationships for current user (not just for these users)
       const { data: relationships } = await supabase
         .from('user_relationships')
         .select('following_id')
         .eq('follower_id', currentUserId)
-        .in('following_id', users.map(u => u.id))
 
       const followingIds = new Set(relationships?.map(r => r.following_id) || [])
 
       return users.map(user => ({
         ...user,
         isFollowing: followingIds.has(user.id),
-        isCurrentUser: user.id === currentUserId
+        isCurrentUser: user.id === currentUserId,
+        canFollow: !followingIds.has(user.id) && user.id !== currentUserId
       }))
     } catch (error) {
       console.error('Error enriching follow status:', error)
@@ -87,7 +121,8 @@ export class UserSearchService {
       return users.map(user => ({
         ...user,
         isFollowing: false,
-        isCurrentUser: false
+        isCurrentUser: false,
+        canFollow: user.id !== currentUserId
       }))
     }
   }

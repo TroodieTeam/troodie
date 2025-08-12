@@ -18,6 +18,7 @@ import {
   View
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 
 export default function VerifyScreen() {
   const router = useRouter();
@@ -80,6 +81,49 @@ export default function VerifyScreen() {
   const handleKeyPress = (key: string, index: number) => {
     if (key === 'Backspace' && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = async () => {
+    try {
+      const clipboardContent = await Clipboard.getStringAsync();
+      if (clipboardContent) {
+        processPastedCode(clipboardContent);
+      }
+    } catch (error) {
+      console.warn('Failed to read clipboard:', error);
+    }
+  };
+
+  const processPastedCode = (pastedText: string) => {
+    // Extract only numeric characters
+    const numericCode = pastedText.replace(/\D/g, '');
+    
+    if (numericCode.length === 0) return;
+    
+    // Limit to 6 digits maximum
+    const limitedCode = numericCode.slice(0, 6);
+    
+    // Update state
+    const newCode = [...code];
+    limitedCode.split('').forEach((digit, index) => {
+      if (index < 6) {
+        newCode[index] = digit;
+      }
+    });
+    
+    setCode(newCode);
+    
+    // Check if code is complete
+    const fullCode = newCode.join('');
+    setIsValid(fullCode.length === 6);
+    
+    // Focus appropriate input or auto-submit
+    if (fullCode.length === 6) {
+      handleVerify(fullCode);
+    } else {
+      const nextFocusIndex = Math.min(limitedCode.length, 5);
+      inputRefs.current[nextFocusIndex]?.focus();
     }
   };
 
@@ -206,12 +250,29 @@ export default function VerifyScreen() {
                   digit ? styles.codeInputFilled : null
                 ]}
                 value={digit}
-                onChangeText={(value) => handleCodeChange(value, index)}
+                onChangeText={(value) => {
+                  // Handle paste event for the first input
+                  if (index === 0 && value.length > 1) {
+                    processPastedCode(value);
+                  } else {
+                    handleCodeChange(value, index);
+                  }
+                }}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
+                onFocus={() => {
+                  // Only trigger paste check on first input to avoid multiple paste attempts
+                  if (index === 0 && code.every(d => !d)) {
+                    // Small delay to allow focus to complete
+                    setTimeout(() => {
+                      handlePaste();
+                    }, 100);
+                  }
+                }}
                 keyboardType="number-pad"
-                maxLength={1}
+                maxLength={index === 0 ? 6 : 1}
                 textAlign="center"
                 editable={!loading}
+                contextMenuHidden={false}
               />
             ))}
           </View>

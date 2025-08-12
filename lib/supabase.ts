@@ -1027,6 +1027,7 @@ export type Database = {
 export type SearchUserResult = Database['public']['Functions']['search_users']['Returns'][0] & {
   isFollowing?: boolean
   isCurrentUser?: boolean
+  canFollow?: boolean
 }
 
 // Community discovery types
