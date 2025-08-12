@@ -5,6 +5,8 @@ interface OnboardingContextType {
   state: OnboardingState;
   setPhoneNumber: (phone: string) => void;
   addQuizAnswer: (answer: QuizAnswer) => void;
+  getQuizAnswer: (questionId: string) => QuizAnswer | undefined;
+  clearQuizAnswer: (questionId: string) => void;
   setPersona: (persona: PersonaType, scores: PersonaScores) => void;
   addFavoriteSpot: (spot: FavoriteSpot) => void;
   removeFavoriteSpot: (category: string, name: string) => void;
@@ -33,6 +35,17 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     setState(prev => ({
       ...prev,
       quizAnswers: [...prev.quizAnswers.filter(a => a.questionId !== answer.questionId), answer]
+    }));
+  };
+
+  const getQuizAnswer = (questionId: string): QuizAnswer | undefined => {
+    return state.quizAnswers.find(answer => answer.questionId === questionId);
+  };
+
+  const clearQuizAnswer = (questionId: string) => {
+    setState(prev => ({
+      ...prev,
+      quizAnswers: prev.quizAnswers.filter(a => a.questionId !== questionId)
     }));
   };
 
@@ -83,6 +96,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         state,
         setPhoneNumber,
         addQuizAnswer,
+        getQuizAnswer,
+        clearQuizAnswer,
         setPersona,
         addFavoriteSpot,
         removeFavoriteSpot,

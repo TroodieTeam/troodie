@@ -27,6 +27,22 @@ export default function QuizScreen() {
 
   const currentQuestion = quizQuestions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / quizQuestions.length) * 100;
+  
+  // Get the current question's answer if it exists
+  const currentAnswer = state.quizAnswers.find(
+    answer => answer.questionId === currentQuestion.id
+  );
+
+  // Initialize question index based on existing answers
+  React.useEffect(() => {
+    // Find the last answered question or start from beginning
+    const answeredQuestions = state.quizAnswers.length;
+    if (answeredQuestions > 0 && answeredQuestions < quizQuestions.length) {
+      // Start from the next unanswered question
+      setCurrentQuestionIndex(answeredQuestions);
+      scrollViewRef.current?.scrollTo({ x: answeredQuestions * SCREEN_WIDTH, animated: false });
+    }
+  }, []);
 
   React.useEffect(() => {
     Animated.timing(progressAnim, {
@@ -38,7 +54,7 @@ export default function QuizScreen() {
   }, [currentQuestionIndex]);
 
   const handleAnswer = (optionId: string) => {
-    // Save the answer
+    // Save the answer (this will update existing answers)
     addQuizAnswer({
       questionId: currentQuestion.id,
       answerId: optionId,
@@ -46,8 +62,11 @@ export default function QuizScreen() {
 
     // Check if this was the last question
     if (currentQuestionIndex === quizQuestions.length - 1) {
-      // Calculate persona
-      const allAnswers = [...state.quizAnswers, { questionId: currentQuestion.id, answerId: optionId }];
+      // Calculate persona with updated answers
+      const allAnswers = [
+        ...state.quizAnswers.filter(a => a.questionId !== currentQuestion.id),
+        { questionId: currentQuestion.id, answerId: optionId }
+      ];
       const { persona, scores } = calculatePersona(allAnswers);
       setPersona(persona, scores);
       setCurrentStep('quiz');
@@ -62,10 +81,12 @@ export default function QuizScreen() {
 
   const handleBack = () => {
     if (currentQuestionIndex > 0) {
+      // Navigate to previous question within quiz
       const prevIndex = currentQuestionIndex - 1;
       setCurrentQuestionIndex(prevIndex);
       scrollViewRef.current?.scrollTo({ x: prevIndex * SCREEN_WIDTH, animated: true });
     } else {
+      // Navigate back to previous onboarding screen
       router.back();
     }
   };
@@ -75,6 +96,14 @@ export default function QuizScreen() {
       const nextIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(nextIndex);
       scrollViewRef.current?.scrollTo({ x: nextIndex * SCREEN_WIDTH, animated: true });
+    } else {
+      // If skipping the last question, still calculate persona with existing answers
+      if (state.quizAnswers.length >= quizQuestions.length / 2) {
+        const { persona, scores } = calculatePersona(state.quizAnswers);
+        setPersona(persona, scores);
+        setCurrentStep('quiz');
+        router.push('/onboarding/persona-result');
+      }
     }
   };
 
@@ -83,8 +112,15 @@ export default function QuizScreen() {
       <StatusBar style="dark" />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="#333" />
+        <TouchableOpacity 
+          onPress={handleBack} 
+          style={styles.backButton}
+        >
+          <Ionicons 
+            name="chevron-back" 
+            size={28} 
+            color="#333" 
+          />
         </TouchableOpacity>
         
         <View style={styles.progressContainer}>
@@ -124,20 +160,41 @@ export default function QuizScreen() {
             <Text style={styles.questionText}>{question.question}</Text>
             
             <View style={styles.optionsContainer}>
-              {question.options.map((option) => (
-                <TouchableOpacity
-                  key={option.id}
-                  style={styles.optionButton}
-                  onPress={() => handleAnswer(option.id)}
-                >
-                  <View style={styles.optionContent}>
-                    <View style={styles.optionLetter}>
-                      <Text style={styles.optionLetterText}>{option.id}</Text>
+              {question.options.map((option) => {
+                // Check if this option was previously selected
+                const isSelected = index === currentQuestionIndex && 
+                  currentAnswer?.answerId === option.id;
+                const wasAnswered = state.quizAnswers.find(
+                  a => a.questionId === question.id
+                )?.answerId === option.id;
+                
+                return (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.optionButton,
+                      (isSelected || (index === currentQuestionIndex && wasAnswered)) && styles.selectedOption
+                    ]}
+                    onPress={() => index === currentQuestionIndex && handleAnswer(option.id)}
+                  >
+                    <View style={styles.optionContent}>
+                      <View style={[
+                        styles.optionLetter,
+                        (isSelected || (index === currentQuestionIndex && wasAnswered)) && styles.selectedOptionLetter
+                      ]}>
+                        <Text style={[
+                          styles.optionLetterText,
+                          (isSelected || (index === currentQuestionIndex && wasAnswered)) && styles.selectedOptionLetterText
+                        ]}>{option.id}</Text>
+                      </View>
+                      <Text style={[
+                        styles.optionText,
+                        (isSelected || (index === currentQuestionIndex && wasAnswered)) && styles.selectedOptionText
+                      ]}>{option.text}</Text>
                     </View>
-                    <Text style={styles.optionText}>{option.text}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         ))}
@@ -248,5 +305,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     color: '#333',
     lineHeight: 22,
+  },
+  selectedOption: {
+    borderColor: '#FFAD27',
+    backgroundColor: '#FFF9F0',
+  },
+  selectedOptionLetter: {
+    backgroundColor: '#FFAD27',
+  },
+  selectedOptionLetterText: {
+    color: '#FFFFFF',
+  },
+  selectedOptionText: {
+    color: '#333',
+    fontFamily: 'Inter_600SemiBold',
   },
 });
