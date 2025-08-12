@@ -12,6 +12,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="signup" />
       <Stack.Screen name="verify" />
+      <Stack.Screen name="quiz-intro" />
       <Stack.Screen name="quiz" />
       <Stack.Screen name="persona-result" />
       <Stack.Screen name="favorite-spots" />

@@ -157,8 +157,8 @@ export default function VerifyScreen() {
         } else {
           // For signup, always continue with onboarding flow
           // Signup successful, starting onboarding
-          setCurrentStep('quiz');
-          router.push('/onboarding/quiz');
+          setCurrentStep('quiz-intro');
+          router.push('/onboarding/quiz-intro');
         }
       } else {
         Alert.alert('Verification Failed', result.error || 'Invalid verification code');

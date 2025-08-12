@@ -77,7 +77,7 @@ export interface FavoriteSpotCategoryInfo {
 }
 
 export interface OnboardingState {
-  currentStep: 'welcome' | 'signup' | 'verify' | 'quiz' | 'profile' | 'favorites' | 'complete';
+  currentStep: 'welcome' | 'signup' | 'verify' | 'quiz-intro' | 'quiz' | 'profile' | 'favorites' | 'complete';
   phoneNumber?: string;
   quizAnswers: QuizAnswer[];
   persona?: PersonaType;
@@ -86,4 +86,5 @@ export interface OnboardingState {
   profileImageUrl?: string;
   username?: string;
   bio?: string;
+  hasSeenQuizIntro?: boolean;
 }

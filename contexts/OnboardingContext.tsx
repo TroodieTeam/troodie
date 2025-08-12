@@ -21,7 +21,8 @@ const OnboardingContext = createContext<OnboardingContextType | undefined>(undef
 const initialState: OnboardingState = {
   currentStep: 'welcome',
   quizAnswers: [],
-  favoriteSpots: []
+  favoriteSpots: [],
+  hasSeenQuizIntro: false
 };
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
@@ -79,7 +80,12 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   };
 
   const setCurrentStep = (step: OnboardingState['currentStep']) => {
-    setState(prev => ({ ...prev, currentStep: step }));
+    setState(prev => ({ 
+      ...prev, 
+      currentStep: step,
+      // Mark intro as seen when moving to quiz
+      hasSeenQuizIntro: step === 'quiz' ? true : prev.hasSeenQuizIntro
+    }));
   };
 
   const updateState = (updates: Partial<OnboardingState>) => {
