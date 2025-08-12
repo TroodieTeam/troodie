@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -112,7 +113,12 @@ export default function UsernameScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={styles.title}>Choose your username</Text>
           <Text style={styles.subtitle}>
             This is how others will find and tag you
@@ -171,7 +177,7 @@ export default function UsernameScreen() {
             <Text style={styles.ruleText}>• Only lowercase letters, numbers, and underscores</Text>
             <Text style={styles.ruleText}>• Must be unique</Text>
           </View>
-        </View>
+        </ScrollView>
 
         <View style={styles.bottomContent}>
           <TouchableOpacity 
@@ -212,41 +218,44 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: 5,
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontFamily: 'Poppins_700Bold',
     color: '#333',
-    lineHeight: 36,
+    lineHeight: 32,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter_400Regular',
     color: '#666',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
   },
   inputContainer: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   inputPrefix: {
     position: 'absolute',
-    left: 20,
-    top: 18,
+    left: 16,
+    top: 14,
     fontSize: 18,
     fontFamily: 'Inter_500Medium',
     color: '#666',
@@ -258,7 +267,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingLeft: 44,
     paddingRight: 48,
-    paddingVertical: 16,
+    paddingVertical: 12,
     fontSize: 18,
     fontFamily: 'Inter_500Medium',
     color: '#333',
@@ -271,67 +280,72 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     position: 'absolute',
-    right: 20,
-    top: 20,
+    right: 16,
+    top: 16,
   },
   errorText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: '#F44336',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   successText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: '#4CAF50',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   rules: {
     backgroundColor: '#F8F8F8',
     borderRadius: 12,
-    padding: 20,
-    marginTop: 24,
+    padding: 16,
+    marginTop: 16,
   },
   rulesTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   ruleText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 3,
+    lineHeight: 18,
   },
   bottomContent: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 16,
+    paddingTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#FFFDF7',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   skipButton: {
-    padding: 12,
+    padding: 8,
   },
   skipText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter_500Medium',
     color: '#666',
   },
   continueButton: {
     backgroundColor: '#FFAD27',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
     borderRadius: 12,
-    minWidth: 120,
+    minWidth: 110,
     alignItems: 'center',
   },
   continueButtonDisabled: {
     backgroundColor: '#D3D3D3',
   },
   continueText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
