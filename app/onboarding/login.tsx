@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -108,6 +109,22 @@ export default function LoginScreen() {
     router.back();
   };
 
+  const handlePrivacyPolicy = async () => {
+    try {
+      await Linking.openURL('https://www.troodieapp.com/privacy-policy');
+    } catch (error) {
+      Alert.alert('Error', 'Cannot open Privacy Policy');
+    }
+  };
+
+  const handleTerms = async () => {
+    try {
+      await Linking.openURL('https://www.troodieapp.com/terms-of-service');
+    } catch (error) {
+      Alert.alert('Error', 'Cannot open Terms of Service');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -170,6 +187,16 @@ export default function LoginScreen() {
             <Text style={styles.signupText}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => router.push('/onboarding/signup')}>
               <Text style={styles.signupLink}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.legalContainer}>
+            <TouchableOpacity onPress={handlePrivacyPolicy}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalSeparator}> • </Text>
+            <TouchableOpacity onPress={handleTerms}>
+              <Text style={styles.legalLink}>Terms of Service</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -272,5 +299,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     color: '#5B4CCC',
     textDecorationLine: 'underline',
+  },
+  legalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingBottom: 8,
+  },
+  legalLink: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: {
+    fontSize: 12,
+    color: '#999',
+    marginHorizontal: 4,
   },
 });

@@ -3,6 +3,7 @@ import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import FollowButton from '@/components/FollowButton';
 import { CommunityTab } from '@/components/profile/CommunityTab';
+import ReportModal from '@/components/modals/ReportModal';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFollowState } from '@/hooks/useFollowState';
@@ -10,6 +11,7 @@ import { personas } from '@/data/personas';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
 import { communityService } from '@/services/communityService';
+import { moderationService } from '@/services/moderationService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
 import { restaurantService } from '@/services/restaurantService';
@@ -28,7 +30,9 @@ import {
     MoreVertical,
     Share2,
     User,
-    Users
+    Users,
+    Shield,
+    Flag
 } from 'lucide-react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import {
@@ -74,6 +78,8 @@ export default function UserDetailScreen() {
   const [loadingCommunities, setLoadingCommunities] = useState(true);
   const [refreshingCommunities, setRefreshingCommunities] = useState(false);
   const [communityStats, setCommunityStats] = useState({ joined_count: 0, created_count: 0, admin_count: 0, moderator_count: 0 });
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const tabScrollRef = useRef<ScrollView>(null);
   
   const isOwnProfile = currentUser?.id === id;
@@ -110,6 +116,7 @@ export default function UserDetailScreen() {
     if (id) {
       loadProfile();
       loadAchievements();
+      checkBlockedStatus();
       loadBoards();
       loadPosts();
       loadQuickSaves();
@@ -291,20 +298,66 @@ export default function UserDetailScreen() {
     });
   };
 
-  const handleReportUser = () => {
-    Alert.alert('Report User', 'Report functionality coming soon!');
+  const checkBlockedStatus = async () => {
+    if (!id || !currentUser?.id || id === currentUser.id) return;
+    
+    try {
+      const blocked = await moderationService.isUserBlocked(id);
+      setIsBlocked(blocked);
+    } catch (error) {
+      console.error('Error checking blocked status:', error);
+    }
   };
 
-  const handleBlockUser = () => {
+  const handleReportUser = () => {
+    setShowReportModal(true);
+  };
+
+  const handleBlockUser = async () => {
+    if (!id || !profile) return;
+
+    const action = isBlocked ? 'unblock' : 'block';
+    const actionText = isBlocked ? 'Unblock' : 'Block';
+    
     Alert.alert(
-      'Block User',
-      'Are you sure you want to block this user?',
+      `${actionText} User`,
+      `Are you sure you want to ${action} ${profile.name || profile.username || 'this user'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Block', style: 'destructive', onPress: () => {
-          // TODO: Implement block functionality
-          Alert.alert('User Blocked', 'This user has been blocked.');
-        }}
+        { 
+          text: actionText, 
+          style: isBlocked ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              let success;
+              if (isBlocked) {
+                success = await moderationService.unblockUser(id);
+              } else {
+                success = await moderationService.blockUser(id);
+              }
+              
+              if (success) {
+                setIsBlocked(!isBlocked);
+                
+                if (!isBlocked) {
+                  // If blocking, navigate back
+                  Alert.alert(
+                    'User Blocked',
+                    `${profile.name || profile.username || 'User'} has been blocked. Their content will no longer appear in your feeds.`,
+                    [{ text: 'OK', onPress: () => router.back() }]
+                  );
+                } else {
+                  Alert.alert(
+                    'User Unblocked',
+                    `${profile.name || profile.username || 'User'} has been unblocked.`
+                  );
+                }
+              }
+            } catch (error) {
+              console.error(`Error ${action}ing user:`, error);
+            }
+          }
+        }
       ]
     );
   };
@@ -351,12 +404,16 @@ export default function UserDetailScreen() {
             </MenuOption>
             <MenuOption onSelect={handleReportUser}>
               <View style={styles.menuItem}>
-                <Text style={styles.menuText}>Report User</Text>
+                <Flag size={16} color={designTokens.colors.error} />
+                <Text style={[styles.menuText, { color: designTokens.colors.error }]}>Report User</Text>
               </View>
             </MenuOption>
             <MenuOption onSelect={handleBlockUser}>
               <View style={styles.menuItem}>
-                <Text style={[styles.menuText, { color: designTokens.colors.error }]}>Block User</Text>
+                <Shield size={16} color={isBlocked ? designTokens.colors.success : designTokens.colors.error} />
+                <Text style={[styles.menuText, { color: isBlocked ? designTokens.colors.success : designTokens.colors.error }]}>
+                  {isBlocked ? 'Unblock User' : 'Block User'}
+                </Text>
               </View>
             </MenuOption>
           </MenuOptions>
@@ -691,6 +748,17 @@ export default function UserDetailScreen() {
             />
           )}
         </View>
+        
+        {/* Report Modal */}
+        {id && (
+          <ReportModal
+            visible={showReportModal}
+            onClose={() => setShowReportModal(false)}
+            targetType="user"
+            targetId={id}
+            targetName={profile?.name || profile?.username || 'User'}
+          />
+        )}
       </SafeAreaView>
     </MenuProvider>
   );

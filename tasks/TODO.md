@@ -52,15 +52,56 @@
 
 ---
 
-## Overall Progress Summary
+## User Experience Enhancements (Epic 11)
 
-**Total Tasks:** 6  
-**Completed:** 6 (100 %)  
-**In Progress:** 0 (0 %)  
-**Not Started:** 0 (0 %)  
+**Focus**: Improve critical user flows and reduce friction in key app interactions.
 
-**Total Estimated Duration:** 6 days (≈ 1 week)
+| # | Task | Status | Priority | Estimate | Assignee | Notes |
+|---|------|--------|----------|----------|----------|-------|
+| 11.1 | Implement **Email Verification Code Pasting** functionality | 🟢 | High | 1 day | – | ✅ Completed - Allow users to paste 6-digit codes directly into verification inputs |
+| 11.2 | Enhance **Find Friends Discovery** with complete user listing | 🟢 | High | 1.5 days | – | ✅ Completed - Show ALL platform users, exclude already-followed, improve discovery |
+| 11.3 | Implement **Onboarding Back Navigation** with answer preservation | 🟢 | Medium | 1 day | – | ✅ Completed - Allow users to navigate back between questions while preserving answers |
+| 11.4 | Add **Onboarding Quiz Intro Screen** explaining personalization benefits | 🟢 | Medium | 0.75 day | – | ✅ Completed - Explain quiz purpose and benefits before starting questions |
+| 11.5 | Fix **Onboarding Navigation and Text Clarity** with zoom resistance | 🔴 | High | 1.25 days | – | Resolve navigation errors, improve text clarity, prevent zoom issues |
+
+**Epic Status:** Nearly Complete  
+**Epic Progress:** 4 / 5 tasks completed (80 %)  
+**Estimated Duration:** 5.5 days
 
 ---
 
-_Last updated: February 7, 2025_
+## App Store Readiness & Compliance (Epic 12)
+
+**Focus**: Ensure app meets all App Store requirements and compliance standards.
+
+| # | Task | Status | Priority | Estimate | Assignee | Notes |
+|---|------|--------|----------|----------|----------|-------|
+| 12.1 | Implement **In-App Account Deletion** | 🔄 | Critical | 1 day | – | ✅ Implemented - Supabase Edge Function, SettingsModal integration - Needs Review |
+| 12.2 | Add **UGC Reporting and Blocking** functionality | 🔄 | Critical | 1.5 days | – | ✅ Implemented - Reports/blocking system, moderation service - Needs Review |
+| 12.3 | Add **Legal Links** (Privacy Policy & Terms) | 🟢 | High | 0.5 day | – | ✅ Completed - Added to Settings, login, and signup screens |
+| 12.4 | Add **Google Places Attribution** | 🔴 | High | 0.5 day | – | Required "Powered by Google" attribution on restaurant cards |
+| 12.5 | **Unify Expo Config** and remove unused permissions | 🟢 | Medium | 0.5 day | – | ✅ Completed - Migrated to app.config.js, removed location permissions |
+| 12.6 | Review and update **Permission Usage Strings** | 🟢 | Medium | 0.5 day | – | ✅ Completed - Updated camera and photo library descriptions |
+| 12.7 | Add **Support Entry Point** with contact | 🟢 | Medium | 0.5 day | – | ✅ Completed - Help & Support with team@troodieapp.com |
+| 12.8 | Implement **Contextual Notification Permission** | 🟢 | Medium | 0.5 day | – | ✅ Completed - No auto-prompt, only from Settings toggle |
+| 12.9 | Remove **Beta Label** from version string | 🟢 | Low | 0.1 day | – | ✅ Completed - Shows clean version, (Dev) only in __DEV__ |
+| 12.10 | Document **Privacy Nutrition Labels** | 🟢 | Medium | 0.5 day | – | ✅ Completed - Created comprehensive documentation in docs/PRIVACY_NUTRITION_LABELS.md |
+
+**Epic Status:** Nearly Complete  
+**Epic Progress:** 8 / 10 tasks completed, 2 need review (80 %)  
+**Estimated Duration:** 6.1 days
+
+---
+
+## Overall Progress Summary
+
+**Total Tasks:** 21  
+**Completed:** 17 (81 %)  
+**In Review:** 2 (9.5 %)  
+**Not Started:** 2 (9.5 %)  
+
+**Total Estimated Duration:** 17.6 days (≈ 3.5 weeks)
+
+---
+
+_Last updated: January 15, 2025_

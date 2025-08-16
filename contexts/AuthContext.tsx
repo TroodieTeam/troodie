@@ -124,6 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Verifying OTP
       const result = await authService.verifyOtp(email, token)
       
+      // No special handling needed - password auth returns a real session
+      
       if (result.success && result.session) {
         // OTP verified successfully
         

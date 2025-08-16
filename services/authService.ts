@@ -20,6 +20,15 @@ export const authService = {
    */
   async signUpWithEmail(email: string): Promise<OtpResponse> {
     try {
+      // Special case for App Review account
+      if (email.toLowerCase() === 'review@troodieapp.com') {
+        console.log('[AuthService] App Review account detected in signup, OTP will be bypassed with code 000000')
+        // Don't call Supabase to avoid signup restrictions
+        return {
+          success: true,
+          messageId: null,
+        }
+      }
       
       // Use signInWithOtp which will create the user automatically
       // Don't check users table first as it might not have the profile yet
@@ -78,6 +87,15 @@ export const authService = {
    */
   async signInWithEmail(email: string): Promise<OtpResponse> {
     try {
+      // Special case for App Review account
+      if (email.toLowerCase() === 'review@troodieapp.com') {
+        console.log('[AuthService] App Review account detected, OTP will be bypassed with code 000000')
+        // Do not call Supabase in review flow to avoid signup restrictions
+        return {
+          success: true,
+          messageId: null,
+        }
+      }
       
       // Use signInWithOtp with shouldCreateUser: false for login
       const { data, error } = await supabase.auth.signInWithOtp({
@@ -98,6 +116,14 @@ export const authService = {
           return {
             success: false,
             error: 'No account found with this email. Please sign up first.',
+          }
+        }
+
+        // Some Supabase configurations return this when the user doesn't exist and signups are disabled
+        if (error.message?.includes('Signups not allowed')) {
+          return {
+            success: false,
+            error: 'No account found with this email.',
           }
         }
         
@@ -125,6 +151,60 @@ export const authService = {
    */
   async verifyOtp(email: string, token: string): Promise<AuthResponse> {
     try {
+      // Special handling for App Store Review account with password auth
+      if (email.toLowerCase() === 'review@troodieapp.com' && token === '000000') {
+        console.log('[AuthService] App Review account detected, using password authentication')
+        
+        try {
+          // Use password authentication for the review account
+          // Password: ReviewPass000000
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: 'review@troodieapp.com',
+            password: 'ReviewPass000000'
+          })
+          
+          if (error) {
+            console.error('[AuthService] Password auth error:', error)
+            
+            // If password auth fails, try setting it up first
+            if (error.message?.includes('Invalid login credentials')) {
+              return {
+                success: false,
+                error: 'Review account not configured. Please run setup-review-password function.',
+              }
+            }
+            
+            return {
+              success: false,
+              error: this.getErrorMessage(error),
+            }
+          }
+          
+          if (!data.session) {
+            console.error('[AuthService] No session returned from password auth')
+            return {
+              success: false,
+              error: 'Authentication failed. No session created.',
+            }
+          }
+          
+          console.log('[AuthService] Review account authenticated successfully with password')
+          
+          // Return the real session from password auth
+          return {
+            success: true,
+            session: data.session,
+          }
+        } catch (err) {
+          console.error('[AuthService] Error in review account password auth:', err)
+          return {
+            success: false,
+            error: 'Review account authentication failed',
+          }
+        }
+      }
+      
+      // Normal OTP verification flow
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token,
@@ -251,6 +331,13 @@ export const authService = {
    */
   async resendOtp(email: string, type: 'signup' | 'login' = 'login'): Promise<OtpResponse> {
     try {
+      // Short-circuit for App Review account to avoid calling Supabase
+      if (email.toLowerCase() === 'review@troodieapp.com') {
+        return {
+          success: true,
+          messageId: null,
+        }
+      }
       
       const { data, error } = await supabase.auth.signInWithOtp({
         email,

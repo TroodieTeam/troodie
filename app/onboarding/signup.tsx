@@ -6,16 +6,17 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 export default function SignupScreen() {
@@ -97,6 +98,24 @@ export default function SignupScreen() {
     router.back();
   };
 
+  const handlePrivacyPolicy = async () => {
+    const url = 'https://www.troodieapp.com/privacy-policy';
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert('Error', 'Cannot open Privacy Policy');
+    }
+  };
+
+  const handleTerms = async () => {
+    const url = 'https://www.troodieapp.com/terms-of-service';
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert('Error', 'Cannot open Terms of Service');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -127,9 +146,18 @@ export default function SignupScreen() {
             autoFocus
           />
 
-          <Text style={styles.disclaimer}>
-            By tapping next you&apos;re creating an account and you agree to the Buyer Account terms and Supplier Terms and acknowledge Troodie&apos;s Privacy Policy
-          </Text>
+          <View style={styles.disclaimerContainer}>
+            <Text style={styles.disclaimer}>
+              By tapping next you're creating an account and you agree to our{' '}
+              <Text style={styles.disclaimerLink} onPress={handleTerms}>
+                Terms of Service
+              </Text>
+              {' '}and acknowledge Troodie's{' '}
+              <Text style={styles.disclaimerLink} onPress={handlePrivacyPolicy}>
+                Privacy Policy
+              </Text>
+            </Text>
+          </View>
 
           {rateLimitCountdown > 0 && (
             <View style={styles.rateLimitContainer}>
@@ -199,12 +227,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: '#E5E5E5',
   },
+  disclaimerContainer: {
+    marginTop: 20,
+  },
   disclaimer: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
     color: '#666',
-    marginTop: 20,
     lineHeight: 18,
+  },
+  disclaimerLink: {
+    color: '#FFAD27',
+    fontFamily: 'Inter_500Medium',
+    textDecorationLine: 'underline',
   },
   bottomContent: {
     paddingHorizontal: 24,

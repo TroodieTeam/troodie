@@ -10,38 +10,38 @@ import { FriendVisit, PowerUserReview, RecentActivity, socialActivityService } f
 import { ToastService } from '@/services/toastService';
 import { getErrorType } from '@/types/errors';
 import { BackgroundTaskManager } from '@/utils/backgroundTasks';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ArrowLeft,
-  Award,
-  Bookmark,
-  Camera,
-  CheckCircle,
-  Clock,
-  ExternalLink,
-  Eye,
-  Globe,
-  MapPin,
-  MessageCircle,
-  Phone,
-  Share,
-  Star,
-  TrendingUp,
-  Users
+    ArrowLeft,
+    Award,
+    Bookmark,
+    Camera,
+    CheckCircle,
+    Clock,
+    ExternalLink,
+    Eye,
+    Globe,
+    MapPin,
+    MessageCircle,
+    Phone,
+    Share,
+    Star,
+    TrendingUp,
+    Users
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  Vibration,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Linking,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -284,8 +284,8 @@ export default function RestaurantDetailScreen() {
       ToastService.showError('Please sign in to save restaurants');
       return;
     }
-    
-    Vibration.vibrate(20);
+
+    Haptics.selectionAsync();
     setShowBoardModal(true);
   }, [user]);
 

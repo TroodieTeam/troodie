@@ -35,8 +35,25 @@ export const usePushNotifications = () => {
     }
   }, [user?.id]);
 
+  // Don't auto-initialize - wait for user action
+  // This prevents the permission prompt from appearing on first launch
   useEffect(() => {
-    initializePushNotifications();
+    // Only check status, don't request permissions
+    const checkStatus = async () => {
+      try {
+        const status = await pushNotificationService.getPermissionsStatus();
+        setPermissionStatus(status);
+        
+        // If already granted, we can initialize
+        if (status === 'granted') {
+          await initializePushNotifications();
+        }
+      } catch (error) {
+        console.error('Error checking notification status:', error);
+      }
+    };
+    
+    checkStatus();
   }, [initializePushNotifications]);
 
   const requestPermissions = async () => {

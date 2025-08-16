@@ -1,12 +1,16 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { pushNotificationService } from '@/services/pushNotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import {
     Bell,
     ChevronRight,
+    FileText,
     HelpCircle,
+    Lock,
     LogOut,
-    Moon,
     Shield,
     Star,
     Trash2,
@@ -15,8 +19,11 @@ import {
 } from 'lucide-react-native';
 import React from 'react';
 import {
+    ActivityIndicator,
     Alert,
+    Linking,
     Modal,
+    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -56,8 +63,73 @@ type SettingItem = SettingItemWithArrow | SettingItemWithElement | DangerSetting
 export default function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const { signOut, user } = useAuth();
   const router = useRouter();
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
+  const [checkingNotifications, setCheckingNotifications] = React.useState(true);
+
+  // Check notification permission status on mount
+  React.useEffect(() => {
+    const checkNotificationStatus = async () => {
+      try {
+        const status = await pushNotificationService.getPermissionsStatus();
+        setNotificationsEnabled(status === 'granted');
+      } catch (error) {
+        console.error('Error checking notification status:', error);
+      } finally {
+        setCheckingNotifications(false);
+      }
+    };
+
+    if (visible) {
+      checkNotificationStatus();
+    }
+  }, [visible]);
+
+  const handleNotificationToggle = async (value: boolean) => {
+    if (value) {
+      // Request permission when enabling
+      try {
+        const status = await pushNotificationService.requestPermissions();
+        
+        if (status === 'granted') {
+          setNotificationsEnabled(true);
+          // Initialize notifications after permission granted
+          await pushNotificationService.initialize();
+          
+          // Register device if user is logged in
+          if (user?.id) {
+            const token = await pushNotificationService.getPushToken();
+            if (token) {
+              const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+              await pushNotificationService.registerDevice(user.id, token, platform as any);
+            }
+          }
+          
+          Alert.alert('Notifications Enabled', 'You will now receive notifications from Troodie');
+        } else {
+          setNotificationsEnabled(false);
+          Alert.alert(
+            'Permission Required',
+            'Please enable notifications in your device settings to receive updates from Troodie',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error requesting notification permissions:', error);
+        setNotificationsEnabled(false);
+      }
+    } else {
+      // Disable notifications
+      setNotificationsEnabled(false);
+      Alert.alert(
+        'Notifications Disabled',
+        'You can re-enable notifications anytime from settings'
+      );
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -108,15 +180,14 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
           onPress: () => {
             Alert.alert(
               'Final Confirmation',
-              'Type DELETE to confirm account deletion.',
+              'Are you absolutely sure? This will permanently delete your account and all associated data. This action cannot be reversed.',
               [
                 { text: 'Cancel', style: 'cancel' },
                 { 
-                  text: 'I understand, delete my account',
+                  text: 'Yes, permanently delete my account',
                   style: 'destructive',
-                  onPress: () => {
-                    // TODO: Implement account deletion
-                    Alert.alert('Feature Coming Soon', 'Account deletion will be available in a future update.');
+                  onPress: async () => {
+                    await performAccountDeletion();
                   }
                 }
               ]
@@ -127,6 +198,132 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
     );
   };
 
+  const handlePrivacyPolicy = async () => {
+    const url = 'https://www.troodieapp.com/privacy-policy';
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open Privacy Policy link');
+      }
+    } catch (error) {
+      console.error('Error opening privacy policy:', error);
+      Alert.alert('Error', 'Failed to open Privacy Policy');
+    }
+  };
+
+  const handleTermsOfService = async () => {
+    const url = 'https://www.troodieapp.com/terms-of-service';
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open Terms of Service link');
+      }
+    } catch (error) {
+      console.error('Error opening terms of service:', error);
+      Alert.alert('Error', 'Failed to open Terms of Service');
+    }
+  };
+
+  const handleHelpSupport = async () => {
+    // Gather device information for support
+    const appVersion = Constants.expoConfig?.version || '1.0.0';
+    const platform = Platform.OS;
+    const osVersion = Platform.Version as string | number;
+
+    const bodyPlain = [
+      'Hi Troodie Team,',
+      '',
+      'I need help with:',
+      '',
+      '[Please describe your issue here]',
+      '',
+      '----',
+      `App Version: ${appVersion}`,
+      `Platform: ${platform}`,
+      `OS Version: ${osVersion}`,
+      `User: ${user?.email || 'Not logged in'}`,
+    ].join('\n');
+
+    const subject = 'Help & Support Request';
+    const mailtoUrl = `mailto:team@troodieapp.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyPlain)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        Alert.alert('Contact Support', 'Please email us at: team@troodieapp.com');
+      }
+    } catch (error) {
+      console.error('Error opening email client:', error);
+      Alert.alert('Contact Support', 'Please email us at: team@troodieapp.com');
+    }
+  };
+
+  const performAccountDeletion = async () => {
+    try {
+      setIsDeletingAccount(true);
+
+      // Get the current session to retrieve the auth token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('Unable to authenticate. Please sign in again and try.');
+      }
+
+      // Call the delete-account Edge Function
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Clear all local storage data
+      await AsyncStorage.multiRemove([
+        'hasCompletedOnboarding',
+        'userPreferences',
+        'cachedData',
+        'supabase.auth.token'
+      ]);
+
+      // Close the modal
+      onClose();
+
+      // Show success message
+      Alert.alert(
+        'Account Deleted',
+        'Your account and all associated data have been permanently deleted.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to onboarding splash screen
+              router.replace('/onboarding/splash');
+            }
+          }
+        ]
+      );
+
+    } catch (error: any) {
+      console.error('Account deletion error:', error);
+      Alert.alert(
+        'Deletion Failed',
+        error.message || 'Failed to delete account. Please try again or contact support.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   const settingSections: Array<{title: string; items: SettingItem[]}> = [
     {
       title: 'Account',
@@ -134,13 +331,14 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
         {
           icon: Bell,
           label: 'Notifications',
-          onPress: () => setNotificationsEnabled(!notificationsEnabled),
+          onPress: () => handleNotificationToggle(!notificationsEnabled),
           rightElement: (
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={handleNotificationToggle}
               trackColor={{ false: '#E5E5E5', true: '#FFAD27' }}
               thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
+              disabled={checkingNotifications}
             />
           ),
         } as SettingItemWithElement,
@@ -156,33 +354,12 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
       ],
     },
     {
-      title: 'Preferences',
-      items: [
-        {
-          icon: Moon,
-          label: 'Dark Mode',
-          onPress: () => setDarkModeEnabled(!darkModeEnabled),
-          rightElement: (
-            <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
-              trackColor={{ false: '#E5E5E5', true: '#FFAD27' }}
-              thumbColor={darkModeEnabled ? '#FFFFFF' : '#FFFFFF'}
-            />
-          ),
-        } as SettingItemWithElement,
-      ],
-    },
-    {
       title: 'Support',
       items: [
         {
           icon: HelpCircle,
           label: 'Help & Support',
-          onPress: () => {
-            onClose();
-            Alert.alert('Coming Soon', 'Help center will be available soon!');
-          },
+          onPress: handleHelpSupport,
           showArrow: true,
         } as SettingItemWithArrow,
         {
@@ -191,6 +368,23 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
           onPress: () => {
             Alert.alert('Thank You!', 'App Store rating will be available when the app is published.');
           },
+          showArrow: true,
+        } as SettingItemWithArrow,
+      ],
+    },
+    {
+      title: 'Legal',
+      items: [
+        {
+          icon: Lock,
+          label: 'Privacy Policy',
+          onPress: handlePrivacyPolicy,
+          showArrow: true,
+        } as SettingItemWithArrow,
+        {
+          icon: FileText,
+          label: 'Terms of Service',
+          onPress: handleTermsOfService,
           showArrow: true,
         } as SettingItemWithArrow,
       ],
@@ -287,12 +481,26 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
 
           {/* App Version */}
           <View style={styles.versionSection}>
-            <Text style={styles.versionText}>Version 1.0.0 (Beta)</Text>
+            <Text style={styles.versionText}>
+              Version {Constants.expoConfig?.version || '1.0.0'}
+              {__DEV__ ? ' (Dev)' : ''}
+            </Text>
             <Text style={styles.versionSubtext}>
               Built with ❤️ for food lovers
             </Text>
           </View>
         </ScrollView>
+
+        {/* Loading overlay during account deletion */}
+        {isDeletingAccount && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FFAD27" />
+              <Text style={styles.loadingText}>Deleting your account...</Text>
+              <Text style={styles.loadingSubtext}>This may take a few moments</Text>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -438,5 +646,40 @@ const styles = StyleSheet.create({
   versionSubtext: {
     fontSize: 12,
     color: '#999',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
   },
 }); 

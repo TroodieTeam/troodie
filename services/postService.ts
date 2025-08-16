@@ -12,6 +12,7 @@ import {
 } from '@/types/post';
 import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
 import { restaurantImageSyncService } from './restaurantImageSyncService';
+import { moderationService } from './moderationService';
 
 class PostService {
   /**
@@ -269,7 +270,15 @@ class PostService {
   /**
    * Get posts for a specific user
    */
-  async getUserPosts(userId: string, limit: number = 20, offset: number = 0): Promise<PostWithUser[]> {
+  async getUserPosts(userId: string, limit: number = 20, offset: number = 0, excludeBlocked: boolean = false): Promise<PostWithUser[]> {
+    // Check if the user is blocked if excludeBlocked is true
+    if (excludeBlocked) {
+      const isBlocked = await moderationService.isUserBlocked(userId);
+      if (isBlocked) {
+        return [];
+      }
+    }
+
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select('*')
@@ -334,10 +343,18 @@ class PostService {
    * Get posts for explore feed with filters
    */
   async getExplorePosts(filters: ExploreFilters = {}): Promise<PostWithUser[]> {
+    // Get blocked users list first
+    const blockedUserIds = await moderationService.getBlockedUsers();
+    
     let query = supabase
       .from('posts')
       .select('*')
       .eq('privacy', 'public');
+
+    // Exclude posts from blocked users
+    if (blockedUserIds.length > 0) {
+      query = query.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
+    }
 
     // Apply filters
     if (filters.filter === 'Trending') {

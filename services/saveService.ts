@@ -1,7 +1,7 @@
+import * as Haptics from 'expo-haptics';
 import { boardService } from './boardService';
 import { ToastService } from './toastService';
-import { Board } from '@/types/board';
-import { Vibration } from 'react-native';
+// import { Vibration } from 'react-native';
 
 export interface SaveState {
   isSaved: boolean;
@@ -71,8 +71,8 @@ class SaveService {
       return this.pendingSaves.get(key);
     }
 
-    // Haptic feedback
-    Vibration.vibrate(10);
+    // Subtle haptic feedback on normal save tap
+    Haptics.selectionAsync();
 
     const savePromise = this.performToggleSave(options);
     this.pendingSaves.set(key, savePromise);

@@ -840,6 +840,70 @@ export type Database = {
           added_at?: string
         }
       }
+      reports: {
+        Row: {
+          id: string
+          reporter_id: string
+          target_type: 'post' | 'comment' | 'user' | 'board' | 'community'
+          target_id: string
+          reason: 'spam' | 'harassment' | 'hate_speech' | 'violence' | 'sexual_content' | 'false_information' | 'intellectual_property' | 'self_harm' | 'illegal_activity' | 'other'
+          description: string | null
+          status: 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+          reviewed_by: string | null
+          reviewed_at: string | null
+          resolution_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          reporter_id: string
+          target_type: 'post' | 'comment' | 'user' | 'board' | 'community'
+          target_id: string
+          reason: 'spam' | 'harassment' | 'hate_speech' | 'violence' | 'sexual_content' | 'false_information' | 'intellectual_property' | 'self_harm' | 'illegal_activity' | 'other'
+          description?: string | null
+          status?: 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          resolution_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          reporter_id?: string
+          target_type?: 'post' | 'comment' | 'user' | 'board' | 'community'
+          target_id?: string
+          reason?: 'spam' | 'harassment' | 'hate_speech' | 'violence' | 'sexual_content' | 'false_information' | 'intellectual_property' | 'self_harm' | 'illegal_activity' | 'other'
+          description?: string | null
+          status?: 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          resolution_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      blocked_users: {
+        Row: {
+          blocker_id: string
+          blocked_id: string
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          blocker_id: string
+          blocked_id: string
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          blocker_id?: string
+          blocked_id?: string
+          reason?: string | null
+          created_at?: string
+        }
+      }
       restaurant_images: {
         Row: {
           id: string

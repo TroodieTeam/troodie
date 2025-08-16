@@ -4,17 +4,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { saveService } from '@/services/saveService';
 import { ToastService } from '@/services/toastService';
 import { RestaurantInfo } from '@/types/core';
+import * as Haptics from 'expo-haptics';
 import { Bookmark, MapPin, Star } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  Vibration,
-  View
+    ActivityIndicator,
+    Animated,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { AnimatedSaveButton } from '../AnimatedSaveButton';
 import { BoardSelectionModal } from '../BoardSelectionModal';
@@ -190,7 +190,7 @@ export function RestaurantCardWithSave({
       return;
     }
 
-    Vibration.vibrate(20);
+    Haptics.selectionAsync();
     setShowBoardModal(true);
   }, [user]);
 
