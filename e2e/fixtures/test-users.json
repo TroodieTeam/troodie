@@ -1,0 +1,84 @@
+{
+  "testUsers": [
+    {
+      "email": "test@troodie.com",
+      "password": "TestPassword123!",
+      "username": "testuser",
+      "name": "Test User",
+      "bio": "E2E Test Account",
+      "persona": "foodie"
+    },
+    {
+      "email": "test2@troodie.com",
+      "password": "TestPassword123!",
+      "username": "testfriend",
+      "name": "Test Friend",
+      "bio": "Friend for E2E Testing",
+      "persona": "explorer"
+    },
+    {
+      "email": "admin@troodie.com",
+      "password": "AdminPassword123!",
+      "username": "testadmin",
+      "name": "Test Admin",
+      "bio": "Admin Test Account",
+      "persona": "local"
+    }
+  ],
+  "testRestaurants": [
+    {
+      "id": "test-rest-1",
+      "name": "Test Pizza Palace",
+      "cuisine": ["Italian", "Pizza"],
+      "price": 2,
+      "rating": 4.5,
+      "address": "123 Test Street",
+      "city": "Test City",
+      "photos": ["https://images.unsplash.com/photo-1565299624946-b28f40a0ae38"]
+    },
+    {
+      "id": "test-rest-2",
+      "name": "Test Sushi Bar",
+      "cuisine": ["Japanese", "Sushi"],
+      "price": 3,
+      "rating": 4.8,
+      "address": "456 Test Avenue",
+      "city": "Test City",
+      "photos": ["https://images.unsplash.com/photo-1579584425555-c3ce17fd4351"]
+    },
+    {
+      "id": "test-rest-3",
+      "name": "Test Burger Joint",
+      "cuisine": ["American", "Burgers"],
+      "price": 2,
+      "rating": 4.3,
+      "address": "789 Test Boulevard",
+      "city": "Test City",
+      "photos": ["https://images.unsplash.com/photo-1568901346375-23c9450c58cd"]
+    }
+  ],
+  "testPosts": [
+    {
+      "caption": "Amazing pizza! Best crust in town.",
+      "rating": 5,
+      "restaurantId": "test-rest-1"
+    },
+    {
+      "caption": "Fresh sushi, great atmosphere",
+      "rating": 4,
+      "restaurantId": "test-rest-2"
+    }
+  ],
+  "testBoards": [
+    {
+      "name": "Date Night Spots",
+      "description": "Perfect restaurants for dates",
+      "isPrivate": false
+    },
+    {
+      "name": "Quick Lunch",
+      "description": "Fast and delicious lunch options",
+      "isPrivate": false
+    }
+  ]
+}

@@ -401,25 +401,41 @@ export const restaurantService = {
     }
   },
 
-  async getTrendingRestaurants(city?: string) {
+  async getTopRatedRestaurants(city?: string) {
     try {
-      return await withRetry(async () => {
-        const { data, error } = await supabase
-          .rpc('get_trending_restaurants', {
-            p_city: city,
-            p_limit: 10
-          })
-        
-        if (error) {
-          throw transformError(error)
-        }
-        return data || []
-      })
+      // Simple query: Get 10 highest rated restaurants
+      let query = supabase
+        .from('restaurants')
+        .select('*')
+        .not('google_rating', 'is', null)
+        .order('google_rating', { ascending: false })
+        .limit(10)
+      
+      // Filter by exact city match if provided
+      if (city && city !== 'All') {
+        query = query.eq('city', city)
+      }
+      
+      const { data, error } = await query
+      
+      if (error) {
+        throw error
+      }
+      
+      return data || []
     } catch (error) {
-      console.error('Error fetching trending restaurants:', error)
-      throw error
+      if (__DEV__) {
+        console.error('Error fetching top rated restaurants:', error)
+      }
+      return []
     }
   },
+  
+  // Keep old function for backwards compatibility but redirect to new one
+  async getTrendingRestaurants(city?: string) {
+    return this.getTopRatedRestaurants(city)
+  },
+
 
   async getPersonaRecommendations(userId: string) {
     const { data, error } = await supabase

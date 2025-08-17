@@ -14,15 +14,17 @@ interface RestaurantCardProps {
   };
   compact?: boolean;
   showRating?: boolean;
+  testID?: string;
 }
 
-export function RestaurantCard({ restaurant, onPress, stats, compact = false, showRating = false }: RestaurantCardProps) {
+export function RestaurantCard({ restaurant, onPress, stats, compact = false, showRating = false, testID }: RestaurantCardProps) {
   // Always use compact horizontal layout for better space efficiency
   return (
     <TouchableOpacity 
       style={styles.container} 
       onPress={onPress}
       activeOpacity={0.7}
+      testID={testID}
     >
       <Image 
         source={{ uri: restaurant.image || DEFAULT_IMAGES.restaurant }} 

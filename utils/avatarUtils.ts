@@ -2,6 +2,8 @@
  * Utility functions for handling avatar URLs
  */
 
+import { DEFAULT_IMAGES } from '@/constants/images';
+
 const SUPABASE_URL = 'https://cacrjcekanesymdzpjtt.supabase.co';
 
 /**
@@ -45,4 +47,51 @@ export function getAvatarUrl(profile: { avatar_url?: string | null; profile_imag
   // Prefer avatar_url over profile_image_url
   const url = profile.avatar_url || profile.profile_image_url;
   return formatAvatarUrl(url);
+}
+
+/**
+ * Gets the avatar URL with a fallback to default image
+ * @param url The avatar URL
+ * @param name Optional name for generating initials
+ * @returns The formatted avatar URL or default avatar
+ */
+export function getAvatarUrlWithFallback(url: string | null | undefined, name?: string): string {
+  const formattedUrl = formatAvatarUrl(url);
+  if (formattedUrl) return formattedUrl;
+  
+  // Generate avatar with initials if name is provided
+  if (name) {
+    return generateInitialsAvatar(name);
+  }
+  
+  return DEFAULT_IMAGES.avatar;
+}
+
+/**
+ * Generates an avatar URL with user initials
+ * @param name The user's name or username
+ * @returns URL for an avatar with initials
+ */
+export function generateInitialsAvatar(name: string): string {
+  if (!name) return DEFAULT_IMAGES.avatar;
+  
+  // Get initials from name
+  const parts = name.trim().split(' ');
+  let initials = '';
+  
+  if (parts.length >= 2) {
+    // First letter of first and last name
+    initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  } else if (parts.length === 1) {
+    // First two letters of single name
+    initials = parts[0].substring(0, 2).toUpperCase();
+  }
+  
+  if (!initials) {
+    initials = 'T'; // Default to T for Troodie
+  }
+  
+  // Use ui-avatars.com service for generating avatar with initials
+  // Using Troodie's orange color (#FFA500)
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&size=150&background=FFA500&color=fff&bold=true&rounded=true`;
 }

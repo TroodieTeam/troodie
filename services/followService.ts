@@ -92,8 +92,10 @@ export class FollowService {
     }
   }
 
-  static async getFollowers(userId: string): Promise<any[]> {
+  static async getFollowers(userId: string, offset = 0, limit = 20): Promise<{ data: any[], error: any }> {
     try {
+      const currentUserId = await authService.getCurrentUserId()
+      
       const { data, error } = await supabase
         .from('user_relationships')
         .select(`
@@ -104,23 +106,37 @@ export class FollowService {
             bio,
             avatar_url,
             is_verified,
-            followers_count
+            followers_count,
+            saves_count
           )
         `)
         .eq('following_id', userId)
         .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
 
       if (error) throw error
 
-      return data?.map(item => item.follower) || []
+      // Check if current user follows each follower
+      const followers = await Promise.all((data || []).map(async (item) => {
+        const follower = item.follower
+        if (currentUserId && follower?.id !== currentUserId) {
+          follower.isFollowing = await this.isFollowing(follower.id)
+        }
+        follower.isCurrentUser = follower?.id === currentUserId
+        return follower
+      }))
+
+      return { data: followers.filter(Boolean), error: null }
     } catch (error) {
       console.error('Error fetching followers:', error)
-      return []
+      return { data: [], error }
     }
   }
 
-  static async getFollowing(userId: string): Promise<any[]> {
+  static async getFollowing(userId: string, offset = 0, limit = 20): Promise<{ data: any[], error: any }> {
     try {
+      const currentUserId = await authService.getCurrentUserId()
+      
       const { data, error } = await supabase
         .from('user_relationships')
         .select(`
@@ -131,18 +147,30 @@ export class FollowService {
             bio,
             avatar_url,
             is_verified,
-            followers_count
+            followers_count,
+            saves_count
           )
         `)
         .eq('follower_id', userId)
         .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
 
       if (error) throw error
 
-      return data?.map(item => item.following) || []
+      // Check if current user follows each following user
+      const following = await Promise.all((data || []).map(async (item) => {
+        const followingUser = item.following
+        if (currentUserId && followingUser?.id !== currentUserId) {
+          followingUser.isFollowing = await this.isFollowing(followingUser.id)
+        }
+        followingUser.isCurrentUser = followingUser?.id === currentUserId
+        return followingUser
+      }))
+
+      return { data: following.filter(Boolean), error: null }
     } catch (error) {
       console.error('Error fetching following:', error)
-      return []
+      return { data: [], error }
     }
   }
 
@@ -208,3 +236,6 @@ export class FollowService {
     }
   }
 }
+
+// Export an instance for convenience
+export const followService = FollowService

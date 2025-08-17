@@ -11,6 +11,7 @@ import {
 import { SearchUserResult } from '../lib/supabase'
 import { useFollowState } from '../hooks/useFollowState'
 import FollowButton from './FollowButton'
+import { getAvatarUrlWithFallback } from '@/utils/avatarUtils'
 
 interface UserSearchResultProps {
   user: SearchUserResult
@@ -52,15 +53,10 @@ export default function UserSearchResult({ user, onFollowToggle }: UserSearchRes
   return (
     <TouchableOpacity onPress={handlePress} style={styles.container}>
       <View style={styles.avatarContainer}>
-        {user.avatar_url ? (
-          <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Text style={styles.avatarText}>
-              {getInitials(user.name || user.username)}
-            </Text>
-          </View>
-        )}
+        <Image 
+          source={{ uri: getAvatarUrlWithFallback(user.avatar_url, user.name || user.username) }} 
+          style={styles.avatar} 
+        />
       </View>
 
       <View style={styles.info}>

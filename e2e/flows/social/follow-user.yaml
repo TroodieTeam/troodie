@@ -1,0 +1,58 @@
+appId: com.troodie.app
+---
+# Test: User can follow another user
+# Priority: P1 (Critical)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Activity feed
+- tapOn: "Activity"
+
+# Wait for activity feed to load
+- assertVisible:
+    text: "Activity"
+    timeout: 5000
+
+# Find a user to follow (from activity item)
+- scrollUntilVisible:
+    element:
+      text: "@.*"
+      regex: true
+    direction: DOWN
+    timeout: 10000
+
+# Tap on username to go to profile
+- tapOn:
+    text: "@.*"
+    regex: true
+    index: 0
+
+# Wait for profile to load
+- assertVisible:
+    text: "Follow"
+    timeout: 5000
+
+# Follow the user
+- tapOn: "Follow"
+
+# Verify follow state changed
+- assertVisible:
+    text: "Following"
+    timeout: 3000
+
+# Check followers count increased
+- evalScript: |
+    const followersText = document.querySelector('[testID="followers-count"]').textContent;
+    const count = parseInt(followersText);
+    if (count < 1) throw new Error("Followers count did not increase");
+
+# Unfollow to reset state
+- tapOn: "Following"
+
+# Confirm unfollow
+- assertVisible:
+    text: "Follow"
+    timeout: 3000
+
+- takeScreenshot: "follow-unfollow-complete"

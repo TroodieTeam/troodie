@@ -1,0 +1,58 @@
+# Maestro Configuration for Troodie
+
+# Global test configuration
+testRetryCount: 2
+testTimeout: 60000
+
+# Environment variables
+env:
+  TEST_EMAIL: test@troodie.com
+  TEST_PASSWORD: TestPassword123!
+  TEST_USERNAME: testuser
+  API_BASE_URL: ${EXPO_PUBLIC_SUPABASE_URL}
+
+# Device configuration
+devices:
+  - platform: iOS
+    device: iPhone 14
+    osVersion: 16.0
+  - platform: Android
+    device: Pixel 6
+    osVersion: 13
+
+# Test tags for selective execution
+tags:
+  smoke:
+    - auth/login
+    - discovery/save-restaurant
+  regression:
+    - auth/*
+    - discovery/*
+    - social/*
+  critical:
+    - auth/login
+    - auth/signup
+    - discovery/save-restaurant
+    - social/follow-user
+
+# Hooks
+beforeAll: |
+  echo "Setting up test environment..."
+  npm run seed:test-data
+
+afterAll: |
+  echo "Cleaning up test data..."
+  npm run cleanup:test-data
+
+beforeEach: |
+  echo "Starting test: ${TEST_NAME}"
+
+afterEach: |
+  echo "Test completed: ${TEST_NAME} - ${TEST_STATUS}"
+
+# Output configuration
+output:
+  screenshots: ./e2e/screenshots
+  videos: ./e2e/videos
+  logs: ./e2e/logs
+  reports: ./e2e/reports

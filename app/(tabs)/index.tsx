@@ -4,6 +4,8 @@ import QuickSavesBoard from '@/components/home/QuickSavesBoard';
 import { InfoModal } from '@/components/InfoModal';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { CitySelector } from '@/components/CitySelector';
+import { locationService } from '@/services/locationService';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
@@ -37,7 +39,7 @@ import {
   Users,
   Utensils
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -60,26 +62,32 @@ export default function HomeScreen() {
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showRecommendationsInfo, setShowRecommendationsInfo] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedCity, setSelectedCity] = useState('Charlotte');
   
-  const persona = onboardingState.persona && personas[onboardingState.persona];
-  const inviteService = new InviteService();
+  const persona = useMemo(
+    () => onboardingState.persona && personas[onboardingState.persona],
+    [onboardingState.persona]
+  );
+  const inviteService = useMemo(() => new InviteService(), []);
 
   // Data fetching functions
   const fetchHomeData = useCallback(async () => {
-    const [trending, featured] = await Promise.all([
-      restaurantService.getTrendingRestaurants('Charlotte'),
+    const [topRated, featured] = await Promise.all([
+      restaurantService.getTopRatedRestaurants(selectedCity),
       restaurantService.getFeaturedRestaurants(10)
     ]);
     
-    return { trending, featured };
-  }, []);
+    return { topRated, featured };
+  }, [selectedCity]);
 
   const fetchUserBoards = useCallback(async () => {
     if (!user?.id) return [];
     try {
       return await boardService.getUserBoards(user.id);
     } catch (error) {
-      console.error('Error loading boards:', error);
+      if (__DEV__) {
+        console.error('Error loading boards:', error);
+      }
       return [];
     }
   }, [user?.id]);
@@ -91,11 +99,11 @@ export default function HomeScreen() {
     refreshing, 
     error,
     refresh: refreshRestaurants 
-  } = useSmoothDataFetch(fetchHomeData, [], {
+  } = useSmoothDataFetch(fetchHomeData, [selectedCity], {
     minLoadingTime: 500,
     showLoadingOnRefetch: false,
-    fetchOnFocus: true,
-    cacheDuration: 30000 // 30 seconds cache
+    fetchOnFocus: false, // Disable fetch on focus to prevent unnecessary refreshes
+    cacheDuration: 5000 // 5 seconds cache to prevent rapid re-fetches
   });
 
   const { 
@@ -109,7 +117,7 @@ export default function HomeScreen() {
     cacheDuration: 60000 // 1 minute cache
   });
 
-  const trendingRestaurants = restaurantsData?.trending || [];
+  const topRatedRestaurants = restaurantsData?.topRated || [];
   const featuredRestaurants = restaurantsData?.featured || [];
 
   // Check user progress
@@ -133,7 +141,9 @@ export default function HomeScreen() {
         updateNetworkProgress('community');
       }
     } catch (error) {
-      console.error('Error checking user progress:', error);
+      if (__DEV__) {
+        console.error('Error checking user progress:', error);
+      }
     }
   }, [user?.id, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, updateNetworkProgress]);
 
@@ -144,9 +154,33 @@ export default function HomeScreen() {
       const count = await notificationService.getUnreadCount(user.id);
       setUnreadCount(count);
     } catch (error) {
-      console.error('Error loading notification count:', error);
+      if (__DEV__) {
+        console.error('Error loading notification count:', error);
+      }
     }
   }, [user?.id]);
+
+  // Initialize location service with cleanup
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initializeLocation = async () => {
+      await locationService.initialize();
+      const city = await locationService.detectCurrentCity();
+      
+      if (isMounted) {
+        setSelectedCity(city);
+      }
+    };
+    
+    initializeLocation();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Remove this useEffect - the dependency array in useSmoothDataFetch already handles city changes
 
   // Effects
   useEffect(() => {
@@ -178,7 +212,7 @@ export default function HomeScreen() {
     // The notification center will handle navigation
   };
 
-  const transformToTrendingContent = (restaurants: any[]): TrendingContent[] => {
+  const transformToTopRatedContent = useCallback((restaurants: any[]): TrendingContent[] => {
     return restaurants.map(restaurant => ({
       restaurant: {
         id: restaurant.id,
@@ -191,17 +225,23 @@ export default function HomeScreen() {
       },
       stats: {
         saves: restaurant.troodie_reviews_count || 0,
-        visits: Math.floor(Math.random() * 50) + 10,
+        visits: restaurant.saves_count || 0,
         photos: restaurant.photos?.length || 0
       },
       highlights: [
-        restaurant.cuisine_types?.[0] || 'Popular',
-        restaurant.price_range || 'Affordable',
-        'Local Favorite'
+        `${restaurant.google_rating?.toFixed(1) || 'N/A'} ★ rating`,
+        restaurant.cuisine_types?.[0] || 'Restaurant',
+        restaurant.price_range || '$$'
       ],
       type: 'trending_spot' as const
     }));
-  };
+  }, []);
+  
+  // Transform top rated restaurants for display
+  const topRatedContent = useMemo(
+    () => transformToTopRatedContent(topRatedRestaurants),
+    [topRatedRestaurants, transformToTopRatedContent]
+  );
 
   const handleInviteFriends = async () => {
     try {
@@ -460,76 +500,44 @@ export default function HomeScreen() {
     </View>
   );
 
-  const renderPersonaRecommendations = () => {
-    // Filter restaurants based on persona
-    const getPersonaRestaurants = () => {
-      if (!persona || !featuredRestaurants.length) return featuredRestaurants;
-      
-      let filtered = [...featuredRestaurants];
-      
-      switch (persona.id) {
-        case 'trendsetter':
-          // Prioritize restaurants with photos and high ratings
-          filtered = filtered.filter(r => r.photos && r.photos.length > 0)
-            .sort((a, b) => ((b.google_rating || 0) - (a.google_rating || 0)));
-          break;
-        case 'culinary_adventurer':
-          // Prioritize diverse cuisines
-          filtered = filtered.sort((a, b) => {
-            const aCuisines = a.cuisine_types?.length || 0;
-            const bCuisines = b.cuisine_types?.length || 0;
-            return bCuisines - aCuisines;
-          });
-          break;
-        case 'luxe_planner':
-          // Prioritize higher price ranges
-          filtered = filtered.filter(r => r.price_range === '$$$' || r.price_range === '$$$$');
-          break;
-        case 'hidden_gem_hunter':
-          // Prioritize less popular spots
-          filtered = filtered.sort(() => Math.random() - 0.5).slice(0, 10);
-          break;
-        case 'budget_foodie':
-          // Prioritize lower price ranges
-          filtered = filtered.filter(r => r.price_range === '$' || r.price_range === '$$');
-          break;
-        default:
-          break;
-      }
-      
-      return filtered.slice(0, 5);
-    };
-    
-    const personaRestaurants = getPersonaRestaurants();
-    const recommendedContent = transformToTrendingContent(personaRestaurants);
+  const renderTopRatedSection = () => {
     
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.titleContainer}>
             <Text style={styles.sectionTitle}>
-              What's Hot Right Now
+              Top Rated in {selectedCity}
             </Text>
-            {/* <TouchableOpacity 
-              onPress={() => setShowRecommendationsInfo(true)}
-              style={styles.infoButton}
-              accessibilityLabel="Learn how recommendations work"
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Utensils size={16} color={designTokens.colors.textMedium} />
-            </TouchableOpacity> */}
+            <CitySelector
+              currentCity={selectedCity}
+              onCityChange={setSelectedCity}
+              compact
+            />
           </View>
         </View>
         
-        {recommendedContent.length === 0 ? (
+        {topRatedRestaurants.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>{strings.recommendations.emptyTitle}</Text>
-            <Text style={styles.emptyStateDescription}>
-              {strings.recommendations.emptyDescription}
+            <View style={styles.emptyStateIcon}>
+              <Sparkles size={32} color="#DDD" />
+            </View>
+            <Text style={styles.emptyStateTitle}>
+              No restaurants found in {selectedCity}
             </Text>
+            <Text style={styles.emptyStateDescription}>
+              Be the first to discover and share amazing restaurants in this area!
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyStateCTA} 
+              onPress={() => router.push('/add/save-restaurant')}
+            >
+              <Plus size={16} color="#FFFFFF" />
+              <Text style={styles.emptyStateCTAText}>Add Restaurant</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          recommendedContent.map((item, index) => (
+          topRatedContent.map((item, index) => (
             <View key={index} style={styles.trendingCard}>
               <RestaurantCardWithSave
   restaurant={item.restaurant}
@@ -608,7 +616,7 @@ export default function HomeScreen() {
         
         {renderYourBoards()}
         
-        {renderPersonaRecommendations()}
+        {renderTopRatedSection()}
         
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -886,6 +894,9 @@ const styles = StyleSheet.create({
     marginBottom: designTokens.spacing.lg,
   },
   emptyStateCTA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: designTokens.spacing.xs,
     backgroundColor: designTokens.colors.primaryOrange,
     paddingHorizontal: designTokens.spacing.xxl,
     paddingVertical: designTokens.spacing.md,

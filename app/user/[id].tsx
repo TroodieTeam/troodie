@@ -19,7 +19,7 @@ import { Board, BoardRestaurant } from '@/types/board';
 import { RestaurantInfo } from '@/types/core';
 import { PersonaType } from '@/types/onboarding';
 import { PostWithUser } from '@/types/post';
-import { getAvatarUrl } from '@/utils/avatarUtils';
+import { getAvatarUrl, getAvatarUrlWithFallback, generateInitialsAvatar } from '@/utils/avatarUtils';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
     Award,
@@ -125,11 +125,38 @@ export default function UserDetailScreen() {
     }
   }, [id]);
 
+  // Refresh counts when profile loads or when returning to the screen
+  useEffect(() => {
+    if (profile && refreshCounts) {
+      refreshCounts();
+    }
+  }, [profile?.id]);
+
+  // Refresh counts periodically when viewing own profile
+  useEffect(() => {
+    if (isOwnProfile && refreshCounts) {
+      // Refresh immediately
+      refreshCounts();
+      
+      // Set up periodic refresh every 5 seconds for own profile
+      const interval = setInterval(() => {
+        refreshCounts();
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isOwnProfile, id]);
+
   const loadProfile = async () => {
     if (!id) return;
     
     try {
       const profileData = await profileService.getProfile(id);
+      console.log('Loaded profile data:', {
+        id: profileData?.id,
+        followers_count: profileData?.followers_count,
+        following_count: profileData?.following_count
+      });
       setProfile(profileData);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -426,20 +453,11 @@ export default function UserDetailScreen() {
     <View style={styles.profileInfo}>
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
-          {userData.avatar ? (
-            <Image 
-              source={{ uri: userData.avatar }} 
-              style={styles.avatar}
-              onError={(e) => {
-                console.error('Failed to load avatar:', userData.avatar, e.nativeEvent.error);
-              }}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <User size={24} color="#999" />
-            </View>
-          )}
+          <Image 
+            source={{ uri: getAvatarUrlWithFallback(userData.avatar, profile?.name || profile?.username) }} 
+            style={styles.avatar}
+            resizeMode="cover"
+          />
         </View>
 
         <View style={styles.profileDetails}>
@@ -471,14 +489,14 @@ export default function UserDetailScreen() {
       </View>
 
       <View style={styles.stats}>
-        <View style={styles.statItem}>
+        <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/user/${id}/followers`)}>
           <Text style={styles.statValue}>{followersCount}</Text>
           <Text style={styles.statLabel}>Followers</Text>
-        </View>
-        <View style={styles.statItem}>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/user/${id}/following`)}>
           <Text style={styles.statValue}>{followingCount}</Text>
           <Text style={styles.statLabel}>Following</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{boards.length}</Text>
           <Text style={styles.statLabel}>Boards</Text>

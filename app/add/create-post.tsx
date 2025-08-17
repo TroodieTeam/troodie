@@ -30,6 +30,8 @@ import {
 } from 'react-native';
 import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { CommunitySelector } from '@/components/CommunitySelector';
+import { LinkInputModal } from '@/components/modals/LinkInputModal';
+import { linkMetadataService } from '@/services/linkMetadataService';
 import { Users } from 'lucide-react-native';
 
 type ContentType = 'original' | 'external';
@@ -226,17 +228,26 @@ export default function CreatePostScreen() {
     }
   };
 
-  const handleUrlPaste = async (url: string) => {
+  const handleLinkConfirm = (url: string, metadata: any) => {
     updateFormField('externalUrl', url);
     touchField('externalUrl');
-    // In a real app, you'd fetch metadata here
-    // For now, we'll set mock metadata
     setExternalMetadata({
-      title: "Amazing Restaurant Experience",
-      description: "Check out this incredible dining spot!",
-      thumbnail: "https://via.placeholder.com/400x200",
-      author: "@foodlover"
+      title: metadata.title,
+      description: metadata.description,
+      thumbnail: metadata.thumbnail,
+      author: metadata.author,
+      source: metadata.source,
     });
+    setActiveAttachment(null);
+  };
+
+  const handleOpenLinkModal = () => {
+    // Close any other modals first
+    setShowCommunitySelector(false);
+    setShowRestaurantModal(false);
+    setShowAddRestaurantModal(false);
+    // Open link modal
+    setActiveAttachment('link');
   };
 
   const handleSearchRestaurants = async () => {
@@ -306,6 +317,7 @@ export default function CreatePostScreen() {
             placeholderTextColor={designTokens.colors.textLight}
             value={formData.caption}
             onChangeText={(text) => updateFormField('caption', text)}
+            testID="review-input"
             multiline
             maxLength={500}
             autoFocus
@@ -396,7 +408,7 @@ export default function CreatePostScreen() {
           {formData.contentType === 'external' && (
             <TouchableOpacity 
               style={[styles.selectionRow, !formData.externalUrl && styles.selectionRowRequired]}
-              onPress={() => setActiveAttachment('link')}
+              onPress={handleOpenLinkModal}
             >
               <Ionicons 
                 name="link" 
@@ -594,6 +606,7 @@ export default function CreatePostScreen() {
                 touchField('rating');
                 setActiveAttachment(null);
               }}
+              testID="rating-star-3"
             >
               <View style={[styles.bigTrafficLight, styles.greenLight]} />
               <Text style={styles.ratingLabel}>Recommended</Text>
@@ -607,6 +620,7 @@ export default function CreatePostScreen() {
                 touchField('rating');
                 setActiveAttachment(null);
               }}
+              testID="rating-star-2"
             >
               <View style={[styles.bigTrafficLight, styles.yellowLight]} />
               <Text style={styles.ratingLabel}>It's okay</Text>
@@ -620,6 +634,7 @@ export default function CreatePostScreen() {
                 touchField('rating');
                 setActiveAttachment(null);
               }}
+              testID="rating-star-1"
             >
               <View style={[styles.bigTrafficLight, styles.redLight]} />
               <Text style={styles.ratingLabel}>Not recommended</Text>
@@ -631,45 +646,6 @@ export default function CreatePostScreen() {
     </Modal>
   );
 
-  const renderLinkSheet = () => (
-    <Modal
-      visible={activeAttachment === 'link'}
-      animationType="slide"
-      transparent
-      onRequestClose={() => setActiveAttachment(null)}
-    >
-      <TouchableOpacity 
-        style={styles.modalOverlay} 
-        activeOpacity={1} 
-        onPress={() => setActiveAttachment(null)}
-      >
-        <View style={styles.bottomSheet}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Add External Link</Text>
-          
-          <View style={styles.linkInputContainer}>
-            <TextInput
-              style={styles.linkInput}
-              placeholder="Paste link from TikTok, Instagram, YouTube, etc."
-              placeholderTextColor={designTokens.colors.textLight}
-              value={formData.externalUrl || ''}
-              onChangeText={handleUrlPaste}
-              autoCapitalize="none"
-              keyboardType="url"
-              autoFocus
-            />
-          </View>
-
-          <TouchableOpacity
-            style={styles.doneButton}
-            onPress={() => setActiveAttachment(null)}
-          >
-            <Text style={styles.doneButtonText}>Done</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
 
   const renderDetailsSheet = () => (
     <Modal
@@ -957,7 +933,6 @@ export default function CreatePostScreen() {
         </ScrollView>
         
         {renderRatingSheet()}
-        {renderLinkSheet()}
         {renderDetailsSheet()}
         {renderRestaurantModal()}
         {renderPostTypeInfoModal()}
@@ -980,6 +955,13 @@ export default function CreatePostScreen() {
             });
             setShowAddRestaurantModal(false);
           }}
+        />
+        
+        <LinkInputModal
+          visible={activeAttachment === 'link'}
+          onClose={() => setActiveAttachment(null)}
+          onConfirm={handleLinkConfirm}
+          initialUrl={formData.externalUrl || ''}
         />
         
         <CommunitySelector

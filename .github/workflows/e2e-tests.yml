@@ -1,0 +1,250 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to test'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - ios
+          - android
+          - both
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - full
+          - auth
+          - discovery
+          - social
+
+env:
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache.outputs.cache-key }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+      
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+  test-ios:
+    needs: setup
+    runs-on: macos-latest
+    if: github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'both' || github.event_name != 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+      
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+      
+      - name: Setup Expo
+        run: |
+          npm install -g expo-cli eas-cli
+          npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
+      
+      - name: Setup Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      
+      - name: Build iOS app
+        run: |
+          eas build --platform ios --profile preview --local --non-interactive
+        env:
+          EAS_NO_VCS: 1
+      
+      - name: Start iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 14" || true
+          xcrun simctl install booted *.app
+      
+      - name: Seed test data
+        run: npm run test:data:seed
+      
+      - name: Run E2E tests
+        run: |
+          if [ "${{ github.event.inputs.test_suite }}" = "smoke" ] || [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            maestro test e2e/flows --include-tags smoke
+          elif [ "${{ github.event.inputs.test_suite }}" = "full" ]; then
+            maestro test e2e/flows
+          else
+            maestro test e2e/flows/${{ github.event.inputs.test_suite }}
+          fi
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-test-results
+          path: |
+            e2e/screenshots/
+            e2e/reports/
+      
+      - name: Cleanup test data
+        if: always()
+        run: npm run test:data:cleanup
+
+  test-android:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both' || github.event_name != 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: ${{ needs.setup.outputs.cache-key }}
+      
+      - name: Setup Expo and EAS
+        run: |
+          npm install -g expo-cli eas-cli
+          npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
+      
+      - name: Setup Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      
+      - name: Build Android app
+        run: |
+          eas build --platform android --profile preview --local --non-interactive
+        env:
+          EAS_NO_VCS: 1
+      
+      - name: Setup Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          avd-name: test-emulator
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb install *.apk
+            npm run test:data:seed
+            
+            if [ "${{ github.event.inputs.test_suite }}" = "smoke" ] || [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+              maestro test e2e/flows --include-tags smoke
+            elif [ "${{ github.event.inputs.test_suite }}" = "full" ]; then
+              maestro test e2e/flows
+            else
+              maestro test e2e/flows/${{ github.event.inputs.test_suite }}
+            fi
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-test-results
+          path: |
+            e2e/screenshots/
+            e2e/reports/
+      
+      - name: Cleanup test data
+        if: always()
+        run: npm run test:data:cleanup
+
+  report:
+    needs: [test-ios, test-android]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: test-results
+      
+      - name: Generate test report
+        run: |
+          echo "# E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Platform Results" >> $GITHUB_STEP_SUMMARY
+          echo "- iOS: ${{ needs.test-ios.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Android: ${{ needs.test-android.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "test-results" ]; then
+            echo "## Screenshots" >> $GITHUB_STEP_SUMMARY
+            find test-results -name "*.png" -type f | while read file; do
+              echo "- ${file##*/}" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });

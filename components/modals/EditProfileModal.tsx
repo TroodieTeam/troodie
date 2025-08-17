@@ -20,6 +20,8 @@ import { profileService, Profile } from '@/services/profileService';
 import { useApp } from '@/contexts/AppContext';
 import { getAvatarUrl } from '@/utils/avatarUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import { activityFeedService } from '@/services/activityFeedService';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -157,6 +159,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         try {
           const uploadedUrl = await profileService.uploadProfileImage(user.id, imageUri);
           
+          // Clear activity feed cache to force refresh with new avatar
+          activityFeedService.clearCache();
+          
+          // Emit event to notify other components
+          eventBus.emit(EVENTS.PROFILE_IMAGE_UPDATED, { userId: user.id, avatarUrl: uploadedUrl });
+          
           // Refresh profile to get updated avatar URL
           updatedProfile = await profileService.getProfile(user.id);
         } catch (uploadError) {
@@ -199,6 +207,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       <TouchableOpacity 
         style={styles.imageContainer} 
         onPress={handleImagePick}
+        testID="avatar-upload"
       >
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.profileImage} />
@@ -260,6 +269,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 placeholderTextColor="#999"
                 autoCapitalize="none"
                 autoCorrect={false}
+                testID="username-input"
               />
               {checkingUsername && (
                 <ActivityIndicator size="small" color="#999" style={styles.inputIcon} />
@@ -280,6 +290,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               placeholderTextColor="#999"
               multiline
               maxLength={150}
+              testID="bio-input"
             />
             <Text style={styles.charCount}>{bio.length}/150</Text>
           </View>

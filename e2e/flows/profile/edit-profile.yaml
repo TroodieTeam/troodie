@@ -1,0 +1,53 @@
+appId: com.troodie.app
+---
+# Test: User can edit their profile
+# Priority: P1 (Critical)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Profile
+- tapOn: "Profile"
+
+# Wait for profile to load
+- assertVisible:
+    text: "@"
+    regex: true
+    timeout: 5000
+
+# Open edit profile
+- tapOn: "Edit Profile"
+
+# Wait for edit modal
+- assertVisible:
+    text: "Edit Profile"
+    timeout: 3000
+
+# Update bio
+- clearText:
+    id: "bio-input"
+    
+- tapOn:
+    id: "bio-input"
+    
+- inputText: "Food enthusiast | Always exploring new flavors 🍕"
+
+# Update display name (optional)
+- clearText:
+    id: "name-input"
+    optional: true
+    
+- inputText: "Test Foodie"
+
+# Save changes
+- tapOn: "Save"
+
+# Wait for save to complete
+- assertVisible:
+    text: "Profile updated"
+    timeout: 5000
+
+# Verify changes appear
+- assertVisible: "Food enthusiast"
+
+- takeScreenshot: "profile-edited"

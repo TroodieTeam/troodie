@@ -1,0 +1,61 @@
+appId: com.troodie.app
+---
+# Test: User can create a restaurant review
+# Priority: P1 (Critical)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Add tab
+- tapOn:
+    id: "tab-add"
+
+# Select review option
+- assertVisible: "What would you like to share?"
+- tapOn: "Review a Spot"
+
+# Search for restaurant
+- assertVisible: "Search for a restaurant"
+- inputText: "Test Pizza"
+- waitForAnimationToEnd
+
+# Select restaurant from search
+- tapOn:
+    text: "Test Pizza Palace"
+    index: 0
+
+# Add rating
+- assertVisible: "Rate your experience"
+- tapOn:
+    id: "rating-star-4"
+
+# Add review text
+- tapOn:
+    id: "review-input"
+- inputText: "Great pizza! The crust was perfect and the service was excellent. Will definitely come back."
+
+# Add photo (optional - skip for speed)
+- tapOn:
+    text: "Add Photo"
+    optional: true
+
+# Select privacy
+- tapOn:
+    id: "privacy-selector"
+- tapOn: "Public"
+
+# Post review
+- tapOn: "Post Review"
+
+# Wait for success
+- assertVisible:
+    text: "Posted"
+    timeout: 10000
+
+# Verify review appears in activity
+- tapOn: "Activity"
+- assertVisible:
+    text: "Great pizza!"
+    timeout: 5000
+
+- takeScreenshot: "review-created"

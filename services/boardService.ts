@@ -6,6 +6,7 @@ import {
     BoardRestaurant,
     BoardWithRestaurants
 } from '@/types/board'
+import { eventBus, EVENTS } from '@/utils/eventBus'
 
 export const boardService = {
   /**
@@ -251,6 +252,21 @@ export const boardService = {
 
       if (error && error.code !== '23505') { // Ignore duplicate key errors
         throw error
+      }
+      
+      // Emit event to update UI
+      eventBus.emit(EVENTS.BOARD_UPDATED, { boardId, restaurantId, userId })
+      
+      // Check if this is the Quick Saves board
+      const { data: board } = await supabase
+        .from('boards')
+        .select('title')
+        .eq('id', boardId)
+        .single()
+      
+      if (board?.title === 'Your Saves') {
+        eventBus.emit(EVENTS.QUICK_SAVES_UPDATED, { restaurantId, userId })
+        eventBus.emit(EVENTS.RESTAURANT_SAVED, { restaurantId, userId })
       }
     } catch (error: any) {
       console.error('Error adding restaurant to board:', error)
@@ -631,8 +647,102 @@ export const boardService = {
 
       // Add restaurant to Your Saves board
       await this.addRestaurantToBoard(boardId, restaurantId, userId, notes, rating)
+      
+      // Emit event to update UI
+      eventBus.emit(EVENTS.QUICK_SAVES_UPDATED, { restaurantId, userId })
+      eventBus.emit(EVENTS.RESTAURANT_SAVED, { restaurantId, userId })
     } catch (error: any) {
       console.error('Error saving to Your Saves:', error)
+      throw error
+    }
+  },
+
+  /**
+   * Save restaurant to Quick Saves with context (link and note)
+   */
+  async saveRestaurantToQuickSavesWithContext(
+    userId: string, 
+    restaurantId: string,
+    notes?: string,
+    rating?: number,
+    externalUrl?: string
+  ): Promise<void> {
+    try {
+      // Get or create Your Saves board
+      const boardId = await this.ensureQuickSavesBoard(userId)
+      
+      if (!boardId) {
+        throw new Error('Failed to get Your Saves board')
+      }
+      
+      // Add restaurant to Your Saves board with context
+      await this.addRestaurantToBoardWithContext(boardId, restaurantId, userId, notes, rating, externalUrl)
+      
+      // Emit event to update UI
+      eventBus.emit(EVENTS.QUICK_SAVES_UPDATED, { restaurantId, userId })
+      eventBus.emit(EVENTS.RESTAURANT_SAVED, { restaurantId, userId })
+    } catch (error: any) {
+      console.error('Error saving to Your Saves with context:', error)
+      throw error
+    }
+  },
+
+  /**
+   * Add restaurant to board with context (link and note)
+   */
+  async addRestaurantToBoardWithContext(
+    boardId: string, 
+    restaurantId: string, 
+    userId: string,
+    notes?: string,
+    rating?: number,
+    externalUrl?: string
+  ): Promise<void> {
+    try {
+      // Get current max position
+      const { data: existingRestaurants } = await supabase
+        .from('board_restaurants')
+        .select('position')
+        .eq('board_id', boardId)
+        .order('position', { ascending: false })
+        .limit(1)
+
+      const nextPosition = existingRestaurants && existingRestaurants[0]
+        ? existingRestaurants[0].position + 1
+        : 0
+
+      const { error } = await supabase
+        .from('board_restaurants')
+        .insert({
+          board_id: boardId,
+          restaurant_id: restaurantId,
+          added_by: userId,
+          position: nextPosition,
+          notes,
+          rating,
+          external_url: externalUrl
+        })
+
+      if (error && error.code !== '23505') { // Ignore duplicate key errors
+        throw error
+      }
+      
+      // Emit event to update UI
+      eventBus.emit(EVENTS.BOARD_UPDATED, { boardId, restaurantId, userId })
+      
+      // Check if this is the Quick Saves board
+      const { data: board } = await supabase
+        .from('boards')
+        .select('title')
+        .eq('id', boardId)
+        .single()
+      
+      if (board?.title === 'Your Saves') {
+        eventBus.emit(EVENTS.QUICK_SAVES_UPDATED, { restaurantId, userId })
+        eventBus.emit(EVENTS.RESTAURANT_SAVED, { restaurantId, userId })
+      }
+    } catch (error: any) {
+      console.error('Error adding restaurant to board with context:', error)
       throw error
     }
   },

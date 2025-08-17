@@ -207,6 +207,7 @@ export default function ExploreScreen() {
           placeholderTextColor="#999"
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
+          testID="search-input"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -246,6 +247,7 @@ export default function ExploreScreen() {
       return (
         <View style={styles.restaurantCardWrapper}>
           <RestaurantCard
+            testID={`restaurant-card-${index}`}
             restaurant={{
               id: item.id,
               name: item.name,

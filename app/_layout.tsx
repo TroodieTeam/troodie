@@ -86,6 +86,8 @@ export default Sentry.wrap(function RootLayout() {
               <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="find-friends" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="dark" />

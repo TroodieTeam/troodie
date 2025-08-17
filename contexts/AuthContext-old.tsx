@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('[AuthContext] getSession() error:', error)
         }
         
+        console.log('[AuthContext] getSession() result:', {
           hasSession: !!session,
           userId: session?.user?.id,
           email: session?.user?.email,
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes with a more defensive approach
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('[AuthContext] onAuthStateChange:', {
         event: _event,
         hasSession: !!session,
         userId: session?.user?.id,
@@ -225,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Double-check session is still valid
         const { data: { session: currentSession } } = await supabase.auth.getSession()
+        console.log('[AuthContext] Verification complete - current session:', {
           hasSession: !!currentSession,
           userId: currentSession?.user?.id
         })

@@ -1,0 +1,48 @@
+appId: com.troodie.app
+---
+# Test: User can comment on a review
+# Priority: P2 (Important)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Activity feed
+- tapOn: "Activity"
+
+# Find a review post
+- scrollUntilVisible:
+    element:
+      text: ".*reviewed.*"
+      regex: true
+    direction: DOWN
+    timeout: 10000
+
+# Tap comment button
+- tapOn:
+    id: "comment-button"
+    index: 0
+
+# Wait for post detail/comment view
+- assertVisible:
+    text: "Comments"
+    timeout: 5000
+
+# Add a comment
+- tapOn:
+    id: "comment-input"
+    
+- inputText: "Great recommendation! I'll have to try this place."
+
+# Post comment
+- tapOn: "Post"
+
+# Verify comment appears
+- assertVisible:
+    text: "Great recommendation!"
+    timeout: 5000
+
+# Verify comment count
+- assertVisible:
+    text: "1 comment"
+
+- takeScreenshot: "comment-added"

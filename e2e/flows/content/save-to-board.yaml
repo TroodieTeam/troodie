@@ -1,0 +1,63 @@
+appId: com.troodie.app
+---
+# Test: User can save restaurant to a board
+# Priority: P1 (Critical)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to a restaurant
+- tapOn: "Explore"
+- tapOn:
+    id: "restaurant-card-0"
+
+# Wait for restaurant details
+- assertVisible: "Save"
+- assertVisible: "Reviews"
+
+# Save to board
+- tapOn: "Save"
+
+# Wait for board selection modal
+- assertVisible:
+    text: "Save to Board"
+    timeout: 3000
+
+# Create new board
+- tapOn: "Create New Board"
+
+# Enter board name
+- inputText: "My Favorite Spots"
+
+# Set board privacy
+- tapOn: "Public"
+
+# Create board
+- tapOn: "Create"
+
+# Verify save confirmation
+- assertVisible:
+    text: "Saved to My Favorite Spots"
+    timeout: 5000
+
+# Navigate to profile to verify
+- tapOn: "Profile"
+
+# Check boards section
+- scrollUntilVisible:
+    element: "Boards"
+    direction: DOWN
+
+- tapOn: "Boards"
+
+# Verify board exists
+- assertVisible: "My Favorite Spots"
+
+# Open board
+- tapOn: "My Favorite Spots"
+
+# Verify restaurant is in board
+- assertVisible:
+    id: "restaurant-card-0"
+
+- takeScreenshot: "board-save-complete"

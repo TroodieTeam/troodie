@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 import { ActivityFeedItem } from '@/services/activityFeedService';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
+import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 
 interface ActivityFeedItemProps {
   activity: ActivityFeedItem;
@@ -27,6 +28,7 @@ interface ActivityFeedItemProps {
   onCommunityPress?: (communityId: string) => void;
   onPostPress?: (postId: string) => void;
   formatTimeAgo: (date: string) => string;
+  testID?: string;
 }
 
 export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
@@ -36,6 +38,7 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
   onCommunityPress,
   onPostPress,
   formatTimeAgo,
+  testID,
 }) => {
   const router = useRouter();
 
@@ -171,7 +174,17 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
             {activity.actor_name || activity.actor_username || 'Someone'}
           </Text>
           {' '}{activity.action}
-          {activity.target_name && (
+          {/* For follow activities, prioritize showing the target user */}
+          {activity.activity_type === 'follow' && (
+            <>
+              {' '}
+              <Text style={styles.boldText} onPress={handleTargetPress}>
+                {activity.target_name || activity.related_user_name || activity.related_user_username || 'a user'}
+              </Text>
+            </>
+          )}
+          {/* For other activities, show target_name if available */}
+          {activity.activity_type !== 'follow' && activity.target_name && (
             <>
               {' '}
               <Text style={styles.boldText} onPress={handleTargetPress}>
@@ -252,7 +265,7 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
       return (
         <TouchableOpacity onPress={() => activity.related_user_id && onUserPress?.(activity.related_user_id)}>
           <Image
-            source={{ uri: activity.related_user_avatar || DEFAULT_IMAGES.avatar }}
+            source={{ uri: getAvatarUrlWithFallback(activity.related_user_avatar, activity.related_user_name) }}
             style={styles.relatedUserAvatar}
           />
         </TouchableOpacity>
@@ -263,11 +276,11 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
   };
 
   return (
-    <TouchableOpacity style={styles.container} onPress={handleTargetPress}>
+    <TouchableOpacity style={styles.container} onPress={handleTargetPress} testID={testID}>
       <View style={styles.leftSection}>
         <TouchableOpacity onPress={handleActorPress}>
           <Image
-            source={{ uri: activity.actor_avatar || DEFAULT_IMAGES.avatar }}
+            source={{ uri: getAvatarUrlWithFallback(activity.actor_avatar, activity.actor_name) }}
             style={styles.avatar}
           />
         </TouchableOpacity>

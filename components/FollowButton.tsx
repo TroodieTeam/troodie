@@ -13,6 +13,7 @@ interface FollowButtonProps {
   onPress: () => void
   size?: 'small' | 'medium' | 'large'
   style?: ViewStyle
+  testID?: string
 }
 
 export default function FollowButton({
@@ -21,6 +22,7 @@ export default function FollowButton({
   onPress,
   size = 'medium',
   style,
+  testID,
 }: FollowButtonProps) {
   const [showUnfollow, setShowUnfollow] = React.useState(false);
   
@@ -47,6 +49,7 @@ export default function FollowButton({
       activeOpacity={0.7}
       onPressIn={() => isFollowing && setShowUnfollow(true)}
       onPressOut={() => setShowUnfollow(false)}
+      testID={testID || (isFollowing ? 'following-button' : 'follow-button')}
     >
       {isLoading ? (
         <ActivityIndicator

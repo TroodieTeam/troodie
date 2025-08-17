@@ -1,7 +1,8 @@
 export const DEFAULT_IMAGES = {
-  restaurant: 'https://via.placeholder.com/300x200/f0f0f0/666666?text=Restaurant',
-  profile: 'https://via.placeholder.com/150x150/f0f0f0/666666?text=Profile',
-  board: 'https://via.placeholder.com/300x200/f0f0f0/666666?text=Board',
+  restaurant: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300&h=200&fit=crop',
+  profile: 'https://ui-avatars.com/api/?name=User&size=150&background=FFA500&color=fff&bold=true',
+  avatar: 'https://ui-avatars.com/api/?name=T&size=150&background=FFA500&color=fff&bold=true&rounded=true',
+  board: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop',
 } as const;
 
 // Generate a placeholder image with the restaurant name

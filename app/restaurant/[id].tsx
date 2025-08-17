@@ -1,4 +1,4 @@
-import { BoardSelectionModal } from '@/components/BoardSelectionModal';
+import { EnhancedBoardSelectionModal } from '@/components/EnhancedBoardSelectionModal';
 import { ErrorState } from '@/components/ErrorState';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
@@ -427,6 +427,7 @@ export default function RestaurantDetailScreen() {
         onLongPress={handleLongPress}
         activeOpacity={0.7}
         disabled={isSaving}
+        testID="save-button"
       >
         <Bookmark 
           size={20} 
@@ -964,7 +965,7 @@ export default function RestaurantDetailScreen() {
       </ScrollView>
 
       {restaurant && (
-        <BoardSelectionModal
+        <EnhancedBoardSelectionModal
           visible={showBoardModal}
           onClose={() => setShowBoardModal(false)}
           restaurantId={id as string}

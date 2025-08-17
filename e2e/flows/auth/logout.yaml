@@ -1,0 +1,41 @@
+appId: com.troodie.app
+---
+# Test: User can log out
+# Priority: P1 (Critical)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+
+# Wait for profile to load
+- assertVisible:
+    text: "@"
+    regex: true
+    timeout: 5000
+
+# Open settings/menu
+- tapOn:
+    id: "settings-button"
+    optional: true
+
+# Find and tap logout
+- scrollUntilVisible:
+    element: "Sign Out"
+    direction: DOWN
+    timeout: 5000
+
+- tapOn: "Sign Out"
+
+# Confirm logout if prompted
+- tapOn:
+    text: "Confirm"
+    optional: true
+
+# Verify redirected to welcome screen
+- assertVisible:
+    text: "Welcome to TROODIE"
+    timeout: 10000
+
+- takeScreenshot: "logout-success"

@@ -1,0 +1,50 @@
+appId: com.troodie.app
+---
+# Navigation helper functions
+
+# Navigate to tab
+- runScript: |
+    function navigateToTab(tabName) {
+      // Helper to navigate to specific tab
+      output.tabName = tabName;
+    }
+- tapOn: ${output.tabName}
+
+# Go back
+- runFlow:
+    when:
+      visible:
+        id: "back-button"
+    commands:
+      - tapOn:
+          id: "back-button"
+
+# Scroll to element with retry
+- repeat:
+    times: 5
+    commands:
+      - scrollUntilVisible:
+          element: ${ELEMENT_ID}
+          direction: ${DIRECTION}
+          speed: 40
+    while:
+      notVisible: ${ELEMENT_ID}
+
+# Wait for loading to complete
+- repeat:
+    times: 20
+    commands:
+      - waitForAnimationToEnd
+    while:
+      visible:
+        text: "Loading"
+        optional: true
+
+# Dismiss modal if present
+- runFlow:
+    when:
+      visible:
+        id: "modal-close"
+    commands:
+      - tapOn:
+          id: "modal-close"

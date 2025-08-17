@@ -21,7 +21,7 @@ import { Board, BoardRestaurant } from '@/types/board';
 import { RestaurantInfo } from '@/types/core';
 import { PersonaType } from '@/types/onboarding';
 import { PostWithUser } from '@/types/post';
-import { getAvatarUrl } from '@/utils/avatarUtils';
+import { getAvatarUrl, getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import { useRouter } from 'expo-router';
 import {
   Award,
@@ -400,20 +400,11 @@ export default function ProfileScreen() {
     <View style={styles.profileInfo}>
       <View style={styles.profileHeader}>
         <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
-          {userData.avatar ? (
-            <Image 
-              source={{ uri: userData.avatar }} 
-              style={styles.avatar}
-              onError={(e) => {
-                console.error('Failed to load avatar:', userData.avatar, e.nativeEvent.error);
-              }}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <User size={24} color="#999" />
-            </View>
-          )}
+          <Image 
+            source={{ uri: getAvatarUrlWithFallback(userData.avatar) }} 
+            style={styles.avatar}
+            resizeMode="cover"
+          />
           <View style={styles.editAvatarButton}>
             <Camera size={10} color={designTokens.colors.white} />
           </View>
@@ -452,11 +443,11 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.stats}>
-        <TouchableOpacity style={styles.statItem} onPress={() => router.push('/find-friends')}>
+        <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/user/${user?.id}/followers`)}>
           <Text style={styles.statValue}>{userData.stats.followers}</Text>
           <Text style={styles.statLabel}>Followers</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.statItem} onPress={() => router.push('/find-friends')}>
+        <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/user/${user?.id}/following`)}>
           <Text style={styles.statValue}>{userData.stats.following}</Text>
           <Text style={styles.statLabel}>Following</Text>
         </TouchableOpacity>
@@ -471,7 +462,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.editProfileButton} onPress={() => setShowEditModal(true)}>
+        <TouchableOpacity style={styles.editProfileButton} onPress={() => setShowEditModal(true)} testID="edit-profile-button">
           <PenLine size={10} color={designTokens.colors.primaryOrange} />
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>

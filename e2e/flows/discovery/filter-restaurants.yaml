@@ -1,0 +1,47 @@
+appId: com.troodie.app
+---
+# Test: User can filter restaurants by cuisine and price
+# Priority: P2 (Important)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Explore
+- tapOn: "Explore"
+
+# Open filters
+- tapOn:
+    id: "filter-button"
+    
+# Wait for filter modal
+- assertVisible:
+    text: "Filters"
+    timeout: 3000
+
+# Select cuisine type
+- tapOn: "Cuisine"
+- tapOn: "Italian"
+
+# Select price range
+- tapOn: "Price"
+- tapOn: "$$"
+
+# Apply filters
+- tapOn: "Apply Filters"
+
+# Verify filtered results
+- assertVisible:
+    text: "Italian"
+    timeout: 5000
+
+# Verify price indicators
+- assertVisible:
+    text: "$$"
+
+# Reset filters
+- tapOn:
+    id: "filter-button"
+- tapOn: "Clear All"
+- tapOn: "Apply Filters"
+
+- takeScreenshot: "filter-complete"

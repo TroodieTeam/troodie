@@ -52,6 +52,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
+          tabBarTestID: 'tab-home',
           tabBarIcon: ({ color, focused }) => (
             <Home size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
@@ -61,6 +62,7 @@ export default function TabLayout() {
         name="explore"
         options={{
           title: 'Explore',
+          tabBarTestID: 'tab-explore',
           tabBarIcon: ({ color, focused }) => (
             <Compass size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
@@ -70,6 +72,7 @@ export default function TabLayout() {
         name="add"
         options={{
           title: '',
+          tabBarTestID: 'tab-add',
           tabBarIcon: () => <FloatingAddButton />,
         }}
       />
@@ -77,6 +80,7 @@ export default function TabLayout() {
         name="activity"
         options={{
           title: 'Activity',
+          tabBarTestID: 'tab-activity',
           tabBarIcon: ({ color, focused }) => (
             <Heart size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
@@ -86,6 +90,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          tabBarTestID: 'tab-profile',
           tabBarIcon: ({ color, focused }) => (
             <User size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),

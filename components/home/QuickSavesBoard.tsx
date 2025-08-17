@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { useAuth } from '@/contexts/AuthContext'
 import { boardService } from '@/services/boardService'
 import { restaurantService } from '@/services/restaurantService'
@@ -9,6 +9,7 @@ import { RestaurantInfo } from '@/types/core'
 import { RestaurantCard } from '@/components/cards/RestaurantCard'
 import { theme } from '@/constants/theme'
 import { designTokens } from '@/constants/designTokens'
+import { eventBus, EVENTS } from '@/utils/eventBus'
 
 interface QuickSavesBoardProps {
   onRestaurantPress?: (restaurantId: string) => void
@@ -22,11 +23,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
   const { user } = useAuth()
   const router = useRouter()
 
-  useEffect(() => {
-    loadQuickSaves()
-  }, [user?.id, refreshTrigger])
-
-  const loadQuickSaves = async () => {
+  const loadQuickSaves = useCallback(async () => {
     if (!user?.id) return
 
     try {
@@ -54,7 +51,29 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    loadQuickSaves()
+  }, [user?.id, refreshTrigger])
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadQuickSaves()
+    }, [loadQuickSaves])
+  )
+
+  // Listen for save events
+  useEffect(() => {
+    const unsubscribeQuickSaves = eventBus.on(EVENTS.QUICK_SAVES_UPDATED, loadQuickSaves)
+    const unsubscribeSaved = eventBus.on(EVENTS.RESTAURANT_SAVED, loadQuickSaves)
+    
+    return () => {
+      unsubscribeQuickSaves()
+      unsubscribeSaved()
+    }
+  }, [loadQuickSaves])
 
   const handleRestaurantPress = (restaurantId: string) => {
     if (onRestaurantPress) {

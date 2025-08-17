@@ -1,0 +1,48 @@
+appId: com.troodie.app
+---
+# Test: User can like and unlike a review
+# Priority: P2 (Important)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Activity feed
+- tapOn: "Activity"
+
+# Wait for activity feed
+- assertVisible:
+    text: "Activity"
+    timeout: 5000
+
+# Find a review post
+- scrollUntilVisible:
+    element:
+      text: ".*reviewed.*"
+      regex: true
+    direction: DOWN
+    timeout: 10000
+
+# Like the review
+- tapOn:
+    id: "like-button"
+    index: 0
+
+# Verify like state
+- assertVisible:
+    id: "like-button-active"
+
+# Check like count increased
+- assertVisible:
+    text: "1 like"
+
+# Unlike the review
+- tapOn:
+    id: "like-button-active"
+
+# Verify unlike state
+- assertVisible:
+    id: "like-button"
+- assertNotVisible:
+    id: "like-button-active"
+
+- takeScreenshot: "like-unlike-complete"

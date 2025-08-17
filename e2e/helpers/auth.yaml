@@ -1,0 +1,40 @@
+appId: com.troodie.app
+---
+# Reusable authentication helpers
+
+# Quick login with test account
+- runFlow:
+    when:
+      visible: "Welcome to TROODIE"
+    commands:
+      - tapOn: "Continue with Email"
+      - inputText: ${TEST_EMAIL}
+      - tapOn: "Next"
+      - inputText: ${TEST_PASSWORD}
+      - hideKeyboard
+      - tapOn: "Sign In"
+      - assertVisible:
+          text: "Home"
+          timeout: 10000
+
+# Ensure user is logged in
+- runFlow:
+    when:
+      notVisible: "Home"
+    commands:
+      - launchApp
+      - runFlow: auth/login.yaml
+
+# Logout if logged in
+- runFlow:
+    when:
+      visible: "Profile"
+    commands:
+      - tapOn: "Profile"
+      - scrollUntilVisible:
+          element: "Sign Out"
+          direction: DOWN
+      - tapOn: "Sign Out"
+      - tapOn:
+          text: "Confirm"
+          optional: true

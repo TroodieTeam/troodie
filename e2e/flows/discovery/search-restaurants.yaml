@@ -1,0 +1,47 @@
+appId: com.troodie.app
+---
+# Test: User can search for restaurants
+# Priority: P1 (Critical)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Explore tab
+- tapOn: "Explore"
+
+# Wait for explore screen
+- assertVisible:
+    text: "What's Hot"
+    timeout: 5000
+
+# Tap search bar
+- tapOn:
+    id: "search-input"
+    
+# Type search query
+- inputText: "Pizza"
+
+# Wait for search results
+- assertVisible:
+    text: ".*Pizza.*"
+    regex: true
+    timeout: 5000
+
+# Verify search results are displayed
+- assertVisible:
+    id: "search-results-list"
+
+# Tap on first result
+- tapOn:
+    id: "search-result-0"
+
+# Verify restaurant detail page
+- assertVisible: "Reviews"
+- assertVisible: "Save"
+
+# Clear search
+- tapOn:
+    id: "search-clear"
+    optional: true
+
+- takeScreenshot: "search-complete"

@@ -1,0 +1,20 @@
+{
+  "development": {
+    "appId": "com.troodie.app.dev",
+    "apiUrl": "https://dev-api.troodie.com",
+    "testEmail": "test@troodie.com",
+    "testPassword": "TestPassword123!"
+  },
+  "staging": {
+    "appId": "com.troodie.app.staging",
+    "apiUrl": "https://staging-api.troodie.com",
+    "testEmail": "test@troodie.com",
+    "testPassword": "TestPassword123!"
+  },
+  "production": {
+    "appId": "com.troodie.app",
+    "apiUrl": "https://api.troodie.com",
+    "testEmail": "e2e-test@troodie.com",
+    "testPassword": "ProdTestPass123!"
+  }
+}

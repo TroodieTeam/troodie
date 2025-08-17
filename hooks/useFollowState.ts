@@ -36,6 +36,15 @@ export function useFollowState({
     loading: false
   });
 
+  // Update state when initial values change (e.g., when profile loads)
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      followersCount: initialFollowersCount,
+      followingCount: initialFollowingCount
+    }));
+  }, [initialFollowersCount, initialFollowingCount]);
+
   // Check initial follow status
   useEffect(() => {
     if (!currentUser?.id || !userId || currentUser.id === userId) return;
@@ -83,55 +92,99 @@ export function useFollowState({
     };
   }, [userId]);
 
-  // Subscribe to relationship changes for current user
+  // Subscribe to relationship changes
   useEffect(() => {
-    if (!currentUser?.id || !userId || currentUser.id === userId) return;
+    if (!currentUser?.id || !userId) return;
 
-    const channel = supabase
-      .channel(`follow-status-${currentUser.id}-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'user_relationships',
-          filter: `follower_id=eq.${currentUser.id}`
-        },
-        (payload) => {
-          if (payload.new.following_id === userId) {
+    // If viewing own profile, subscribe to changes in following count
+    if (currentUser.id === userId) {
+      const channel = supabase
+        .channel(`own-follow-status-${currentUser.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'user_relationships',
+            filter: `follower_id=eq.${currentUser.id}`
+          },
+          () => {
+            // When current user follows someone, increment their following count
             setState(prev => ({
               ...prev,
-              isFollowing: true,
-              followersCount: prev.followersCount + 1
+              followingCount: prev.followingCount + 1
             }));
-            onFollowChange?.(true);
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'user_relationships',
-          filter: `follower_id=eq.${currentUser.id}`
-        },
-        (payload) => {
-          if (payload.old?.following_id === userId) {
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'user_relationships',
+            filter: `follower_id=eq.${currentUser.id}`
+          },
+          () => {
+            // When current user unfollows someone, decrement their following count
             setState(prev => ({
               ...prev,
-              isFollowing: false,
-              followersCount: Math.max(0, prev.followersCount - 1)
+              followingCount: Math.max(0, prev.followingCount - 1)
             }));
-            onFollowChange?.(false);
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } else {
+      // Viewing someone else's profile
+      const channel = supabase
+        .channel(`follow-status-${currentUser.id}-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'user_relationships',
+            filter: `follower_id=eq.${currentUser.id}`
+          },
+          (payload) => {
+            if (payload.new.following_id === userId) {
+              setState(prev => ({
+                ...prev,
+                isFollowing: true,
+                followersCount: prev.followersCount + 1
+              }));
+              onFollowChange?.(true);
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'user_relationships',
+            filter: `follower_id=eq.${currentUser.id}`
+          },
+          (payload) => {
+            if (payload.old?.following_id === userId) {
+              setState(prev => ({
+                ...prev,
+                isFollowing: false,
+                followersCount: Math.max(0, prev.followersCount - 1)
+              }));
+              onFollowChange?.(false);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [currentUser?.id, userId, onFollowChange]);
 
   // Toggle follow status

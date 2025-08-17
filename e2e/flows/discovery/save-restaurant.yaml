@@ -1,0 +1,53 @@
+appId: com.troodie.app
+---
+# Test: User can save a restaurant from discovery
+# Priority: P1 (Critical)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Explore tab
+- tapOn: "Explore"
+
+# Wait for restaurants to load
+- assertVisible:
+    text: "What's Hot"
+    timeout: 5000
+
+# Find and tap on first restaurant card
+- scrollUntilVisible:
+    element: 
+      id: "restaurant-card-0"
+    direction: DOWN
+    timeout: 10000
+
+- tapOn:
+    id: "restaurant-card-0"
+
+# Wait for restaurant detail to load
+- assertVisible:
+    text: "Reviews"
+    timeout: 5000
+
+# Save the restaurant
+- tapOn:
+    id: "save-button"
+
+# Verify save confirmation
+- assertVisible:
+    text: ".*Saved.*"
+    regex: true
+    timeout: 3000
+
+# Navigate to profile to verify save
+- tapOn: "Profile"
+
+# Check saves section
+- tapOn: "Saves"
+
+# Verify restaurant appears in saves
+- assertVisible:
+    id: "restaurant-card-0"
+    timeout: 5000
+
+- takeScreenshot: "restaurant-saved"

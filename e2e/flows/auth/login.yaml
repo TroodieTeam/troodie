@@ -1,0 +1,42 @@
+appId: com.troodie.app
+---
+# Test: User can log in with email and password
+# Priority: P1 (Critical)
+
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: deny
+      location: allow
+
+# Wait for app to load
+- assertVisible: 
+    text: "Welcome to TROODIE"
+    timeout: 10000
+
+# Navigate to email login
+- tapOn: "Continue with Email"
+
+# Enter email
+- assertVisible: "Enter your email"
+- inputText: "test@troodie.com"
+- tapOn: "Next"
+
+# Enter password
+- assertVisible: "Enter your password"
+- inputText: "TestPassword123!"
+- hideKeyboard
+- tapOn: "Sign In"
+
+# Verify successful login
+- assertVisible:
+    text: "Home"
+    timeout: 10000
+
+# Verify main navigation is visible
+- assertVisible: "Explore"
+- assertVisible: "Activity"
+- assertVisible: "Profile"
+
+# Optional: Take screenshot for visual verification
+- takeScreenshot: "login-success"

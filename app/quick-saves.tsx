@@ -7,7 +7,7 @@ import { restaurantService } from '@/services/restaurantService'
 import { BoardRestaurant } from '@/types/board'
 import { RestaurantInfo } from '@/types/core'
 import { useRouter } from 'expo-router'
-import { ArrowLeft } from 'lucide-react-native'
+import { ArrowLeft, Link, FileText, Star } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -16,7 +16,8 @@ import {
   SafeAreaView,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Linking
 } from 'react-native'
 
 type QuickSave = BoardRestaurant & { restaurant?: RestaurantInfo }
@@ -105,8 +106,44 @@ export default function QuickSavesScreen() {
           restaurant={item.restaurant}
           onPress={() => handleRestaurantPress(item.restaurant_id)}
         />
-        {item.notes && (
-          <Text style={styles.notes}>{item.notes}</Text>
+        {/* Context Section */}
+        {(item.notes || item.external_url || item.rating) && (
+          <View style={styles.contextContainer}>
+            {item.rating && (
+              <View style={styles.ratingContainer}>
+                <View style={[
+                  styles.ratingBadge,
+                  { backgroundColor: item.rating === 1 ? '#FF4444' : item.rating === 2 ? '#FFAA44' : '#00AA00' }
+                ]}>
+                  <Text style={styles.ratingText}>
+                    {item.rating === 1 ? '😕 Poor' : item.rating === 2 ? '😐 Average' : '😊 Excellent'}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {item.external_url && (
+              <TouchableOpacity 
+                style={styles.linkContainer}
+                onPress={() => {
+                  // Open the link in browser
+                  Linking.openURL(item.external_url).catch(err => 
+                    console.error('Failed to open URL:', err)
+                  )
+                }}
+              >
+                <Link size={14} color={designTokens.colors.primaryOrange} />
+                <Text style={styles.linkText} numberOfLines={1}>
+                  {item.external_url.replace(/^https?:\/\/(www\.)?/, '')}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {item.notes && (
+              <View style={styles.notesContainer}>
+                <FileText size={14} color={designTokens.colors.textMedium} />
+                <Text style={styles.notes}>{item.notes}</Text>
+              </View>
+            )}
+          </View>
         )}
         <View style={styles.metadata}>
           <Text style={styles.savedDate}>
@@ -289,11 +326,48 @@ const styles = {
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
+  contextContainer: {
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderRadius: designTokens.borderRadius.sm,
+    padding: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    gap: theme.spacing.xs,
+  },
+  ratingContainer: {
+    flexDirection: 'row' as const,
+    marginBottom: theme.spacing.xs,
+  },
+  ratingBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: designTokens.borderRadius.xs,
+  },
+  ratingText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600' as const,
+  },
+  linkContainer: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.xs,
+    paddingVertical: 4,
+  },
+  linkText: {
+    ...designTokens.typography.detailText,
+    color: designTokens.colors.primaryOrange,
+    flex: 1,
+    textDecorationLine: 'underline' as const,
+  },
+  notesContainer: {
+    flexDirection: 'row' as const,
+    gap: theme.spacing.xs,
+    paddingTop: 4,
+  },
   notes: {
     ...designTokens.typography.bodyRegular,
     color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
+    flex: 1,
   },
   metadata: {
     flexDirection: 'row' as const,

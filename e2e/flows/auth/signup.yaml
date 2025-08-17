@@ -1,0 +1,51 @@
+appId: com.troodie.app
+---
+# Test: User can sign up with email
+# Priority: P1 (Critical)
+
+- launchApp:
+    clearState: true
+    permissions:
+      notifications: deny
+      location: allow
+
+# Wait for welcome screen
+- assertVisible: 
+    text: "Welcome to TROODIE"
+    timeout: 10000
+
+# Navigate to email signup
+- tapOn: "Continue with Email"
+
+# Enter new user email
+- assertVisible: "Enter your email"
+- inputText: "newuser_${timestamp}@troodie.com"
+- tapOn: "Next"
+
+# Create password
+- assertVisible: "Create a password"
+- inputText: "TestPassword123!"
+- hideKeyboard
+- tapOn: "Next"
+
+# Complete onboarding - Username
+- assertVisible: "Create your username"
+- inputText: "testuser_${timestamp}"
+- hideKeyboard
+- tapOn: "Continue"
+
+# Skip persona selection for speed
+- tapOn: 
+    text: "Skip"
+    optional: true
+
+# Verify successful signup
+- assertVisible:
+    text: "Home"
+    timeout: 15000
+
+# Verify user is logged in
+- tapOn: "Profile"
+- assertVisible: "@testuser_${timestamp}"
+
+- takeScreenshot: "signup-success"

@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Bell } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { activityFeedService, ActivityFeedItem } from '@/services/activityFeedService';
@@ -145,6 +145,16 @@ export default function ActivityScreen() {
     };
   }, []);
 
+  // Refresh feed when screen comes into focus
+  // This helps when returning from profile edit
+  useFocusEffect(
+    useCallback(() => {
+      // Clear cache to get fresh data
+      activityFeedService.clearCache();
+      fetchActivities(true);
+    }, [fetchActivities])
+  );
+
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchActivities(true);
@@ -165,10 +175,11 @@ export default function ActivityScreen() {
     }
   };
 
-  const renderActivityItem = ({ item }: { item: ActivityFeedItem }) => (
+  const renderActivityItem = ({ item, index }: { item: ActivityFeedItem; index: number }) => (
     <ActivityFeedItemComponent
       activity={item}
       formatTimeAgo={activityFeedService.formatTimeAgo}
+      testID={`activity-item-${index}`}
     />
   );
 

@@ -1,0 +1,52 @@
+appId: com.troodie.app
+---
+# Test: User can upload profile avatar
+# Priority: P2 (Important)
+# Prerequisites: User must be logged in
+
+- launchApp
+
+# Navigate to Profile
+- tapOn: "Profile"
+
+# Open edit profile
+- tapOn: "Edit Profile"
+
+# Wait for edit modal
+- assertVisible:
+    text: "Edit Profile"
+    timeout: 3000
+
+# Tap on avatar to change
+- tapOn:
+    id: "avatar-upload"
+
+# Select from gallery option
+- tapOn: "Choose from Gallery"
+
+# Note: Maestro will use a test image
+# In real device testing, you'd need images in gallery
+- waitForAnimationToEnd
+
+# Select first image
+- tapOn:
+    index: 0
+    className: "ImageThumbnail"
+    optional: true
+
+# Confirm selection
+- tapOn: "Choose"
+
+# Save profile
+- tapOn: "Save"
+
+# Wait for upload
+- assertVisible:
+    text: "Profile updated"
+    timeout: 15000
+
+# Verify avatar changed
+- assertVisible:
+    id: "profile-avatar"
+
+- takeScreenshot: "avatar-uploaded"

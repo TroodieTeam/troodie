@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 
 export interface ActivityFeedItem {
   activity_type: 'post' | 'save' | 'follow' | 'community_join' | 'like' | 'comment';
@@ -40,8 +41,15 @@ export interface ActivityFeedOptions {
 
 class ActivityFeedService {
   private cache: Map<string, { data: ActivityFeedItem[]; expires: number }> = new Map();
-  private CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+  private CACHE_DURATION = 30 * 1000; // 30 seconds - reduced for faster updates
   private subscriptions: Map<string, RealtimeChannel> = new Map();
+
+  constructor() {
+    // Listen for profile image updates to clear cache
+    eventBus.on(EVENTS.PROFILE_IMAGE_UPDATED, () => {
+      this.clearCache();
+    });
+  }
 
   /**
    * Get activity feed with optional filtering
@@ -285,19 +293,19 @@ class ActivityFeedService {
         activity_type: 'follow',
         activity_id: follow.id,
         actor_id: follow.follower_id,
-        actor_name: followerResult.data.name,
+        actor_name: followerResult.data.name || followerResult.data.username,
         actor_username: followerResult.data.username,
         actor_avatar: followerResult.data.avatar_url,
         actor_is_verified: followerResult.data.is_verified,
         action: 'started following',
-        target_name: followingResult.data.name,
+        target_name: followingResult.data.name || followingResult.data.username,
         target_id: follow.following_id,
         target_type: 'user',
         rating: null,
         content: null,
         photos: null,
         related_user_id: follow.following_id,
-        related_user_name: followingResult.data.name,
+        related_user_name: followingResult.data.name || followingResult.data.username,
         related_user_username: followingResult.data.username,
         related_user_avatar: followingResult.data.avatar_url,
         privacy: 'public',

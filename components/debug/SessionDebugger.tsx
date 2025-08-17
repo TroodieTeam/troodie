@@ -23,6 +23,7 @@ export function SessionDebugger() {
   
   const handleGetSession = async () => {
     const { data: { session }, error } = await supabase.auth.getSession()
+    console.log('[SessionDebugger] getSession result:', {
       hasSession: !!session,
       error: error?.message,
       userId: session?.user?.id,
