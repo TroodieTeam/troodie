@@ -241,7 +241,7 @@ export default function ExploreScreen() {
 
 
 
-  const renderItem = useCallback(({ item }: { item: any }) => {
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     // Handle regular items
     if (activeTab === 'restaurants') {
       return (
