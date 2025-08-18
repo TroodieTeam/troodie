@@ -75,6 +75,43 @@ export const RestaurantCardSkeleton: React.FC = () => {
   );
 };
 
+export const RestaurantCardCompactSkeleton: React.FC = () => {
+  return (
+    <View style={styles.compactCardContainer}>
+      <LoadingSkeleton width={64} height={64} borderRadius={0} />
+      <View style={styles.compactCardContent}>
+        <View style={styles.compactTopRow}>
+          <LoadingSkeleton width="60%" height={14} />
+          <LoadingSkeleton width={40} height={12} />
+        </View>
+        <View style={styles.compactBottomRow}>
+          <LoadingSkeleton width={80} height={12} />
+          <LoadingSkeleton width={60} height={12} style={{ marginLeft: 8 }} />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+export const RestaurantCardWithSaveSkeleton: React.FC = () => {
+  return (
+    <View style={styles.verticalCardContainer}>
+      <LoadingSkeleton width="100%" height={140} borderRadius={0} />
+      <View style={styles.verticalCardContent}>
+        <View style={styles.verticalMainInfo}>
+          <LoadingSkeleton width="70%" height={14} style={{ marginBottom: 2 }} />
+          <LoadingSkeleton width="50%" height={12} style={{ marginBottom: 4 }} />
+          <View style={styles.verticalDetailsRow}>
+            <LoadingSkeleton width={50} height={11} />
+            <LoadingSkeleton width={80} height={11} style={{ marginLeft: 8 }} />
+          </View>
+        </View>
+        <LoadingSkeleton width={24} height={24} borderRadius={12} />
+      </View>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: designTokens.colors.backgroundGray,
@@ -104,5 +141,57 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: designTokens.spacing.md,
+  },
+  compactCardContainer: {
+    flexDirection: 'row',
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.sm,
+    overflow: 'hidden',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+  },
+  compactCardContent: {
+    flex: 1,
+    padding: 8,
+    justifyContent: 'center',
+  },
+  compactTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  compactBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  verticalCardContainer: {
+    backgroundColor: designTokens.colors.white,
+    borderRadius: designTokens.borderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: designTokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  verticalCardContent: {
+    padding: designTokens.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  verticalMainInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  verticalDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
   },
 });

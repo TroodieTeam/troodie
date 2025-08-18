@@ -2,6 +2,7 @@ import { Database, supabase } from '@/lib/supabase'
 import { RestaurantInfo } from '@/types/core'
 import { NetworkError, NotFoundError, ServerError, TimeoutError, isNetworkError } from '@/types/errors'
 import { DEFAULT_IMAGES, getRestaurantPlaceholder } from '@/constants/images'
+import { normalizeCity, isValidCity, deduplicateCities, getCityFilter } from '@/utils/cityNormalization'
 
 type Restaurant = Database['public']['Tables']['restaurants']['Row']
 type RestaurantInsert = Database['public']['Tables']['restaurants']['Insert']
@@ -411,9 +412,11 @@ export const restaurantService = {
         .order('google_rating', { ascending: false })
         .limit(10)
       
-      // Filter by exact city match if provided
+      // Filter by normalized city match if provided
       if (city && city !== 'All') {
-        query = query.eq('city', city)
+        const normalizedCity = getCityFilter(city)
+        // Use ilike for case-insensitive matching
+        query = query.ilike('city', normalizedCity)
       }
       
       const { data, error } = await query
@@ -456,9 +459,14 @@ export const restaurantService = {
         throw error
       }
       
-      // Get unique cities
-      const uniqueCities = [...new Set(data?.map(r => r.city).filter(Boolean) || [])]
-      return uniqueCities
+      // Get unique cities and normalize them
+      const cities = data?.map(r => r.city).filter(Boolean) || []
+      const normalizedCities = deduplicateCities(cities)
+      
+      // Filter out invalid cities
+      const validCities = normalizedCities.filter(city => isValidCity(city))
+      
+      return validCities
     } catch (error) {
       if (__DEV__) {
         console.error('Error fetching available cities:', error)
@@ -489,9 +497,15 @@ export const restaurantService = {
   },
 
   async createRestaurant(restaurant: RestaurantInsert): Promise<Restaurant | null> {
+    // Normalize city before inserting
+    const normalizedRestaurant = {
+      ...restaurant,
+      city: restaurant.city ? normalizeCity(restaurant.city) : restaurant.city
+    }
+    
     const { data, error } = await supabase
       .from('restaurants')
-      .insert(restaurant)
+      .insert(normalizedRestaurant)
       .select()
       .single()
     
