@@ -72,6 +72,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
         item.city === currentCity && styles.cityItemSelected,
       ]}
       onPress={() => handleCitySelect(item.city)}
+      testID={`city-option-${item.city.toLowerCase().replace(/\s+/g, '-')}`}
     >
       <Text
         style={[
@@ -91,6 +92,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
         <TouchableOpacity
           style={styles.compactSelector}
           onPress={() => setShowModal(true)}
+          testID="city-selector-compact"
         >
           <MapPin size={14} color={designTokens.colors.primaryOrange} />
           <Text style={styles.compactText}>{currentCity}</Text>
@@ -116,6 +118,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
                 <TouchableOpacity
                   onPress={() => setShowModal(false)}
                   style={styles.closeButton}
+                  testID="close-city-selector"
                 >
                   <X size={24} color={designTokens.colors.textDark} />
                 </TouchableOpacity>
@@ -125,6 +128,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
                 style={styles.detectLocationButton}
                 onPress={handleDetectLocation}
                 disabled={detectingLocation}
+                testID="detect-location-button"
               >
                 <MapPin size={20} color={designTokens.colors.primaryOrange} />
                 <Text style={styles.detectLocationText}>

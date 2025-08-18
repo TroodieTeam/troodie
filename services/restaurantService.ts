@@ -422,12 +422,49 @@ export const restaurantService = {
         throw error
       }
       
+      // If no restaurants found for the city, try without city filter as fallback
+      if ((!data || data.length === 0) && city && city !== 'Charlotte') {
+        const fallbackQuery = supabase
+          .from('restaurants')
+          .select('*')
+          .not('google_rating', 'is', null)
+          .order('google_rating', { ascending: false })
+          .limit(10)
+        
+        const { data: fallbackData } = await fallbackQuery
+        return fallbackData || []
+      }
+      
       return data || []
     } catch (error) {
       if (__DEV__) {
         console.error('Error fetching top rated restaurants:', error)
       }
       return []
+    }
+  },
+  
+  async getAvailableCities(): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('city')
+        .not('city', 'is', null)
+        .order('city')
+      
+      if (error) {
+        throw error
+      }
+      
+      // Get unique cities
+      const uniqueCities = [...new Set(data?.map(r => r.city).filter(Boolean) || [])]
+      return uniqueCities
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error fetching available cities:', error)
+      }
+      // Return default cities if database query fails
+      return ['Charlotte', 'New York', 'Los Angeles', 'Chicago']
     }
   },
   

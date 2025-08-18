@@ -63,6 +63,7 @@ export default function HomeScreen() {
   const [showRecommendationsInfo, setShowRecommendationsInfo] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedCity, setSelectedCity] = useState('Charlotte');
+  const [cityLoading, setCityLoading] = useState(false);
   
   const persona = useMemo(
     () => onboardingState.persona && personas[onboardingState.persona],
@@ -168,7 +169,7 @@ export default function HomeScreen() {
       await locationService.initialize();
       const city = await locationService.detectCurrentCity();
       
-      if (isMounted) {
+      if (isMounted && locationService.isCityAvailable(city)) {
         setSelectedCity(city);
       }
     };
@@ -179,6 +180,16 @@ export default function HomeScreen() {
       isMounted = false;
     };
   }, []);
+
+  // Handle city change with loading state
+  const handleCityChange = useCallback((newCity: string) => {
+    if (newCity !== selectedCity) {
+      setCityLoading(true);
+      setSelectedCity(newCity);
+      // Loading will be turned off by the data fetch hook
+      setTimeout(() => setCityLoading(false), 1000);
+    }
+  }, [selectedCity]);
 
   // Remove this useEffect - the dependency array in useSmoothDataFetch already handles city changes
 
@@ -511,13 +522,18 @@ export default function HomeScreen() {
             </Text>
             <CitySelector
               currentCity={selectedCity}
-              onCityChange={setSelectedCity}
+              onCityChange={handleCityChange}
               compact
             />
           </View>
         </View>
         
-        {topRatedRestaurants.length === 0 ? (
+        {cityLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+            <Text style={styles.loadingStateText}>Loading {selectedCity} restaurants...</Text>
+          </View>
+        ) : topRatedRestaurants.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyStateIcon}>
               <Sparkles size={32} color="#DDD" />
@@ -573,7 +589,7 @@ export default function HomeScreen() {
         {renderHeader()}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
-          <Text style={styles.loadingText}>Loading Charlotte&apos;s best spots...</Text>
+          <Text style={styles.loadingText}>Loading {selectedCity}&apos;s best spots...</Text>
         </View>
       </SafeAreaView>
     );
@@ -870,6 +886,18 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: designTokens.colors.borderLight,
     borderRadius: designTokens.borderRadius.lg,
+  },
+  loadingState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: designTokens.spacing.xl,
+    gap: designTokens.spacing.sm,
+  },
+  loadingStateText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: designTokens.colors.textSecondary,
   },
   emptyStateIcon: {
     width: 64,

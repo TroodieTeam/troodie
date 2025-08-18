@@ -1,0 +1,76 @@
+appId: com.kndri.troodie
+name: City Selector Tests
+tags:
+  - discovery
+  - city-selector
+
+---
+
+# Test: City Selector Functionality
+- launchApp:
+    clearState: true
+
+# Navigate to home screen
+- assertVisible:
+    text: "Top Rated in"
+    
+# Test: Open city selector
+- tapOn:
+    id: "city-selector-compact"
+    
+- assertVisible:
+    text: "Select City"
+    
+# Test: Verify default cities are available
+- assertVisible:
+    text: "Charlotte"
+    
+- assertVisible:
+    text: "New York"
+    
+- assertVisible:
+    text: "Los Angeles"
+    
+# Test: Select a different city
+- tapOn:
+    text: "New York"
+    
+- assertVisible:
+    text: "Top Rated in New York"
+    
+# Test: Verify restaurants update for selected city
+- waitForAnimationToEnd
+
+- assertVisible:
+    id: "restaurant-card-0"
+    
+# Test: Open city selector again
+- tapOn:
+    id: "city-selector-compact"
+    
+# Test: Use current location feature
+- tapOn:
+    text: "Use Current Location"
+    
+# Handle permission dialog if shown
+- conditional:
+    condition:
+      visible:
+        text: "Location Permission"
+    actions:
+      - tapOn:
+          text: "Grant Permission"
+          
+# Wait for location detection
+- waitForAnimationToEnd
+
+# Verify city has been detected (should show Charlotte or detected city)
+- assertVisible:
+    text: "Top Rated in"
+    
+# Test: Close city selector
+- tapOn:
+    id: "close-city-selector"
+    
+- assertNotVisible:
+    text: "Select City"

@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { restaurantService } from './restaurantService';
 
 const STORAGE_KEYS = {
   LAST_CITY: 'last_selected_city',
@@ -18,11 +19,13 @@ export interface CityLocation {
 class LocationService {
   private currentCity: string | null = null;
   private manualOverride: boolean = false;
+  private _availableCities: { city: string; state?: string; country?: string }[] = [];
+  private citiesLoaded: boolean = false;
 
   /**
-   * Available cities for manual selection
+   * Default cities for fallback
    */
-  readonly availableCities = [
+  private readonly defaultCities = [
     { city: 'Charlotte', state: 'NC', country: 'USA' },
     { city: 'New York', state: 'NY', country: 'USA' },
     { city: 'Los Angeles', state: 'CA', country: 'USA' },
@@ -34,6 +37,17 @@ class LocationService {
     { city: 'Boston', state: 'MA', country: 'USA' },
     { city: 'Atlanta', state: 'GA', country: 'USA' },
   ];
+
+  /**
+   * Get available cities (fetches from database if not loaded)
+   */
+  get availableCities() {
+    if (!this.citiesLoaded) {
+      // Return default cities if not loaded yet
+      return this.defaultCities;
+    }
+    return this._availableCities.length > 0 ? this._availableCities : this.defaultCities;
+  }
 
   /**
    * Initialize location service
@@ -48,6 +62,51 @@ class LocationService {
     }
     
     this.manualOverride = override === 'true';
+    
+    // Load available cities from database
+    await this.loadAvailableCities();
+  }
+
+  /**
+   * Load available cities from the database
+   */
+  private async loadAvailableCities() {
+    try {
+      const cities = await restaurantService.getAvailableCities();
+      
+      // Map database cities to our format
+      this._availableCities = cities.map(city => {
+        // Try to match with default cities to get state info
+        const defaultCity = this.defaultCities.find(dc => dc.city === city);
+        if (defaultCity) {
+          return defaultCity;
+        }
+        // Otherwise just use the city name
+        return { city, country: 'USA' };
+      });
+      
+      // Ensure Charlotte is always available (as it's our default)
+      if (!this._availableCities.some(c => c.city === 'Charlotte')) {
+        const charlotte = this.defaultCities.find(c => c.city === 'Charlotte');
+        if (charlotte) {
+          this._availableCities.unshift(charlotte);
+        }
+      }
+      
+      this.citiesLoaded = true;
+    } catch (error) {
+      console.error('Error loading available cities:', error);
+      // Fall back to default cities
+      this._availableCities = this.defaultCities;
+      this.citiesLoaded = true;
+    }
+  }
+
+  /**
+   * Refresh available cities from the database
+   */
+  async refreshAvailableCities() {
+    await this.loadAvailableCities();
   }
 
   /**
@@ -158,7 +217,10 @@ class LocationService {
   private findClosestCity(detectedCity: string): string {
     const normalized = detectedCity.toLowerCase();
     
-    const match = this.availableCities.find(
+    // Ensure we have cities loaded
+    const cities = this.citiesLoaded ? this._availableCities : this.defaultCities;
+    
+    const match = cities.find(
       city => city.city.toLowerCase() === normalized
     );
     
@@ -201,11 +263,20 @@ class LocationService {
    * Format city display name
    */
   formatCityDisplay(city: string): string {
-    const cityData = this.availableCities.find(c => c.city === city);
+    const cities = this.citiesLoaded ? this._availableCities : this.defaultCities;
+    const cityData = cities.find(c => c.city === city);
     if (cityData && cityData.state) {
       return `${cityData.city}, ${cityData.state}`;
     }
     return city;
+  }
+
+  /**
+   * Check if a city has restaurants in the database
+   */
+  isCityAvailable(city: string): boolean {
+    const cities = this.citiesLoaded ? this._availableCities : this.defaultCities;
+    return cities.some(c => c.city === city);
   }
 }
 
