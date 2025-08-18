@@ -5,6 +5,7 @@ import { InfoModal } from '@/components/InfoModal';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { CitySelector } from '@/components/CitySelector';
+import { RestaurantCardWithSaveSkeleton } from '@/components/LoadingSkeleton';
 import { locationService } from '@/services/locationService';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
@@ -126,11 +127,14 @@ export default function HomeScreen() {
     if (!user?.id) return;
     
     try {
-      const [boards, posts, communities] = await Promise.all([
+      const [boards, posts, communitiesData] = await Promise.all([
         boardService.getUserBoards(user.id),
         postService.getUserPosts(user.id),
         communityService.getUserCommunities(user.id)
       ]);
+      
+      // getUserCommunities returns { joined: [], created: [] }
+      const hasJoined = (communitiesData.joined?.length > 0) || (communitiesData.created?.length > 0);
       
       if (boards.length > 0 && !hasCreatedBoard) {
         updateNetworkProgress('board');
@@ -138,7 +142,7 @@ export default function HomeScreen() {
       if (posts.length > 0 && !hasCreatedPost) {
         updateNetworkProgress('post');
       }
-      if (communities.length > 0 && !hasJoinedCommunity) {
+      if (hasJoined && !hasJoinedCommunity) {
         updateNetworkProgress('community');
       }
     } catch (error) {
@@ -529,10 +533,11 @@ export default function HomeScreen() {
         </View>
         
         {cityLoading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
-            <Text style={styles.loadingStateText}>Loading {selectedCity} restaurants...</Text>
-          </View>
+          <>
+            <RestaurantCardWithSaveSkeleton />
+            <RestaurantCardWithSaveSkeleton />
+            <RestaurantCardWithSaveSkeleton />
+          </>
         ) : topRatedRestaurants.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyStateIcon}>

@@ -91,21 +91,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!user?.id) return;
       
       try {
-        const [boards, posts, communities] = await Promise.all([
+        const [boards, posts, communitiesData] = await Promise.all([
           boardService.getUserBoards(user.id),
           postService.getUserPosts(user.id),
           communityService.getUserCommunities(user.id)
         ]);
         
+        // getUserCommunities returns { joined: [], created: [] }
+        const hasJoined = (communitiesData.joined?.length > 0) || (communitiesData.created?.length > 0);
+        
         setState(prev => ({
           ...prev,
           hasCreatedBoard: boards.length > 0,
           hasCreatedPost: posts.length > 0,
-          hasJoinedCommunity: communities.length > 0,
+          hasJoinedCommunity: hasJoined,
           networkProgress: [
             boards.length > 0,
             posts.length > 0,
-            communities.length > 0
+            hasJoined
           ].filter(Boolean).length
         }));
       } catch (error) {
