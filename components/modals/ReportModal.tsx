@@ -3,411 +3,286 @@ import {
   Modal,
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  TextInput,
   ScrollView,
-  Alert,
   ActivityIndicator,
-  TextInput
 } from 'react-native';
-import { X, AlertTriangle } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import { ToastService } from '@/services/toastService';
+import { moderationService } from '@/services/moderationService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ReportModalProps {
   visible: boolean;
   onClose: () => void;
-  targetType: 'post' | 'comment' | 'user' | 'board' | 'community';
-  targetId: string;
-  targetName?: string;
+  contentType: 'post' | 'review' | 'comment';
+  contentId: string;
+  onSuccess?: () => void;
 }
 
 const REPORT_REASONS = [
-  { value: 'spam', label: 'Spam', description: 'Unwanted commercial content or spam' },
-  { value: 'harassment', label: 'Harassment', description: 'Bullying or harassment' },
-  { value: 'hate_speech', label: 'Hate Speech', description: 'Hate speech or discrimination' },
-  { value: 'violence', label: 'Violence', description: 'Violence or dangerous content' },
-  { value: 'sexual_content', label: 'Sexual Content', description: 'Inappropriate sexual content' },
-  { value: 'false_information', label: 'False Information', description: 'Misleading or false information' },
-  { value: 'intellectual_property', label: 'Intellectual Property', description: 'Copyright or trademark violation' },
-  { value: 'self_harm', label: 'Self Harm', description: 'Self-harm or suicide content' },
-  { value: 'illegal_activity', label: 'Illegal Activity', description: 'Illegal or regulated goods' },
-  { value: 'other', label: 'Other', description: 'Other reason not listed' }
+  { value: 'inappropriate', label: 'Inappropriate Content', icon: 'warning-outline' },
+  { value: 'spam', label: 'Spam', icon: 'mail-outline' },
+  { value: 'harassment', label: 'Harassment', icon: 'person-remove-outline' },
+  { value: 'false_information', label: 'False Information', icon: 'information-circle-outline' },
+  { value: 'other', label: 'Other', icon: 'ellipsis-horizontal-outline' },
 ];
 
-export default function ReportModal({
-  visible,
-  onClose,
-  targetType,
-  targetId,
-  targetName
+export function ReportModal({ 
+  visible, 
+  onClose, 
+  contentType,
+  contentId,
+  onSuccess
 }: ReportModalProps) {
+  const { user } = useAuth();
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [details, setDetails] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!selectedReason) {
-      Alert.alert('Select a Reason', 'Please select a reason for reporting');
+      ToastService.showError('Please select a reason for reporting');
       return;
     }
 
-    setIsSubmitting(true);
+    if (!user) {
+      ToastService.showError('You must be logged in to report content');
+      return;
+    }
 
+    setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Map contentType to targetType expected by the API
+      const targetType = contentType === 'post' ? 'post' : 
+                        contentType === 'user' ? 'user' :
+                        contentType === 'comment' ? 'comment' :
+                        contentType === 'board' ? 'board' : 'community';
       
-      if (!session) {
-        Alert.alert('Error', 'You must be signed in to report content');
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('submit-report', {
-        body: {
-          targetType,
-          targetId,
-          reason: selectedReason,
-          description: description || null
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      if (error) throw error;
-
-      Alert.alert(
-        'Report Submitted',
-        'Thank you for your report. We will review it and take appropriate action.',
-        [{ text: 'OK', onPress: handleClose }]
+      const success = await moderationService.submitReport(
+        targetType as 'post' | 'comment' | 'user' | 'board' | 'community',
+        contentId,
+        selectedReason,
+        details || undefined
       );
 
-    } catch (error: any) {
-      console.error('Report submission error:', error);
-      
-      if (error.message?.includes('already reported')) {
-        Alert.alert(
-          'Already Reported',
-          'You have already reported this content. Our team is reviewing it.'
-        );
-      } else {
-        Alert.alert(
-          'Report Failed',
-          'Unable to submit report. Please try again later.'
-        );
+      if (success) {
+        onSuccess?.();
+        handleClose();
+        // Success message is already shown by moderationService
       }
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      // Error is already handled by moderationService with Alert
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   const handleClose = () => {
     setSelectedReason(null);
-    setDescription('');
+    setDetails('');
     onClose();
-  };
-
-  const getTargetTypeLabel = () => {
-    switch (targetType) {
-      case 'post': return 'Post';
-      case 'comment': return 'Comment';
-      case 'user': return 'User';
-      case 'board': return 'Board';
-      case 'community': return 'Community';
-      default: return 'Content';
-    }
   };
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <AlertTriangle size={24} color="#FF3B30" />
-            <Text style={styles.headerTitle}>Report {getTargetTypeLabel()}</Text>
-          </View>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <X size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {targetName && (
-            <View style={styles.targetInfo}>
-              <Text style={styles.targetLabel}>Reporting:</Text>
-              <Text style={styles.targetName}>{targetName}</Text>
+      <View style={styles.overlay}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.modal}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Report Content</Text>
+              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
             </View>
-          )}
 
-          <Text style={styles.sectionTitle}>Why are you reporting this?</Text>
-          <Text style={styles.sectionSubtitle}>
-            Your report is anonymous. We'll review it and take appropriate action.
-          </Text>
-
-          <View style={styles.reasonsList}>
-            {REPORT_REASONS.map((reason) => (
-              <TouchableOpacity
-                key={reason.value}
-                style={[
-                  styles.reasonItem,
-                  selectedReason === reason.value && styles.reasonItemSelected
-                ]}
-                onPress={() => setSelectedReason(reason.value)}
-              >
-                <View style={styles.reasonContent}>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+              <Text style={styles.subtitle}>Why are you reporting this?</Text>
+              
+              {REPORT_REASONS.map((reason) => (
+                <TouchableOpacity
+                  key={reason.value}
+                  style={[
+                    styles.reasonItem,
+                    selectedReason === reason.value && styles.reasonItemSelected
+                  ]}
+                  onPress={() => setSelectedReason(reason.value)}
+                >
+                  <Ionicons 
+                    name={reason.icon as any} 
+                    size={24} 
+                    color={selectedReason === reason.value ? '#5B4CCC' : '#666'} 
+                  />
                   <Text style={[
-                    styles.reasonLabel,
-                    selectedReason === reason.value && styles.reasonLabelSelected
+                    styles.reasonText,
+                    selectedReason === reason.value && styles.reasonTextSelected
                   ]}>
                     {reason.label}
                   </Text>
-                  <Text style={[
-                    styles.reasonDescription,
-                    selectedReason === reason.value && styles.reasonDescriptionSelected
-                  ]}>
-                    {reason.description}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.radioButton,
-                  selectedReason === reason.value && styles.radioButtonSelected
-                ]}>
                   {selectedReason === reason.value && (
-                    <View style={styles.radioButtonInner} />
+                    <Ionicons name="checkmark-circle" size={20} color="#5B4CCC" />
                   )}
+                </TouchableOpacity>
+              ))}
+
+              {selectedReason && (
+                <View style={styles.detailsSection}>
+                  <Text style={styles.detailsLabel}>Additional details (optional)</Text>
+                  <TextInput
+                    style={styles.detailsInput}
+                    value={details}
+                    onChangeText={setDetails}
+                    placeholder="Provide more information about this report..."
+                    placeholderTextColor="#999"
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
                 </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <TouchableOpacity 
+                style={[
+                  styles.submitButton,
+                  (!selectedReason || loading) && styles.submitButtonDisabled
+                ]}
+                onPress={handleSubmit}
+                disabled={!selectedReason || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Submit Report</Text>
+                )}
               </TouchableOpacity>
-            ))}
-          </View>
-
-          {selectedReason === 'other' && (
-            <View style={styles.descriptionContainer}>
-              <Text style={styles.descriptionLabel}>Please provide details:</Text>
-              <TextInput
-                style={styles.descriptionInput}
-                placeholder="Describe the issue..."
-                placeholderTextColor="#999"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={4}
-                maxLength={500}
-                textAlignVertical="top"
-              />
-              <Text style={styles.charCount}>{description.length}/500</Text>
             </View>
-          )}
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.button, styles.cancelButton]}
-            onPress={handleClose}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.submitButton,
-              !selectedReason && styles.submitButtonDisabled
-            ]}
-            onPress={handleSubmit}
-            disabled={!selectedReason || isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.submitButtonText}>Submit Report</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+          </View>
+        </SafeAreaView>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    justifyContent: 'flex-end',
+  },
+  modal: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    justifyContent: 'space-between',
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
-    backgroundColor: '#FFFFFF',
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerTitle: {
+  title: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#333',
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 4,
   },
   content: {
-    flex: 1,
     padding: 20,
   },
-  targetInfo: {
-    backgroundColor: '#FFF5E5',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  targetLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  targetName: {
+  subtitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
     color: '#666',
-    marginBottom: 20,
-  },
-  reasonsList: {
-    gap: 12,
+    marginBottom: 16,
   },
   reasonItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E5E5',
+    marginBottom: 12,
   },
   reasonItemSelected: {
-    borderColor: '#FFAD27',
-    backgroundColor: '#FFF9F0',
+    borderColor: '#5B4CCC',
+    backgroundColor: '#F8F6FF',
   },
-  reasonContent: {
+  reasonText: {
     flex: 1,
-    marginRight: 12,
-  },
-  reasonLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: 'Inter_400Regular',
     color: '#333',
-    marginBottom: 4,
+    marginLeft: 12,
   },
-  reasonLabelSelected: {
-    color: '#FF8C00',
+  reasonTextSelected: {
+    fontFamily: 'Inter_500Medium',
+    color: '#5B4CCC',
   },
-  reasonDescription: {
-    fontSize: 13,
-    color: '#666',
-  },
-  reasonDescriptionSelected: {
-    color: '#666',
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#D0D0D0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioButtonSelected: {
-    borderColor: '#FFAD27',
-  },
-  radioButtonInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FFAD27',
-  },
-  descriptionContainer: {
+  detailsSection: {
     marginTop: 20,
   },
-  descriptionLabel: {
+  detailsLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontFamily: 'Inter_500Medium',
+    color: '#666',
     marginBottom: 8,
   },
-  descriptionInput: {
-    backgroundColor: '#FFFFFF',
+  detailsInput: {
     borderWidth: 1,
     borderColor: '#E5E5E5',
     borderRadius: 12,
     padding: 12,
     fontSize: 14,
+    fontFamily: 'Inter_400Regular',
     color: '#333',
     minHeight: 100,
   },
-  charCount: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
-    marginTop: 8,
-  },
   footer: {
-    flexDirection: 'row',
-    gap: 12,
     padding: 20,
-    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
   },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
+  submitButton: {
+    backgroundColor: '#FF4444',
+    paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
-  cancelButton: {
-    backgroundColor: '#F5F5F5',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  submitButton: {
-    backgroundColor: '#FF3B30',
-  },
   submitButtonDisabled: {
-    backgroundColor: '#FFB5B0',
+    backgroundColor: '#D3D3D3',
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
 });

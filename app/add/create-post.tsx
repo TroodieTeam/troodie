@@ -82,9 +82,58 @@ export default function CreatePostScreen() {
   // Keyboard state
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   
+  // Edit mode params
+  const editMode = params.editMode === 'true';
+  const postId = params.postId as string | undefined;
+  
   // Community context
   const communityId = params.communityId as string | undefined;
   const communityName = params.communityName as string | undefined;
+  
+  // Load post data if in edit mode
+  useEffect(() => {
+    if (editMode && postId) {
+      loadPostForEditing();
+    }
+  }, [editMode, postId]);
+  
+  const loadPostForEditing = async () => {
+    if (!postId) return;
+    
+    setLoading(true);
+    try {
+      const post = await postService.getPost(postId);
+      if (post) {
+        // Populate form with existing post data
+        updateFormField('caption', post.caption || '');
+        updateFormField('rating', post.rating || 0);
+        
+        // Set restaurant if available
+        if (post.restaurant) {
+          updateFormField('restaurant', post.restaurant);
+        }
+        
+        // Set photos if available
+        if (post.photos && post.photos.length > 0) {
+          updateFormField('photos', post.photos);
+        }
+        
+        // Set visit details
+        if (post.visit_date) {
+          updateFormField('visitDate', new Date(post.visit_date));
+        }
+        
+        // Set privacy
+        setPrivacy(post.privacy || 'public');
+      }
+    } catch (error) {
+      console.error('Error loading post for editing:', error);
+      Alert.alert('Error', 'Failed to load post for editing');
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Cross-posting state
   const [selectedCommunities, setSelectedCommunities] = useState<string[]>(
@@ -187,24 +236,34 @@ export default function CreatePostScreen() {
         };
       }
 
-      const post = await postService.createPost(postData);
+      let post;
+      if (editMode && postId) {
+        // Update existing post
+        post = await postService.updatePost(postId, postData);
+        Alert.alert('Success', 'Post updated successfully');
+        // Navigate back to the post or previous screen
+        router.back();
+      } else {
+        // Create new post
+        post = await postService.createPost(postData);
+        
+        // Update network progress
+        await updateNetworkProgress('post');
 
-      // Update network progress
-      await updateNetworkProgress('post');
-
-      // Show success state
-      setShowSuccess(true);
-      
-      // Navigate to success page after delay
-      setTimeout(() => {
-        router.replace({
-          pathname: '/add/post-success',
-          params: { id: post.id }
-        });
-      }, 1500);
+        // Show success state
+        setShowSuccess(true);
+        
+        // Navigate to success page after delay
+        setTimeout(() => {
+          router.replace({
+            pathname: '/add/post-success',
+            params: { id: post.id }
+          });
+        }, 1500);
+      }
 
     } catch (error) {
-      Alert.alert('Error', 'Failed to create post. Please try again.');
+      Alert.alert('Error', editMode ? 'Failed to update post. Please try again.' : 'Failed to create post. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -285,7 +344,7 @@ export default function CreatePostScreen() {
       </TouchableOpacity>
       
       <Text style={styles.headerTitle}>
-        {communityName ? `Post to ${communityName}` : 'Create post'}
+        {editMode ? 'Edit Post' : communityName ? `Post to ${communityName}` : 'Create post'}
       </Text>
       
       <TouchableOpacity
@@ -298,7 +357,7 @@ export default function CreatePostScreen() {
           <ActivityIndicator size="small" color={designTokens.colors.white} />
         ) : (
           <Text style={[styles.publishText, (!isValid || loading) && styles.publishTextDisabled]}>
-            Post
+            {editMode ? 'Update' : 'Post'}
           </Text>
         )}
       </TouchableOpacity>

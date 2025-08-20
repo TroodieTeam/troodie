@@ -10,9 +10,12 @@ export const debugStorage = {
         if (value) {
           try {
             const parsed = JSON.parse(value)
+            console.log(`${key}:`, parsed)
           } catch {
+            console.log(`${key}:`, value)
           }
         } else {
+          console.log(`${key}: null`)
         }
       }
     } catch (error) {
@@ -25,12 +28,12 @@ export const debugStorage = {
       const keys = await AsyncStorage.getAllKeys()
       const supabaseKeys = keys.filter(key => key.includes('supabase'))
       
-      
       for (const key of supabaseKeys) {
         const value = await AsyncStorage.getItem(key)
         if (value && key.includes('auth-token')) {
           try {
             const parsed = JSON.parse(value)
+            console.log('Supabase session:', {
               hasCurrentSession: !!parsed.currentSession,
               hasAccessToken: !!parsed.currentSession?.access_token,
               expiresAt: parsed.currentSession?.expires_at,

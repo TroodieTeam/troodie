@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function WelcomeScreen() {
   const router = useRouter();
   const { setCurrentStep } = useOnboarding();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, skipAuth } = useAuth();
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -26,9 +26,24 @@ export default function WelcomeScreen() {
     router.push('/onboarding/login');
   };
 
+  const handleBrowseAsGuest = () => {
+    skipAuth();
+    router.replace('/(tabs)');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
+      
+      {/* Skip Button */}
+      <TouchableOpacity 
+        style={styles.skipButton} 
+        onPress={handleBrowseAsGuest}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Text style={styles.skipText}>Skip</Text>
+      </TouchableOpacity>
+      
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image 
@@ -64,6 +79,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFDF7',
+  },
+  skipButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  skipText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#666',
   },
   content: {
     flex: 1,

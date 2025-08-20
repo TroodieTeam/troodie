@@ -15,6 +15,8 @@ type AuthContextType = {
   signOut: () => Promise<void>
   loading: boolean
   isAuthenticated: boolean
+  isAnonymous: boolean
+  skipAuth: () => void
   error: string | null
   refreshAuth: () => Promise<void>
 }
@@ -27,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isAnonymous, setIsAnonymous] = useState(false)
 
   const loadUserProfile = async (userId: string) => {
     try {
@@ -166,9 +169,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null)
       setUser(null)
       setProfile(null)
+      setIsAnonymous(false)
     } finally {
       setLoading(false)
     }
+  }
+
+  const skipAuth = () => {
+    // Set anonymous mode
+    setIsAnonymous(true)
+    setLoading(false)
   }
 
   const value = {
@@ -180,8 +190,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verifyOtp,
     resendOtp,
     signOut,
+    skipAuth,
     loading,
     isAuthenticated: !!session,
+    isAnonymous,
     error,
     refreshAuth,
   }

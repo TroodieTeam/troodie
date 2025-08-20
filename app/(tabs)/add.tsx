@@ -2,6 +2,7 @@ import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthGate } from '@/components/AuthGate';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
 import {
@@ -23,7 +24,7 @@ import {
 
 export default function AddScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
 
   // Core discovery actions - shown prominently
@@ -175,6 +176,20 @@ export default function AddScreen() {
       </View>
     </View>
   );
+
+  // Show AuthGate for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <AuthGate 
+        screenName="create & discover"
+        customTitle="Start Creating & Discovering"
+        customMessage="Share your food experiences, create boards to organize your favorite spots, and discover new restaurants recommended by the community."
+      >
+        {/* This will never render since AuthGate handles non-authenticated users */}
+        <View />
+      </AuthGate>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>

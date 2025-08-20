@@ -4,6 +4,8 @@ import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
 import { CommunityTab } from '@/components/profile/CommunityTab';
+import { MenuButton } from '@/components/common/MenuButton';
+import { AuthGate } from '@/components/AuthGate';
 import { designTokens, compactDesign } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,7 +57,7 @@ type TabType = 'boards' | 'posts' | 'quicksaves' | 'communities';
 export default function ProfileScreen() {
   const router = useRouter();
   const { userState } = useApp();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { state: onboardingState } = useOnboarding();
   const [activeTab, setActiveTab] = useState<TabType>('quicksaves');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -387,12 +389,12 @@ export default function ProfileScreen() {
         <Users size={24} color={designTokens.colors.textDark} />
       </TouchableOpacity>
       <View style={styles.headerSpacer} />
-      <TouchableOpacity 
-        style={styles.headerButton} 
+      <MenuButton 
         onPress={() => setShowSettingsModal(true)}
-      >
-        <Settings size={24} color={designTokens.colors.textDark} />
-      </TouchableOpacity>
+        iconName="settings-outline"
+        size={24}
+        color={designTokens.colors.textDark}
+      />
     </View>
   );
 
@@ -695,6 +697,21 @@ export default function ProfileScreen() {
     );
   };
 
+  // Show AuthGate for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <AuthGate 
+        screenName="your profile"
+        customTitle="Create Your Food Journey"
+        customMessage="Build your personal food profile, save your favorite restaurants, share reviews, and connect with fellow food enthusiasts."
+      >
+        {/* This will never render since AuthGate handles non-authenticated users */}
+        <View />
+      </AuthGate>
+    );
+  }
+
+  // Only show loading state for authenticated users
   if (loadingProfile) {
     return (
       <SafeAreaView style={styles.container}>
@@ -707,45 +724,45 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header and Profile Info - Fixed Content */}
-      <View style={styles.fixedContent}>
-        {renderHeader()}
-        {renderProfileInfo()}
-        {renderTabs()}
-      </View>
+        {/* Header and Profile Info - Fixed Content */}
+        <View style={styles.fixedContent}>
+          {renderHeader()}
+          {renderProfileInfo()}
+          {renderTabs()}
+        </View>
 
-      {/* Tab Content - Scrollable */}
-      <View style={styles.tabContentContainer}>
-        {activeTab === 'quicksaves' && renderQuickSavesTab()}
-        {activeTab === 'boards' && renderBoardsTab()}
-        {activeTab === 'posts' && renderPostsTab()}
-        {activeTab === 'communities' && (
-          <CommunityTab
-            userId={user?.id || ''}
-            communities={safeCommunities}
-            stats={safeCommunityStats}
-            loading={loadingCommunities}
-            refreshing={refreshingCommunities}
-            onRefresh={() => {
-              refreshCommunities();
-              refreshCommunityStats();
-            }}
-          />
-        )}
-      </View>
+        {/* Tab Content - Scrollable */}
+        <View style={styles.tabContentContainer}>
+          {activeTab === 'quicksaves' && renderQuickSavesTab()}
+          {activeTab === 'boards' && renderBoardsTab()}
+          {activeTab === 'posts' && renderPostsTab()}
+          {activeTab === 'communities' && (
+            <CommunityTab
+              userId={user?.id || ''}
+              communities={safeCommunities}
+              stats={safeCommunityStats}
+              loading={loadingCommunities}
+              refreshing={refreshingCommunities}
+              onRefresh={() => {
+                refreshCommunities();
+                refreshCommunityStats();
+              }}
+            />
+          )}
+        </View>
 
-      <SettingsModal 
-        visible={showSettingsModal} 
-        onClose={() => setShowSettingsModal(false)} 
-      />
-      
-      <EditProfileModal
-        visible={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        onSave={handleProfileSave}
-        currentProfile={profile}
-      />
-    </SafeAreaView>
+        <SettingsModal 
+          visible={showSettingsModal} 
+          onClose={() => setShowSettingsModal(false)} 
+        />
+        
+        <EditProfileModal
+          visible={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleProfileSave}
+          currentProfile={profile}
+        />
+      </SafeAreaView>
   );
 }
 

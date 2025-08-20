@@ -11,9 +11,9 @@ export default {
     userInterfaceStyle: "light",
     newArchEnabled: true,
     ios: {
-      supportsTablet: true,
+      supportsTablet: false,
       bundleIdentifier: "com.troodie.troodie.com",
-      buildNumber: "11",
+      buildNumber: "12",
       infoPlist: {
         NSLocationWhenInUseUsageDescription: "Troodie uses your location to show nearby restaurants and recommendations.",
         NSCameraUsageDescription: "Troodie uses your camera to take photos of restaurants and food.",

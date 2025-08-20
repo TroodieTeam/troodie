@@ -17,10 +17,11 @@ import { activityFeedService, ActivityFeedItem } from '@/services/activityFeedSe
 import { ActivityFeedItemComponent } from '@/components/activity/ActivityFeedItem';
 import { EmptyActivityState } from '@/components/EmptyActivityState';
 import { designTokens, compactDesign } from '@/constants/designTokens';
+import { AuthGate } from '@/components/AuthGate';
 
 export default function ActivityScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { userState } = useApp();
   
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
@@ -262,28 +263,41 @@ export default function ActivityScreen() {
     return null;
   };
 
+  // Show AuthGate for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <AuthGate 
+        screenName="your activity feed"
+        customTitle="Stay Connected with Your Food Community"
+        customMessage="See what your friends are eating, get notified about new reviews, and discover trending restaurants in your area."
+      >
+        <View />
+      </AuthGate>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={activities}
-        renderItem={renderActivityItem}
-        keyExtractor={(item, index) => `${item.activity_type}-${item.activity_id}-${index}`}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmpty}
-        ListFooterComponent={renderFooter}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={designTokens.colors.primaryOrange}
-          />
-        }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={activities.length === 0 ? styles.emptyContent : undefined}
-      />
-    </SafeAreaView>
+        <FlatList
+          data={activities}
+          renderItem={renderActivityItem}
+          keyExtractor={(item, index) => `${item.activity_type}-${item.activity_id}-${index}`}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={designTokens.colors.primaryOrange}
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={activities.length === 0 ? styles.emptyContent : undefined}
+        />
+      </SafeAreaView>
   );
 }
 

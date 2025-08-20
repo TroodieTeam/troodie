@@ -1,4 +1,4 @@
-# Troodie — Master TODO (Next Cycle)
+# Troodie — Master TODO (Apple Review Fixes)
 
 ## Status Legend
 - 🔴 Not Started
@@ -15,7 +15,8 @@
 
 | ID | Epic | Focus | Owner | Status |
 |---|---|---|---|---|
-| E1 |  |  |  | 🔴 |
+| APPLE | Apple Review Compliance | Fix rejection issues for App Store approval |  | 🔴 |
+| E1 | Bug Fixes | Critical bug fixes |  | 🔴 |
 | E2 |  |  |  | 🔴 |
 | E3 | Discovery & Content | Trending relevance and richer save context |  | 🔴 |
 
@@ -24,6 +25,16 @@
 ## Tasks Backlog
 
 > Keep tasks atomic and shippable. Use IDs you can reference in commits/PRs.
+
+### 🚨 CRITICAL - Apple Review Fixes (Must complete before resubmission)
+
+| ID | Task | Epic | Priority | Estimate | Status | Notes |
+|---|---|---|---|---|---|---|
+| A.1 | Remove Login Wall for Browsing (`task-apple-1-remove-login-wall.md`) | APPLE | Critical | 2d | 🔴 | Guideline 5.1.1 - Allow anonymous browsing |
+| A.2 | Implement Content Moderation (`task-apple-2-content-moderation.md`) | APPLE | Critical | 2d | 🔴 | Guideline 1.2 - Report/block/filter features |
+| A.3 | Fix iPad Three-Dots Menu (`task-apple-3-ipad-menu-bug.md`) | APPLE | Critical | 1d | 🔴 | Guideline 2.1 - Touch targets on iPad |
+
+### Other Tasks (After Apple fixes)
 
 | ID | Task | Epic | Priority | Estimate | Status | Notes |
 |---|---|---|---|---|---|---|
@@ -39,16 +50,31 @@
 
 ## Ready Next (Pull Queue)
 
-- [ ]  
-- [ ]  
+- [ ] A.1 - Remove login wall (START IMMEDIATELY)
+- [ ] A.2 - Content moderation (START AFTER A.1)
+- [ ] A.3 - iPad menu fix (Can start in parallel)
 
 ---
 
 ## Decisions Log
 
-- 2025-__-__: 
+- 2025-08-19: Apple rejected v1.0 - prioritizing 3 critical fixes for resubmission
+- 2025-08-19: Target resubmission date: August 23, 2025
 
 ---
+
+## Apple Resubmission Checklist
+
+- [ ] All 3 critical issues fixed
+- [ ] Anonymous browsing fully functional
+- [ ] Content moderation system live
+- [ ] iPad touch targets verified (44x44 points minimum)
+- [ ] Test on iPad Air 5th Gen specifically
+- [ ] Review account (review@troodieapp.com) still works
+- [ ] Increment build number
+- [ ] Update App Store Connect release notes
+- [ ] Add reviewer notes explaining fixes
+- [ ] Full regression testing complete
 
 ## Release Checklist
 
@@ -60,5 +86,6 @@
 
 ---
 
-_Initialized: $(date)_
+_Last Updated: August 19, 2025_
+_Apple Rejection: August 18, 2025 (Submission ID: 67d23736-90f6-4ec3-b6cf-98007ae4b75b)_
 

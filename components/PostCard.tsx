@@ -12,9 +12,15 @@ import {
     Text,
     TouchableOpacity,
     View,
+    Alert,
 } from 'react-native';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
 import { useRouter } from 'expo-router';
+import { ReportModal } from './modals/ReportModal';
+import { supabase } from '@/lib/supabase';
+import { ToastService } from '@/services/toastService';
+import { MenuButton } from './common/MenuButton';
+import { moderationService } from '@/services/moderationService';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -23,6 +29,8 @@ interface PostCardProps {
   onComment?: (postId: string) => void;
   onSave?: (postId: string) => void;
   onShare?: (postId: string) => void;
+  onBlock?: (userId: string) => void;
+  onDelete?: (postId: string) => void;
   showActions?: boolean;
 }
 
@@ -36,10 +44,14 @@ export function PostCard({
   onComment,
   onSave,
   onShare,
+  onBlock,
+  onDelete,
   showActions = true,
 }: PostCardProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   
   // Use the enhanced post engagement hook
   const {
@@ -102,6 +114,114 @@ export function PostCard({
       router.push(`/restaurant/${post.restaurant.id}`);
     }
   }, [post.restaurant, router]);
+
+  const handleMenuPress = () => {
+    const isOwnPost = user?.id === post.user?.id;
+    
+    const options = isOwnPost
+      ? ['Edit Post', 'Delete Post', 'Cancel']
+      : ['Report Post', 'Block User', 'Cancel'];
+    
+    const destructiveButtonIndex = isOwnPost ? 1 : -1;
+    const cancelButtonIndex = options.length - 1;
+
+    Alert.alert(
+      'Post Options',
+      undefined,
+      options.map((option, index) => ({
+        text: option,
+        style: index === destructiveButtonIndex ? 'destructive' : index === cancelButtonIndex ? 'cancel' : 'default',
+        onPress: () => {
+          if (option === 'Report Post') {
+            setShowReportModal(true);
+          } else if (option === 'Block User') {
+            handleBlockUser();
+          } else if (option === 'Edit Post') {
+            // Navigate to create-post screen with edit mode
+            router.push({
+              pathname: '/add/create-post',
+              params: { 
+                editMode: 'true',
+                postId: post.id,
+                // Pass restaurant data if available
+                selectedRestaurant: post.restaurant ? JSON.stringify({
+                  id: post.restaurant.id,
+                  name: post.restaurant.name,
+                  cuisine_types: post.restaurant.cuisine_types,
+                  address: post.restaurant.address,
+                  city: post.restaurant.city,
+                  state: post.restaurant.state
+                }) : undefined
+              }
+            });
+          } else if (option === 'Delete Post') {
+            handleDeletePost();
+          }
+        }
+      }))
+    );
+  };
+
+  const handleBlockUser = async () => {
+    if (!user || !post.user?.id) return;
+    
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block ${post.user.name || 'this user'}? You won't see their content anymore.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await moderationService.blockUser(post.user.id);
+              
+              if (success) {
+                ToastService.showSuccess('User blocked successfully');
+                // Trigger parent component to refresh/filter the feed
+                onBlock?.(post.user.id);
+              }
+            } catch (error) {
+              console.error('Error blocking user from PostCard:', error);
+              // Error is already handled by moderationService with Alert
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeletePost = () => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('posts')
+                .delete()
+                .eq('id', post.id)
+                .eq('user_id', user?.id);
+
+              if (error) throw error;
+              ToastService.showSuccess('Post deleted successfully');
+              // Trigger parent component to refresh
+              onDelete?.(post.id);
+            } catch (error) {
+              console.error('Error deleting post:', error);
+              ToastService.showError('Failed to delete post');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -168,6 +288,7 @@ export function PostCard({
   };
 
   return (
+    <>
     <TouchableOpacity
       style={styles.container}
       onPress={onPress}
@@ -196,7 +317,14 @@ export function PostCard({
             <Text style={styles.userPersona}>{post.user.persona || 'Food Explorer'}</Text>
           </View>
         </TouchableOpacity>
-        <Text style={styles.timestamp}>{formatTimeAgo(post.created_at)}</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.timestamp}>{formatTimeAgo(post.created_at)}</Text>
+          <MenuButton 
+            onPress={handleMenuPress}
+            size={20}
+            color="#666"
+          />
+        </View>
       </View>
 
       {/* Content Type Badge */}
@@ -367,6 +495,17 @@ export function PostCard({
         </View>
       )}
     </TouchableOpacity>
+    
+    {showReportModal && (
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        contentType="post"
+        contentId={post.id}
+        onSuccess={() => setShowReportModal(false)}
+      />
+    )}
+  </>
   );
 }
 
@@ -416,6 +555,14 @@ const styles = StyleSheet.create({
   timestamp: {
     ...designTokens.typography.smallText,
     color: designTokens.colors.textMedium,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuButton: {
+    padding: 4,
   },
   caption: {
     ...designTokens.typography.bodyRegular,

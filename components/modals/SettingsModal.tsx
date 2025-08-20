@@ -15,6 +15,7 @@ import {
     Star,
     Trash2,
     User,
+    UserX,
     X
 } from 'lucide-react-native';
 import React from 'react';
@@ -342,6 +343,17 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
             />
           ),
         } as SettingItemWithElement,
+        {
+          icon: UserX,
+          label: 'Blocked Users',
+          onPress: () => {
+            // Navigate to blocked users screen
+            router.push('/settings/blocked-users');
+            // Close settings modal after a small delay for smooth transition
+            setTimeout(() => onClose(), 100);
+          },
+          showArrow: true,
+        } as SettingItemWithArrow,
         {
           icon: Shield,
           label: 'Privacy & Security',

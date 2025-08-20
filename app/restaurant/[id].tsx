@@ -2,6 +2,7 @@ import { EnhancedBoardSelectionModal } from '@/components/EnhancedBoardSelection
 import { ErrorState } from '@/components/ErrorState';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthRequired } from '@/hooks/useAuthRequired';
 import { restaurantImageSyncService } from '@/services/restaurantImageSyncService';
 import { restaurantPhotosService } from '@/services/restaurantPhotosService';
 import { restaurantService } from '@/services/restaurantService';
@@ -52,6 +53,7 @@ export default function RestaurantDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const { requireAuth } = useAuthRequired();
   const [restaurant, setRestaurant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('info');
@@ -247,27 +249,23 @@ export default function RestaurantDetailScreen() {
   };
 
   const handleSave = useCallback(async () => {
-    if (!user) {
-      ToastService.showError('Please sign in to save restaurants');
-      return;
-    }
+    requireAuth(async () => {
+      if (!user || !restaurant?.id) return;
 
-    if (!restaurant?.id) return;
+      setIsSaving(true);
 
-    setIsSaving(true);
-
-    try {
-      await saveService.toggleSave({
-        userId: user.id,
-        restaurantId: restaurant.id,
-        restaurantName: restaurant.name,
-        onBoardSelection: () => {
-          setShowBoardModal(true);
-        },
-        onSuccess: () => {
-          // Update local state
-          setIsSaved(!isSaved);
-        },
+      try {
+        await saveService.toggleSave({
+          userId: user.id,
+          restaurantId: restaurant.id,
+          restaurantName: restaurant.name,
+          onBoardSelection: () => {
+            setShowBoardModal(true);
+          },
+          onSuccess: () => {
+            // Update local state
+            setIsSaved(!isSaved);
+          },
         onError: (error) => {
           console.error('Save error:', error);
           // Refresh save status to sync with server
@@ -277,32 +275,27 @@ export default function RestaurantDetailScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [user, restaurant, isSaved]);
+    }, 'save restaurants');
+  }, [user, restaurant, isSaved, requireAuth]);
 
   const handleLongPress = useCallback(() => {
-    if (!user) {
-      ToastService.showError('Please sign in to save restaurants');
-      return;
-    }
-
-    Haptics.selectionAsync();
-    setShowBoardModal(true);
-  }, [user]);
+    requireAuth(() => {
+      Haptics.selectionAsync();
+      setShowBoardModal(true);
+    }, 'organize boards');
+  }, [requireAuth]);
 
   const handleCreatePost = () => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    
-    if (restaurant) {
-      router.push({
-        pathname: '/add/create-post',
-        params: { 
-          selectedRestaurant: JSON.stringify(restaurant)
+    requireAuth(() => {
+      if (restaurant) {
+        router.push({
+          pathname: '/add/create-post',
+          params: { 
+            selectedRestaurant: JSON.stringify(restaurant)
         }
       });
-    }
+      }
+    }, 'create posts');
   };
 
   const handleUpdateCoverPhoto = async () => {

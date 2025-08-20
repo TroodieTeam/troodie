@@ -3,7 +3,7 @@ import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import FollowButton from '@/components/FollowButton';
 import { CommunityTab } from '@/components/profile/CommunityTab';
-import ReportModal from '@/components/modals/ReportModal';
+import { ReportModal } from '@/components/modals/ReportModal';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFollowState } from '@/hooks/useFollowState';
@@ -34,20 +34,20 @@ import {
     Shield,
     Flag
 } from 'lucide-react-native';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import {
     ActivityIndicator,
     Alert,
     FlatList,
     Image,
     RefreshControl,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     Menu,
     MenuOption,
@@ -57,6 +57,65 @@ import {
 } from 'react-native-popup-menu';
 
 type TabType = 'boards' | 'posts' | 'quicksaves' | 'communities';
+
+// Memoized header component
+const ProfileHeader = memo(({ 
+  userData, 
+  isOwnProfile, 
+  isBlocked,
+  onBack,
+  onShareProfile, 
+  onReportUser, 
+  onBlockUser 
+}: {
+  userData: any;
+  isOwnProfile: boolean;
+  isBlocked: boolean;
+  onBack: () => void;
+  onShareProfile: () => void;
+  onReportUser: () => void;
+  onBlockUser: () => void;
+}) => (
+  <View style={styles.header}>
+    <TouchableOpacity style={styles.backButton} onPress={onBack}>
+      <ChevronLeft size={24} color={designTokens.colors.textDark} />
+    </TouchableOpacity>
+    <Text style={styles.headerTitle} numberOfLines={1}>{userData.name}</Text>
+    {!isOwnProfile && (
+      <Menu>
+        <MenuTrigger>
+          <TouchableOpacity style={styles.headerButton}>
+            <MoreVertical size={24} color={designTokens.colors.textDark} />
+          </TouchableOpacity>
+        </MenuTrigger>
+        <MenuOptions customStyles={menuOptionsStyles}>
+          <MenuOption onSelect={onShareProfile}>
+            <View style={styles.menuItem}>
+              <Share2 size={16} color={designTokens.colors.text} />
+              <Text style={styles.menuText}>Share Profile</Text>
+            </View>
+          </MenuOption>
+          <MenuOption onSelect={onReportUser}>
+            <View style={styles.menuItem}>
+              <Flag size={16} color={designTokens.colors.error} />
+              <Text style={[styles.menuText, { color: designTokens.colors.error }]}>Report User</Text>
+            </View>
+          </MenuOption>
+          <MenuOption onSelect={onBlockUser}>
+            <View style={styles.menuItem}>
+              <Shield size={16} color={isBlocked ? designTokens.colors.success : designTokens.colors.error} />
+              <Text style={[styles.menuText, { color: isBlocked ? designTokens.colors.success : designTokens.colors.error }]}>
+                {isBlocked ? 'Unblock User' : 'Block User'}
+              </Text>
+            </View>
+          </MenuOption>
+        </MenuOptions>
+      </Menu>
+    )}
+  </View>
+));
+
+ProfileHeader.displayName = 'ProfileHeader';
 
 export default function UserDetailScreen() {
   const router = useRouter();
@@ -109,7 +168,13 @@ export default function UserDetailScreen() {
       }
     }
   });
+
   const persona = profile?.persona ? personas[profile.persona as PersonaType] : null;
+
+  // Define all keyExtractors at the top level
+  const boardKeyExtractor = useCallback((item: Board) => item.id, []);
+  const postKeyExtractor = useCallback((item: PostWithUser) => item.id, []);
+  const quickSaveKeyExtractor = useCallback((item: BoardRestaurant) => item.id, []);
 
   // Load profile data
   useEffect(() => {
@@ -130,7 +195,7 @@ export default function UserDetailScreen() {
     if (profile && refreshCounts) {
       refreshCounts();
     }
-  }, [profile?.id]);
+  }, [profile?.id, refreshCounts]);
 
   // Refresh counts periodically when viewing own profile
   useEffect(() => {
@@ -145,7 +210,7 @@ export default function UserDetailScreen() {
 
       return () => clearInterval(interval);
     }
-  }, [isOwnProfile, id]);
+  }, [isOwnProfile, id, refreshCounts]);
 
   const loadProfile = async () => {
     if (!id) return;
@@ -227,10 +292,10 @@ export default function UserDetailScreen() {
     }
   };
 
-  const onRefreshQuickSaves = async () => {
+  const onRefreshQuickSaves = useCallback(async () => {
     setRefreshingQuickSaves(true);
     await loadQuickSaves(true);
-  };
+  }, [id, isOwnProfile]);
 
   const loadPosts = async () => {
     if (!id) return;
@@ -276,54 +341,13 @@ export default function UserDetailScreen() {
     }
   };
 
-  const onRefreshCommunities = async () => {
+  const onRefreshCommunities = useCallback(async () => {
     setRefreshingCommunities(true);
     await Promise.all([
       loadCommunities(true),
       loadCommunityStats()
     ]);
-  };
-
-  const checkFollowStatus = async () => {
-    if (!id || !currentUser?.id || id === currentUser.id) return;
-    
-    try {
-      // TODO: Check if current user is following this user
-      // const status = await followService.isFollowing(currentUser.id, id);
-      // setIsFollowing(status);
-    } catch (error) {
-      console.error('Error checking follow status:', error);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([
-      loadProfile(),
-      loadAchievements(),
-      loadBoards(),
-      loadPosts(),
-    ]);
-    setRefreshing(false);
-  };
-
-  const handleShareProfile = async () => {
-    if (!profile) return;
-    
-    try {
-      // TODO: Implement share functionality
-      Alert.alert('Share Profile', 'Share functionality coming soon!');
-    } catch (error) {
-      console.error('Error sharing profile:', error);
-    }
-  };
-
-  const handlePostPress = (postId: string) => {
-    router.push({
-      pathname: '/posts/[id]',
-      params: { id: postId }
-    });
-  };
+  }, [id]);
 
   const checkBlockedStatus = async () => {
     if (!id || !currentUser?.id || id === currentUser.id) return;
@@ -336,11 +360,40 @@ export default function UserDetailScreen() {
     }
   };
 
-  const handleReportUser = () => {
-    setShowReportModal(true);
-  };
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      loadProfile(),
+      loadAchievements(),
+      loadBoards(),
+      loadPosts(),
+    ]);
+    setRefreshing(false);
+  }, [id]);
 
-  const handleBlockUser = async () => {
+  const handleShareProfile = useCallback(async () => {
+    if (!profile) return;
+    
+    try {
+      // TODO: Implement share functionality
+      Alert.alert('Share Profile', 'Share functionality coming soon!');
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+    }
+  }, [profile]);
+
+  const handlePostPress = useCallback((postId: string) => {
+    router.push({
+      pathname: '/posts/[id]',
+      params: { id: postId }
+    });
+  }, [router]);
+
+  const handleReportUser = useCallback(() => {
+    setShowReportModal(true);
+  }, []);
+
+  const handleBlockUser = useCallback(async () => {
     if (!id || !profile) return;
 
     const action = isBlocked ? 'unblock' : 'block';
@@ -387,10 +440,22 @@ export default function UserDetailScreen() {
         }
       ]
     );
-  };
+  }, [id, profile, isBlocked, router]);
+
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const handleBoardPress = useCallback((boardId: string) => {
+    router.push(`/boards/${boardId}`);
+  }, [router]);
+
+  const handleRestaurantPress = useCallback((restaurantId: string) => {
+    router.push(`/restaurant/${restaurantId}`);
+  }, [router]);
 
   // User data with real profile
-  const userData = {
+  const userData = useMemo(() => ({
     name: profile?.name || profile?.email?.split('@')[0] || 'Troodie User',
     username: profile?.username ? `@${profile.username}` : '@user',
     avatar: getAvatarUrl(profile),
@@ -400,56 +465,17 @@ export default function UserDetailScreen() {
       following: profile?.following_count || 0,
       posts: posts.length
     }
-  };
+  }), [profile, posts.length]);
 
   // Transform achievements for display
-  const displayAchievements = achievements.slice(0, 3).map((achievement, index) => ({
-    id: index + 1,
-    name: achievement.title || achievement.name,
-    icon: Award
-  }));
+  const displayAchievements = useMemo(() => 
+    achievements.slice(0, 3).map((achievement, index) => ({
+      id: index + 1,
+      name: achievement.title || achievement.name,
+      icon: Award
+    })), [achievements]);
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <ChevronLeft size={24} color={designTokens.colors.textDark} />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle} numberOfLines={1}>{userData.name}</Text>
-      {!isOwnProfile && (
-        <Menu>
-          <MenuTrigger>
-            <TouchableOpacity style={styles.headerButton}>
-              <MoreVertical size={24} color={designTokens.colors.textDark} />
-            </TouchableOpacity>
-          </MenuTrigger>
-          <MenuOptions customStyles={menuOptionsStyles}>
-            <MenuOption onSelect={handleShareProfile}>
-              <View style={styles.menuItem}>
-                <Share2 size={16} color={designTokens.colors.text} />
-                <Text style={styles.menuText}>Share Profile</Text>
-              </View>
-            </MenuOption>
-            <MenuOption onSelect={handleReportUser}>
-              <View style={styles.menuItem}>
-                <Flag size={16} color={designTokens.colors.error} />
-                <Text style={[styles.menuText, { color: designTokens.colors.error }]}>Report User</Text>
-              </View>
-            </MenuOption>
-            <MenuOption onSelect={handleBlockUser}>
-              <View style={styles.menuItem}>
-                <Shield size={16} color={isBlocked ? designTokens.colors.success : designTokens.colors.error} />
-                <Text style={[styles.menuText, { color: isBlocked ? designTokens.colors.success : designTokens.colors.error }]}>
-                  {isBlocked ? 'Unblock User' : 'Block User'}
-                </Text>
-              </View>
-            </MenuOption>
-          </MenuOptions>
-        </Menu>
-      )}
-    </View>
-  );
-
-  const renderProfileInfo = () => (
+  const renderProfileInfo = useCallback(() => (
     <View style={styles.profileInfo}>
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
@@ -523,9 +549,10 @@ export default function UserDetailScreen() {
         </View>
       )}
     </View>
-  );
+  ), [userData, profile, persona, displayAchievements, followersCount, followingCount, boards.length, 
+      isOwnProfile, isFollowing, followLoading, toggleFollow, handleShareProfile, id, router]);
 
-  const renderTabs = () => (
+  const renderTabs = useCallback(() => (
     <View style={styles.tabsContainer}>
       <ScrollView
         ref={tabScrollRef}
@@ -576,9 +603,40 @@ export default function UserDetailScreen() {
         </TouchableOpacity>
       </ScrollView>
     </View>
-  );
+  ), [activeTab, isOwnProfile, quickSaves.length, boards.length, posts.length, communityStats.joined_count]);
 
-  const renderQuickSavesTab = () => {
+  const renderQuickSaveItem = useCallback(({ item }: { item: BoardRestaurant & { restaurant?: RestaurantInfo } }) => {
+    if (!item.restaurant) return null;
+    
+    return (
+      <View style={styles.quickSaveItem}>
+        <RestaurantCard 
+          restaurant={item.restaurant} 
+          onPress={() => handleRestaurantPress(item.restaurant_id)}
+        />
+      </View>
+    );
+  }, [handleRestaurantPress]);
+
+  const renderBoardItem = useCallback(({ item }: { item: Board }) => (
+    <BoardCard 
+      board={item} 
+      onPress={() => handleBoardPress(item.id)}
+    />
+  ), [handleBoardPress]);
+
+  const renderPostItem = useCallback(({ item }: { item: PostWithUser }) => (
+    <PostCard
+      post={item}
+      onPress={() => handlePostPress(item.id)}
+      onLike={() => {}}
+      onComment={() => handlePostPress(item.id)}
+      onSave={() => {}}
+      showActions={true}
+    />
+  ), [handlePostPress]);
+
+  const renderQuickSavesTab = useCallback(() => {
     if (!isOwnProfile) return null;
     
     return (
@@ -590,19 +648,8 @@ export default function UserDetailScreen() {
         ) : quickSaves.length > 0 ? (
           <FlatList
             data={quickSaves}
-            renderItem={({ item }: { item: BoardRestaurant & { restaurant?: RestaurantInfo } }) => {
-              if (!item.restaurant) return null;
-              
-              return (
-                <View style={styles.quickSaveItem}>
-                  <RestaurantCard 
-                    restaurant={item.restaurant} 
-                    onPress={() => router.push(`/restaurant/${item.restaurant_id}`)}
-                  />
-                </View>
-              );
-            }}
-            keyExtractor={(item) => item.id}
+            renderItem={renderQuickSaveItem}
+            keyExtractor={quickSaveKeyExtractor}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.quickSavesList}
             refreshControl={
@@ -612,6 +659,10 @@ export default function UserDetailScreen() {
                 tintColor={designTokens.colors.primaryOrange}
               />
             }
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            initialNumToRender={5}
+            windowSize={10}
           />
         ) : (
           <View style={styles.emptyState}>
@@ -626,9 +677,10 @@ export default function UserDetailScreen() {
         )}
       </View>
     );
-  };
+  }, [isOwnProfile, loadingQuickSaves, quickSaves, renderQuickSaveItem, quickSaveKeyExtractor, 
+      refreshingQuickSaves, onRefreshQuickSaves]);
 
-  const renderBoardsTab = () => (
+  const renderBoardsTab = useCallback(() => (
     <View style={styles.tabContent}>
       {loadingBoards ? (
         <View style={styles.loadingContainer}>
@@ -637,16 +689,14 @@ export default function UserDetailScreen() {
       ) : boards.length > 0 ? (
         <FlatList
           data={boards}
-          renderItem={({ item }: { item: Board }) => (
-            <BoardCard 
-              key={item.id} 
-              board={item} 
-              onPress={() => router.push(`/boards/${item.id}`)}
-            />
-          )}
-          keyExtractor={(item: Board) => item.id}
+          renderItem={renderBoardItem}
+          keyExtractor={boardKeyExtractor}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.boardsList}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          initialNumToRender={5}
+          windowSize={10}
         />
       ) : (
         <View style={styles.emptyState}>
@@ -660,9 +710,9 @@ export default function UserDetailScreen() {
         </View>
       )}
     </View>
-  );
+  ), [loadingBoards, boards, renderBoardItem, boardKeyExtractor, userData.name]);
 
-  const renderPostsTab = () => {
+  const renderPostsTab = useCallback(() => {
     if (loadingPosts) {
       return (
         <View style={styles.tabContent}>
@@ -694,17 +744,8 @@ export default function UserDetailScreen() {
       <View style={styles.tabContent}>
         <FlatList
           data={posts}
-          renderItem={({ item }: { item: PostWithUser }) => (
-            <PostCard
-              post={item}
-              onPress={() => handlePostPress(item.id)}
-              onLike={() => {}}
-              onComment={() => handlePostPress(item.id)}
-              onSave={() => {}}
-              showActions={true}
-            />
-          )}
-          keyExtractor={(item: PostWithUser) => item.id}
+          renderItem={renderPostItem}
+          keyExtractor={postKeyExtractor}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.postsList}
           refreshControl={
@@ -714,10 +755,14 @@ export default function UserDetailScreen() {
               tintColor={designTokens.colors.primaryOrange}
             />
           }
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          initialNumToRender={5}
+          windowSize={10}
         />
       </View>
     );
-  };
+  }, [loadingPosts, posts, renderPostItem, postKeyExtractor, userData.name]);
 
   if (loading) {
     return (
@@ -743,9 +788,19 @@ export default function UserDetailScreen() {
   return (
     <MenuProvider>
       <SafeAreaView style={styles.container}>
-        {/* Header and Profile Info - Fixed Content */}
+        {/* Header - Using memoized component */}
+        <ProfileHeader
+          userData={userData}
+          isOwnProfile={isOwnProfile}
+          isBlocked={isBlocked}
+          onBack={handleBack}
+          onShareProfile={handleShareProfile}
+          onReportUser={handleReportUser}
+          onBlockUser={handleBlockUser}
+        />
+        
+        {/* Profile Info and Tabs - Fixed Content */}
         <View style={styles.fixedContent}>
-          {renderHeader()}
           {renderProfileInfo()}
           {renderTabs()}
         </View>

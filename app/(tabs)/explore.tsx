@@ -131,6 +131,18 @@ export default function ExploreScreen() {
     }
   );
 
+  // Handle user blocking - refresh posts to remove blocked user's content
+  const handleUserBlocked = useCallback((blockedUserId: string) => {
+    // Simply reload the posts, the backend will filter out blocked users
+    posts.load();
+  }, []);
+
+  // Handle post deletion - refresh posts to remove deleted post
+  const handlePostDeleted = useCallback((postId: string) => {
+    // Simply reload the posts to get the updated list
+    posts.load();
+  }, []);
+
   const currentTab = activeTab === 'restaurants' ? restaurants : posts;
 
   // Load data on tab change
@@ -276,6 +288,8 @@ export default function ExploreScreen() {
         onLike={() => {}}
         onComment={() => {}}
         onSave={() => {}}
+        onBlock={handleUserBlocked}
+        onDelete={handlePostDeleted}
       />
     );
   }, [activeTab, router]);

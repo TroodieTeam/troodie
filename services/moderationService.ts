@@ -33,22 +33,42 @@ class ModerationService {
       }
 
       const { data, error } = await supabase.functions.invoke('block-user', {
-        body: { userId, reason },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
+        body: { userId, reason }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error blocking user:', error);
+        throw error;
+      }
+
+      // Check if the response indicates an error
+      if (data?.error) {
+        console.error('Block user API error:', data.error);
+        if (data.error.includes('already blocked')) {
+          Alert.alert('Already Blocked', 'This user is already blocked');
+        } else if (data.error.includes('cannot block yourself')) {
+          Alert.alert('Error', 'You cannot block yourself');
+        } else if (data.error.includes('User not found')) {
+          Alert.alert('Error', 'User not found');
+        } else {
+          Alert.alert('Error', data.error || 'Failed to block user. Please try again.');
+        }
+        return false;
+      }
 
       return true;
     } catch (error: any) {
       console.error('Block user error:', error);
+      console.error('Error details:', JSON.stringify(error));
       
-      if (error.message?.includes('already blocked')) {
+      const errorMessage = error?.message || error?.error || 'Unknown error';
+      
+      if (errorMessage.includes('already blocked')) {
         Alert.alert('Already Blocked', 'This user is already blocked');
-      } else if (error.message?.includes('cannot block yourself')) {
+      } else if (errorMessage.includes('cannot block yourself')) {
         Alert.alert('Error', 'You cannot block yourself');
+      } else if (errorMessage.includes('FunctionsHttpError')) {
+        Alert.alert('Error', 'Network error. Please check your connection and try again.');
       } else {
         Alert.alert('Error', 'Failed to block user. Please try again.');
       }
@@ -70,17 +90,25 @@ class ModerationService {
       }
 
       const { data, error } = await supabase.functions.invoke('unblock-user', {
-        body: { userId },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
+        body: { userId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error unblocking user:', error);
+        throw error;
+      }
+
+      // Check if the response indicates an error
+      if (data?.error) {
+        console.error('Unblock user API error:', data.error);
+        Alert.alert('Error', data.error || 'Failed to unblock user. Please try again.');
+        return false;
+      }
 
       return true;
     } catch (error: any) {
       console.error('Unblock user error:', error);
+      console.error('Error details:', JSON.stringify(error));
       Alert.alert('Error', 'Failed to unblock user. Please try again.');
       return false;
     }
@@ -155,13 +183,27 @@ class ModerationService {
           targetId,
           reason,
           description
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error submitting report:', error);
+        throw error;
+      }
+      
+      // Check if the response indicates an error
+      if (data?.error) {
+        console.error('Submit report API error:', data.error);
+        if (data.error.includes('already reported')) {
+          Alert.alert(
+            'Already Reported',
+            'You have already reported this content. Our team is reviewing it.'
+          );
+        } else {
+          Alert.alert('Error', data.error || 'Failed to submit report. Please try again.');
+        }
+        return false;
+      }
 
       Alert.alert(
         'Report Submitted',
@@ -171,12 +213,17 @@ class ModerationService {
       return true;
     } catch (error: any) {
       console.error('Submit report error:', error);
+      console.error('Error details:', JSON.stringify(error));
       
-      if (error.message?.includes('already reported')) {
+      const errorMessage = error?.message || error?.error || 'Unknown error';
+      
+      if (errorMessage.includes('already reported')) {
         Alert.alert(
           'Already Reported',
           'You have already reported this content. Our team is reviewing it.'
         );
+      } else if (errorMessage.includes('FunctionsHttpError')) {
+        Alert.alert('Error', 'Network error. Please check your connection and try again.');
       } else {
         Alert.alert('Error', 'Failed to submit report. Please try again.');
       }
