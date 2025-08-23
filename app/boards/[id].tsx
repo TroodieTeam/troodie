@@ -3,6 +3,8 @@ import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { boardService } from '@/services/boardService';
 import { restaurantService } from '@/services/restaurantService';
+import ShareService from '@/services/shareService';
+import { ToastService } from '@/services/toastService';
 import { BoardRestaurant, BoardWithRestaurants } from '@/types/board';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -88,12 +90,81 @@ export default function BoardDetailScreen() {
     router.push('/(tabs)');
   };
 
-  const handleShareBoard = () => {
-    Alert.alert('Share Board', 'Sharing feature coming soon!');
+  const handleShareBoard = async () => {
+    if (!board) return;
+
+    try {
+      const result = await ShareService.share({
+        type: 'board',
+        id: board.id,
+        title: board.name,
+        description: board.description || `Check out my curated collection of ${restaurants.length} restaurants`,
+        count: restaurants.length
+      });
+
+      if (result.success) {
+        ToastService.showSuccess('Board shared successfully');
+      }
+    } catch (error) {
+      console.error('Error sharing board:', error);
+      ToastService.showError('Failed to share board');
+    }
   };
 
   const handleEditBoard = () => {
-    Alert.alert('Edit Board', 'Edit feature coming soon!');
+    if (!isOwner) return;
+    
+    Alert.alert(
+      'Edit Board',
+      'What would you like to edit?',
+      [
+        {
+          text: 'Board Name',
+          onPress: () => {
+            Alert.prompt(
+              'Edit Board Name',
+              'Enter a new name for your board:',
+              async (newName) => {
+                if (newName && newName.trim()) {
+                  try {
+                    await boardService.updateBoard(boardId, { name: newName.trim() });
+                    setBoard(prev => prev ? { ...prev, name: newName.trim() } : null);
+                    ToastService.showSuccess('Board name updated');
+                  } catch (error) {
+                    ToastService.showError('Failed to update board name');
+                  }
+                }
+              },
+              'plain-text',
+              board?.name
+            );
+          }
+        },
+        {
+          text: 'Board Description',
+          onPress: () => {
+            Alert.prompt(
+              'Edit Board Description',
+              'Enter a new description for your board:',
+              async (newDescription) => {
+                if (newDescription !== undefined) {
+                  try {
+                    await boardService.updateBoard(boardId, { description: newDescription.trim() || null });
+                    setBoard(prev => prev ? { ...prev, description: newDescription.trim() || null } : null);
+                    ToastService.showSuccess('Board description updated');
+                  } catch (error) {
+                    ToastService.showError('Failed to update board description');
+                  }
+                }
+              },
+              'plain-text',
+              board?.description || ''
+            );
+          }
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
   };
 
   const handleDeleteBoard = () => {

@@ -9,6 +9,7 @@ import {
   PostSave,
   PostEngagementStats
 } from '@/types/post';
+import ShareService from '@/services/shareService';
 
 interface OptimisticUpdate<T> {
   id: string;
@@ -286,32 +287,30 @@ class EnhancedPostEngagementService {
     postId: string,
     userId: string | null,
     postTitle: string,
-    restaurantName: string
+    restaurantName: string,
+    postCaption?: string,
+    tags?: string[]
   ): Promise<{ success: boolean; platform?: string }> {
     try {
-      const baseUrl = 'https://troodie.app'; // Replace with actual domain
-      const deepLink = `troodie://post/${postId}`;
-      const webLink = `${baseUrl}/posts/${postId}`;
-      
-      const message = `Check out this review of ${restaurantName} on Troodie!`;
-      
-      // Show share sheet
-      const result = await Share.share({
-        message: `${message}\n${webLink}`,
-        title: postTitle,
-        url: webLink, // iOS only
+      // Use ShareService for consistent sharing with proper deep links
+      const result = await ShareService.share({
+        type: 'post',
+        id: postId,
+        title: restaurantName || 'Amazing food discovery',
+        description: postCaption || postTitle || undefined,
+        tags: tags || undefined,
       });
       
-      if (result.action === Share.sharedAction) {
+      if (result.success) {
         // Track the share
-        await this.trackShare(postId, userId, 'native_share');
+        await this.trackShare(postId, userId, result.action || 'native_share');
         
-        return { success: true, platform: 'native_share' };
-      } else if (result.action === Share.dismissedAction) {
+        return { success: true, platform: result.action || 'native_share' };
+      } else if (result.action === 'dismissed') {
         return { success: false };
       }
       
-      return { success: true };
+      return { success: result.success };
     } catch (error) {
       console.error('Error sharing post:', error);
       return { success: false };

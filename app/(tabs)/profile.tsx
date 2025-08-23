@@ -19,6 +19,8 @@ import { communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
 import { restaurantService } from '@/services/restaurantService';
+import ShareService from '@/services/shareService';
+import { ToastService } from '@/services/toastService';
 import { Board, BoardRestaurant } from '@/types/board';
 import { RestaurantInfo } from '@/types/core';
 import { PersonaType } from '@/types/onboarding';
@@ -322,10 +324,20 @@ export default function ProfileScreen() {
     if (!profile) return;
     
     try {
-      // TODO: Implement share functionality
-      // Share profile
+      const result = await ShareService.share({
+        type: 'profile',
+        id: profile.id,
+        username: profile.username || profile.email?.split('@')[0],
+        title: profile.name || profile.username || 'Troodie User',
+        description: profile.bio || `Follow for great restaurant recommendations!`
+      });
+      
+      if (result.success) {
+        ToastService.showSuccess('Profile shared successfully');
+      }
     } catch (error) {
       console.error('Error sharing profile:', error);
+      ToastService.showError('Failed to share profile');
     }
   };
 

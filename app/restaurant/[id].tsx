@@ -35,6 +35,7 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Dimensions,
     Image,
     Linking,
@@ -44,6 +45,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import ShareService from '@/services/shareService';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -232,8 +234,36 @@ export default function RestaurantDetailScreen() {
   };
 
   const handleReserve = () => {
-    // TODO: Implement reservation functionality
-    // Reserve table functionality
+    // Open reservation link if available, otherwise show website
+    if (restaurant?.reservation_link) {
+      Linking.openURL(restaurant.reservation_link);
+    } else if (restaurant?.website) {
+      Linking.openURL(restaurant.website);
+    } else {
+      ToastService.showInfo('No reservation link available. Try calling the restaurant directly.');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!restaurant) return;
+
+    try {
+      const result = await ShareService.share({
+        type: 'restaurant',
+        id: restaurant.id,
+        title: restaurant.name,
+        description: `${restaurant.cuisine_types?.[0] || 'Restaurant'} in ${restaurant.neighborhood || restaurant.city || 'the area'}${restaurant.google_rating ? ` • ${restaurant.google_rating} ⭐` : ''}`,
+        tags: restaurant.cuisine_types,
+      });
+
+      if (result.success) {
+        // Optionally track analytics or show success feedback
+        ToastService.showSuccess('Restaurant shared successfully');
+      }
+    } catch (error) {
+      console.error('Error sharing restaurant:', error);
+      ToastService.showError('Failed to share restaurant');
+    }
   };
 
   const checkSaveStatus = async (restaurantId: string) => {
@@ -371,7 +401,7 @@ export default function RestaurantDetailScreen() {
           <ArrowLeft size={20} color="white" />
         </TouchableOpacity>
         <View style={styles.rightActions}>
-          <TouchableOpacity style={styles.headerButton} onPress={() => {}}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
             <Share size={20} color="white" />
           </TouchableOpacity>
         </View>

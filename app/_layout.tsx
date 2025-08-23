@@ -12,7 +12,8 @@ import {
 } from '@expo-google-fonts/poppins';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -43,6 +44,78 @@ Sentry.init({
 });
 
 export default Sentry.wrap(function RootLayout() {
+  const router = useRouter();
+  
+  // Handle deep links
+  useEffect(() => {
+    const handleDeepLink = (url: string) => {
+      console.log('Handling deep link:', url);
+      
+      // Parse the URL to extract the path
+      const parsed = Linking.parse(url);
+      console.log('Parsed URL:', parsed);
+      
+      // Extract the path from the URL
+      // Handle Expo dev URLs that have --/ prefix
+      let path = parsed.path || '';
+      if (path.includes('--/')) {
+        path = path.split('--/')[1];
+      }
+      
+      console.log('Extracted path:', path);
+      
+      // Handle different deep link patterns
+      if (path) {
+        // Remove leading slash if present
+        const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        
+        // Add a small delay to ensure navigation is ready
+        setTimeout(() => {
+          // Check for different route patterns
+          if (cleanPath.startsWith('restaurant/')) {
+            const id = cleanPath.replace('restaurant/', '');
+            console.log('Navigating to restaurant:', id);
+            router.push(`/restaurant/${id}`);
+          } else if (cleanPath.startsWith('user/')) {
+            const id = cleanPath.replace('user/', '');
+            console.log('Navigating to user:', id);
+            router.push(`/user/${id}`);
+          } else if (cleanPath.startsWith('posts/')) {
+            const id = cleanPath.replace('posts/', '');
+            console.log('Navigating to post:', id);
+            router.push(`/posts/${id}`);
+          } else if (cleanPath.startsWith('boards/')) {
+            const id = cleanPath.replace('boards/', '');
+            console.log('Navigating to board:', id);
+            router.push(`/boards/${id}`);
+          }
+        }, 100);
+      }
+    };
+    
+    // Get the initial URL if the app was launched from a deep link
+    const getInitialURL = async () => {
+      const url = await Linking.getInitialURL();
+      if (url) {
+        console.log('App opened with URL:', url);
+        // Add a delay to ensure the app is fully initialized
+        setTimeout(() => handleDeepLink(url), 500);
+      }
+    };
+    
+    getInitialURL();
+    
+    // Subscribe to incoming links
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      console.log('App received URL:', url);
+      handleDeepLink(url);
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     Poppins_400Regular,

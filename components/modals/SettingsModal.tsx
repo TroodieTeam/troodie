@@ -359,7 +359,7 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
           label: 'Privacy & Security',
           onPress: () => {
             onClose();
-            Alert.alert('Coming Soon', 'Privacy settings will be available soon!');
+            router.push('/settings/privacy');
           },
           showArrow: true,
         } as SettingItemWithArrow,

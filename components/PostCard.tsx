@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { ToastService } from '@/services/toastService';
 import { MenuButton } from './common/MenuButton';
 import { moderationService } from '@/services/moderationService';
+import ShareService from '@/services/shareService';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -52,6 +53,7 @@ export function PostCard({
   const router = useRouter();
   const [showReportModal, setShowReportModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   
   // Use the enhanced post engagement hook
   const {
@@ -64,8 +66,6 @@ export function PostCard({
     isLoading,
     toggleLike,
     toggleSave,
-    sharePost,
-    copyLink,
   } = usePostEngagement({
     postId: post.id,
     initialStats: {
@@ -94,11 +94,25 @@ export function PostCard({
   };
 
   const handleShare = async () => {
-    await sharePost(
-      post.caption || 'Check out this post',
-      post.restaurant?.name || 'Troodie'
-    );
-    onShare?.(post.id);
+    try {
+      // Use ShareService to share the post with proper deep link
+      const result = await ShareService.share({
+        type: 'post',
+        id: post.id,
+        title: post.restaurant?.name || 'Amazing food discovery',
+        description: post.caption || undefined,
+        tags: post.tags || undefined,
+        image: post.photos?.[0] || post.restaurant?.image || undefined,
+      });
+      
+      if (result.success) {
+        // Optionally track share count locally
+        onShare?.(post.id);
+      }
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      ToastService.showError('Failed to share post');
+    }
   };
 
   const handleUserPress = useCallback((e: any) => {
@@ -303,7 +317,11 @@ export function PostCard({
         >
           <Image 
             source={{ uri: post.user.avatar || DEFAULT_IMAGES.avatar }} 
-            style={styles.avatar} 
+            style={styles.avatar}
+            onError={() => {
+              // Silently handle error - defaultSource will show
+            }}
+            defaultSource={{ uri: DEFAULT_IMAGES.avatar }}
           />
           <View style={styles.userDetails}>
             <View style={styles.userNameRow}>
@@ -367,20 +385,30 @@ export function PostCard({
         <View style={styles.photoContainer}>
           {post.photos.length === 1 ? (
             <Image 
-              source={{ uri: post.photos[0] }} 
+              source={{ 
+                uri: imageErrors.has(post.photos[0]) 
+                  ? DEFAULT_IMAGES.restaurant 
+                  : post.photos[0] 
+              }} 
               style={styles.singlePhoto}
-              onError={(e) => console.error('Image load error:', e.nativeEvent.error)}
-              defaultSource={{ uri: 'https://via.placeholder.com/400x200?text=Loading...' }}
+              onError={() => {
+                setImageErrors(prev => new Set(prev).add(post.photos[0]));
+              }}
             />
           ) : (
             <View style={styles.photoGrid}>
               {post.photos.slice(0, 4).map((photo, index) => (
                 <Image 
                   key={index} 
-                  source={{ uri: photo }} 
+                  source={{ 
+                    uri: imageErrors.has(photo) 
+                      ? DEFAULT_IMAGES.restaurant 
+                      : photo 
+                  }} 
                   style={styles.gridPhoto}
-                  onError={(e) => console.error(`Image ${index} load error:`, e.nativeEvent.error)}
-                  defaultSource={{ uri: 'https://via.placeholder.com/200x120?text=Loading...' }}
+                  onError={() => {
+                    setImageErrors(prev => new Set(prev).add(photo));
+                  }}
                 />
               ))}
               {post.photos.length > 4 && (
@@ -400,7 +428,19 @@ export function PostCard({
           onPress={handleRestaurantPress}
           activeOpacity={0.7}
         >
-          <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
+          <Image 
+            source={{ 
+              uri: imageErrors.has(post.restaurant.image || '') 
+                ? DEFAULT_IMAGES.restaurant 
+                : (post.restaurant.image || DEFAULT_IMAGES.restaurant) 
+            }} 
+            style={styles.restaurantImage}
+            onError={() => {
+              if (post.restaurant.image) {
+                setImageErrors(prev => new Set(prev).add(post.restaurant.image));
+              }
+            }}
+          />
           <View style={styles.restaurantDetails}>
             <Text style={styles.restaurantName} numberOfLines={1}>
               {post.restaurant.name}

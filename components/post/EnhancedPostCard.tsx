@@ -100,7 +100,9 @@ export const EnhancedPostCard = memo(({
           text: 'Share',
           onPress: () => sharePost(
             post.caption || 'Check out this post',
-            post.restaurant?.name || 'Restaurant'
+            post.restaurant?.name || 'Restaurant',
+            post.caption,
+            post.tags || undefined
           ),
         },
         {
@@ -113,7 +115,7 @@ export const EnhancedPostCard = memo(({
         },
       ],
     );
-  }, [sharePost, copyLink, post.caption, post.restaurant?.name]);
+  }, [sharePost, copyLink, post.caption, post.restaurant?.name, post.tags]);
   
   const getTrafficLightColor = (rating: number | null) => {
     if (!rating || rating === 0) return '#DDD';

@@ -280,19 +280,40 @@ export default function SaveRestaurantScreen() {
         {searchMethod === 'location' && (
           <View style={styles.placeholderContent}>
             <MapPin size={48} color="#DDD" />
-            <Text style={styles.placeholderText}>Location-based search coming soon</Text>
+            <Text style={styles.placeholderText}>Enable location services in Settings to search nearby</Text>
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => setSearchMethod('text')}
+            >
+              <Text style={styles.secondaryButtonText}>Search by name instead</Text>
+            </TouchableOpacity>
           </View>
         )}
         {searchMethod === 'photo' && (
           <View style={styles.placeholderContent}>
             <Camera size={48} color="#DDD" />
-            <Text style={styles.placeholderText}>Photo search coming soon</Text>
+            <Text style={styles.placeholderText}>Photo search will be available in a future update</Text>
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => setSearchMethod('text')}
+            >
+              <Text style={styles.secondaryButtonText}>Search by name instead</Text>
+            </TouchableOpacity>
           </View>
         )}
         {searchMethod === 'manual' && (
           <View style={styles.placeholderContent}>
             <Edit3 size={48} color="#DDD" />
-            <Text style={styles.placeholderText}>Manual entry coming soon</Text>
+            <Text style={styles.placeholderText}>Can't find the restaurant?</Text>
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => {
+                setSearchMethod('text');
+                setShowAddRestaurantModal(true);
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>Add it manually</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -307,6 +328,18 @@ export default function SaveRestaurantScreen() {
 }
 
 const styles = StyleSheet.create({
+  secondaryButton: {
+    marginTop: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.sm,
+    paddingHorizontal: designTokens.spacing.lg,
+    borderRadius: designTokens.borderRadius.full,
+    backgroundColor: designTokens.colors.primaryOrange,
+  },
+  secondaryButtonText: {
+    ...designTokens.typography.buttonText,
+    color: 'white',
+    fontFamily: 'Inter_600SemiBold',
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,

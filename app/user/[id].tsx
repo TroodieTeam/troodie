@@ -4,6 +4,8 @@ import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import FollowButton from '@/components/FollowButton';
 import { CommunityTab } from '@/components/profile/CommunityTab';
 import { ReportModal } from '@/components/modals/ReportModal';
+import ShareService, { ShareContent } from '@/services/shareService';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFollowState } from '@/hooks/useFollowState';
@@ -81,12 +83,12 @@ const ProfileHeader = memo(({
       <ChevronLeft size={24} color={designTokens.colors.textDark} />
     </TouchableOpacity>
     <Text style={styles.headerTitle} numberOfLines={1}>{userData.name}</Text>
-    {!isOwnProfile && (
+    {!isOwnProfile ? (
       <Menu>
-        <MenuTrigger>
-          <TouchableOpacity style={styles.headerButton}>
+        <MenuTrigger onPress={() => console.log('Menu trigger pressed')}>
+          <View style={styles.headerButton}>
             <MoreVertical size={24} color={designTokens.colors.textDark} />
-          </TouchableOpacity>
+          </View>
         </MenuTrigger>
         <MenuOptions customStyles={menuOptionsStyles}>
           <MenuOption onSelect={onShareProfile}>
@@ -111,13 +113,15 @@ const ProfileHeader = memo(({
           </MenuOption>
         </MenuOptions>
       </Menu>
+    ) : (
+      <View style={styles.headerButton} />
     )}
   </View>
 ));
 
 ProfileHeader.displayName = 'ProfileHeader';
 
-export default function UserDetailScreen() {
+function UserDetailScreenContent() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user: currentUser } = useAuth();
@@ -139,6 +143,7 @@ export default function UserDetailScreen() {
   const [communityStats, setCommunityStats] = useState({ joined_count: 0, created_count: 0, admin_count: 0, moderator_count: 0 });
   const [isBlocked, setIsBlocked] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const tabScrollRef = useRef<ScrollView>(null);
   
   const isOwnProfile = currentUser?.id === id;
@@ -179,6 +184,9 @@ export default function UserDetailScreen() {
   // Load profile data
   useEffect(() => {
     if (id) {
+      // Reset avatar error when loading new profile
+      setAvatarError(false);
+      
       loadProfile();
       loadAchievements();
       checkBlockedStatus();
@@ -375,8 +383,15 @@ export default function UserDetailScreen() {
     if (!profile) return;
     
     try {
-      // TODO: Implement share functionality
-      Alert.alert('Share Profile', 'Share functionality coming soon!');
+      const shareContent = {
+        type: 'profile' as const,
+        id: profile.id,
+        username: profile.username || profile.email?.split('@')[0],
+        title: profile.name || profile.username || 'Troodie User',
+        description: profile.bio || `Follow for great restaurant recommendations!`
+      };
+      
+      await ShareService.share(shareContent);
     } catch (error) {
       console.error('Error sharing profile:', error);
     }
@@ -390,6 +405,7 @@ export default function UserDetailScreen() {
   }, [router]);
 
   const handleReportUser = useCallback(() => {
+    console.log('Report user clicked');
     setShowReportModal(true);
   }, []);
 
@@ -420,13 +436,25 @@ export default function UserDetailScreen() {
                 setIsBlocked(!isBlocked);
                 
                 if (!isBlocked) {
-                  // If blocking, navigate back
+                  // Emit event to update activity feed
+                  eventBus.emit(EVENTS.USER_BLOCKED, id);
+                  
+                  // If blocking, navigate back and refresh activity feed
                   Alert.alert(
                     'User Blocked',
                     `${profile.name || profile.username || 'User'} has been blocked. Their content will no longer appear in your feeds.`,
-                    [{ text: 'OK', onPress: () => router.back() }]
+                    [{ 
+                      text: 'OK', 
+                      onPress: () => {
+                        // Navigate back to activity screen
+                        router.back();
+                      }
+                    }]
                   );
                 } else {
+                  // Emit event to update activity feed
+                  eventBus.emit(EVENTS.USER_UNBLOCKED, id);
+                  
                   Alert.alert(
                     'User Unblocked',
                     `${profile.name || profile.username || 'User'} has been unblocked.`
@@ -443,7 +471,13 @@ export default function UserDetailScreen() {
   }, [id, profile, isBlocked, router]);
 
   const handleBack = useCallback(() => {
-    router.back();
+    // Check if we can go back, otherwise navigate to home
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Navigate to the main activity/home screen
+      router.replace('/(tabs)/activity');
+    }
   }, [router]);
 
   const handleBoardPress = useCallback((boardId: string) => {
@@ -480,9 +514,20 @@ export default function UserDetailScreen() {
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
           <Image 
-            source={{ uri: getAvatarUrlWithFallback(userData.avatar, profile?.name || profile?.username) }} 
+            source={{ 
+              uri: avatarError 
+                ? generateInitialsAvatar(profile?.name || profile?.username || 'U')
+                : getAvatarUrlWithFallback(userData.avatar, profile?.name || profile?.username) 
+            }} 
             style={styles.avatar}
             resizeMode="cover"
+            onError={() => {
+              console.log('Avatar load error, using fallback');
+              setAvatarError(true);
+            }}
+            defaultSource={{ 
+              uri: generateInitialsAvatar(profile?.name || profile?.username || 'U') 
+            }}
           />
         </View>
 
@@ -786,53 +831,59 @@ export default function UserDetailScreen() {
   }
 
   return (
-    <MenuProvider>
-      <SafeAreaView style={styles.container}>
-        {/* Header - Using memoized component */}
-        <ProfileHeader
-          userData={userData}
-          isOwnProfile={isOwnProfile}
-          isBlocked={isBlocked}
-          onBack={handleBack}
-          onShareProfile={handleShareProfile}
-          onReportUser={handleReportUser}
-          onBlockUser={handleBlockUser}
-        />
-        
-        {/* Profile Info and Tabs - Fixed Content */}
-        <View style={styles.fixedContent}>
-          {renderProfileInfo()}
-          {renderTabs()}
-        </View>
+    <SafeAreaView style={styles.container}>
+      {/* Header - Using memoized component */}
+      <ProfileHeader
+        userData={userData}
+        isOwnProfile={isOwnProfile}
+        isBlocked={isBlocked}
+        onBack={handleBack}
+        onShareProfile={handleShareProfile}
+        onReportUser={handleReportUser}
+        onBlockUser={handleBlockUser}
+      />
+      
+      {/* Profile Info and Tabs - Fixed Content */}
+      <View style={styles.fixedContent}>
+        {renderProfileInfo()}
+        {renderTabs()}
+      </View>
 
-        {/* Tab Content - Scrollable */}
-        <View style={styles.tabContentContainer}>
-          {activeTab === 'quicksaves' && renderQuickSavesTab()}
-          {activeTab === 'boards' && renderBoardsTab()}
-          {activeTab === 'posts' && renderPostsTab()}
-          {activeTab === 'communities' && (
-            <CommunityTab
-              userId={id || ''}
-              communities={communities}
-              stats={communityStats}
-              loading={loadingCommunities}
-              refreshing={refreshingCommunities}
-              onRefresh={onRefreshCommunities}
-            />
-          )}
-        </View>
-        
-        {/* Report Modal */}
-        {id && (
-          <ReportModal
-            visible={showReportModal}
-            onClose={() => setShowReportModal(false)}
-            targetType="user"
-            targetId={id}
-            targetName={profile?.name || profile?.username || 'User'}
+      {/* Tab Content - Scrollable */}
+      <View style={styles.tabContentContainer}>
+        {activeTab === 'quicksaves' && renderQuickSavesTab()}
+        {activeTab === 'boards' && renderBoardsTab()}
+        {activeTab === 'posts' && renderPostsTab()}
+        {activeTab === 'communities' && (
+          <CommunityTab
+            userId={id || ''}
+            communities={communities}
+            stats={communityStats}
+            loading={loadingCommunities}
+            refreshing={refreshingCommunities}
+            onRefresh={onRefreshCommunities}
           />
         )}
-      </SafeAreaView>
+      </View>
+      
+      {/* Report Modal */}
+      {id && (
+        <ReportModal
+          visible={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          targetType="user"
+          targetId={id}
+          targetName={profile?.name || profile?.username || 'User'}
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+export default function UserDetailScreen() {
+  return (
+    <MenuProvider>
+      <UserDetailScreenContent />
     </MenuProvider>
   );
 }
@@ -842,11 +893,18 @@ const menuOptionsStyles = {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 4,
+    minWidth: 180,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  optionsWrapper: {
+    backgroundColor: 'transparent',
+  },
+  optionWrapper: {
+    paddingVertical: 2,
   },
 };
 

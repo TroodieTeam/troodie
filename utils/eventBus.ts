@@ -60,4 +60,6 @@ export const EVENTS = {
   BOARD_UPDATED: 'board_updated',
   QUICK_SAVES_UPDATED: 'quick_saves_updated',
   PROFILE_IMAGE_UPDATED: 'profile_image_updated',
+  USER_BLOCKED: 'user_blocked',
+  USER_UNBLOCKED: 'user_unblocked',
 } as const;

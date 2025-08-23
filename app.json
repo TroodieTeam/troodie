@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.troodie.troodie.com",
-      "buildNumber": "12",
+      "buildNumber": "13",
+      "associatedDomains": [
+        "applinks:*.supabase.co"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -23,7 +26,19 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.troodie.troodie.com",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{
+            "scheme": "https",
+            "host": "*.supabase.co",
+            "pathPrefix": "/functions/v1/share-redirect"
+          }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

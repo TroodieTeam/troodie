@@ -27,7 +27,7 @@ interface UsePostEngagementReturn {
   toggleLike: () => Promise<void>;
   toggleSave: (boardId?: string) => Promise<void>;
   addComment: (content: string) => Promise<void>;
-  sharePost: (title: string, restaurantName: string) => Promise<void>;
+  sharePost: (title: string, restaurantName: string, postCaption?: string, tags?: string[]) => Promise<void>;
   copyLink: () => Promise<void>;
   refreshStats: (newStats: PostEngagementStats) => void;
   
@@ -227,7 +227,12 @@ export function usePostEngagement({
   }, [postId, user, onEngagementError]);
   
   // Share post action
-  const sharePost = useCallback(async (title: string, restaurantName: string) => {
+  const sharePost = useCallback(async (
+    title: string, 
+    restaurantName: string,
+    postCaption?: string,
+    tags?: string[]
+  ) => {
     setIsLoading(true);
     
     try {
@@ -235,7 +240,9 @@ export function usePostEngagement({
         postId,
         user?.id || null,
         title,
-        restaurantName
+        restaurantName,
+        postCaption,
+        tags
       );
       
       if (result.success) {
