@@ -1,4 +1,4 @@
-# Troodie — Master TODO (Apple Review Fixes)
+# Troodie — Master TODO (MVP Critical Fixes)
 
 ## Status Legend
 - 🔴 Not Started
@@ -11,81 +11,120 @@
 
 ## Epics
 
-> Define epics first. Keep titles crisp; add a one‑line focus statement.
-
 | ID | Epic | Focus | Owner | Status |
 |---|---|---|---|---|
-| APPLE | Apple Review Compliance | Fix rejection issues for App Store approval |  | 🔴 |
-| E1 | Bug Fixes | Critical bug fixes |  | 🔴 |
-| E2 |  |  |  | 🔴 |
-| E3 | Discovery & Content | Trending relevance and richer save context |  | 🔴 |
+| MVP | MVP Critical Fixes | Nine critical fixes needed by 9/3 | - | 🔴 |
 
 ---
 
 ## Tasks Backlog
 
-> Keep tasks atomic and shippable. Use IDs you can reference in commits/PRs.
-
-### 🚨 CRITICAL - Apple Review Fixes (Must complete before resubmission)
+### 🚨 CRITICAL MVP FIXES - Due by September 3, 2025
 
 | ID | Task | Epic | Priority | Estimate | Status | Notes |
 |---|---|---|---|---|---|---|
-| A.1 | Remove Login Wall for Browsing (`task-apple-1-remove-login-wall.md`) | APPLE | Critical | 2d | 🔴 | Guideline 5.1.1 - Allow anonymous browsing |
-| A.2 | Implement Content Moderation (`task-apple-2-content-moderation.md`) | APPLE | Critical | 2d | 🔴 | Guideline 1.2 - Report/block/filter features |
-| A.3 | Fix iPad Three-Dots Menu (`task-apple-3-ipad-menu-bug.md`) | APPLE | Critical | 1d | 🔴 | Guideline 2.1 - Touch targets on iPad |
-
-### Other Tasks (After Apple fixes)
-
-| ID | Task | Epic | Priority | Estimate | Status | Notes |
-|---|---|---|---|---|---|---|
-| 1.1 | Fix: Follow Activity Missing Target User Name (`task-bug-1-follow-activity-missing-target.md`) | E1 | High | 0.5d | 🔴 | Activity feed should show target user on follow |
-| 1.2 | Fix: Default Profile Image When None Provided (`task-bug-2-default-profile-image.md`) | E1 | Medium | 0.5d | 🔴 | Fallback avatar across app |
-| 1.3 | Fix: Followers/Following Navigation Shows Wrong Screen (`task-bug-3-followers-list-navigation.md`) | E1 | High | 0.75d | 🔴 | Correct list routes from profile |
-| 1.4 | Fix: Home "Your Saves" Not Showing After Save (`task-bug-4-home-saves-not-showing.md`) | E1 | Medium | 1d | 🔴 | Ensure home widget refreshes |
-| 3.1 | Fix: "Share a link" Causes Bug in Create Post (`task-bug-5-share-link-post-flow.md`) | E3 | High | 0.75d | 🔴 | Stabilize link attach flow |
-| 3.2 | Feature: Save TikTok With Context (`task-feature-1-save-tiktok-with-context.md`) | E3 | Medium | 1d | 🔴 | Link + note on restaurant save |
-| 3.3 | Feature: What's Hot Location-Aware (`task-feature-2-whats-hot-location-aware.md`) | E3 | Medium | 1d | 🔴 | Filter trending by city/region |
+| MVP.1 | Fix Index Flash on App Download (`task-mvp-1-index-flash-fix.md`) | MVP | High | 1d | 🔄 | Index screen flashes during first launch - **Needs Review** |
+| MVP.2 | Fix Non-Functional Restaurant Buttons (`task-mvp-2-restaurant-buttons-fix.md`) | MVP | Critical | 1d | 🔴 | Three buttons don't work on detail screen |
+| MVP.3 | Implement Leave Review Flow (`task-mvp-3-leave-review-flow.md`) | MVP | High | 2d | 🔴 | Core feature for user engagement |
+| MVP.4 | Clarify Share vs Review Options (`task-mvp-4-share-clarification.md`) | MVP | Medium | 0.5d | 🔄 | Confusing "What would you like to share?" - **Needs Review** |
+| MVP.5 | Fix Review Post Confirmation Flow (`task-mvp-5-review-confirmation-flow.md`) | MVP | High | 1d | 🔄 | Replace fullscreen with toast, stay on screen - **Needs Review** |
+| MVP.6 | Import SF Restaurant Data (`task-mvp-6-download-sf-restaurants.md`) | MVP | Critical | 1d | 🔴 | Download and import SF restaurants (TD to provide) |
+| MVP.7 | Fix Top Rated Spacing Issues (`task-mvp-7-top-rated-spacing-fix.md`) | MVP | High | 0.5d | 🔄 | Winston-Salem text pushes buttons off screen - **Needs Review** |
+| MVP.8 | Update Welcome Toast Logic (`task-mvp-8-welcome-toast-logic.md`) | MVP | Medium | 0.5d | 🔴 | Disappear after 3 uses or show relevant CTAs |
+| MVP.9 | Fix Discussion Post Confirmation (`task-mvp-9-discussion-post-confirmation.md`) | MVP | High | 0.5d | 🔄 | Replace fullscreen with toast for discussions - **Needs Review** |
+| MVP.10 | Streamline Add Restaurant (New) (`task-mvp-10-add-restaurant-not-in-db.md`) | MVP | Critical | 1.5d | 🔄 | Eliminate double entry for new restaurants - **Needs Review** |
+| MVP.11 | Streamline Add Restaurant (Existing) (`task-mvp-11-add-restaurant-already-exists.md`) | MVP | Critical | 1d | 🔴 | Direct save instead of "already exists" error |
 
 ---
 
-## Ready Next (Pull Queue)
+## Execution Order (Recommended)
 
-- [ ] A.1 - Remove login wall (START IMMEDIATELY)
-- [ ] A.2 - Content moderation (START AFTER A.1)
-- [ ] A.3 - iPad menu fix (Can start in parallel)
+### Phase 1: Critical Database & Core Functions (Days 1-2)
+- [ ] MVP.6 - Import SF restaurants (coordinate with TD first)
+- [ ] MVP.2 - Fix restaurant detail buttons
+- [ ] MVP.10 - Streamline new restaurant addition
+- [ ] MVP.11 - Streamline existing restaurant addition
+
+### Phase 2: User Experience Fixes (Days 3-4)
+- [ ] MVP.1 - Fix index flash issue
+- [ ] MVP.3 - Implement leave review flow
+- [ ] MVP.5 - Fix review confirmation flow
+- [ ] MVP.9 - Fix discussion confirmation flow
+
+### Phase 3: Polish & UI Fixes (Day 5)
+- [ ] MVP.7 - Fix spacing issues
+- [ ] MVP.4 - Clarify share vs review
+- [ ] MVP.8 - Update welcome toast
 
 ---
 
-## Decisions Log
+## Sprint Summary
 
-- 2025-08-19: Apple rejected v1.0 - prioritizing 3 critical fixes for resubmission
-- 2025-08-19: Target resubmission date: August 23, 2025
+**Total Estimate**: 11 days of work
+**Timeline**: Must complete by September 3 (5 days)
+**Strategy**: Parallel work required, prioritize blocking issues
+
+### Day-by-Day Plan
+- **Day 1**: MVP.6 (database) + MVP.2 (buttons) in parallel
+- **Day 2**: MVP.10 + MVP.11 (restaurant flows)
+- **Day 3**: MVP.1 + MVP.3 (review implementation)
+- **Day 4**: MVP.5 + MVP.9 (confirmations) + MVP.7 (spacing)
+- **Day 5**: MVP.4 + MVP.8 (final polish) + testing
 
 ---
 
-## Apple Resubmission Checklist
+## Definition of Done Checklist
 
-- [ ] All 3 critical issues fixed
-- [ ] Anonymous browsing fully functional
-- [ ] Content moderation system live
-- [ ] iPad touch targets verified (44x44 points minimum)
-- [ ] Test on iPad Air 5th Gen specifically
-- [ ] Review account (review@troodieapp.com) still works
-- [ ] Increment build number
-- [ ] Update App Store Connect release notes
-- [ ] Add reviewer notes explaining fixes
-- [ ] Full regression testing complete
+- [ ] All 11 MVP tasks completed
+- [ ] Full regression testing performed
+- [ ] Tested on iPhone (12-15) and iPad
+- [ ] No console errors or warnings
+- [ ] Performance acceptable
+- [ ] Build number incremented
+- [ ] Release notes prepared
+
+---
+
+## Dependencies & Blockers
+
+- **MVP.6**: Waiting for restaurant data from TD
+- **MVP.5**: Depends on MVP.3 completion
+- **MVP.11**: Should be done after MVP.10 for consistency
+
+---
 
 ## Release Checklist
 
-- [ ] App config updated (bundle id, version, build)
-- [ ] Permissions usage strings reviewed
-- [ ] Privacy links and nutrition labels verified
-- [ ] Crash/error monitoring on
-- [ ] Store metadata/screenshots current
+- [ ] All critical fixes verified
+- [ ] App version/build updated
+- [ ] Store metadata current
+- [ ] Testing on all device types
+- [ ] Performance profiling complete
+- [ ] Error monitoring enabled
+- [ ] Analytics tracking verified
 
 ---
 
-_Last Updated: August 19, 2025_
-_Apple Rejection: August 18, 2025 (Submission ID: 67d23736-90f6-4ec3-b6cf-98007ae4b75b)_
+## Implementation Notes
 
+### Completed Tasks Needing Review (8/30/2025)
+
+1. **MVP.1 - Index Flash Fix**: Coordinated splash screen hiding with both font and auth loading states
+2. **MVP.4 - Share vs Review Clarification**: Updated UI copy to "Share to Community" vs "Restaurant Review"  
+3. **MVP.5 - Review Confirmation**: Replaced full-screen confirmation with toast notifications
+4. **MVP.7 - Spacing Fix**: Added text truncation and flexible layout for long city names
+5. **MVP.9 - Discussion Confirmation**: Uses same toast system as MVP.5
+6. **MVP.10 - Add Restaurant Flow**: Automatically saves restaurants to user profile, handles duplicates gracefully
+
+### Testing Required
+- Test on various iOS devices (iPhone SE to iPad)
+- Verify toast notifications appear correctly
+- Confirm restaurant addition and saving flow
+- Check text truncation for long city names
+- Validate splash screen timing on slow devices
+
+---
+
+_Last Updated: August 30, 2025_
+_Target Completion: September 3, 2025_
+_Implementation: 6 of 11 tasks completed, needs testing_

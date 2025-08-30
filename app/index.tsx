@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -23,6 +24,6 @@ export default function Index() {
     }
   }, [router, loading, isAuthenticated, isAnonymous]);
 
-  // Return null as this is just a routing component
+  // Return null to prevent any flash - the splash screen is handled in _layout.tsx
   return null;
 }

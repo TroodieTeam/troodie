@@ -44,6 +44,12 @@ export class ToastService {
     this.show({ message, type: 'success', action });
   }
 
+  // Alias for showSuccess to support both naming conventions
+  static success(title: string, message?: string, action?: ToastAction) {
+    const fullMessage = message ? `${title}\n${message}` : title;
+    this.show({ message: fullMessage, type: 'success', action });
+  }
+
   static showError(message: string) {
     this.show({ message, type: 'error', duration: 4000 });
   }

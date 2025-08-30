@@ -14,6 +14,7 @@ import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -21,11 +22,12 @@ import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/components/CustomToast';
 import { NetworkStatusBanner } from '@/components/NetworkStatusBanner';
 import { AppProvider } from '@/contexts/AppContext';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { BackgroundTaskManager } from '@/utils/backgroundTasks';
 import * as Sentry from '@sentry/react-native';
-import { useEffect } from 'react';
+import { useEffect, useCallback, useState } from 'react';
+import { View } from 'react-native';
 
 Sentry.init({
   dsn: 'https://154af650ab170036784f1db10af4e5b8@o4509745606230016.ingest.us.sentry.io/4509745609900032',
@@ -43,7 +45,11 @@ Sentry.init({
   // spotlight: __DEV__,
 });
 
-export default Sentry.wrap(function RootLayout() {
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+// Inner layout component that has access to auth context
+function InnerLayout() {
   const router = useRouter();
   
   // Handle deep links
@@ -116,7 +122,7 @@ export default Sentry.wrap(function RootLayout() {
     };
   }, [router]);
 
-  const [loaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     Poppins_400Regular,
     Poppins_500Medium,
@@ -127,6 +133,17 @@ export default Sentry.wrap(function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  // Get auth loading state
+  const { loading: authLoading } = useAuth();
+  
+  // Coordinate splash screen hiding with both font and auth loading
+  const onLayoutRootView = useCallback(async () => {
+    if ((fontsLoaded || fontError) && !authLoading) {
+      // Hide the splash screen only when both fonts and auth are ready
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError, authLoading]);
 
   useEffect(() => {
     // Initialize background tasks
@@ -139,36 +156,70 @@ export default Sentry.wrap(function RootLayout() {
     };
   }, []);
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && !authLoading) {
+      onLayoutRootView();
+    }
+  }, [fontsLoaded, fontError, authLoading, onLayoutRootView]);
+
+  // Keep splash screen visible while fonts or auth are loading
+  if (!fontsLoaded && !fontError) {
+    // Return a View instead of null to prevent flash
+    return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
+  }
+  
+  if (authLoading) {
+    // Keep showing splash while auth loads
+    return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
+  }
+
+  return (
+    <AppProvider>
+      <OnboardingProvider>
+        <ThemeProvider value={DefaultTheme}>
+          <NetworkStatusBanner />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            <Stack.Screen name="add" options={{ headerShown: false }} />
+            <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="find-friends" options={{ headerShown: false }} />
+            <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
+            <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
+            <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="dark" />
+          <Toast config={toastConfig} />
+        </ThemeProvider>
+      </OnboardingProvider>
+    </AppProvider>
+  );
+}
+
+export default Sentry.wrap(function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
+  if (!fontsLoaded && !fontError) {
+    return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
   }
 
   return (
     <AuthProvider>
-      <AppProvider>
-        <OnboardingProvider>
-          <ThemeProvider value={DefaultTheme}>
-            <NetworkStatusBanner />
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              <Stack.Screen name="add" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="find-friends" options={{ headerShown: false }} />
-              <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
-              <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
-              <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="dark" />
-            <Toast config={toastConfig} />
-          </ThemeProvider>
-        </OnboardingProvider>
-      </AppProvider>
+      <InnerLayout />
     </AuthProvider>
   );
 });

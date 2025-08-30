@@ -6,6 +6,7 @@ import { usePostForm } from '@/hooks/usePostForm';
 import { postMediaService } from '@/services/postMediaService';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
+import { ToastService } from '@/services/toastService';
 import { RestaurantInfo } from '@/types/core';
 import { ExternalContent, PostCreationData } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +59,6 @@ export default function CreatePostScreen() {
   
   // Core state
   const [loading, setLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [activeAttachment, setActiveAttachment] = useState<AttachmentType | null>(null);
   
@@ -250,16 +250,14 @@ export default function CreatePostScreen() {
         // Update network progress
         await updateNetworkProgress('post');
 
-        // Show success state
-        setShowSuccess(true);
+        // Show success toast instead of full-screen confirmation
+        ToastService.success(
+          formData.postType === 'restaurant' ? 'Review posted!' : 'Posted!',
+          'Your post is now live in the community'
+        );
         
-        // Navigate to success page after delay
-        setTimeout(() => {
-          router.replace({
-            pathname: '/add/post-success',
-            params: { id: post.id }
-          });
-        }, 1500);
+        // Navigate back to previous screen (stays in context)
+        router.back();
       }
 
     } catch (error) {
@@ -388,7 +386,7 @@ export default function CreatePostScreen() {
         {/* Post Type Selector */}
         <View style={styles.postTypeSelector}>
           <View style={styles.postTypeLabelRow}>
-            <Text style={styles.postTypeLabel}>What would you like to share?</Text>
+            <Text style={styles.postTypeLabel}>Choose a post type</Text>
             <TouchableOpacity 
               onPress={() => setShowPostTypeInfo(true)}
               style={styles.infoButton}
@@ -402,7 +400,7 @@ export default function CreatePostScreen() {
               onPress={() => updateFormField('postType', 'simple')}
             >
               <Ionicons name="create-outline" size={20} color={formData.postType === 'simple' ? '#FFF' : designTokens.colors.textDark} />
-              <Text style={[styles.postTypeText, formData.postType === 'simple' && styles.postTypeTextActive]}>Share</Text>
+              <Text style={[styles.postTypeText, formData.postType === 'simple' && styles.postTypeTextActive]}>Share to Community</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.postTypeOption, formData.postType === 'restaurant' && styles.postTypeOptionActive]}
@@ -627,19 +625,6 @@ export default function CreatePostScreen() {
     </View>
   );
 
-  const renderSuccessOverlay = () => {
-    if (!showSuccess) return null;
-    
-    return (
-      <View style={styles.successOverlay}>
-        <View style={styles.successContainer}>
-          <Ionicons name="checkmark-circle" size={60} color={designTokens.colors.success} />
-          <Text style={styles.successTitle}>Posted Successfully!</Text>
-          <Text style={styles.successMessage}>Your experience has been shared with the community</Text>
-        </View>
-      </View>
-    );
-  };
 
   const renderRatingSheet = () => (
     <Modal
@@ -910,16 +895,16 @@ export default function CreatePostScreen() {
           <Text style={styles.infoModalTitle}>Post Types</Text>
           
           <View style={styles.infoOption}>
-            <Text style={styles.infoOptionTitle}>✍️ Share</Text>
+            <Text style={styles.infoOptionTitle}>✍️ Community Post</Text>
             <Text style={styles.infoOptionText}>
-              Share your thoughts, ask questions, or start discussions about food. Perfect for quick updates, food questions, or general food-related conversations without needing to review a specific restaurant.
+              Share thoughts, tips, or start discussions about food. Perfect for quick updates, recommendations, or general food conversations without rating a specific restaurant.
             </Text>
           </View>
           
           <View style={styles.infoOption}>
-            <Text style={styles.infoOptionTitle}>🍽️ Restaurant Review</Text>
+            <Text style={styles.infoOptionTitle}>🍽️ Write a Review</Text>
             <Text style={styles.infoOptionText}>
-              Write a detailed review of a restaurant you've visited. Rate your experience, add photos, and help others discover great places to eat.
+              Rate and review a specific restaurant you've visited. Include star ratings, detailed feedback, and photos to help others make dining decisions.
             </Text>
           </View>
         </View>
@@ -996,7 +981,6 @@ export default function CreatePostScreen() {
         {renderRestaurantModal()}
         {renderPostTypeInfoModal()}
         {renderContentTypeInfoModal()}
-        {renderSuccessOverlay()}
         
         <AddRestaurantModal
           visible={showAddRestaurantModal}
@@ -1960,39 +1944,6 @@ const styles = StyleSheet.create({
     color: designTokens.colors.white,
   },
 
-  // Success overlay
-  successOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  successContainer: {
-    backgroundColor: designTokens.colors.white,
-    borderRadius: designTokens.borderRadius.lg,
-    padding: designTokens.spacing.xl,
-    alignItems: 'center',
-    marginHorizontal: designTokens.spacing.xl,
-  },
-  successTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.textDark,
-    marginTop: designTokens.spacing.md,
-    marginBottom: designTokens.spacing.sm,
-  },
-  successMessage: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    color: designTokens.colors.textMedium,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   keyboardAccessoryBar: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

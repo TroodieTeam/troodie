@@ -466,6 +466,7 @@ export default function RestaurantDetailScreen() {
       
       <TouchableOpacity style={styles.actionButton} onPress={handleCreatePost}>
         <MessageCircle size={18} color={designTokens.colors.textDark} />
+        <Text style={styles.actionButtonText}>Write Review</Text>
       </TouchableOpacity>
     </View>
   );

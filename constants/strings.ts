@@ -64,8 +64,8 @@ export const strings = {
   },
   createContent: {
     createPost: {
-      title: 'Create a Post',
-      description: 'Share your restaurant experience'
+      title: 'Share to Community',
+      description: 'Post photos, stories, or recommendations'
     },
     createBoard: {
       title: 'Create a Board',

@@ -3,6 +3,8 @@ import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { GooglePlaceDetails, GooglePlaceResult, googlePlacesService } from '@/services/googlePlacesService';
+import { saveService } from '@/services/saveService';
+import { ToastService } from '@/services/toastService';
 import { debounce } from 'lodash';
 import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native';
 import React, { useCallback, useRef, useState, useEffect } from 'react';
@@ -72,6 +74,44 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
     }
   };
 
+  const handleExistingRestaurant = async (details: GooglePlaceDetails) => {
+    try {
+      // First, try to find the restaurant by place_id
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('google_place_id', details.place_id)
+        .single();
+
+      if (restaurant) {
+        // Save the restaurant to user's profile
+        await saveService.toggleSave(restaurant.id, 'restaurant');
+        
+        // Show success message
+        ToastService.showSuccess('Restaurant saved to your profile!');
+        
+        // Call callback if provided
+        if (onRestaurantAdded) {
+          onRestaurantAdded(restaurant);
+        }
+
+        // Close modal after success
+        setTimeout(() => {
+          onClose();
+          resetModal();
+        }, 1500);
+      } else {
+        // If we can't find it, show the duplicate message
+        setSubmissionStatus('duplicate');
+        setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+      }
+    } catch (error) {
+      console.error('Error handling existing restaurant:', error);
+      setSubmissionStatus('error');
+      setSubmissionMessage('Failed to save restaurant. Please try searching for it.');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!selectedPlace || !placeDetails) return;
 
@@ -101,9 +141,8 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
             if (errorData.details?.includes('duplicate key') || 
                 errorData.details?.includes('restaurants_google_place_id_key') ||
                 errorData.error?.includes('already exists')) {
-              // This is expected behavior - restaurant already exists
-              setSubmissionStatus('duplicate');
-              setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+              // Restaurant already exists - try to fetch it and save to user's profile
+              await handleExistingRestaurant(placeDetails);
               setIsSubmitting(false);
               return; // Exit early, don't throw
             }
@@ -125,15 +164,27 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
             data.error.includes('Similar restaurant') ||
             data.error.includes('duplicate key') ||
             data.error.includes('restaurants_google_place_id_key')) {
-          setSubmissionStatus('duplicate');
-          setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+          // Restaurant already exists - try to fetch it and save to user's profile
+          await handleExistingRestaurant(placeDetails);
         } else {
           setSubmissionStatus('error');
           setSubmissionMessage(data.error);
         }
       } else if (data && data.success) {
-        setSubmissionStatus('success');
-        setSubmissionMessage(strings.addRestaurant.successMessage);
+        // Restaurant added successfully - also save it to user's profile
+        if (data.restaurant) {
+          try {
+            await saveService.toggleSave(data.restaurant.id, 'restaurant');
+            ToastService.showSuccess('Restaurant added and saved to your profile!');
+          } catch (saveError) {
+            console.error('Error saving restaurant to profile:', saveError);
+            // Still show success since restaurant was added
+            ToastService.showSuccess('Restaurant added successfully!');
+          }
+        } else {
+          setSubmissionStatus('success');
+          setSubmissionMessage(strings.addRestaurant.successMessage);
+        }
         
         // Reset session token for next search
         sessionToken.current = `${Date.now()}`;
@@ -147,7 +198,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
         setTimeout(() => {
           onClose();
           resetModal();
-        }, 2000);
+        }, 1500);
       } else {
         // Handle unexpected response format
         setSubmissionStatus('error');
@@ -158,9 +209,8 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
       if (error.message?.includes('duplicate key') || 
           error.message?.includes('restaurants_google_place_id_key') ||
           error.message?.includes('already exists')) {
-        // This should have been handled above, but just in case
-        setSubmissionStatus('duplicate');
-        setSubmissionMessage('This restaurant is already in our system! You can find it by searching.');
+        // Restaurant already exists - try to fetch it and save to user's profile
+        await handleExistingRestaurant(placeDetails);
       } else if (error.message?.includes('Authentication required')) {
         setSubmissionStatus('error');
         setSubmissionMessage('Please log in to add restaurants.');

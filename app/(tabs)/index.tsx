@@ -521,7 +521,7 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.titleContainer}>
-            <Text style={styles.sectionTitle}>
+            <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
               Top Rated in {selectedCity}
             </Text>
             <CitySelector
@@ -756,6 +756,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...designTokens.typography.sectionTitle,
     color: designTokens.colors.textDark,
+    flexShrink: 1,
+    marginRight: designTokens.spacing.sm,
   },
   seeAll: {
     ...designTokens.typography.detailText,
