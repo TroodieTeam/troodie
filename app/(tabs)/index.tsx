@@ -1,12 +1,11 @@
 import { RestaurantCardWithSave } from '@/components/cards/RestaurantCardWithSave';
+import { CitySelector } from '@/components/CitySelector';
 import { ErrorState } from '@/components/ErrorState';
 import QuickSavesBoard from '@/components/home/QuickSavesBoard';
 import { InfoModal } from '@/components/InfoModal';
+import { RestaurantCardWithSaveSkeleton } from '@/components/LoadingSkeleton';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
-import { CitySelector } from '@/components/CitySelector';
-import { RestaurantCardWithSaveSkeleton } from '@/components/LoadingSkeleton';
-import { locationService } from '@/services/locationService';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
@@ -18,6 +17,7 @@ import { useSmoothDataFetch } from '@/hooks/useSmoothDataFetch';
 import { boardService } from '@/services/boardService';
 import { communityService } from '@/services/communityService';
 import { InviteService } from '@/services/inviteService';
+import { locationService } from '@/services/locationService';
 import { notificationService } from '@/services/notificationService';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
@@ -40,7 +40,7 @@ import {
   Users,
   Utensils
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -521,8 +521,8 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.titleContainer}>
-            <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
-              Top Rated in {selectedCity}
+            <Text style={styles.sectionTitle}>
+              Top Rated
             </Text>
             <CitySelector
               currentCity={selectedCity}
@@ -600,7 +600,7 @@ export default function HomeScreen() {
     );
   }
 
-  if (error && !trendingRestaurants.length && !featuredRestaurants.length) {
+  if (error && !topRatedRestaurants.length && !featuredRestaurants.length) {
     return (
       <SafeAreaView style={styles.container}>
         {renderHeader()}
