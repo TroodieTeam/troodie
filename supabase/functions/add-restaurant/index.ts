@@ -505,7 +505,26 @@ serve(async (req)=>{
       });
     }
     // Initialize Supabase client
-    const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    console.log(`🔗 Supabase URL: ${supabaseUrl ? 'Set' : 'Missing'}`);
+    console.log(`🔑 Service Key: ${supabaseServiceKey ? 'Set' : 'Missing'}`);
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new Response(JSON.stringify({
+        error: 'Missing Supabase configuration',
+        details: 'SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set'
+      }), {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     // Check if restaurant already exists
     const { data: existingRestaurant } = await supabase.from('restaurants').select('id, name').or(`google_place_id.eq.${placeId},and(name.ilike.%${restaurantName}%,address.ilike.%${address}%)`).single();
     if (existingRestaurant) {
@@ -589,12 +608,22 @@ serve(async (req)=>{
       };
     }
     // Insert into restaurants table
-    const { data: insertedRestaurant, error: insertError } = await supabase.from('restaurants').insert(processedRestaurant).select().single();
+    console.log(`💾 Inserting restaurant data:`, JSON.stringify(processedRestaurant, null, 2));
+    
+    const { data: insertedRestaurant, error: insertError } = await supabase
+      .from('restaurants')
+      .insert(processedRestaurant)
+      .select()
+      .single();
+      
     if (insertError) {
-      console.error('Database insertion error:', insertError);
+      console.error('❌ Database insertion error:', insertError);
+      console.error('❌ Error details:', JSON.stringify(insertError, null, 2));
       return new Response(JSON.stringify({
         error: 'Failed to save restaurant',
-        details: insertError.message
+        details: insertError.message,
+        code: insertError.code,
+        hint: insertError.hint
       }), {
         status: 500,
         headers: {
@@ -603,11 +632,41 @@ serve(async (req)=>{
         }
       });
     }
+    
     console.log(`✅ Restaurant added successfully: ${insertedRestaurant.name}`);
+    console.log(`✅ Restaurant ID: ${insertedRestaurant.id}`);
+    console.log(`✅ Full inserted data:`, JSON.stringify(insertedRestaurant, null, 2));
+    
+    // Verify the restaurant can be queried back
+    console.log(`🔍 Verifying restaurant can be queried back...`);
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('id', insertedRestaurant.id)
+      .single();
+      
+    if (verifyError) {
+      console.error(`❌ Verification failed:`, verifyError);
+      return new Response(JSON.stringify({
+        error: 'Restaurant inserted but verification failed',
+        details: verifyError.message,
+        restaurant: insertedRestaurant
+      }), {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+    
+    console.log(`✅ Verification successful: Restaurant can be queried back`);
+    
     return new Response(JSON.stringify({
       success: true,
       restaurant: insertedRestaurant,
-      message: 'Restaurant added successfully!'
+      message: 'Restaurant added successfully!',
+      verified: true
     }), {
       headers: {
         ...corsHeaders,

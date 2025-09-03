@@ -7,7 +7,7 @@ import { saveService } from '@/services/saveService';
 import { ToastService } from '@/services/toastService';
 import { debounce } from 'lodash';
 import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native';
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -84,11 +84,27 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
         .single();
 
       if (restaurant) {
-        // Save the restaurant to user's profile
-        await saveService.toggleSave(restaurant.id, 'restaurant');
-        
-        // Show success message
-        ToastService.showSuccess('Restaurant saved to your profile!');
+        // Get current user for saving to profile
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Save the restaurant to user's profile
+          await saveService.toggleSave({
+            userId: user.id,
+            restaurantId: restaurant.id,
+            restaurantName: restaurant.name,
+            onSuccess: () => {
+              console.log('Existing restaurant saved to profile successfully');
+            },
+            onError: (error) => {
+              console.error('Error saving existing restaurant to profile:', error);
+            }
+          });
+          
+          // Show success message
+          ToastService.showSuccess('Restaurant saved!');
+        } else {
+          ToastService.showSuccess('Restaurant found in database!');
+        }
         
         // Call callback if provided
         if (onRestaurantAdded) {
@@ -174,8 +190,24 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
         // Restaurant added successfully - also save it to user's profile
         if (data.restaurant) {
           try {
-            await saveService.toggleSave(data.restaurant.id, 'restaurant');
-            ToastService.showSuccess('Restaurant added and saved to your profile!');
+            // Get current user for saving to profile
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await saveService.toggleSave({
+                userId: user.id,
+                restaurantId: data.restaurant.id,
+                restaurantName: data.restaurant.name,
+                onSuccess: () => {
+                  console.log('Restaurant saved to profile successfully');
+                },
+                onError: (error) => {
+                  console.error('Error saving restaurant to profile:', error);
+                }
+              });
+              ToastService.showSuccess('Restaurant added and saved!');
+            } else {
+              ToastService.showSuccess('Restaurant added successfully!');
+            }
           } catch (saveError) {
             console.error('Error saving restaurant to profile:', saveError);
             // Still show success since restaurant was added
