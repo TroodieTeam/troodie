@@ -136,14 +136,25 @@ export const restaurantService = {
     city?: string
     cuisineTypes?: string[]
     priceRange?: string
+    limit?: number
   }): Promise<RestaurantInfo[]> {
     try {
       return await withRetry(async () => {
         let request = supabase
           .from('restaurants')
           .select('*')
-          .or(`name.ilike.%${query}%,address.ilike.%${query}%`)
-          .limit(20)
+
+        // If there's a query, search across multiple fields
+        if (query && query.trim()) {
+          const searchQuery = query.trim()
+          request = request.or(
+            `name.ilike.%${searchQuery}%,` +
+            `address.ilike.%${searchQuery}%,` +
+            `city.ilike.%${searchQuery}%,` +
+            `state.ilike.%${searchQuery}%,` +
+            `cuisine_types.cs.{${searchQuery}}`
+          )
+        }
 
         if (filters?.city) {
           request = request.eq('city', filters.city)
@@ -156,6 +167,13 @@ export const restaurantService = {
         if (filters?.priceRange) {
           request = request.eq('price_range', filters.priceRange)
         }
+
+        // Apply limit (default to 100 for search, but allow override)
+        const limit = filters?.limit || 100
+        request = request.limit(limit)
+        
+        // Order by rating for better results
+        request = request.order('google_rating', { ascending: false, nullsFirst: false })
 
         const { data, error } = await request
 
@@ -556,6 +574,41 @@ export const restaurantService = {
       })
     } catch (error) {
       console.error('Error fetching all restaurants:', error)
+      throw error
+    }
+  },
+
+  // New method for explore page that handles both browsing and searching
+  async getRestaurantsForExplore(searchQuery?: string, limit: number = 200): Promise<Restaurant[]> {
+    try {
+      return await withRetry(async () => {
+        let request = supabase
+          .from('restaurants')
+          .select('*')
+
+        // If there's a search query, use server-side search
+        if (searchQuery && searchQuery.trim()) {
+          const query = searchQuery.trim()
+          request = request.or(
+            `name.ilike.%${query}%,` +
+            `address.ilike.%${query}%,` +
+            `city.ilike.%${query}%,` +
+            `state.ilike.%${query}%,` +
+            `cuisine_types.cs.{${query}}`
+          )
+        }
+
+        const { data, error } = await request
+          .order('google_rating', { ascending: false, nullsFirst: false })
+          .limit(limit)
+
+        if (error) {
+          throw transformError(error)
+        }
+        return data || []
+      })
+    } catch (error) {
+      console.error('Error fetching restaurants for explore:', error)
       throw error
     }
   },
