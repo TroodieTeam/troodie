@@ -1,8 +1,8 @@
+import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { ErrorState } from '@/components/ErrorState';
 import { RestaurantCardSkeleton } from '@/components/LoadingSkeleton';
 import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
-import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { postService } from '@/services/postService';
@@ -10,7 +10,7 @@ import { restaurantService } from '@/services/restaurantService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Search, SlidersHorizontal, Users, Plus } from 'lucide-react-native';
+import { Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
