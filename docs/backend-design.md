@@ -1705,6 +1705,213 @@ CREATE TABLE public.user_invite_shares (
 );
 ```
 
+## Creator Marketplace System
+
+### Overview
+The Creator Marketplace enables content creators to connect with restaurants through campaigns. The system supports creator onboarding, portfolio management, and restaurant claiming with domain-based verification.
+
+### Creator Onboarding Flow
+
+#### Tables
+
+##### creator_profiles (Extended)
+Additional fields for MVP onboarding:
+```sql
+display_name VARCHAR(100),        -- Creator's public display name
+location VARCHAR(255),            -- Creator's general location/area
+food_specialties TEXT[],          -- Food categories they specialize in
+portfolio_uploaded BOOLEAN,       -- Whether portfolio has been uploaded
+instant_approved BOOLEAN          -- MVP: All creators are instantly approved
+```
+
+##### creator_portfolio_items
+Stores creator's portfolio samples:
+```sql
+CREATE TABLE creator_portfolio_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  creator_profile_id UUID NOT NULL REFERENCES creator_profiles(id),
+  image_url TEXT NOT NULL,         -- Storage bucket URL
+  caption TEXT,                    -- Description of the content
+  restaurant_name TEXT,             -- Restaurant featured (optional)
+  display_order INTEGER DEFAULT 0,  -- Order in portfolio
+  is_featured BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+##### creator_onboarding_progress
+Tracks onboarding completion:
+```sql
+CREATE TABLE creator_onboarding_progress (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) UNIQUE,
+  current_step INTEGER DEFAULT 1,
+  total_steps INTEGER DEFAULT 3,   -- MVP has 3 steps
+  step_data JSONB DEFAULT '{}',    -- Temporary data between steps
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE,
+  abandoned_at TIMESTAMP WITH TIME ZONE,
+  completion_source VARCHAR(50) DEFAULT 'app'
+);
+```
+
+#### Functions
+
+##### complete_creator_onboarding
+Finalizes creator profile creation:
+```sql
+CREATE OR REPLACE FUNCTION complete_creator_onboarding(
+  p_user_id UUID,
+  p_display_name VARCHAR(100),
+  p_bio TEXT,
+  p_location VARCHAR(255),
+  p_food_specialties TEXT[]
+) RETURNS BOOLEAN
+```
+- Creates/updates creator profile
+- Updates user account_type to 'creator'
+- Sets instant_approved = true for MVP
+- Marks onboarding as complete
+
+#### Implementation Flow
+1. **Welcome Screen**: Explains how campaigns work
+2. **Profile Setup**: Name, bio, specialties, location
+3. **Portfolio Upload**: 3-5 sample images with captions
+4. **Instant Activation**: Creator account immediately active
+
+### Restaurant Claiming System
+
+#### Tables
+
+##### restaurant_claims
+Manages restaurant ownership verification:
+```sql
+CREATE TABLE restaurant_claims (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  restaurant_id UUID NOT NULL REFERENCES restaurants(id),
+  user_id UUID NOT NULL REFERENCES users(id),
+  email VARCHAR(255) NOT NULL,
+  verification_method VARCHAR(50),  -- 'domain_match', 'email_code', 'manual_review'
+  verification_code VARCHAR(6),
+  code_expires_at TIMESTAMP WITH TIME ZONE,
+  status VARCHAR(50) DEFAULT 'pending',  -- 'pending', 'verified', 'rejected', 'expired'
+  verified_at TIMESTAMP WITH TIME ZONE,
+  rejection_reason TEXT,
+  admin_notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_user_restaurant_claim UNIQUE (restaurant_id, user_id)
+);
+```
+
+##### business_profiles (Extended)
+Additional fields for claiming:
+```sql
+business_email VARCHAR(255),      -- Email used for verification
+business_role VARCHAR(100),       -- User's role at restaurant
+verification_method VARCHAR(50)    -- How they verified ownership
+```
+
+#### Functions
+
+##### verify_restaurant_claim
+Handles domain-based instant verification:
+```sql
+CREATE OR REPLACE FUNCTION verify_restaurant_claim(
+  p_restaurant_id UUID,
+  p_user_id UUID,
+  p_email VARCHAR(255),
+  p_restaurant_website TEXT DEFAULT NULL
+) RETURNS JSONB
+```
+**Logic**:
+1. Extract domain from email (e.g., restaurant.com from owner@restaurant.com)
+2. If restaurant has website, extract its domain
+3. If domains match → Instant verification
+4. Otherwise → Send 6-digit code to email
+5. Return verification method and status
+
+##### verify_claim_code
+Validates email verification code:
+```sql
+CREATE OR REPLACE FUNCTION verify_claim_code(
+  p_restaurant_id UUID,
+  p_user_id UUID,
+  p_code VARCHAR(6)
+) RETURNS JSONB
+```
+- Checks code validity and expiration
+- Updates claim status to 'verified'
+- Calls upgrade_user_to_business
+
+##### upgrade_user_to_business
+Converts user to business account:
+```sql
+CREATE OR REPLACE FUNCTION upgrade_user_to_business(
+  p_user_id UUID,
+  p_restaurant_id UUID
+) RETURNS VOID
+```
+- Creates/updates business_profile
+- Sets user account_type to 'business'
+- Marks restaurant as claimed
+
+#### Verification Methods (MVP)
+
+1. **Domain Match (Instant)**
+   - Email domain matches restaurant website domain
+   - Example: john@pizzahut.com claiming pizzahut.com
+   - Instant verification, no waiting
+
+2. **Email Code (Fallback)**
+   - 6-digit code sent to business email
+   - 10-minute expiration
+   - Used when domain doesn't match or no website
+
+3. **Manual Review (Future)**
+   - For edge cases and disputes
+   - Admin verification required
+   - Not implemented in MVP
+
+### Storage Configuration
+
+#### Buckets
+- `portfolio`: Creator portfolio images
+  - Public read access
+  - Max 10MB per file
+  - Allowed: jpg, jpeg, png, webp
+
+### Security
+
+#### RLS Policies
+
+**creator_portfolio_items**:
+- SELECT: Public (everyone can view portfolios)
+- INSERT/UPDATE/DELETE: Own items only
+
+**restaurant_claims**:
+- SELECT: Own claims only
+- INSERT: Authenticated users
+- UPDATE: Own pending claims only
+
+**creator_onboarding_progress**:
+- ALL: Own progress only
+
+### MVP Simplifications
+
+#### What Was Removed
+1. **Social Media Integration**: No Instagram/TikTok connection required
+2. **Rate Setting**: Restaurants set campaign budgets, not creator rates
+3. **Manual Review**: All creators instantly approved
+4. **Follower Verification**: No social proof required
+
+#### Rationale
+- **Faster Launch**: Get creators into marketplace quickly
+- **Less Friction**: Simple 3-step process vs 7-step
+- **Privacy**: No third-party data access needed
+- **Quality Control**: Through campaign applications instead
+
 ## Troubleshooting
 
 ### Common Authentication Issues

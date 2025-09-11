@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Compass, Heart, Home, Plus, User } from 'lucide-react-native';
+import { Compass, Heart, Home, MoreHorizontal, Plus } from 'lucide-react-native';
 import React from 'react';
 import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
 
@@ -87,12 +87,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="more"
         options={{
-          title: 'Profile',
-          tabBarTestID: 'tab-profile',
+          title: 'More',
+          tabBarTestID: 'tab-more',
           tabBarIcon: ({ color, focused }) => (
-            <User size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <MoreHorizontal size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />

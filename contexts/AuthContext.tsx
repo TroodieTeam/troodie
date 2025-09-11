@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/authService'
 import { userService } from '@/services/userService'
+import { accountService, AccountType, UserAccountInfo } from '@/services/accountService'
 import { Session, User } from '@supabase/supabase-js'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
@@ -8,6 +9,7 @@ type AuthContextType = {
   user: User | null
   session: Session | null
   profile: any | null
+  accountInfo: UserAccountInfo | null
   signUpWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>
   signInWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>
   verifyOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string; session?: Session | null }>
@@ -19,6 +21,11 @@ type AuthContextType = {
   skipAuth: () => void
   error: string | null
   refreshAuth: () => Promise<void>
+  // Account type methods
+  accountType: AccountType
+  hasFeatureAccess: (feature: string) => boolean
+  upgradeAccount: (newType: 'creator' | 'business', profileData?: any) => Promise<{ success: boolean; error?: string }>
+  refreshAccountInfo: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -27,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<any | null>(null)
+  const [accountInfo, setAccountInfo] = useState<UserAccountInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAnonymous, setIsAnonymous] = useState(false)
@@ -40,15 +48,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const newProfile = await userService.createProfile({
           id: userId,
           phone: null,
-          profile_completion: 0
+          profile_completion: 0,
+          account_type: 'consumer' // Default account type
         })
         setProfile(newProfile)
       } else {
         // Profile loaded successfully
         setProfile(profile)
       }
+      
+      // Load account info
+      await loadAccountInfo(userId)
     } catch (error) {
       console.error('[AuthContext] Error loading profile:', error)
+    }
+  }
+
+  const loadAccountInfo = async (userId: string) => {
+    try {
+      const accountInfo = await accountService.getUserAccountInfo(userId)
+      setAccountInfo(accountInfo)
+    } catch (error) {
+      console.error('[AuthContext] Error loading account info:', error)
+      setAccountInfo(null)
     }
   }
 
@@ -169,6 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null)
       setUser(null)
       setProfile(null)
+      setAccountInfo(null)
       setIsAnonymous(false)
     } finally {
       setLoading(false)
@@ -181,10 +204,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false)
   }
 
+  // Account type methods
+  const upgradeAccount = async (newType: 'creator' | 'business', profileData: any = {}) => {
+    if (!user) {
+      return { success: false, error: 'User not authenticated' }
+    }
+
+    setLoading(true)
+    try {
+      const result = await accountService.upgradeAccount(user.id, newType, profileData)
+      
+      if (result.success) {
+        // Refresh account info and profile
+        await refreshAccountInfo()
+        await loadUserProfile(user.id)
+      }
+      
+      return result
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const refreshAccountInfo = async () => {
+    if (!user) return
+    await loadAccountInfo(user.id)
+  }
+
+  const hasFeatureAccess = (feature: string): boolean => {
+    const currentAccountType = accountInfo?.account_type || profile?.account_type || 'consumer'
+    return accountService.hasFeatureAccess(currentAccountType, feature)
+  }
+
+  // Computed values
+  const accountType: AccountType = accountInfo?.account_type || profile?.account_type || 'consumer'
+
   const value = {
     user,
     session,
     profile,
+    accountInfo,
     signUpWithEmail,
     signInWithEmail,
     verifyOtp,
@@ -196,6 +260,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAnonymous,
     error,
     refreshAuth,
+    // Account type methods
+    accountType,
+    hasFeatureAccess,
+    upgradeAccount,
+    refreshAccountInfo,
   }
 
   return (

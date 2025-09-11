@@ -21,7 +21,9 @@
     "test:e2e:studio": "maestro studio",
     "test:data:seed": "node e2e/helpers/test-data.js seed",
     "test:data:cleanup": "node e2e/helpers/test-data.js cleanup",
-    "test:data:reset": "node e2e/helpers/test-data.js reset"
+    "test:data:reset": "node e2e/helpers/test-data.js reset",
+    "setup:storage": "node scripts/setup-dev-storage.js",
+    "db:migrate": "npx supabase db push"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",

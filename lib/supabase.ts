@@ -1,16 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient } from '@supabase/supabase-js'
-import Constants from 'expo-constants'
 import 'react-native-url-polyfill/auto'
+import config from './config'
 
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey
+export const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
@@ -37,6 +31,9 @@ export type Database = {
           is_verified: boolean
           is_restaurant: boolean
           is_creator: boolean
+          account_type: 'consumer' | 'creator' | 'business'
+          account_status: 'active' | 'suspended' | 'pending_verification'
+          account_upgraded_at: string | null
           profile_completion: number
           default_board_id: string | null
           default_avatar_url: string | null
@@ -60,6 +57,9 @@ export type Database = {
           is_verified?: boolean
           is_restaurant?: boolean
           is_creator?: boolean
+          account_type?: 'consumer' | 'creator' | 'business'
+          account_status?: 'active' | 'suspended' | 'pending_verification'
+          account_upgraded_at?: string | null
           profile_completion?: number
           default_board_id?: string | null
           default_avatar_url?: string | null
@@ -83,6 +83,9 @@ export type Database = {
           is_verified?: boolean
           is_restaurant?: boolean
           is_creator?: boolean
+          account_type?: 'consumer' | 'creator' | 'business'
+          account_status?: 'active' | 'suspended' | 'pending_verification'
+          account_upgraded_at?: string | null
           profile_completion?: number
           default_board_id?: string | null
           default_avatar_url?: string | null
@@ -904,6 +907,97 @@ export type Database = {
           created_at?: string
         }
       }
+      creator_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          display_name: string | null
+          bio: string | null
+          location: string | null
+          food_specialties: string[] | null
+          specialties: string[] | null
+          social_links: unknown | null
+          verification_status: 'pending' | 'verified' | 'rejected'
+          metrics: unknown | null
+          portfolio_uploaded: boolean
+          instant_approved: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          display_name?: string | null
+          bio?: string | null
+          location?: string | null
+          food_specialties?: string[] | null
+          specialties?: string[] | null
+          social_links?: unknown | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          metrics?: unknown | null
+          portfolio_uploaded?: boolean
+          instant_approved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          display_name?: string | null
+          bio?: string | null
+          location?: string | null
+          food_specialties?: string[] | null
+          specialties?: string[] | null
+          social_links?: unknown | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          metrics?: unknown | null
+          portfolio_uploaded?: boolean
+          instant_approved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      business_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          restaurant_id: string
+          business_email: string | null
+          business_role: string | null
+          verification_method: string | null
+          verification_status: 'pending' | 'verified' | 'rejected'
+          claimed_at: string
+          management_permissions: string[] | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          restaurant_id: string
+          business_email?: string | null
+          business_role?: string | null
+          verification_method?: string | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          claimed_at?: string
+          management_permissions?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          restaurant_id?: string
+          business_email?: string | null
+          business_role?: string | null
+          verification_method?: string | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          claimed_at?: string
+          management_permissions?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       restaurant_images: {
         Row: {
           id: string
@@ -967,6 +1061,123 @@ export type Database = {
           like_count?: number
           created_at?: string
           updated_at?: string
+        }
+      }
+      creator_portfolio_items: {
+        Row: {
+          id: string
+          creator_profile_id: string
+          image_url: string
+          caption: string | null
+          restaurant_name: string | null
+          display_order: number
+          is_featured: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_profile_id: string
+          image_url: string
+          caption?: string | null
+          restaurant_name?: string | null
+          display_order?: number
+          is_featured?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          creator_profile_id?: string
+          image_url?: string
+          caption?: string | null
+          restaurant_name?: string | null
+          display_order?: number
+          is_featured?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      restaurant_claims: {
+        Row: {
+          id: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method: 'domain_match' | 'email_code' | 'manual_review' | null
+          verification_code: string | null
+          code_expires_at: string | null
+          status: 'pending' | 'verified' | 'rejected' | 'expired'
+          verified_at: string | null
+          rejection_reason: string | null
+          admin_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          verification_code?: string | null
+          code_expires_at?: string | null
+          status?: 'pending' | 'verified' | 'rejected' | 'expired'
+          verified_at?: string | null
+          rejection_reason?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          user_id?: string
+          email?: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          verification_code?: string | null
+          code_expires_at?: string | null
+          status?: 'pending' | 'verified' | 'rejected' | 'expired'
+          verified_at?: string | null
+          rejection_reason?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      creator_onboarding_progress: {
+        Row: {
+          id: string
+          user_id: string
+          current_step: number
+          total_steps: number
+          step_data: unknown
+          started_at: string
+          completed_at: string | null
+          abandoned_at: string | null
+          completion_source: 'app' | 'web' | 'admin'
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          current_step?: number
+          total_steps?: number
+          step_data?: unknown
+          started_at?: string
+          completed_at?: string | null
+          abandoned_at?: string | null
+          completion_source?: 'app' | 'web' | 'admin'
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          current_step?: number
+          total_steps?: number
+          step_data?: unknown
+          started_at?: string
+          completed_at?: string | null
+          abandoned_at?: string | null
+          completion_source?: 'app' | 'web' | 'admin'
         }
       }
     }
@@ -1082,6 +1293,49 @@ export type Database = {
           success: boolean
           error_message: string | null
         }[]
+      }
+      complete_creator_onboarding: {
+        Args: {
+          p_user_id: string
+          p_display_name: string
+          p_bio: string
+          p_location: string
+          p_food_specialties: string[]
+        }
+        Returns: boolean
+      }
+      verify_restaurant_claim: {
+        Args: {
+          p_restaurant_id: string
+          p_user_id: string
+          p_email: string
+          p_restaurant_website?: string | null
+        }
+        Returns: {
+          success: boolean
+          method: 'instant' | 'email_code'
+          message: string
+          code?: string
+        }
+      }
+      verify_claim_code: {
+        Args: {
+          p_restaurant_id: string
+          p_user_id: string
+          p_code: string
+        }
+        Returns: {
+          success: boolean
+          error?: string
+          message?: string
+        }
+      }
+      upgrade_user_to_business: {
+        Args: {
+          p_user_id: string
+          p_restaurant_id: string
+        }
+        Returns: void
       }
     }
   }

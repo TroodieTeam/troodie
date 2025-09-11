@@ -7,19 +7,37 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EAS_BUILD_PROFILE": "development"
+      },
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium"
       }
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EAS_BUILD_PROFILE": "development"
+      },
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium"
       }
     },
     "production": {
+      "env": {
+        "EAS_BUILD_PROFILE": "production"
+      },
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium"
       }
     }
   },
