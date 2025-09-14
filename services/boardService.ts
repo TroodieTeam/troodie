@@ -79,15 +79,16 @@ export const boardService = {
    */
   async getUserBoards(userId: string): Promise<Board[]> {
     try {
-      // Use the user_boards view which handles all the complex permissions
-      const { data, error } = await supabase
-        .from('user_boards')
+      // First try direct query since user_boards view has issues with auth.uid()
+      // Get boards owned by user
+      const { data: ownedBoards, error: ownedError } = await supabase
+        .from('boards')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-
-      if (error) throw error
-      return data || []
+      
+      if (ownedError) throw ownedError
+      return ownedBoards || []
     } catch (error: any) {
       console.error('Error fetching user boards:', error)
       // Fallback to direct query if view doesn't exist yet
@@ -752,12 +753,17 @@ export const boardService = {
    */
   async getQuickSavesRestaurants(userId: string, limit?: number): Promise<BoardRestaurant[]> {
     try {
+      console.log(`[boardService] Getting quick saves for user: ${userId}`);
+      
       // First get the Your Saves board
       const board = await this.getUserQuickSavesBoard(userId)
       
       if (!board) {
+        console.log(`[boardService] No Your Saves board found for user: ${userId}`);
         return []
       }
+      
+      console.log(`[boardService] Found Your Saves board: ${board.id}`);
 
       let request = supabase
         .from('board_restaurants')
@@ -772,6 +778,8 @@ export const boardService = {
       const { data, error } = await request
 
       if (error) throw error
+      
+      console.log(`[boardService] Found ${data?.length || 0} quick saves`);
       return data || []
     } catch (error: any) {
       console.error('Error fetching Your Saves restaurants:', error)

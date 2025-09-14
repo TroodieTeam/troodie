@@ -13,6 +13,101 @@ This document serves as the living documentation for Troodie's backend architect
 - **Storage**: Supabase Storage for images and media
 - **Edge Functions**: Supabase Edge Functions for serverless logic
 
+## Creator Marketplace Tables
+
+### Business Dashboard & Campaigns Schema
+
+The Creator Marketplace enables restaurants to create campaigns and work with food creators. Last updated: 2025-09-13
+
+#### Core Tables
+
+**campaigns**
+- Stores all marketing campaigns created by restaurants
+- Tracks budget, timeline, and creator management
+- Status workflow: draft → active → completed/paused
+- Auto-updates spent amount via triggers
+
+**campaign_applications**
+- Links creators to campaigns they've applied to
+- Tracks application status and proposed rates
+- Enforces unique constraint per creator/campaign pair
+
+**portfolio_items**
+- Stores creator content (photos, videos, reels)
+- Tracks engagement metrics (views, likes, comments)
+- Can be associated with campaigns and restaurants
+
+**business_profiles**
+- Links users to their claimed restaurants
+- Tracks verification status
+- One-to-one relationship with users
+
+**creator_profiles**
+- Stores creator information and specialties
+- Tracks follower counts and content metrics
+- One-to-one relationship with users
+
+### Creator Analytics & Earnings Tables (Added 2025-01-13)
+
+**campaigns** (Extended)
+- Marketing campaigns created by restaurants for creators
+- Fields: title, description, requirements, deliverables, payout_per_creator, budget_total
+- Status workflow: draft → active → paused → completed → cancelled
+- Auto-calculates applications_count and accepted_creators_count via triggers
+
+**creator_campaigns**
+- Junction table linking creators to campaigns
+- Tracks application status, deliverables completion, and performance metrics
+- Status workflow: applied → accepted/rejected → active → completed
+- Stores proof_urls for deliverable submissions
+
+**creator_earnings**
+- Tracks all creator earnings from campaigns and other sources
+- Types: campaign, bonus, referral, tip, adjustment
+- Status workflow: pending → available → processing → paid
+- Links to campaigns and payouts for full traceability
+
+**creator_payouts**
+- Manages creator payout requests and processing
+- Integrates with payment providers (Stripe, PayPal)
+- Tracks multiple earnings in a single payout
+- Status: initiated → processing → completed/failed
+
+**creator_analytics**
+- Daily/weekly/monthly aggregated metrics per creator
+- Tracks views, saves, clicks, engagement rates
+- Stores follower growth and campaign performance
+- Used for dashboard visualizations
+
+**content_analytics**
+- Per-item analytics for creator content
+- Types: restaurant_save, board, portfolio_item, campaign_post
+- Tracks lifetime metrics and engagement rates
+- Calculates virality scores
+
+**audience_insights**
+- Demographic and behavioral data about creator audiences
+- Age, gender, location distributions
+- Peak engagement times and interests
+- Generated periodically for reporting
+
+#### Key Relationships
+- Restaurant → Many Campaigns
+- Campaign → Many Applications
+- Creator → Many Applications
+- Creator → Many Portfolio Items
+- User → One Business Profile OR One Creator Profile
+
+#### RLS Policies
+- Public campaigns visible to all
+- Business owners manage their own campaigns
+- Creators manage their own applications and portfolio
+- Profile data publicly viewable
+
+#### Analytics Functions
+- `update_campaign_spent_amount()`: Auto-calculates campaign spending
+- `update_selected_creators_count()`: Tracks accepted creators per campaign
+
 ## Authentication Configuration
 
 ### Email Passwordless (OTP) Authentication

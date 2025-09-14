@@ -15,12 +15,27 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
-import { colors } from '../../theme/colors';
-import { typography } from '../../theme/typography';
-import { spacing } from '../../theme/spacing';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { DS } from '@/components/design-system/tokens';
+
+// Create aliases for easier migration with mapped colors
+const colors = {
+  ...DS.colors,
+  primary: DS.colors.primaryOrange,
+  primaryLight: '#FFF4E6', // Light orange background
+  background: DS.colors.background,
+  border: DS.colors.border,
+  textSecondary: DS.colors.textGray,
+  text: DS.colors.textDark,
+  success: DS.colors.success,
+  successLight: '#D1FAE5', // Light green background
+  error: DS.colors.error,
+  warning: DS.colors.warning,
+  warningLight: '#FEF3C7', // Light yellow background
+};
+const typography = DS.typography;
+const spacing = DS.spacing;
 
 interface CreatorOnboardingFlowProps {
   onComplete: () => void;
@@ -66,7 +81,6 @@ export const CreatorOnboardingFlow: React.FC<CreatorOnboardingFlowProps> = ({
   onComplete,
   onCancel,
 }) => {
-  const navigation = useNavigation();
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [state, setState] = useState<OnboardingState>({

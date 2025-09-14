@@ -1180,8 +1180,346 @@ export type Database = {
           completion_source?: 'app' | 'web' | 'admin'
         }
       }
+      campaign_applications: {
+        Row: {
+          id: string
+          campaign_id: string
+          creator_id: string
+          proposed_rate_cents: number | null
+          proposed_deliverables: string | null
+          cover_letter: string | null
+          status: 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+          applied_at: string
+          reviewed_at: string | null
+          reviewer_id: string | null
+        }
+        Insert: {
+          id?: string
+          campaign_id: string
+          creator_id: string
+          proposed_rate_cents?: number | null
+          proposed_deliverables?: string | null
+          cover_letter?: string | null
+          status?: 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+          applied_at?: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+        }
+      }
+      campaigns: {
+        Row: {
+          id: string
+          restaurant_id: string
+          business_id: string | null
+          title: string
+          description: string | null
+          requirements: unknown
+          deliverables: unknown
+          budget_total: number
+          payout_per_creator: number
+          max_creators: number
+          target_audience: unknown
+          location: string | null
+          categories: string[] | null
+          status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled'
+          start_date: string | null
+          end_date: string | null
+          application_deadline: string | null
+          views_count: number
+          applications_count: number
+          accepted_creators_count: number
+          created_at: string
+          updated_at: string
+          published_at: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          business_id?: string | null
+          title: string
+          description?: string | null
+          requirements?: unknown
+          deliverables?: unknown
+          budget_total?: number
+          payout_per_creator: number
+          max_creators?: number
+          target_audience?: unknown
+          location?: string | null
+          categories?: string[] | null
+          status?: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled'
+          start_date?: string | null
+          end_date?: string | null
+          application_deadline?: string | null
+          views_count?: number
+          applications_count?: number
+          accepted_creators_count?: number
+          created_at?: string
+          updated_at?: string
+          published_at?: string | null
+          completed_at?: string | null
+        }
+      }
+      creator_campaigns: {
+        Row: {
+          id: string
+          campaign_id: string
+          creator_id: string
+          creator_profile_id: string | null
+          status: 'applied' | 'accepted' | 'rejected' | 'active' | 'completed' | 'cancelled'
+          application_note: string | null
+          rejection_reason: string | null
+          deliverables_status: unknown
+          proof_urls: string[] | null
+          completion_notes: string | null
+          content_views: number
+          content_saves: number
+          content_clicks: number
+          engagement_rate: number | null
+          agreed_payout: number | null
+          actual_earnings: number | null
+          bonus_amount: number
+          applied_at: string
+          accepted_at: string | null
+          started_at: string | null
+          completed_at: string | null
+          paid_at: string | null
+        }
+        Insert: {
+          id?: string
+          campaign_id: string
+          creator_id: string
+          creator_profile_id?: string | null
+          status?: 'applied' | 'accepted' | 'rejected' | 'active' | 'completed' | 'cancelled'
+          application_note?: string | null
+          rejection_reason?: string | null
+          deliverables_status?: unknown
+          proof_urls?: string[] | null
+          completion_notes?: string | null
+          content_views?: number
+          content_saves?: number
+          content_clicks?: number
+          engagement_rate?: number | null
+          agreed_payout?: number | null
+          actual_earnings?: number | null
+          bonus_amount?: number
+          applied_at?: string
+          accepted_at?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          paid_at?: string | null
+        }
+      }
+      creator_earnings: {
+        Row: {
+          id: string
+          creator_id: string
+          campaign_id: string | null
+          creator_campaign_id: string | null
+          type: 'campaign' | 'bonus' | 'referral' | 'tip' | 'adjustment'
+          description: string | null
+          amount: number
+          status: 'pending' | 'available' | 'processing' | 'paid' | 'failed' | 'cancelled'
+          payout_id: string | null
+          payout_method: string | null
+          earned_date: string
+          available_date: string | null
+          paid_date: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          campaign_id?: string | null
+          creator_campaign_id?: string | null
+          type: 'campaign' | 'bonus' | 'referral' | 'tip' | 'adjustment'
+          description?: string | null
+          amount: number
+          status?: 'pending' | 'available' | 'processing' | 'paid' | 'failed' | 'cancelled'
+          payout_id?: string | null
+          payout_method?: string | null
+          earned_date?: string
+          available_date?: string | null
+          paid_date?: string | null
+          created_at?: string
+        }
+      }
+      creator_payouts: {
+        Row: {
+          id: string
+          creator_id: string
+          amount: number
+          currency: string
+          status: 'initiated' | 'processing' | 'completed' | 'failed' | 'cancelled'
+          provider: string
+          provider_payout_id: string | null
+          provider_response: unknown | null
+          earning_ids: string[] | null
+          requested_at: string
+          processed_at: string | null
+          completed_at: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          retry_count: number
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          amount: number
+          currency?: string
+          status?: 'initiated' | 'processing' | 'completed' | 'failed' | 'cancelled'
+          provider?: string
+          provider_payout_id?: string | null
+          provider_response?: unknown | null
+          earning_ids?: string[] | null
+          requested_at?: string
+          processed_at?: string | null
+          completed_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          retry_count?: number
+        }
+      }
+      creator_analytics: {
+        Row: {
+          id: string
+          creator_id: string
+          date: string
+          period: 'daily' | 'weekly' | 'monthly'
+          content_views: number
+          unique_viewers: number
+          content_saves: number
+          content_shares: number
+          content_clicks: number
+          engagement_rate: number | null
+          save_rate: number | null
+          click_through_rate: number | null
+          new_followers: number
+          total_followers: number
+          unfollows: number
+          campaigns_active: number
+          campaigns_completed: number
+          campaign_applications: number
+          earnings_total: number
+          earnings_pending: number
+          influence_score: number | null
+          reliability_score: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          date: string
+          period?: 'daily' | 'weekly' | 'monthly'
+          content_views?: number
+          unique_viewers?: number
+          content_saves?: number
+          content_shares?: number
+          content_clicks?: number
+          engagement_rate?: number | null
+          save_rate?: number | null
+          click_through_rate?: number | null
+          new_followers?: number
+          total_followers?: number
+          unfollows?: number
+          campaigns_active?: number
+          campaigns_completed?: number
+          campaign_applications?: number
+          earnings_total?: number
+          earnings_pending?: number
+          influence_score?: number | null
+          reliability_score?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      content_analytics: {
+        Row: {
+          id: string
+          creator_id: string
+          content_type: 'restaurant_save' | 'board' | 'portfolio_item' | 'campaign_post'
+          content_id: string
+          content_name: string | null
+          views: number
+          unique_viewers: number
+          saves: number
+          shares: number
+          clicks: number
+          avg_view_duration: number | null
+          engagement_rate: number | null
+          virality_score: number | null
+          first_view_at: string | null
+          last_view_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          content_type: 'restaurant_save' | 'board' | 'portfolio_item' | 'campaign_post'
+          content_id: string
+          content_name?: string | null
+          views?: number
+          unique_viewers?: number
+          saves?: number
+          shares?: number
+          clicks?: number
+          avg_view_duration?: number | null
+          engagement_rate?: number | null
+          virality_score?: number | null
+          first_view_at?: string | null
+          last_view_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      audience_insights: {
+        Row: {
+          id: string
+          creator_id: string
+          period_start: string
+          period_end: string
+          age_distribution: unknown
+          gender_distribution: unknown
+          location_distribution: unknown
+          top_interests: unknown
+          peak_engagement_times: unknown
+          avg_session_duration: number | null
+          follower_growth_rate: number | null
+          generated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          period_start: string
+          period_end: string
+          age_distribution?: unknown
+          gender_distribution?: unknown
+          location_distribution?: unknown
+          top_interests?: unknown
+          peak_engagement_times?: unknown
+          avg_session_duration?: number | null
+          follower_growth_rate?: number | null
+          generated_at?: string
+        }
+      }
     }
     Functions: {
+      calculate_creator_metrics: {
+        Args: {
+          p_creator_id: string
+        }
+        Returns: {
+          total_views: number
+          total_saves: number
+          engagement_rate: number
+          active_campaigns: number
+          total_earnings: number
+          pending_earnings: number
+          available_balance: number
+        }[]
+      }
       search_users: {
         Args: {
           search_query: string

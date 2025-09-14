@@ -5,8 +5,8 @@ import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
+import { compactDesign, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
-import { designTokens, compactDesign } from '@/constants/designTokens';
 import { useRouter } from 'expo-router';
 
 export default function TabLayout() {
@@ -94,6 +94,24 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <MoreHorizontal size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="business"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="creator"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

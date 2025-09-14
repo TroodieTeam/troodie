@@ -69,14 +69,14 @@ interface MenuSection {
 export default function MoreScreen() {
   const router = useRouter();
   const { user, isAuthenticated, signOut } = useAuth();
-  const { 
-    accountType, 
-    isCreator, 
-    isBusiness, 
-    creatorProfile, 
-    businessProfile 
+  const {
+    accountType,
+    isCreator,
+    isBusiness,
+    creatorProfile,
+    businessProfile
   } = useAccountType();
-  
+
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
 
   const handleSignOut = async () => {
@@ -142,7 +142,7 @@ export default function MoreScreen() {
     {
       id: 'business-dashboard',
       title: 'Business Dashboard',
-      subtitle: businessProfile?.restaurant_name 
+      subtitle: businessProfile?.restaurant_name
         ? `Managing ${businessProfile.restaurant_name}`
         : 'Restaurant overview',
       icon: Store,
@@ -180,7 +180,7 @@ export default function MoreScreen() {
   // Growth Opportunities Section
   const growthItems: MenuItem[] = useMemo(() => {
     const items: MenuItem[] = [];
-    
+
     if (!isCreator) {
       items.push({
         id: 'become-creator',
@@ -192,7 +192,7 @@ export default function MoreScreen() {
         betaFeature: true,
       });
     }
-    
+
     if (!isBusiness) {
       items.push({
         id: 'claim-restaurant',
@@ -203,7 +203,7 @@ export default function MoreScreen() {
         action: () => router.push('/business/claim'),
       });
     }
-    
+
     return items;
   }, [isCreator, isBusiness, router]);
 
@@ -347,7 +347,7 @@ export default function MoreScreen() {
       },
       {
         id: 'account-settings',
-        title: 'Account & Settings', 
+        title: 'Account & Settings',
         visible: true,
         items: accountItems,
         priority: 5,
@@ -389,7 +389,7 @@ export default function MoreScreen() {
           )}
         </View>
       </View>
-      
+
       <View style={styles.menuItemRight}>
         {item.showBadge && (item.badgeCount || item.badgeCount === 0) && (
           <View style={[
@@ -399,7 +399,7 @@ export default function MoreScreen() {
             <Text style={styles.badgeText}>{item.badgeCount}</Text>
           </View>
         )}
-        
+
         {item.hasToggle ? (
           <Switch
             value={item.toggleValue}
@@ -438,7 +438,7 @@ export default function MoreScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* User Profile Card */}
         {isAuthenticated && user && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.profileCard}
             onPress={() => router.push('/(tabs)/profile')}
             activeOpacity={0.8}
@@ -449,8 +449,8 @@ export default function MoreScreen() {
               ) : (
                 <View style={styles.avatarPlaceholder}>
                   <Text style={styles.avatarText}>
-                    {user.user_metadata?.name?.charAt(0)?.toUpperCase() || 
-                     user.email?.charAt(0)?.toUpperCase()}
+                    {user.user_metadata?.name?.charAt(0)?.toUpperCase() ||
+                      user.email?.charAt(0)?.toUpperCase()}
                   </Text>
                 </View>
               )}
@@ -466,7 +466,10 @@ export default function MoreScreen() {
                     {accountType === 'business' && 'Business Owner'}
                   </Text>
                 </View>
-                <TouchableOpacity style={styles.viewProfileButton}>
+                <TouchableOpacity style={styles.viewProfileButton}
+                  onPress={() => router.push('/(tabs)/profile')}
+
+                >
                   <Text style={styles.viewProfileText}>View Profile</Text>
                   <ChevronRight size={14} color={DS.colors.primaryOrange} />
                 </TouchableOpacity>
@@ -501,7 +504,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: DS.colors.background,
   },
-  
+
   // Header
   header: {
     flexDirection: 'row',
@@ -519,7 +522,7 @@ const styles = StyleSheet.create({
     ...DS.typography.h1,
     color: DS.colors.textDark,
   },
-  
+
   // Profile Card
   profileCard: {
     backgroundColor: DS.colors.surface,
@@ -588,7 +591,7 @@ const styles = StyleSheet.create({
     color: DS.colors.primaryOrange,
     fontSize: 13,
   },
-  
+
   // Sections
   section: {
     marginBottom: DS.spacing.xl,
@@ -607,7 +610,7 @@ const styles = StyleSheet.create({
     borderRadius: DS.borderRadius.lg,
     overflow: 'hidden',
   },
-  
+
   // Menu Items
   menuItem: {
     flexDirection: 'row',
@@ -682,7 +685,7 @@ const styles = StyleSheet.create({
   earningsBadge: {
     backgroundColor: '#10B981',
   },
-  
+
   // Sign Out
   signOutButton: {
     flexDirection: 'row',
@@ -701,7 +704,7 @@ const styles = StyleSheet.create({
     ...DS.typography.button,
     color: DS.colors.error,
   },
-  
+
   // Version Info
   versionInfo: {
     alignItems: 'center',
