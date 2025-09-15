@@ -1,32 +1,29 @@
+import { CreatorHeader } from '@/components/creator/CreatorHeader';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+    AlertCircle,
+    Check,
+    ChevronRight,
+    Clock,
+    CreditCard,
+    DollarSign,
+    Download,
+    Filter,
+    X
+} from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-  Modal,
-  Alert,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CreatorHeader } from '@/components/creator/CreatorHeader';
-import {
-  DollarSign,
-  TrendingUp,
-  Clock,
-  CreditCard,
-  Download,
-  Filter,
-  Calendar,
-  ChevronRight,
-  AlertCircle,
-  Check,
-  X,
-} from 'lucide-react-native';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 
 type EarningStatus = 'pending' | 'available' | 'processing' | 'paid';
 
@@ -312,7 +309,7 @@ export default function Earnings() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <CreatorHeader 
         title="Earnings" 
         rightElement={

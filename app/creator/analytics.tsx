@@ -1,31 +1,27 @@
+import { CreatorHeader } from '@/components/creator/CreatorHeader';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+    Activity,
+    BarChart3,
+    Download,
+    Eye,
+    Heart,
+    TrendingDown,
+    TrendingUp,
+    Users
+} from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-  Dimensions,
+    ActivityIndicator,
+    Dimensions,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CreatorHeader } from '@/components/creator/CreatorHeader';
-import {
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Eye,
-  Heart,
-  Share2,
-  BarChart3,
-  PieChart,
-  Activity,
-  Download,
-  Calendar,
-} from 'lucide-react-native';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 
 type TimePeriod = '7d' | '30d' | '90d' | 'all';
 type TabType = 'overview' | 'content' | 'audience' | 'campaigns';
@@ -465,7 +461,7 @@ export default function CreatorAnalytics() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <CreatorHeader 
         title="Creator Analytics" 
         rightElement={

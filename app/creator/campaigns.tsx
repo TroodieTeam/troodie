@@ -1,32 +1,30 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-  Image,
-  Modal,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreatorHeader } from '@/components/creator/CreatorHeader';
-import {
-  Target,
-  Clock,
-  DollarSign,
-  MapPin,
-  Check,
-  X,
-  Filter,
-  ChevronRight,
-  Calendar,
-  Users,
-} from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import {
+    Calendar,
+    Check,
+    Clock,
+    DollarSign,
+    Filter,
+    MapPin,
+    Target,
+    X
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type CampaignStatus = 'applied' | 'accepted' | 'active' | 'completed' | 'rejected';
 type TabType = 'active' | 'available' | 'pending' | 'completed';
@@ -372,7 +370,7 @@ export default function MyCampaigns() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <CreatorHeader 
         title="My Campaigns" 
         rightElement={

@@ -1,28 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreatorHeader } from '@/components/creator/CreatorHeader';
-import { router } from 'expo-router';
-import {
-  TrendingUp,
-  DollarSign,
-  Users,
-  BarChart3,
-  ChevronRight,
-  Zap,
-  Target,
-  Award,
-} from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { router } from 'expo-router';
+import {
+  Award,
+  BarChart3,
+  ChevronRight,
+  DollarSign,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface DashboardMetrics {
   totalViews: number;
@@ -175,7 +175,7 @@ export default function CreatorDashboard() {
   const isNewCreator = !metrics || (metrics.totalViews === 0 && metrics.activeCampaigns === 0);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <CreatorHeader title="Creator Dashboard" />
       <ScrollView
         style={styles.scrollView}
