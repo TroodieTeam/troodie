@@ -67,10 +67,22 @@
 
 ## Phase 3: Business Features (Weeks 9-12)
 
-### Week 9-10: Restaurant Owner Tools
+### Week 9-10: Restaurant Owner Tools & Pending State Implementation
+
+**⚠️ UI IMPLEMENTATION NOTE:** All UI tasks (PS-007, PS-008, PS-009) must reference and follow the design system in `docs/v1_component_reference.html` for consistent look and feel.
+
 | Task ID | Title | Priority | Estimate | Status | File |
 |---|---|---|---|---|---|
 | CM-021 | Restaurant Claiming Flow | Critical | 3d | 🔴 | [task-cm-021-restaurant-claiming-flow.md](./task-cm-021-restaurant-claiming-flow.md) |
+| PS-001 | Add Pending State Schema | Critical | 0.5d | 🔄 | [task-ps-001-pending-state-schema.md](./task-ps-001-pending-state-schema.md) |
+| PS-002 | Review Tracking Tables | Critical | 0.5d | 🔄 | [task-ps-002-review-tracking.md](./task-ps-002-review-tracking.md) |
+| PS-003 | Pending State RLS Policies | Critical | 0.5d | 🔄 | [task-ps-003-rls-policies.md](./task-ps-003-rls-policies.md) |
+| PS-004 | Claim Submission API | High | 1d | 🔄 | [task-ps-004-claim-submission-api.md](./task-ps-004-claim-submission-api.md) |
+| PS-005 | Creator Application API | High | 1d | 🔄 | [task-ps-005-creator-application-api.md](./task-ps-005-creator-application-api.md) |
+| PS-006 | Admin Review Endpoints | Critical | 1.5d | 🔴 | [task-ps-006-admin-review-endpoints.md](./task-ps-006-admin-review-endpoints.md) |
+| PS-007 | Admin Review Queue UI 📐 | Critical | 2d | 🔴 | [task-ps-007-admin-review-queue.md](./task-ps-007-admin-review-queue.md) |
+| PS-008 | Pending State User UI 📐 | High | 2d | 🔴 | [task-ps-008-pending-state-ui.md](./task-ps-008-pending-state-ui.md) |
+| PS-009 | Status Notifications 📐 | Medium | 2d | 🔴 | [task-ps-009-status-notifications.md](./task-ps-009-status-notifications.md) |
 | CM-022 | Business Profile Setup | High | 2d | 🔴 | *[To be created]* |
 | CM-023 | Dual Account Management | High | 2d | 🔴 | *[To be created]* |
 | CM-024 | Creator Application Review | High | 2d | 🔴 | *[To be created]* |

@@ -17,7 +17,7 @@ This document serves as the living documentation for Troodie's backend architect
 
 ### Business Dashboard & Campaigns Schema
 
-The Creator Marketplace enables restaurants to create campaigns and work with food creators. Last updated: 2025-09-13
+The Creator Marketplace enables restaurants to create campaigns and work with food creators. Last updated: 2025-01-16
 
 #### Core Tables
 
@@ -47,6 +47,33 @@ The Creator Marketplace enables restaurants to create campaigns and work with fo
 - Tracks follower counts and content metrics
 - One-to-one relationship with users
 
+### Pending State Review System (Added 2025-01-16)
+
+**restaurant_claims**
+- Tracks restaurant ownership claims with pending review workflow
+- Status workflow: pending → approved/rejected
+- Stores ownership proof documents and verification details
+- Approved claims link restaurant to user and create business profile
+- Rejection includes reason and can allow resubmission
+
+**creator_applications**
+- Manages creator program applications with review workflow
+- Status workflow: pending → approved/rejected
+- Stores social media handles, follower counts, and content samples
+- Approved applications grant creator privileges and create profile
+- 30-day cooldown period after rejection before reapplication
+
+**review_logs**
+- Audit trail for all review actions on claims and applications
+- Tracks actor, action, status changes, and metadata
+- Append-only table for compliance and audit purposes
+- Used for generating review statistics and metrics
+
+**pending_review_queue** (View)
+- Combined view of all pending claims and applications
+- Used by admin dashboard for review management
+- Includes user details and submission metadata
+
 ### Creator Analytics & Earnings Tables (Added 2025-01-13)
 
 **campaigns** (Extended)
@@ -71,6 +98,31 @@ The Creator Marketplace enables restaurants to create campaigns and work with fo
 - Manages creator payout requests and processing
 - Integrates with payment providers (Stripe, PayPal)
 - Tracks multiple earnings in a single payout
+
+### Notification System (Added 2025-01-16)
+
+**notifications**
+- In-app notifications for users
+- Types include: review status changes, campaign updates, social interactions
+- Supports read/unread states and expiration dates
+- Related entity tracking for contextual navigation
+
+**notification_emails**
+- Email queue for transactional emails
+- Templates for approval, rejection, and status updates
+- Tracks send status and retry logic
+- Integrated with review workflow
+
+**push_tokens**
+- Stores user device tokens for push notifications
+- Supports iOS, Android, and web push
+- Active/inactive state management
+- Platform-specific token handling
+
+**notification_counts** (View)
+- Real-time unread notification counts
+- Used for notification badges in UI
+- Aggregates across all notification types
 - Status: initiated → processing → completed/failed
 
 **creator_analytics**
@@ -97,6 +149,41 @@ The Creator Marketplace enables restaurants to create campaigns and work with fo
 - Creator → Many Applications
 - Creator → Many Portfolio Items
 - User → One Business Profile OR One Creator Profile
+- User → Many Restaurant Claims (but only one approved)
+- User → Many Creator Applications (but only one approved)
+- Restaurant Claim → Many Review Logs
+- Creator Application → Many Review Logs
+
+## API Services
+
+### Pending State Review APIs (Added 2025-01-16)
+
+**RestaurantClaimService** (`services/restaurantClaimService.ts`)
+- `submitRestaurantClaim()`: Submit new claim with ownership proof
+- `getClaimStatus()`: Check current status of a claim
+- `getMyRestaurantClaims()`: List all claims for current user
+- `canClaimRestaurant()`: Check eligibility to claim a restaurant
+- `uploadOwnershipProof()`: Upload proof documents
+- `withdrawClaim()`: Cancel a pending claim
+
+**CreatorApplicationService** (`services/creatorApplicationService.ts`)
+- `submitCreatorApplication()`: Submit creator program application
+- `getCreatorApplicationStatus()`: Check application status
+- `getMyApplications()`: List all applications for current user
+- `canApplyForCreator()`: Check eligibility with cooldown period
+- `validateApplication()`: Validate application requirements
+- `withdrawApplication()`: Cancel a pending application
+
+**AdminReviewService** (`services/adminReviewService.ts`)
+- `getPendingReviews()`: Fetch pending items for review
+- `approveRestaurantClaim()`: Approve claim and link restaurant
+- `approveCreatorApplication()`: Approve and grant creator status
+- `rejectRestaurantClaim()`: Reject with reason
+- `rejectCreatorApplication()`: Reject with reason
+- `bulkApprove()`: Bulk approval operations
+- `bulkReject()`: Bulk rejection operations
+- `getReviewStatistics()`: Analytics on review performance
+- `getReviewLogs()`: Audit trail queries
 
 #### RLS Policies
 - Public campaigns visible to all

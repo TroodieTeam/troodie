@@ -25,7 +25,7 @@ export default {
     slug: "troodie",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/troodie_icon_logo.jpg",
+    icon: "./assets/images/icon.png",
     scheme: "troodie",
     userInterfaceStyle: "light",
     newArchEnabled: true,
@@ -41,7 +41,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/images/troodie_icon_logo.jpg",
+        foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
       edgeToEdgeEnabled: true
@@ -56,7 +56,7 @@ export default {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/troodie_icon_logo.jpg",
+          image: "./assets/images/splash-icon.png",
           imageWidth: 200,
           resizeMode: "contain",
           backgroundColor: "#ffffff"
@@ -75,18 +75,6 @@ export default {
       eas: {
         projectId: "68397d45-255f-4b4c-ba93-d51a044ddfb2"
       }
-    },
-    hooks: {
-      postPublish: [
-        {
-          file: "sentry-expo/upload-sourcemaps",
-          config: {
-            organization: "troodie",
-            project: "troodie",
-            authToken: process.env.SENTRY_AUTH_TOKEN,
-          },
-        },
-      ],
     }
   }
 };

@@ -77,6 +77,9 @@ export default function MoreScreen() {
     businessProfile
   } = useAccountType();
 
+  // Check if user is admin (you might need to add this to your auth context)
+  const isAdmin = user?.user_metadata?.account_type === 'admin' || user?.user_metadata?.is_admin;
+
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
 
   const handleSignOut = async () => {
@@ -96,6 +99,20 @@ export default function MoreScreen() {
       ]
     );
   };
+
+  // Admin Tools Section
+  const adminItems: MenuItem[] = isAdmin ? [
+    {
+      id: 'admin-reviews',
+      title: 'Review Queue',
+      subtitle: 'Review pending submissions',
+      icon: Shield,
+      iconColor: '#DC2626',
+      action: () => router.push('/admin/reviews'),
+      showBadge: true,
+      badgeCount: 0, // You can fetch actual count
+    },
+  ] : [];
 
   // Creator Tools Section
   const creatorItems: MenuItem[] = isCreator ? [
@@ -248,6 +265,15 @@ export default function MoreScreen() {
   // Account & Settings Section (existing)
   const accountItems: MenuItem[] = [
     {
+      id: 'my-submissions',
+      title: 'My Submissions',
+      subtitle: 'Track claims and applications',
+      icon: FileText,
+      iconColor: '#FFAD27',
+      action: () => router.push('/my-submissions'),
+      showBadge: false,
+    },
+    {
       id: 'notifications',
       title: 'Notifications',
       icon: Bell,
@@ -310,6 +336,15 @@ export default function MoreScreen() {
   // Dynamic section ordering based on account type
   const sections: MenuSection[] = useMemo(() => {
     const baseSections: MenuSection[] = [
+      // Admin Tools (highest priority for admins)
+      ...(adminItems.length > 0 ? [{
+        id: 'admin-tools',
+        title: 'Admin Tools',
+        visible: true,
+        items: adminItems,
+        priority: 0,
+      }] : []),
+
       // Creator Tools (highest priority if user is creator)
       ...(creatorItems.length > 0 ? [{
         id: 'creator-tools',
@@ -362,7 +397,7 @@ export default function MoreScreen() {
     ];
 
     return baseSections.sort((a, b) => a.priority - b.priority);
-  }, [creatorItems, businessItems, growthItems, discoverItems, accountItems, supportItems]);
+  }, [adminItems, creatorItems, businessItems, growthItems, discoverItems, accountItems, supportItems]);
 
   const renderMenuItem = (item: MenuItem) => (
     <TouchableOpacity

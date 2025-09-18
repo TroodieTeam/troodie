@@ -253,6 +253,183 @@ export type Database = {
           updated_at?: string
         }
       }
+      restaurant_claims: {
+        Row: {
+          id: string
+          user_id: string
+          restaurant_id: string
+          ownership_proof_type: string
+          email: string | null
+          phone: string | null
+          documents: string[] | null
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          restaurant_id: string
+          ownership_proof_type: string
+          email?: string | null
+          phone?: string | null
+          documents?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          restaurant_id?: string
+          ownership_proof_type?: string
+          email?: string | null
+          phone?: string | null
+          documents?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      creator_applications: {
+        Row: {
+          id: string
+          user_id: string
+          instagram_handle: string | null
+          tiktok_handle: string | null
+          youtube_handle: string | null
+          twitter_handle: string | null
+          follower_count: number
+          bio: string | null
+          content_samples: string[] | null
+          content_categories: string[] | null
+          preferred_cuisine_types: string[] | null
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count: number
+          bio?: string | null
+          content_samples?: string[] | null
+          content_categories?: string[] | null
+          preferred_cuisine_types?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count?: number
+          bio?: string | null
+          content_samples?: string[] | null
+          content_categories?: string[] | null
+          preferred_cuisine_types?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          data: any | null
+          related_id: string | null
+          related_type: string | null
+          priority: number
+          is_read: boolean
+          is_actioned: boolean
+          read_at: string | null
+          expires_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          data?: any | null
+          related_id?: string | null
+          related_type?: string | null
+          priority?: number
+          is_read?: boolean
+          is_actioned?: boolean
+          read_at?: string | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          data?: any | null
+          related_id?: string | null
+          related_type?: string | null
+          priority?: number
+          is_read?: boolean
+          is_actioned?: boolean
+          read_at?: string | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       boards: {
         Row: {
           id: string
@@ -904,6 +1081,195 @@ export type Database = {
           blocker_id?: string
           blocked_id?: string
           reason?: string | null
+          created_at?: string
+        }
+      }
+      restaurant_claims: {
+        Row: {
+          id: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method: 'domain_match' | 'email_code' | 'manual_review' | null
+          is_verified: boolean
+          verified_at: string | null
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          ownership_proof_type: 'business_license' | 'utility_bill' | 'lease' | 'domain_match' | 'other' | null
+          ownership_proof_url: string | null
+          business_phone: string | null
+          additional_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          is_verified?: boolean
+          verified_at?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          ownership_proof_type?: 'business_license' | 'utility_bill' | 'lease' | 'domain_match' | 'other' | null
+          ownership_proof_url?: string | null
+          business_phone?: string | null
+          additional_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          user_id?: string
+          email?: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          is_verified?: boolean
+          verified_at?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          ownership_proof_type?: 'business_license' | 'utility_bill' | 'lease' | 'domain_match' | 'other' | null
+          ownership_proof_url?: string | null
+          business_phone?: string | null
+          additional_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      creator_applications: {
+        Row: {
+          id: string
+          user_id: string
+          instagram_handle: string | null
+          tiktok_handle: string | null
+          youtube_handle: string | null
+          twitter_handle: string | null
+          follower_count: number
+          content_categories: string[] | null
+          sample_content_urls: string[] | null
+          bio: string | null
+          location: string | null
+          preferred_cuisine_types: string[] | null
+          has_business_email: boolean
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count: number
+          content_categories?: string[] | null
+          sample_content_urls?: string[] | null
+          bio?: string | null
+          location?: string | null
+          preferred_cuisine_types?: string[] | null
+          has_business_email?: boolean
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count?: number
+          content_categories?: string[] | null
+          sample_content_urls?: string[] | null
+          bio?: string | null
+          location?: string | null
+          preferred_cuisine_types?: string[] | null
+          has_business_email?: boolean
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      review_logs: {
+        Row: {
+          id: string
+          entity_type: 'restaurant_claim' | 'creator_application'
+          entity_id: string
+          action: 'created' | 'viewed' | 'approved' | 'rejected' | 'noted' | 'escalated' | 'updated'
+          actor_id: string
+          actor_role: string | null
+          previous_status: string | null
+          new_status: string | null
+          notes: string | null
+          metadata: unknown | null
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          entity_type: 'restaurant_claim' | 'creator_application'
+          entity_id: string
+          action: 'created' | 'viewed' | 'approved' | 'rejected' | 'noted' | 'escalated' | 'updated'
+          actor_id: string
+          actor_role?: string | null
+          previous_status?: string | null
+          new_status?: string | null
+          notes?: string | null
+          metadata?: unknown | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          entity_type?: 'restaurant_claim' | 'creator_application'
+          entity_id?: string
+          action?: 'created' | 'viewed' | 'approved' | 'rejected' | 'noted' | 'escalated' | 'updated'
+          actor_id?: string
+          actor_role?: string | null
+          previous_status?: string | null
+          new_status?: string | null
+          notes?: string | null
+          metadata?: unknown | null
+          ip_address?: string | null
+          user_agent?: string | null
           created_at?: string
         }
       }
