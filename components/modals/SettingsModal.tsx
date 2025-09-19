@@ -344,6 +344,15 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
           ),
         } as SettingItemWithElement,
         {
+          icon: Star,
+          label: 'Content Creator',
+          onPress: () => {
+            onClose();
+            router.push('/settings/content-creator');
+          },
+          showArrow: true,
+        } as SettingItemWithArrow,
+        {
           icon: UserX,
           label: 'Blocked Users',
           onPress: () => {
