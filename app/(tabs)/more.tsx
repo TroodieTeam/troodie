@@ -15,6 +15,7 @@ import {
   Building,
   ChevronRight,
   DollarSign,
+  FileText,
   Heart,
   HelpCircle,
   Info,
