@@ -5,16 +5,21 @@ import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
+import { Community, communityService } from '@/services/communityService';
+import { userService } from '@/services/userService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
+import { Calendar, Lock, MapPin, Plus, Search, SlidersHorizontal, TrendingUp, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -98,6 +103,7 @@ const useTabData = <T extends any>(
 export default function ExploreScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
+  const { updateNetworkProgress } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('restaurants');
   const [refreshing, setRefreshing] = useState(false);
@@ -105,8 +111,9 @@ export default function ExploreScreen() {
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isReRandomizing, setIsReRandomizing] = useState(false);
   const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
-  
-  
+  const [userCommunities, setUserCommunities] = useState<Community[]>([]);
+
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   // Restaurant data management with server-side search
@@ -121,10 +128,31 @@ export default function ExploreScreen() {
     () => postService.getExplorePosts({ limit: 50 }),
     (items, query) => {
       const q = query.toLowerCase();
-      return items.filter(p => 
+      return items.filter(p =>
         p.caption?.toLowerCase().includes(q) ||
         p.restaurant?.name?.toLowerCase().includes(q) ||
         p.tags?.some((t: string) => t.toLowerCase().includes(q))
+      );
+    }
+  );
+
+  // Communities data management
+  const communities = useTabData(
+    async () => {
+      const allCommunities = await communityService.getCommunities(user?.id);
+      // Fetch user's joined communities if logged in
+      if (user) {
+        const { joined, created } = await communityService.getUserCommunities(user.id);
+        setUserCommunities([...joined, ...created]);
+      }
+      return allCommunities;
+    },
+    (items, query) => {
+      const q = query.toLowerCase();
+      return items.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.description?.toLowerCase().includes(q) ||
+        c.location?.toLowerCase().includes(q)
       );
     }
   );
@@ -141,7 +169,53 @@ export default function ExploreScreen() {
     posts.load();
   }, []);
 
-  const currentTab = activeTab === 'restaurants' ? restaurants : posts;
+  // Check if user is member of a community
+  const isUserMember = useCallback((communityId: string) => {
+    return userCommunities.some(c => c.id === communityId);
+  }, [userCommunities]);
+
+  // Handle join community
+  const handleJoinCommunity = async (community: Community) => {
+    if (!user) {
+      router.push('/onboarding/login' as any);
+      return;
+    }
+
+    // Optimistic update - immediately add to user communities
+    const previousUserCommunities = [...userCommunities];
+    setUserCommunities([...userCommunities, community]);
+
+    try {
+      const { success, error } = await communityService.joinCommunity(user.id, community.id);
+
+      if (success) {
+        // Update network progress in background
+        try {
+          await userService.updateNetworkProgress(user.id, 'community');
+          updateNetworkProgress('community');
+        } catch (error) {
+          console.error('Error updating network progress:', error);
+        }
+
+        // Refresh communities in background to sync any other changes
+        communities.load();
+      } else {
+        // Revert optimistic update on failure
+        setUserCommunities(previousUserCommunities);
+
+        // Only show error if it's a real failure, not a duplicate join
+        if (error && !error.includes('already')) {
+          Alert.alert('Unable to join', error);
+        }
+      }
+    } catch (err) {
+      // Revert optimistic update on network error
+      setUserCommunities(previousUserCommunities);
+      console.error('Error joining community:', err);
+    }
+  };
+
+  const currentTab = activeTab === 'restaurants' ? restaurants : activeTab === 'posts' ? posts : communities;
 
   // Load data on tab change
   useEffect(() => {
@@ -149,6 +223,8 @@ export default function ExploreScreen() {
       restaurants.load().then(() => setHasInitiallyLoaded(true));
     } else if (activeTab === 'posts' && posts.data.length === 0) {
       posts.load();
+    } else if (activeTab === 'communities' && communities.data.length === 0) {
+      communities.load();
     }
     // Clear re-randomizing state when switching tabs
     setIsReRandomizing(false);
@@ -179,13 +255,15 @@ export default function ExploreScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // For restaurants, reload with current search query; for posts, load normally
+    // For restaurants, reload with current search query; for posts and communities, load normally
     if (activeTab === 'restaurants') {
       await restaurants.load(debouncedSearch);
+    } else if (activeTab === 'posts') {
+      await posts.load();
     } else {
-      await currentTab.load();
+      await communities.load();
     }
-    
+
     // Ensure we mark as initially loaded after refresh
     if (activeTab === 'restaurants' && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true);
@@ -237,13 +315,7 @@ export default function ExploreScreen() {
           <Pressable
             key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => {
-              if (tab === 'communities') {
-                router.push('/add/communities');
-              } else {
-                setActiveTab(tab);
-              }
-            }}
+            onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -280,22 +352,102 @@ export default function ExploreScreen() {
         </View>
       );
     }
-    
+
+    if (activeTab === 'posts') {
+      return (
+        <PostCard
+          post={item as PostWithUser}
+          onPress={() => router.push({
+            pathname: '/posts/[id]',
+            params: { id: item.id }
+          })}
+          onLike={() => {}}
+          onComment={() => {}}
+          onSave={() => {}}
+          onBlock={handleUserBlocked}
+          onDelete={handlePostDeleted}
+        />
+      );
+    }
+
+    // Render compact community card with image
+    const community = item as Community;
+    const isMember = isUserMember(community.id);
+    const coverImage = community.is_event_based
+      ? 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'
+      : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800';
+
     return (
-      <PostCard
-        post={item as PostWithUser}
+      <TouchableOpacity
+        style={styles.communityCard}
         onPress={() => router.push({
-          pathname: '/posts/[id]',
-          params: { id: item.id }
+          pathname: '/add/community-detail',
+          params: { communityId: community.id }
         })}
-        onLike={() => {}}
-        onComment={() => {}}
-        onSave={() => {}}
-        onBlock={handleUserBlocked}
-        onDelete={handlePostDeleted}
-      />
+        activeOpacity={0.7}
+      >
+        <View style={styles.communityCardInner}>
+          {/* Community Image */}
+          <Image source={{ uri: coverImage }} style={styles.communityImageCompact} />
+
+          {/* Badges on image */}
+          {community.type === 'private' && (
+            <View style={styles.privateBadgeCompact}>
+              <Lock size={10} color="#FFFFFF" />
+              <Text style={styles.privateBadgeTextCompact}>Private</Text>
+            </View>
+          )}
+
+          {community.is_event_based && (
+            <View style={styles.eventBadgeCompact}>
+              <Calendar size={10} color="#FFFFFF" />
+            </View>
+          )}
+
+          {/* Community Info */}
+          <View style={styles.communityInfo}>
+            <Text style={styles.communityName} numberOfLines={1}>
+              {community.name}
+            </Text>
+            <Text style={styles.communityDescription} numberOfLines={2}>
+              {community.description || `Discover ${community.location}'s best food spots`}
+            </Text>
+            <View style={styles.communityMetaRow}>
+              <View style={styles.communityStats}>
+                <Users size={12} color={designTokens.colors.textLight} />
+                <Text style={styles.communityMetaCompact}>
+                  {community.member_count.toLocaleString()}
+                </Text>
+                <Text style={styles.communityDivider}>•</Text>
+                <MapPin size={12} color={designTokens.colors.textLight} />
+                <Text style={styles.communityMetaCompact}>
+                  {community.location}
+                </Text>
+              </View>
+
+              {/* Join/Member Button */}
+              {isMember ? (
+                <View style={styles.memberBadgeCompact}>
+                  <Text style={styles.memberBadgeTextCompact}>Joined</Text>
+                </View>
+              ) : community.type === 'public' ? (
+                <TouchableOpacity
+                  style={styles.joinButtonCompact}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleJoinCommunity(community);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.joinButtonTextCompact}>Join</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
     );
-  }, [activeTab, router]);
+  }, [activeTab, router, isUserMember, handleJoinCommunity]);
 
   const EmptyComponent = useCallback(() => {
     if (currentTab.error) {
@@ -314,18 +466,20 @@ export default function ExploreScreen() {
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>{activeTab === 'restaurants' ? '🍴' : '📝'}</Text>
+        <Text style={styles.emptyIcon}>{activeTab === 'restaurants' ? '🍴' : activeTab === 'posts' ? '📝' : '👥'}</Text>
         <Text style={styles.emptyTitle}>
           No {activeTab} found
         </Text>
         <Text style={styles.emptyText}>
-          {debouncedSearch 
+          {debouncedSearch
             ? showAddRestaurantCTA
               ? `Can't find "${debouncedSearch}"?`
               : 'Try adjusting your search'
-            : activeTab === 'restaurants' 
+            : activeTab === 'restaurants'
               ? 'Check back soon for new restaurants'
-              : 'Be the first to share your experience'
+              : activeTab === 'posts'
+              ? 'Be the first to share your experience'
+              : 'Join or create communities to connect with food enthusiasts'
           }
         </Text>
         
@@ -379,6 +533,7 @@ export default function ExploreScreen() {
         maxToRenderPerBatch={10}
         windowSize={10}
         removeClippedSubviews
+        contentInsetAdjustmentBehavior="automatic"
       />
       
       {/* Add Restaurant Modal */}
@@ -484,7 +639,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 8,
-    paddingBottom: compactDesign.content.padding,
+    paddingBottom: 100, // Increased to account for tab bar
   },
   emptyContainer: {
     flex: 1,
@@ -523,5 +678,126 @@ const styles = StyleSheet.create({
     ...designTokens.typography.buttonText,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // Compact Community card styles with image
+  communityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: designTokens.borderRadius.md,
+    marginBottom: 10,
+    marginHorizontal: compactDesign.content.padding,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  communityCardInner: {
+    flexDirection: 'row',
+    height: 100,
+    position: 'relative',
+  },
+  communityImageCompact: {
+    width: 100,
+    height: '100%',
+    backgroundColor: '#F5F5F5',
+  },
+  communityInfo: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  communityName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: designTokens.colors.textDark,
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  communityDescription: {
+    fontSize: 13,
+    color: designTokens.colors.textMedium,
+    lineHeight: 18,
+    letterSpacing: -0.1,
+    marginBottom: 4,
+  },
+  communityMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  communityStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  communityMetaCompact: {
+    fontSize: 11,
+    color: designTokens.colors.textLight,
+    letterSpacing: -0.1,
+  },
+  communityDivider: {
+    fontSize: 11,
+    color: designTokens.colors.textLight,
+    marginHorizontal: 2,
+  },
+  privateBadgeCompact: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 3,
+  },
+  privateBadgeTextCompact: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  eventBadgeCompact: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  joinButtonCompact: {
+    height: 28,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    backgroundColor: designTokens.colors.primaryOrange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  joinButtonTextCompact: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: -0.1,
+  },
+  memberBadgeCompact: {
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberBadgeTextCompact: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4CAF50',
+    letterSpacing: -0.1,
   },
 });
