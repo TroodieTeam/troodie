@@ -44,9 +44,14 @@ export const ReasonModal: React.FC<ReasonModalProps> = ({
       setError('Please provide a reason')
       return
     }
-    
+
+    // Only submit the reason, don't close the modal
+    // The parent component should handle closing after async operation
     onSubmit(reason.trim())
-    handleClose()
+
+    // Clear the input for next time
+    setReason('')
+    setError('')
   }
 
   const handleClose = () => {

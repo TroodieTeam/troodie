@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { enhancedPostEngagementService } from '@/services/enhancedPostEngagementService';
 import { useAuth } from '@/contexts/AuthContext';
 import { PostEngagementStats, CommentWithUser } from '@/types/post';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Alert } from 'react-native';
 
 interface UsePostEngagementOptions {
@@ -141,6 +142,8 @@ export function usePostEngagement({
         (newIsLiked, newLikesCount) => {
           setIsLiked(newIsLiked);
           setLikesCount(newLikesCount);
+          // Emit engagement changed event
+          eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { postId });
         },
         (error) => {
           onEngagementError?.(error);
@@ -214,6 +217,8 @@ export function usePostEngagement({
         (comment) => {
           setComments((prev) => [comment, ...prev]);
           setCommentsCount((prev) => prev + 1);
+          // Emit engagement changed event
+          eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { postId });
         },
         (error) => {
           onEngagementError?.(error);

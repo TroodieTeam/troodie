@@ -1,25 +1,25 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-} from 'react-native';
-import {
-  Heart,
-  MessageCircle,
-  UserPlus,
-  Bookmark,
-  Users,
-  MapPin,
-  Circle,
-} from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { ActivityFeedItem } from '@/services/activityFeedService';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
+import { ActivityFeedItem } from '@/services/activityFeedService';
 import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
+import { useRouter } from 'expo-router';
+import {
+  Bookmark,
+  Circle,
+  Heart,
+  MapPin,
+  MessageCircle,
+  UserPlus,
+  Users,
+} from 'lucide-react-native';
+import React from 'react';
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface ActivityFeedItemProps {
   activity: ActivityFeedItem;
@@ -157,7 +157,7 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
             onPostPress(activity.target_id);
           } else {
             // Navigate directly to post detail screen
-            router.push(`/post/${activity.target_id}`);
+            router.push(`/posts/${activity.target_id}`);
           }
         }
         break;

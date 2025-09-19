@@ -33,6 +33,7 @@ import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { CommunitySelector } from '@/components/CommunitySelector';
 import { LinkInputModal } from '@/components/modals/LinkInputModal';
 import { linkMetadataService } from '@/services/linkMetadataService';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Users } from 'lucide-react-native';
 
 type ContentType = 'original' | 'external';
@@ -255,7 +256,15 @@ export default function CreatePostScreen() {
           formData.postType === 'restaurant' ? 'Review posted!' : 'Posted!',
           'Your post is now live in the community'
         );
-        
+
+        // Emit event for community posts
+        if (communityId) {
+          eventBus.emit(EVENTS.COMMUNITY_POST_CREATED, {
+            communityId,
+            postId: post.id
+          });
+        }
+
         // Navigate back to previous screen (stays in context)
         router.back();
       }

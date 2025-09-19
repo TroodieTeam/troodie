@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Community, communityService } from '@/services/communityService';
 import { CommunityAdminService } from '@/services/communityAdminService';
 import { useCommunityPermissions, getRoleDisplayName, getRoleBadgeColor } from '@/utils/communityPermissions';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Calendar,
@@ -124,6 +125,60 @@ export default function CommunityDetailScreen() {
   useEffect(() => {
     loadCommunityData();
   }, [communityId, user]);
+
+  // Subscribe to post-related events
+  useEffect(() => {
+    if (!communityId) return;
+
+    // Refresh posts when a new post is created in this community
+    const handlePostCreated = (data: { communityId: string }) => {
+      if (data.communityId === communityId) {
+        // Reload just the posts
+        loadCommunityPosts();
+      }
+    };
+
+    // Refresh posts when a post is deleted
+    const handlePostDeleted = (data: { postId: string, communityId?: string }) => {
+      if (data.communityId === communityId) {
+        // Remove from local state immediately
+        setPosts(prev => prev.filter(p => p.id !== data.postId));
+        // Also reload to ensure sync
+        loadCommunityPosts();
+      }
+    };
+
+    // Refresh when post engagement changes (likes, comments)
+    const handleEngagementChanged = (data: { postId: string }) => {
+      // Check if this post belongs to our community
+      const postExists = posts.some(p => p.id === data.postId);
+      if (postExists) {
+        loadCommunityPosts();
+      }
+    };
+
+    // Subscribe to events
+    const unsubscribeCreate = eventBus.on(EVENTS.COMMUNITY_POST_CREATED, handlePostCreated);
+    const unsubscribeDelete = eventBus.on(EVENTS.COMMUNITY_POST_DELETED, handlePostDeleted);
+    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
+
+    return () => {
+      unsubscribeCreate();
+      unsubscribeDelete();
+      unsubscribeEngagement();
+    };
+  }, [communityId, posts]);
+
+  const loadCommunityPosts = async () => {
+    if (!communityId) return;
+
+    try {
+      const postsData = await communityService.getCommunityPosts(communityId, 20);
+      setPosts(postsData);
+    } catch (error) {
+      console.error('Error loading community posts:', error);
+    }
+  };
 
   const handleJoinLeave = async () => {
     if (!user) {
@@ -248,16 +303,18 @@ export default function CommunityDetailScreen() {
   
   const handleRemoveMemberConfirm = async (reason: string) => {
     if (!removeMemberModal.member) return;
-    
+
     try {
       const { success, error } = await CommunityAdminService.removeMember(
         communityId,
         removeMemberModal.member.user_id,
         reason
       );
-      
+
       if (success) {
         setMembers(members.filter(m => m.user_id !== removeMemberModal.member.user_id));
+        // Close the modal after successful removal
+        setRemoveMemberModal({ visible: false, member: null });
         Alert.alert('Success', 'Member removed successfully');
       } else {
         Alert.alert('Error', error || 'Failed to remove member');
@@ -273,16 +330,30 @@ export default function CommunityDetailScreen() {
   
   const handleDeletePostConfirm = async (reason: string) => {
     if (!deletePostModal.postId) return;
-    
+
+    const postIdToDelete = deletePostModal.postId;
+
     try {
       const { success, error } = await CommunityAdminService.deletePost(
-        deletePostModal.postId,
+        communityId,
+        postIdToDelete,
         reason
       );
-      
+
       if (success) {
-        setPosts(posts.filter(p => p.id !== deletePostModal.postId));
+        // First update the local state to remove the post immediately
+        setPosts(prevPosts => prevPosts.filter(p => p.id !== postIdToDelete));
+
+        // Then close the modal
+        setDeletePostModal({ visible: false, postId: '' });
+
+        // Show success message
         Alert.alert('Success', 'Post deleted successfully');
+
+        // Also trigger a refresh to ensure sync with database
+        setTimeout(() => {
+          loadCommunityPosts();
+        }, 500);
       } else {
         Alert.alert('Error', error || 'Failed to delete post');
       }
@@ -450,15 +521,21 @@ export default function CommunityDetailScreen() {
     </View>
   );
 
-  const renderPostItem = ({ item }: { item: any }) => (
-    <View style={styles.postWrapper}>
-      <PostCard 
-        post={item}
-        onPress={() => router.push(`/posts/${item.id}`)}
-        showActions={true}
-      />
-    </View>
-  );
+  const renderPostItem = ({ item }: { item: any }) => {
+    // Only provide onDelete for admins deleting OTHER people's posts
+    const shouldUseAdminDelete = hasPermission('delete_post') && user?.id !== item.user_id;
+
+    return (
+      <View style={styles.postWrapper}>
+        <PostCard
+          post={item}
+          onPress={() => router.push(`/posts/${item.id}`)}
+          showActions={true}
+          onDelete={shouldUseAdminDelete ? (postId) => handleDeletePost(postId) : undefined}
+        />
+      </View>
+    );
+  };
 
   const renderMemberItem = ({ item }: { item: any }) => (
     <TouchableOpacity 

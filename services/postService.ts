@@ -13,6 +13,7 @@ import {
 import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
 import { restaurantImageSyncService } from './restaurantImageSyncService';
 import { moderationService } from './moderationService';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 
 class PostService {
   /**
@@ -455,6 +456,13 @@ class PostService {
    * Delete a post
    */
   async deletePost(postId: string): Promise<void> {
+    // First get the post's community_ids before deletion
+    const { data: postData } = await supabase
+      .from('posts')
+      .select('community_ids')
+      .eq('id', postId)
+      .single();
+
     const { error } = await supabase
       .from('posts')
       .delete()
@@ -462,6 +470,16 @@ class PostService {
 
     if (error) {
       throw new Error(`Failed to delete post: ${error.message}`);
+    }
+
+    // Emit deletion event for each community the post was in
+    if (postData?.community_ids && postData.community_ids.length > 0) {
+      postData.community_ids.forEach((communityId: string) => {
+        eventBus.emit(EVENTS.COMMUNITY_POST_DELETED, {
+          postId,
+          communityId
+        });
+      });
     }
   }
 
