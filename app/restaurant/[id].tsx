@@ -700,7 +700,14 @@ export default function RestaurantDetailScreen() {
                 const createdAt = friend.post?.created_at || friend.save?.created_at || '';
 
                 return (
-                  <TouchableOpacity key={friend.id} style={styles.socialItem}>
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={styles.socialItem}
+                    onPress={() => {
+                      if (friend.post?.id) {
+                        router.push(`/post/${friend.post.id}`);
+                      }
+                    }}>
                     <View style={styles.avatarContainer}>
                       <Image source={{ uri: friend.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.avatar} />
                       {friend.user.is_verified && (
@@ -753,7 +760,14 @@ export default function RestaurantDetailScreen() {
           {powerUsersAndCritics.length > 0 ? (
             <View style={styles.socialList}>
               {powerUsersAndCritics.map((review) => (
-                <TouchableOpacity key={review.id} style={[styles.socialItem, styles.powerUserItem]}>
+                <TouchableOpacity
+                  key={review.id}
+                  style={[styles.socialItem, styles.powerUserItem]}
+                  onPress={() => {
+                    if (review.post?.id) {
+                      router.push(`/post/${review.post.id}`);
+                    }
+                  }}>
                   <View style={styles.avatarContainer}>
                     <Image source={{ uri: review.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.avatar} />
                     <View style={styles.powerUserBadge}>
@@ -834,7 +848,14 @@ export default function RestaurantDetailScreen() {
                                  
 
                                  return (
-                   <View key={activity.id} style={styles.activityItem}>
+                   <TouchableOpacity
+                     key={activity.id}
+                     style={styles.activityItem}
+                     onPress={() => {
+                       if (activity.action === 'reviewed' && activity.review?.id) {
+                         router.push(`/post/${activity.review.id}`);
+                       }
+                     }}>
                      <Image source={{ uri: activity.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.activityAvatar} />
                      <View style={styles.activityContent}>
                        <View style={styles.activityMainRow}>
@@ -884,7 +905,7 @@ export default function RestaurantDetailScreen() {
                          )}
                        </View>
                      </View>
-                   </View>
+                   </TouchableOpacity>
                  );
               })}
             </View>

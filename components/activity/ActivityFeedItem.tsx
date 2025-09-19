@@ -156,10 +156,8 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
           if (onPostPress) {
             onPostPress(activity.target_id);
           } else {
-            // Navigate to post detail or restaurant with post highlighted
-            if (activity.restaurant_id) {
-              router.push(`/restaurant/${activity.restaurant_id}?postId=${activity.target_id}`);
-            }
+            // Navigate directly to post detail screen
+            router.push(`/post/${activity.target_id}`);
           }
         }
         break;
