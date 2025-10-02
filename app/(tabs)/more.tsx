@@ -17,6 +17,7 @@ import {
   Compass,
   DollarSign,
   FileText,
+  Grid3X3,
   Heart,
   HelpCircle,
   Info,
@@ -277,6 +278,14 @@ export default function MoreScreen() {
 
   // Account & Settings Section (existing)
   const accountItems: MenuItem[] = [
+    {
+      id: 'my-boards',
+      title: 'Boards',
+      subtitle: 'Organize your favorite places',
+      icon: Grid3X3,
+      iconColor: '#8B5CF6',
+      action: () => router.push('/boards'),
+    },
     {
       id: 'my-submissions',
       title: 'My Submissions',
