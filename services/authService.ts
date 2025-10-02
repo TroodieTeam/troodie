@@ -154,7 +154,7 @@ export const authService = {
       // Special handling for App Store Review and test accounts with password auth
       if ((email.toLowerCase() === 'review@troodieapp.com' || email.toLowerCase().endsWith('@bypass.com')) && token === '000000') {
         console.log('[AuthService] Bypass account detected, using password authentication')
-        
+
         try {
           // For test accounts with @bypass.com, we'll use direct authentication
           // First check if user exists in the database
@@ -163,7 +163,7 @@ export const authService = {
             .select('id, email')
             .eq('email', email.toLowerCase())
             .single()
-          
+
           if (!userData) {
             console.log('[AuthService] Bypass account not found in database, needs to be seeded first')
             return {
@@ -171,14 +171,14 @@ export const authService = {
               error: 'Test account not found. Please run the seed-test-accounts.js script first.',
             }
           }
-          
+
           // For review@troodieapp.com, use password auth
           if (email.toLowerCase() === 'review@troodieapp.com') {
             const { data, error } = await supabase.auth.signInWithPassword({
               email: 'review@troodieapp.com',
               password: 'ReviewPass000000'
             })
-            
+
             if (error) {
               console.error('[AuthService] Password auth error:', error)
               return {
@@ -186,7 +186,7 @@ export const authService = {
                 error: 'Review account authentication failed.',
               }
             }
-            
+
             if (data.session) {
               console.log('[AuthService] Review account authenticated successfully')
               return {
@@ -195,38 +195,42 @@ export const authService = {
               }
             }
           }
-          
+
           // For @bypass.com test accounts, create a mock session
-          // Note: This is for testing only and should not be used in production
-          console.log('[AuthService] Test account authenticated with bypass')
-          
-          // Create a simplified mock session for test accounts
-          const mockSession = {
-            access_token: 'test-token-' + Date.now(),
-            token_type: 'bearer',
-            expires_in: 3600,
-            refresh_token: 'test-refresh-' + Date.now(),
-            user: {
-              id: userData.id,
-              email: userData.email,
-              app_metadata: {},
-              user_metadata: {},
-              aud: 'authenticated',
-              created_at: new Date().toISOString()
+          console.log('[AuthService] Creating mock session for bypass account')
+
+          // Get the session from existing auth state if available
+          const { data: { session: existingSession } } = await supabase.auth.getSession()
+
+          if (existingSession) {
+            console.log('[AuthService] Using existing session for bypass account')
+            return {
+              success: true,
+              session: existingSession,
             }
           }
-          
-          // Set the mock session in Supabase auth
-          await supabase.auth.setSession({
-            access_token: mockSession.access_token,
-            refresh_token: mockSession.refresh_token
-          }).catch(err => {
-            console.log('[AuthService] Could not set session, returning mock session anyway:', err)
-          })
-          
+
+          // If no session exists, we need to handle this differently
+          // For test accounts, we'll return success with user data
+          console.log('[AuthService] Bypass account authenticated (mock mode)')
+
+          // Return success to proceed with the flow
           return {
             success: true,
-            session: mockSession as any,
+            session: {
+              access_token: 'bypass-token-' + Date.now(),
+              refresh_token: 'bypass-refresh-' + Date.now(),
+              expires_in: 3600,
+              token_type: 'bearer',
+              user: {
+                id: userData.id,
+                email: userData.email,
+                app_metadata: {},
+                user_metadata: {},
+                aud: 'authenticated',
+                created_at: new Date().toISOString()
+              }
+            } as any
           }
         } catch (err) {
           console.error('[AuthService] Error in bypass account auth:', err)
