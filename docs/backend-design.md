@@ -13,6 +13,12 @@ This document serves as the living documentation for Troodie's backend architect
 - **Storage**: Supabase Storage for images and media
 - **Edge Functions**: Supabase Edge Functions for serverless logic
 
+### Recent Updates (2025-10-01)
+- **Board Collaboration System**: Added invitation system for board collaboration
+- **Automatic Counters**: Implemented database triggers for like and member counts
+- **UI Fixes**: iPhone 16 compatibility improvements
+- **Error Handling**: Enhanced image loading with graceful fallbacks
+
 ## Creator Marketplace Tables
 
 ### Business Dashboard & Campaigns Schema
@@ -1142,6 +1148,37 @@ The `get_suggested_users` function uses a multi-factor scoring system:
 
 ### Board System
 
+#### `board_invitations` Table (Added 2025-10-01)
+Manages board collaboration invitations.
+
+```sql
+CREATE TABLE board_invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  inviter_id UUID NOT NULL REFERENCES users(id),
+  invitee_id UUID REFERENCES users(id),
+  invite_email VARCHAR(255),
+  invite_link_token VARCHAR(100) UNIQUE,
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'expired')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '7 days',
+  accepted_at TIMESTAMPTZ
+);
+```
+
+**Features**:
+- Multiple invitation methods: user ID, email, or shareable link
+- Automatic expiration after 7 days
+- Notification system for invites
+- RLS policies for security
+
+**Functions**:
+- `accept_board_invitation(p_invitation_id, p_user_id)` - Accept invitation and add as member
+- `decline_board_invitation(p_invitation_id, p_user_id)` - Decline invitation
+- `generate_invite_token()` - Generate unique token for shareable links
+- `get_user_pending_invitations(p_user_id)` - Get user's pending invitations
+- `cleanup_expired_invitations()` - Mark expired invitations (run periodically)
+
 #### `boards` Table
 Collections of restaurants created by users.
 
@@ -1242,7 +1279,7 @@ CREATE TABLE public.communities (
 ```
 
 #### `community_members` Table
-Community membership management with role-based access control.
+Community membership management with role-based access control and automatic counting.
 
 ```sql
 CREATE TABLE public.community_members (
@@ -1258,6 +1295,12 @@ CREATE TABLE public.community_members (
   CONSTRAINT community_members_unique UNIQUE (community_id, user_id)
 );
 ```
+
+**Automatic Counter System** (Added 2025-10-01):
+- Trigger `trigger_update_community_member_count` automatically updates `communities.member_count`
+- Only counts members with `status='active'`
+- Handles INSERT, UPDATE (status changes), and DELETE
+- Ensures member_count always matches member list
 
 **Roles**:
 - `owner`: Creator of the community, has all permissions
@@ -1649,7 +1692,7 @@ The community discovery service (`communityDiscoveryService.ts`) provides:
 ### Engagement & Interactions
 
 #### `post_likes` Table
-Likes on posts.
+Likes on posts with automatic counter updates.
 
 ```sql
 CREATE TABLE public.post_likes (
@@ -1662,6 +1705,12 @@ CREATE TABLE public.post_likes (
   CONSTRAINT post_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 ```
+
+**Automatic Counter System** (Added 2025-10-01):
+- Trigger `trigger_update_post_likes_count` automatically updates `posts.likes_count`
+- Increments on INSERT, decrements on DELETE
+- Ensures counter always matches actual like count
+- No race conditions or manual counter management needed
 
 #### `post_comments` Table
 Comments on posts with nested replies.

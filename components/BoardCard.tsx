@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Lock, Globe, MapPin, Calendar } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
@@ -11,10 +11,19 @@ interface BoardCardProps {
 }
 
 export const BoardCard: React.FC<BoardCardProps> = ({ board, onPress }) => {
+  const [imageError, setImageError] = useState(false);
+  const showImage = board.cover_image_url && !imageError;
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
-      {board.cover_image_url ? (
-        <Image source={{ uri: board.cover_image_url }} style={styles.coverImage} />
+      {showImage ? (
+        <Image
+          source={{ uri: board.cover_image_url }}
+          style={styles.coverImage}
+          onError={() => setImageError(true)}
+          defaultSource={require('@/assets/images/placeholder.png')}
+          resizeMode="cover"
+        />
       ) : (
         <View style={styles.placeholderImage}>
           <Text style={styles.placeholderEmoji}>📋</Text>
