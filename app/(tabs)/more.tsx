@@ -14,6 +14,7 @@ import {
   Bell,
   Building,
   ChevronRight,
+  Compass,
   DollarSign,
   FileText,
   Heart,
@@ -53,6 +54,7 @@ interface MenuItem {
   action: () => void;
   showBadge?: boolean;
   badgeCount?: number | string;
+  badgeText?: string;
   hasToggle?: boolean;
   toggleValue?: boolean;
   onToggleChange?: (value: boolean) => void;
@@ -128,9 +130,19 @@ export default function MoreScreen() {
       // badgeCount: activeCampaigns,
     },
     {
+      id: 'explore-campaigns',
+      title: 'Explore Campaigns',
+      subtitle: 'Discover new brand collaborations',
+      icon: Compass,
+      iconColor: '#F59E0B',
+      action: () => router.push('/creator/explore-campaigns'),
+      showBadge: true,
+      badgeText: 'NEW',
+    },
+    {
       id: 'my-campaigns',
       title: 'My Campaigns',
-      subtitle: 'Manage your marketing campaigns',
+      subtitle: 'Manage your active campaigns',
       icon: Target,
       iconColor: '#8B5CF6',
       action: () => router.push('/creator/campaigns'),
@@ -427,12 +439,15 @@ export default function MoreScreen() {
       </View>
 
       <View style={styles.menuItemRight}>
-        {item.showBadge && (item.badgeCount || item.badgeCount === 0) && (
+        {item.showBadge && (item.badgeCount || item.badgeCount === 0 || item.badgeText) && (
           <View style={[
             styles.badge,
-            typeof item.badgeCount === 'string' && item.badgeCount === '$' && styles.earningsBadge
+            typeof item.badgeCount === 'string' && item.badgeCount === '$' && styles.earningsBadge,
+            item.badgeText && styles.newBadge
           ]}>
-            <Text style={styles.badgeText}>{item.badgeCount}</Text>
+            <Text style={[styles.badgeText, item.badgeText && styles.newBadgeText]}>
+              {item.badgeText || item.badgeCount}
+            </Text>
           </View>
         )}
 
@@ -720,6 +735,14 @@ const styles = StyleSheet.create({
   },
   earningsBadge: {
     backgroundColor: '#10B981',
+  },
+  newBadge: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 8,
+  },
+  newBadgeText: {
+    textTransform: 'uppercase',
+    fontSize: 10,
   },
 
   // Sign Out
