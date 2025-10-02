@@ -12,18 +12,29 @@ interface BoardCardProps {
 
 export const BoardCard: React.FC<BoardCardProps> = ({ board, onPress }) => {
   const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const showImage = board.cover_image_url && !imageError;
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       {showImage ? (
-        <Image
-          source={{ uri: board.cover_image_url }}
-          style={styles.coverImage}
-          onError={() => setImageError(true)}
-          defaultSource={require('@/assets/images/placeholder.png')}
-          resizeMode="cover"
-        />
+        <>
+          <Image
+            source={{ uri: board.cover_image_url }}
+            style={styles.coverImage}
+            onError={() => {
+              setImageError(true);
+              setImageLoading(false);
+            }}
+            onLoad={() => setImageLoading(false)}
+            resizeMode="cover"
+          />
+          {imageLoading && (
+            <View style={[styles.placeholderImage, StyleSheet.absoluteFill]}>
+              <Text style={styles.placeholderEmoji}>📋</Text>
+            </View>
+          )}
+        </>
       ) : (
         <View style={styles.placeholderImage}>
           <Text style={styles.placeholderEmoji}>📋</Text>
