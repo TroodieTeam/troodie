@@ -26,10 +26,11 @@ These should be completed first as they impact core functionality and user exper
 
 | Task ID | Task | Priority | Status | Assignee |
 |---------|------|----------|--------|----------|
-| UX-2 | Fix Board Image Error | Critical | 🔴 | - |
-| UX-3 | Fix Board Collaboration Invite | High | 🔴 | - |
-| ONBOARDING-1 | Fix iPhone 16 UI Issues | Critical | 🔴 | - |
-| SOCIAL-1 | Fix Like Counter | High | 🔴 | - |
+| UX-2 | Fix Board Image Error | Critical | 🔄 Needs Review | Claude |
+| UX-3 | Fix Board Collaboration Invite | High | 🔄 Needs Review | Claude |
+| ONBOARDING-1 | Fix iPhone 16 UI Issues | Critical | 🔄 Needs Review | Claude |
+| SOCIAL-1 | Fix Like Counter | High | 🔄 Needs Review | Claude |
+| SOCIAL-2 | Fix Community Member Count | Medium | 🔄 Needs Review | Claude |
 
 ---
 
@@ -39,16 +40,16 @@ These should be completed first as they impact core functionality and user exper
 | # | Task | File | Priority | Estimate | Status |
 |---|------|------|----------|----------|--------|
 | 1 | One-Click Add Restaurant | `task-ux-1-one-click-add-restaurant.md` | High | 1 day | 🔴 |
-| 2 | Fix Board Image Error | `task-ux-2-board-image-error.md` | Critical | 0.5 day | 🔴 |
-| 3 | Board Collaboration Invite | `task-ux-3-board-collaboration-invite.md` | High | 1 day | 🔴 |
+| 2 | Fix Board Image Error | `task-ux-2-board-image-error.md` | Critical | 0.5 day | 🔄 Needs Review |
+| 3 | Board Collaboration Invite | `task-ux-3-board-collaboration-invite.md` | High | 1 day | 🔄 Needs Review |
 | 4 | Category & Tags Scrolling | `task-ux-4-board-category-tags-scrolling.md` | Medium | 0.5 day | 🔴 |
 | 5 | Board Menu Stays Open | `task-ux-5-board-menu-stays-open.md` | Medium | 0.5 day | 🔴 |
 
 ### Epic: Social Features
 | # | Task | File | Priority | Estimate | Status |
 |---|------|------|----------|----------|--------|
-| 1 | Fix Like Counter | `task-social-1-fix-like-counter.md` | High | 0.5 day | 🔴 |
-| 2 | Fix Community Member Count | `task-social-2-fix-community-member-count.md` | Medium | 0.5 day | 🔴 |
+| 1 | Fix Like Counter | `task-social-1-fix-like-counter.md` | High | 0.5 day | 🔄 Needs Review |
+| 2 | Fix Community Member Count | `task-social-2-fix-community-member-count.md` | Medium | 0.5 day | 🔄 Needs Review |
 | 3 | Activity Feed - Saves | `task-social-3-activity-feed-saves.md` | High | 1 day | 🔴 |
 | 4 | Activity Feed - Board Creation | `task-social-4-activity-feed-board-creation.md` | High | 0.5 day | 🔴 |
 
@@ -80,7 +81,7 @@ These should be completed first as they impact core functionality and user exper
 ### Epic: Onboarding
 | # | Task | File | Priority | Estimate | Status |
 |---|------|------|----------|----------|--------|
-| 1 | iPhone 16 UI Fix | `task-onboarding-1-iphone-16-ui-fix.md` | Critical | 1 day | 🔴 |
+| 1 | iPhone 16 UI Fix | `task-onboarding-1-iphone-16-ui-fix.md` | Critical | 1 day | 🔄 Needs Review |
 
 ### Epic: Database
 | # | Task | File | Priority | Estimate | Status |
@@ -92,11 +93,11 @@ These should be completed first as they impact core functionality and user exper
 ## 📊 Progress Summary
 
 - **Total Tasks**: 19
-- **Not Started**: 19 (🔴)
+- **Not Started**: 14 (🔴)
 - **In Progress**: 0 (🟡)
 - **Completed**: 0 (🟢)
 - **Blocked**: 0 (⏸️)
-- **In Review**: 0 (🔄)
+- **In Review**: 5 (🔄 Needs Review)
 
 **Total Estimated Time**: ~23.5 days
 
