@@ -1,246 +1,183 @@
-# Troodie — Creator Marketplace Development Tasks
+# Troodie v1.0.2 Feedback - Task Tracking
 
-**Target Launch:** Q1 2025  
-**Created:** September 10, 2025  
-**Branch:** feature/creator-marketplace
-
-## Status Legend
-- 🔴 Not Started
-- 🟡 In Progress
-- 🟢 Complete
-- ⏸️ Blocked
-- 🔄 Review Required
+**Cycle Start**: 2025-10-01
+**Branch**: feature/v1.0.2-feedback-session
 
 ---
 
-## Epic Overview
+## Epics Overview
 
-| Epic | Focus | Target | Status |
+| ID | Epic | Focus | Status |
 |---|---|---|---|
-| CM | Creator Marketplace | Q1 2025 Launch | 🔴 Not Started |
+| UX | UX/UI Fixes | Critical bugs and interaction improvements | 🔴 |
+| SOCIAL | Social Features | Activity feed, likes, comments, community | 🔴 |
+| RESTAURANT | Restaurant Management | Save context, visited tracking, data import | 🔴 |
+| HOME | Smart Home Feed | Personalized recommendations and prompts | 🔴 |
+| NOTIFICATIONS | Push Notifications | Weekly check-ins, travel alerts | 🔴 |
+| BUSINESS | Restaurant Admin | Business portal enhancements | 🔴 |
+| ONBOARDING | Onboarding | Quiz and UI improvements | 🔴 |
+| DATABASE | Database | Google Places API and data quality | 🔴 |
 
 ---
 
-## Phase 1: Foundation & Infrastructure (Weeks 1-4)
+## 🔥 Critical Priority Tasks
 
-### Week 1-2: Core Infrastructure
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-001 | Setup Multi-Role User System | Critical | 3d | 🔴 | [task-cm-001-multi-role-user-system.md](./task-cm-001-multi-role-user-system.md) |
-| CM-002 | Database Schema Design | Critical | 2d | 🔴 | [task-cm-002-database-schema-design.md](./task-cm-002-database-schema-design.md) |
-| CM-003 | More Tab Navigation System | High | 2d | 🔴 | [task-cm-003-more-tab-navigation.md](./task-cm-003-more-tab-navigation.md) |
-| CM-004 | More Tab Role Integration | Medium | 1d | 🔴 | *[To be created]* |
-| CM-005 | Creator Profile Data Model | High | 1d | 🔴 | *[To be created]* |
+These should be completed first as they impact core functionality and user experience.
 
-### Week 3-4: Creator Onboarding
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-006 | Creator Discovery Flow | High | 2d | 🔴 | *[To be created]* |
-| CM-007 | Platform OAuth Integration | Critical | 3d | 🔴 | *[To be created]* |
-| CM-008 | Content Import System | High | 2d | 🔴 | *[To be created]* |
-| CM-009 | Creator Qualification Logic | Medium | 1d | 🔴 | *[To be created]* |
-| CM-010 | Basic Stripe Connect Setup | Critical | 2d | 🔴 | *[To be created]* |
+| Task ID | Task | Priority | Status | Assignee |
+|---------|------|----------|--------|----------|
+| UX-2 | Fix Board Image Error | Critical | 🔴 | - |
+| UX-3 | Fix Board Collaboration Invite | High | 🔴 | - |
+| ONBOARDING-1 | Fix iPhone 16 UI Issues | Critical | 🔴 | - |
+| SOCIAL-1 | Fix Like Counter | High | 🔴 | - |
 
 ---
 
-## Phase 2: Core Marketplace Features (Weeks 5-8)
+## 📋 All Tasks by Epic
 
-### Week 5-6: Campaign Management
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-011 | Campaign Creation Wizard | Critical | 3d | 🔴 | [task-cm-011-campaign-creation-wizard.md](./task-cm-011-campaign-creation-wizard.md) |
-| CM-012 | Creator Discovery & Matching | High | 2d | 🔴 | *[To be created]* |
-| CM-013 | Application Flow | Critical | 2d | 🔴 | *[To be created]* |
-| CM-014 | Campaign Management Dashboard | High | 2d | 🔴 | *[To be created]* |
-| CM-015 | Basic Attribution System | High | 1d | 🔴 | *[To be created]* |
+### Epic: UX/UI Fixes
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | One-Click Add Restaurant | `task-ux-1-one-click-add-restaurant.md` | High | 1 day | 🔴 |
+| 2 | Fix Board Image Error | `task-ux-2-board-image-error.md` | Critical | 0.5 day | 🔴 |
+| 3 | Board Collaboration Invite | `task-ux-3-board-collaboration-invite.md` | High | 1 day | 🔴 |
+| 4 | Category & Tags Scrolling | `task-ux-4-board-category-tags-scrolling.md` | Medium | 0.5 day | 🔴 |
+| 5 | Board Menu Stays Open | `task-ux-5-board-menu-stays-open.md` | Medium | 0.5 day | 🔴 |
 
-### Week 7-8: Content Creation Tools
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-016 | Enhanced Content Creation | High | 3d | 🔴 | *[To be created]* |
-| CM-017 | AI Caption Generation | Medium | 2d | 🔴 | *[To be created]* |
-| CM-018 | Cross-Platform Posting | High | 2d | 🔴 | *[To be created]* |
-| CM-019 | Campaign Compliance Checks | High | 1d | 🔴 | *[To be created]* |
-| CM-020 | Content Performance Tracking | Medium | 1d | 🔴 | *[To be created]* |
+### Epic: Social Features
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Fix Like Counter | `task-social-1-fix-like-counter.md` | High | 0.5 day | 🔴 |
+| 2 | Fix Community Member Count | `task-social-2-fix-community-member-count.md` | Medium | 0.5 day | 🔴 |
+| 3 | Activity Feed - Saves | `task-social-3-activity-feed-saves.md` | High | 1 day | 🔴 |
+| 4 | Activity Feed - Board Creation | `task-social-4-activity-feed-board-creation.md` | High | 0.5 day | 🔴 |
 
----
+### Epic: Restaurant Management
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Save with Context | `task-restaurant-1-save-with-context.md` | High | 2 days | 🔴 |
+| 2 | Mark as Visited | `task-restaurant-2-mark-as-visited.md` | High | 2 days | 🔴 |
+| 3 | Data Import | `task-restaurant-3-data-import.md` | Medium | 3 days | 🔴 |
+| 4 | Comments vs Reviews | `task-restaurant-4-comments-vs-reviews.md` | Medium | 2 days | 🔴 |
+| 5 | Social Tab Default | `task-restaurant-5-social-tab-default.md` | Medium | 0.5 day | 🔴 |
 
-## Phase 3: Business Features (Weeks 9-12)
+### Epic: Smart Home Feed
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Smart Feed Prompts | `task-home-1-smart-feed-prompts.md` | High | 3 days | 🔴 |
 
-### Week 9-10: Restaurant Owner Tools & Pending State Implementation
+### Epic: Push Notifications
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Push Notification Strategy | `task-notifications-1-push-strategy.md` | High | 2 days | 🔴 |
 
-**⚠️ UI IMPLEMENTATION NOTE:** All UI tasks (PS-007, PS-008, PS-009) must reference and follow the design system in `docs/v1_component_reference.html` for consistent look and feel.
+### Epic: Restaurant Admin
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Enhanced CTAs | `task-business-1-enhanced-ctas.md` | Medium | 1 day | 🔴 |
+| 2 | Restaurant Self-Edit | `task-business-2-restaurant-self-edit.md` | Medium | 2 days | 🔴 |
 
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-021 | Restaurant Claiming Flow | Critical | 3d | 🔴 | [task-cm-021-restaurant-claiming-flow.md](./task-cm-021-restaurant-claiming-flow.md) |
-| PS-001 | Add Pending State Schema | Critical | 0.5d | 🔄 | [task-ps-001-pending-state-schema.md](./task-ps-001-pending-state-schema.md) |
-| PS-002 | Review Tracking Tables | Critical | 0.5d | 🔄 | [task-ps-002-review-tracking.md](./task-ps-002-review-tracking.md) |
-| PS-003 | Pending State RLS Policies | Critical | 0.5d | 🔄 | [task-ps-003-rls-policies.md](./task-ps-003-rls-policies.md) |
-| PS-004 | Claim Submission API | High | 1d | 🔄 | [task-ps-004-claim-submission-api.md](./task-ps-004-claim-submission-api.md) |
-| PS-005 | Creator Application API | High | 1d | 🔄 | [task-ps-005-creator-application-api.md](./task-ps-005-creator-application-api.md) |
-| PS-006 | Admin Review Endpoints | Critical | 1.5d | 🔴 | [task-ps-006-admin-review-endpoints.md](./task-ps-006-admin-review-endpoints.md) |
-| PS-007 | Admin Review Queue UI 📐 | Critical | 2d | 🔴 | [task-ps-007-admin-review-queue.md](./task-ps-007-admin-review-queue.md) |
-| PS-008 | Pending State User UI 📐 | High | 2d | 🔴 | [task-ps-008-pending-state-ui.md](./task-ps-008-pending-state-ui.md) |
-| PS-009 | Status Notifications 📐 | Medium | 2d | 🔴 | [task-ps-009-status-notifications.md](./task-ps-009-status-notifications.md) |
-| CM-022 | Business Profile Setup | High | 2d | 🔴 | *[To be created]* |
-| CM-023 | Dual Account Management | High | 2d | 🔴 | *[To be created]* |
-| CM-024 | Creator Application Review | High | 2d | 🔴 | *[To be created]* |
-| CM-025 | Campaign Analytics Dashboard | Medium | 2d | 🔴 | *[To be created]* |
+### Epic: Onboarding
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | iPhone 16 UI Fix | `task-onboarding-1-iphone-16-ui-fix.md` | Critical | 1 day | 🔴 |
 
-### Week 11-12: Payment & Monetization
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-026 | Complete Stripe Integration | Critical | 3d | 🔴 | *[To be created]* |
-| CM-027 | Creator Payout System | Critical | 2d | 🔴 | *[To be created]* |
-| CM-028 | Revenue Tracking | High | 1d | 🔴 | *[To be created]* |
-| CM-029 | Invoice & Tax Handling | Medium | 2d | 🔴 | *[To be created]* |
-| CM-030 | Dispute Resolution Flow | Low | 1d | 🔴 | *[To be created]* |
-
----
-
-## Phase 4: AI & Intelligence Features (Weeks 13-16)
-
-### Week 13-14: AI Recommendations
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-031 | AI Campaign Matching | High | 3d | 🔴 | *[To be created]* |
-| CM-032 | Content Opportunity Detection | Medium | 2d | 🔴 | *[To be created]* |
-| CM-033 | Performance Prediction | Medium | 2d | 🔴 | *[To be created]* |
-| CM-034 | Trend Analysis System | Low | 2d | 🔴 | *[To be created]* |
-| CM-035 | Smart Pricing Suggestions | Medium | 1d | 🔴 | *[To be created]* |
-
-### Week 15-16: Advanced Features
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-036 | Real-time Attribution | High | 2d | 🔴 | *[To be created]* |
-| CM-037 | Advanced Analytics | Medium | 2d | 🔴 | *[To be created]* |
-| CM-038 | Community Features | Low | 2d | 🔴 | *[To be created]* |
-| CM-039 | Subscription Content | Low | 3d | 🔴 | *[To be created]* |
-| CM-040 | Mobile App Optimization | Medium | 1d | 🔴 | *[To be created]* |
+### Epic: Database
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Google Places Parameters | `task-database-1-google-places-parameters.md` | Medium | 1 day | 🔴 |
 
 ---
 
-## Phase 5: Launch Preparation (Weeks 17-20)
+## 📊 Progress Summary
 
-### Week 17-18: Testing & Quality Assurance
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-041 | Comprehensive Testing Suite | Critical | 3d | 🔴 | *[To be created]* |
-| CM-042 | Beta Testing Program | High | 2d | 🔴 | *[To be created]* |
-| CM-043 | Performance Optimization | High | 2d | 🔴 | *[To be created]* |
-| CM-044 | Security Audit | Critical | 1d | 🔴 | *[To be created]* |
-| CM-045 | Accessibility Compliance | Medium | 1d | 🔴 | *[To be created]* |
+- **Total Tasks**: 19
+- **Not Started**: 19 (🔴)
+- **In Progress**: 0 (🟡)
+- **Completed**: 0 (🟢)
+- **Blocked**: 0 (⏸️)
+- **In Review**: 0 (🔄)
 
-### Week 19-20: Launch Readiness
-| Task ID | Title | Priority | Estimate | Status | File |
-|---|---|---|---|---|---|
-| CM-046 | Documentation Completion | High | 2d | 🔴 | *[To be created]* |
-| CM-047 | Support System Setup | High | 1d | 🔴 | *[To be created]* |
-| CM-048 | Marketing Asset Creation | Medium | 2d | 🔴 | *[To be created]* |
-| CM-049 | Legal Compliance Review | Critical | 1d | 🔴 | *[To be created]* |
-| CM-050 | Production Deployment | Critical | 2d | 🔴 | *[To be created]* |
+**Total Estimated Time**: ~23.5 days
 
 ---
 
-## Current State & Dependencies
+## 🎯 Suggested Implementation Order
 
-### Completed Foundation Work
-- ✅ New branch created: `feature/creator-marketplace`
-- ✅ Current state documented: [current-state-review-2025-09-10.md](./current-state-review-2025-09-10.md)
-- ✅ Comprehensive task breakdown created: [creator_marketplace_tasks.md](./creator_marketplace_tasks.md)
-- ✅ Detailed task files for critical path items
+### Phase 1: Critical Fixes (Week 1)
+Priority: Fix blocking issues and core functionality bugs
 
-### Next Immediate Actions
-1. **Start CM-001**: Setup Multi-Role User System (Critical path blocker)
-2. **Start CM-002**: Database Schema Design (Needed for all features)
-3. **Plan Sprint 1**: Focus on Phase 1 foundation (Weeks 1-4)
+1. ✅ ONBOARDING-1: iPhone 16 UI Fix (1 day) - Critical for new users
+2. ✅ UX-2: Board Image Error (0.5 day) - Visual bug
+3. ✅ UX-3: Board Collaboration Invite (1 day) - Core social feature broken
+4. ✅ SOCIAL-1: Fix Like Counter (0.5 day) - Core engagement metric
+5. ✅ SOCIAL-2: Fix Community Member Count (0.5 day) - Quick fix
 
-### Key Dependencies
-- **External**: Stripe Connect business verification
-- **Technical**: Supabase vector extension for AI features
-- **Legal**: Creator agreement templates and compliance
-- **Design**: Creator Marketplace UI components
+**Week 1 Total**: ~3.5 days
 
----
+### Phase 2: High-Value UX Improvements (Week 2)
+Priority: Improve core user flows and engagement
 
-## Success Metrics
+1. ✅ UX-1: One-Click Add Restaurant (1 day) - Reduce friction
+2. ✅ UX-4: Category & Tags Scrolling (0.5 day) - Remove friction
+3. ✅ UX-5: Board Menu Stays Open (0.5 day) - Polish
+4. ✅ RESTAURANT-5: Social Tab Default (0.5 day) - Better first impression
+5. ✅ SOCIAL-3: Activity Feed - Saves (1 day) - Social engagement
 
-### Creator Metrics (Q1 2025 Targets)
-- **500+** verified creators
-- **70%+** monthly retention rate
-- **$400+** average monthly earnings
-- **4.5+** creator satisfaction rating
+**Week 2 Total**: ~3.5 days
 
-### Restaurant Metrics
-- **100+** restaurants using campaigns
-- **80%+** campaign completion rate
-- **3x** average ROI on campaigns
-- **4.0+** restaurant satisfaction rating
+### Phase 3: Major Features (Week 3-4)
+Priority: Add high-impact new functionality
 
-### Platform Metrics
-- **$50K+** monthly GMV by Q1 end
-- **15%** platform take rate
-- **85%+** attribution accuracy
-- **99.5%+** payment success rate
+1. ✅ RESTAURANT-1: Save with Context (2 days) - Major UX improvement
+2. ✅ RESTAURANT-2: Mark as Visited (2 days) - Critical for tracking
+3. ✅ SOCIAL-4: Activity Feed - Board Creation (0.5 day) - Follows from SOCIAL-3
+4. ✅ HOME-1: Smart Feed Prompts (3 days) - Drive engagement
+5. ✅ NOTIFICATIONS-1: Push Strategy (2 days) - Retention driver
 
----
+**Week 3-4 Total**: ~9.5 days
 
-## Risk Mitigation
+### Phase 4: Business Features & Advanced (Week 5+)
+Priority: Enable business growth and advanced features
 
-### Technical Risks
-- **More Tab Organization**: Clear feature grouping and discoverability
-- **Performance Impact**: Continuous monitoring and optimization
-- **Data Privacy**: Privacy-by-design architecture
-- **Scalability**: Load testing before public launch
+1. ✅ RESTAURANT-4: Comments vs Reviews (2 days) - Lower friction content
+2. ✅ BUSINESS-1: Enhanced CTAs (1 day) - Business conversion
+3. ✅ BUSINESS-2: Restaurant Self-Edit (2 days) - Empower businesses
+4. ✅ RESTAURANT-3: Data Import (3 days) - Onboarding improvement
+5. ✅ DATABASE-1: Google Places Parameters (1 day) - Data quality
 
-### Business Risks
-- **Two-sided Growth**: Focus on creator acquisition first
-- **Payment Processing**: Early Stripe integration
-- **Legal Compliance**: Ongoing legal review process
-- **Market Competition**: Unique local focus differentiation
+**Week 5+ Total**: ~9 days
 
 ---
 
-## Working Agreement
+## 📝 Notes
 
-- **Daily Standups**: Progress updates on current CM tasks
-- **Weekly Reviews**: Phase completion and risk assessment
-- **Bi-weekly Demos**: Stakeholder feature demonstrations
-- **Monthly Retrospectives**: Process improvement and planning
+### Feedback Session Summary (10/1/2025)
+Key themes from user feedback:
+- **UX Polish**: Multiple small bugs impacting daily usage (clicks, scrolling, menus)
+- **Social Engagement**: Core social features broken (likes, counts, activity feed)
+- **Save/Visit Flow**: Need better context and tracking for saves and visits
+- **Onboarding**: iPhone 16 compatibility issues
+- **Business Tools**: Need to empower restaurant owners with self-service tools
+- **Engagement**: Replace passive feeds with active prompts and notifications
 
-### Definition of Done
-Each CM task must meet:
-- [ ] All acceptance criteria satisfied
-- [ ] Unit tests written and passing
-- [ ] Integration tests covering key flows
-- [ ] Code reviewed by senior developer
-- [ ] UI/UX matches approved designs
-- [ ] Accessibility requirements met
-- [ ] Performance impact assessed
-- [ ] Security considerations reviewed
-- [ ] Documentation updated
+### Dependencies
+- SOCIAL-4 depends on SOCIAL-3 (activity feed infrastructure)
+- Some tasks may unlock others or provide shared infrastructure
 
----
-
-## Reference Documentation
-
-### Design & Planning Documents
-- [Creator Marketplace Tasks Overview](./creator_marketplace_tasks.md)
-- [Current State Review](./current-state-review-2025-09-10.md)
-- [Technical Design Document](./CREATOR_MARKETPLACE_TECHNICAL_DESIGN.md)
-- [UX Design Document](./CREATOR_MARKETPLACE_UX_DESIGN.md)
-
-### Task Files (Detailed Specifications)
-- [CM-001: Multi-Role User System](./task-cm-001-multi-role-user-system.md)
-- [CM-002: Database Schema Design](./task-cm-002-database-schema-design.md)
-- [CM-003: More Tab Navigation System](./task-cm-003-more-tab-navigation.md)
-- [CM-011: Campaign Creation Wizard](./task-cm-011-campaign-creation-wizard.md)
-- [CM-021: Restaurant Claiming Flow](./task-cm-021-restaurant-claiming-flow.md)
-- *Additional task files will be created as development progresses*
+### Risk Areas
+- Activity feed may need significant refactoring
+- Data import could be complex depending on external API integrations
+- Push notifications require proper infrastructure setup
 
 ---
 
-_Last Updated: September 10, 2025_  
-_Target Launch: Q1 2025_  
-_Total Estimated Effort: 50 tasks, ~75 development days_
+## 🔄 Update Log
+
+| Date | Update | By |
+|------|--------|---|
+| 2025-10-01 | Initial task breakdown from v1.0.2 feedback session | - |
+
+---
+
+**Last Updated**: 2025-10-01
