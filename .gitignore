@@ -40,10 +40,6 @@ yarn-error.*
 
 app-example
 
-# tasks
-
-# docs
-docs/
 
 # documentation files
 README.md
@@ -70,6 +66,3 @@ dev-debug.log
 *.sw?
 # OS specific
 
-# Task files
-# tasks.json
-# tasks/ 

@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Troodie • Component Library Examples</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="font-[Inter] bg-white text-neutral-900 antialiased selection:bg-[#FFAD27]/20 selection:text-neutral-900" style="-webkit-tap-highlight-color: transparent; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom);">
+    <!-- Top Bar -->
+    <header class="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-neutral-200" style="padding-top: env(safe-area-inset-top);">
+      <div class="max-w-md mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 rounded-md bg-[#FFAD27] grid place-items-center ring-1 ring-black/10" style="letter-spacing:-0.04em;">
+            <span class="text-neutral-900 text-[13px] font-semibold">TR</span>
+          </div>
+          <div class="flex flex-col">
+            <h1 class="text-lg sm:text-xl font-semibold tracking-tight">Troodie Component Examples</h1>
+            <p class="text-xs text-neutral-500">Business Claim + Creator Onboarding</p>
+          </div>
+        </div>
+        <nav class="hidden sm:flex items-center gap-1">
+          <a href="#business-claim" class="px-2.5 py-1.5 rounded-lg text-xs ring-1 ring-neutral-200 bg-white hover:bg-neutral-50 hover:ring-neutral-300 transition">Business Flow</a>
+          <a href="#fraud-prevention" class="px-2.5 py-1.5 rounded-lg text-xs ring-1 ring-neutral-200 bg-white hover:bg-neutral-50 hover:ring-neutral-300 transition">Fraud</a>
+          <a href="#creator-flow" class="px-2.5 py-1.5 rounded-lg text-xs ring-1 ring-neutral-200 bg-white hover:bg-neutral-50 hover:ring-neutral-300 transition">Creator Flow</a>
+          <a href="#creator-studio" class="px-2.5 py-1.5 rounded-lg text-xs ring-1 ring-neutral-200 bg-white hover:bg-neutral-50 hover:ring-neutral-300 transition">Creator Studio</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-3 sm:px-4 py-6 sm:py-10 space-y-8 sm:space-y-14">
+      <!-- Business Claim Flow -->
+      <section id="business-claim" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Business Claim Flow • Screens</h2>
+          <span class="text-xs text-neutral-500">Examples using the component library</span>
+        </div>
+
+        <!-- Step 2: Verification Method -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 flex items-center justify-between border-b border-neutral-200">
+            <div class="flex items-center gap-2">
+              <button class="w-10 h-10 rounded-full hover:bg-neutral-50 ring-1 ring-neutral-200 active:scale-95 transition grid place-items-center">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
+              <span class="text-sm text-neutral-600">Step 1 of 4</span>
+            </div>
+            <div class="text-sm text-neutral-500">Business Claim</div>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <h3 class="text-[20px] sm:text-[22px] font-semibold tracking-tight">Verify You Own This Business</h3>
+              <p class="text-sm text-neutral-600 mt-1">Choose verification method:</p>
+            </div>
+            <div class="mt-4 grid md:grid-cols-2 gap-3 sm:gap-4">
+              <!-- Business Email -->
+              <button class="text-left p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 hover:ring-neutral-300 transition group">
+                <div class="flex items-start justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                      <i data-lucide="mail" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium">Business Email</p>
+                      <p class="text-sm text-neutral-600">Receive code at your domain email</p>
+                      <p class="text-xs text-neutral-500 mt-0.5">Example: @barcelonawine.com</p>
+                    </div>
+                  </div>
+                  <span class="text-[11px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/30">Fastest</span>
+                </div>
+              </button>
+              <!-- Phone Verification -->
+              <button class="text-left p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 hover:ring-neutral-300 transition group">
+                <div class="flex items-center gap-2">
+                  <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                    <i data-lucide="phone" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <p class="font-medium">Phone Verification</p>
+                    <p class="text-sm text-neutral-600">We'll call your business number</p>
+                    <p class="text-xs text-neutral-500 mt-0.5">Listed: (704) 555-0123</p>
+                  </div>
+                </div>
+              </button>
+              <!-- Document Upload -->
+              <button class="text-left p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 hover:ring-neutral-300 transition group">
+                <div class="flex items-start justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                      <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium">Document Upload</p>
+                      <p class="text-sm text-neutral-600">Upload business license or utility bill</p>
+                      <p class="text-xs text-neutral-500 mt-0.5">Manual review: 1–2 days</p>
+                    </div>
+                  </div>
+                  <span class="text-[11px] px-2 py-1 rounded-full bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/30">Manual review</span>
+                </div>
+              </button>
+              <!-- Stripe Connect -->
+              <button class="text-left p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 hover:ring-neutral-300 transition group">
+                <div class="flex items-start justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                      <i data-lucide="credit-card" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium">Stripe Connect</p>
+                      <p class="text-sm text-neutral-600">Instant verification via Stripe</p>
+                      <p class="text-xs text-neutral-500 mt-0.5">If you already use Stripe</p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Business Information -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 flex items-center justify-between border-b border-neutral-200">
+            <div class="flex items-center gap-2">
+              <button class="w-10 h-10 rounded-full hover:bg-neutral-50 ring-1 ring-neutral-200 active:scale-95 transition grid place-items-center">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
+              <span class="text-sm text-neutral-600">Step 2 of 4</span>
+            </div>
+            <div class="text-sm text-neutral-500">Business Claim</div>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <h3 class="text-[20px] sm:text-[22px] font-semibold tracking-tight">Confirm Business Details</h3>
+            </div>
+            <div class="mt-5 grid lg:grid-cols-2 gap-4 sm:gap-5">
+              <div class="space-y-4">
+                <!-- Business Name -->
+                <div>
+                  <label class="text-xs text-neutral-600">Business Name</label>
+                  <input type="text" value="Barcelona Wine Bar" class="mt-1 w-full h-12 px-3 rounded-xl bg-white ring-1 ring-neutral-200 focus:ring-[#FFAD27] outline-none">
+                </div>
+                <!-- Your Role -->
+                <div class="relative">
+                  <label class="text-xs text-neutral-600">Your Role</label>
+                  <button class="mt-1 w-full h-12 px-3 rounded-xl bg-white ring-1 ring-neutral-200 flex items-center justify-between hover:bg-neutral-50">
+                    <span class="text-sm text-neutral-700">Owner</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 text-[#FFAD27]"></i>
+                  </button>
+                  <!-- Menu (static example) -->
+                  <div class="absolute mt-2 left-0 right-0 rounded-xl bg-white ring-1 ring-neutral-200 shadow-xl hidden">
+                    <div class="p-2 text-sm">
+                      <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-neutral-50">Owner</button>
+                      <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-neutral-50">Manager</button>
+                      <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-neutral-50">Marketing Director</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- Business Type -->
+                <div class="relative">
+                  <label class="text-xs text-neutral-600">Business Type</label>
+                  <button class="mt-1 w-full h-12 px-3 rounded-xl bg-white ring-1 ring-neutral-200 flex items-center justify-between hover:bg-neutral-50">
+                    <span class="text-sm text-neutral-700">Restaurant</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 text-[#FFAD27]"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <!-- Operating Hours -->
+                <div>
+                  <label class="text-xs text-neutral-600">Operating Hours</label>
+                  <div class="mt-1 p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                    <div class="flex items-center justify-between text-sm">
+                      <div class="space-y-1.5">
+                        <p>Mon–Thu: 11:30 AM – 10:00 PM</p>
+                        <p>Fri–Sat: 11:30 AM – 11:00 PM</p>
+                        <p>Sunday: 11:30 AM – 9:00 PM</p>
+                      </div>
+                      <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 active:scale-95 transition text-sm">Edit Hours</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- Contact for Campaigns -->
+                <div>
+                  <label class="text-xs text-neutral-600">Contact for Campaigns</label>
+                  <div class="mt-1 grid sm:grid-cols-2 gap-2">
+                    <input type="email" value="marketing@barcelonawine.com" class="w-full h-12 px-3 rounded-xl bg-white ring-1 ring-neutral-200 focus:ring-[#FFAD27] outline-none text-sm">
+                    <input type="tel" value="704-555-0123" class="w-full h-12 px-3 rounded-xl bg-white ring-1 ring-neutral-200 focus:ring-[#FFAD27] outline-none text-sm">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-6 flex items-center justify-end">
+              <button class="w-full sm:w-auto px-5 h-11 rounded-full bg-[#FFAD27] text-neutral-900 font-medium hover:brightness-110 active:scale-95 transition">Continue</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Onboarding & First Campaign -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 flex items-center justify-between border-b border-neutral-200">
+            <div class="flex items-center gap-2">
+              <button class="w-10 h-10 rounded-full hover:bg-neutral-50 ring-1 ring-neutral-200 active:scale-95 transition grid place-items-center">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
+              <span class="text-sm text-neutral-600">Step 3 of 4</span>
+            </div>
+            <div class="text-sm text-neutral-500">Business Claim</div>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-sm">
+                <span>🎉 Welcome to Troodie for Business!</span>
+              </div>
+              <p class="text-[17px] mt-3">Your restaurant is now verified</p>
+            </div>
+            <div class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4">
+              <!-- Launch First Campaign -->
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:ring-neutral-300 hover:bg-neutral-50 transition">
+                <div class="flex items-start justify-between">
+                  <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                    <i data-lucide="rocket" class="w-5 h-5"></i>
+                  </div>
+                  <span class="text-[11px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/30">Incentive</span>
+                </div>
+                <p class="mt-3 font-medium">Launch Your First Campaign</p>
+                <p class="text-sm text-neutral-600">Get $100 in free credits. Reach 5,000+ local foodies.</p>
+                <button class="mt-3 w-full h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Start Campaign • Recommended</button>
+              </div>
+              <!-- Update Photos & Menu -->
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:ring-neutral-300 hover:bg-neutral-50 transition">
+                <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                  <i data-lucide="camera" class="w-5 h-5"></i>
+                </div>
+                <p class="mt-3 font-medium">Update Photos & Menu</p>
+                <p class="text-sm text-neutral-600">Refresh your restaurant's look.</p>
+                <button class="mt-3 w-full h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Update Content</button>
+              </div>
+              <!-- View Dashboard -->
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:ring-neutral-300 hover:bg-neutral-50 transition">
+                <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                  <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                </div>
+                <p class="mt-3 font-medium">View Your Dashboard</p>
+                <p class="text-sm text-neutral-600">See who's saving your restaurant.</p>
+                <button class="mt-3 w-full h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Go to Dashboard</button>
+              </div>
+            </div>
+            <div class="mt-4 text-center">
+              <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Skip for now</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 5: Business Dashboard (Post-Claim) -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 flex items-center justify-between border-b border-neutral-200">
+            <div class="flex items-center gap-2">
+              <div class="h-8 w-8 rounded-md bg-[#FFAD27] grid place-items-center ring-1 ring-black/10" style="letter-spacing:-0.04em;">
+                <span class="text-neutral-900 text-[13px] font-semibold">BW</span>
+              </div>
+              <span class="font-medium">Barcelona Wine Bar</span>
+            </div>
+            <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 active:scale-95 transition flex items-center gap-2 text-sm">
+              <i data-lucide="settings" class="w-4 h-4"></i> Settings
+            </button>
+          </div>
+          <div class="p-4 sm:p-6 space-y-6">
+            <!-- This Week's Performance -->
+            <div>
+              <p class="text-sm text-neutral-700 mb-2">This Week's Performance</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="eye" class="w-5 h-5 text-neutral-700"></i>
+                      <span class="text-sm text-neutral-600">Views</span>
+                    </div>
+                    <span class="text-[11px] text-emerald-700 px-1.5 py-0.5 rounded bg-emerald-500/15 ring-1 ring-emerald-500/30">↑ 23%</span>
+                  </div>
+                  <p class="mt-1 font-semibold tracking-tight">1,247</p>
+                </div>
+                <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="bookmark" class="w-5 h-5 text-neutral-700"></i>
+                      <span class="text-sm text-neutral-600">Saves</span>
+                    </div>
+                    <span class="text-[11px] text-emerald-700 px-1.5 py-0.5 rounded bg-emerald-500/15 ring-1 ring-emerald-500/30">↑ 12%</span>
+                  </div>
+                  <p class="mt-1 font-semibold tracking-tight">89</p>
+                </div>
+                <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="footprints" class="w-5 h-5 text-neutral-700"></i>
+                      <span class="text-sm text-neutral-600">Visits</span>
+                    </div>
+                    <span class="text-[11px] text-emerald-700 px-1.5 py-0.5 rounded bg-emerald-500/15 ring-1 ring-emerald-500/30">↑ 8%</span>
+                  </div>
+                  <p class="mt-1 font-semibold tracking-tight">34</p>
+                </div>
+                <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="banknote" class="w-5 h-5 text-neutral-700"></i>
+                      <span class="text-sm text-neutral-600">Revenue</span>
+                    </div>
+                    <span class="text-[11px] text-emerald-700 px-1.5 py-0.5 rounded bg-emerald-500/15 ring-1 ring-emerald-500/30">↗︎</span>
+                  </div>
+                  <p class="mt-1 font-semibold tracking-tight">$2,380</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Campaigns -->
+            <div>
+              <p class="text-sm text-neutral-700 mb-2">Active Campaigns (1)</p>
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p class="font-medium">“Summer Tapas Special”</p>
+                    <p class="text-sm text-neutral-600">3 creators • $150 budget • 12 days remaining</p>
+                  </div>
+                  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <button class="w-full sm:w-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">View Details</button>
+                    <button class="w-full sm:w-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Pause</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Create Campaign</button>
+              <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Invite Creators</button>
+              <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Update Info</button>
+              <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">View Analytics</button>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+              <p class="font-medium mb-2">Recent Activity</p>
+              <ul class="text-sm text-neutral-700 space-y-1.5">
+                <li class="flex items-start gap-2"><span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-neutral-300"></span> Sarah K. saved to “Date Nights”</li>
+                <li class="flex items-start gap-2"><span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-neutral-300"></span> Mike R. visited after seeing post</li>
+                <li class="flex items-start gap-2"><span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-neutral-300"></span> New review from Jessica (4.5★)</li>
+              </ul>
+              <div class="mt-3">
+                <button class="w-full sm:w-auto text-sm text-[#FFAD27] hover:underline">View Full Dashboard →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Fraud Prevention Measures -->
+      <section id="fraud-prevention" class="space-y-5 sm:space-y-6">
+        <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Fraud Prevention Measures</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+            <div class="flex items-center gap-2">
+              <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i>
+              <p class="font-medium">Domain email verification</p>
+            </div>
+            <p class="text-sm text-neutral-600 mt-1">Instant approval via matching business domain.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+            <div class="flex items-center gap-2">
+              <i data-lucide="phone" class="w-5 h-5 text-emerald-600"></i>
+              <p class="font-medium">Phone verification</p>
+            </div>
+            <p class="text-sm text-neutral-600 mt-1">Matches public business listings.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+            <div class="flex items-center gap-2">
+              <i data-lucide="file-check-2" class="w-5 h-5 text-emerald-600"></i>
+              <p class="font-medium">Manual review</p>
+            </div>
+            <p class="text-sm text-neutral-600 mt-1">Document uploads reviewed within 1–2 days.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+            <div class="flex items-center gap-2">
+              <i data-lucide="ban" class="w-5 h-5 text-emerald-600"></i>
+              <p class="font-medium">Existing claims block duplicates</p>
+            </div>
+            <p class="text-sm text-neutral-600 mt-1">Prevents multiple owners from claiming the same listing.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+            <div class="flex items-center gap-2">
+              <i data-lucide="flag" class="w-5 h-5 text-emerald-600"></i>
+              <p class="font-medium">Dispute flag system</p>
+            </div>
+            <p class="text-sm text-neutral-600 mt-1">Escalation workflows for disputed claims.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Creator Transformation -->
+      <section id="creator-flow" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">User → Creator Transformation • Screens</h2>
+          <span class="text-xs text-neutral-500">Onboarding and prompts</span>
+        </div>
+
+        <!-- Discovery: Feed Prompt -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 border-b border-neutral-200">
+            <span class="text-sm text-neutral-600">Discover Feed</span>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="h-20 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 grid place-items-center text-neutral-400 text-sm">… regular feed content …</div>
+            <div class="mt-4 p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+              <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">💰</div>
+                <div class="flex-1">
+                  <p class="font-medium">You're in the top 10% of users</p>
+                  <p class="text-sm text-neutral-600 mt-0.5">Your 47 saves have been viewed 1,234 times this month!</p>
+                  <p class="text-sm mt-2">Turn your taste into income</p>
+                  <div class="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <button class="w-full sm:w-auto px-3 h-9 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Learn More</button>
+                    <button class="w-full sm:w-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Dismiss</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 h-20 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 grid place-items-center text-neutral-400 text-sm">… feed continues …</div>
+          </div>
+        </div>
+
+        <!-- Step 1: Value Proposition -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <button class="w-10 h-10 rounded-full hover:bg-neutral-50 ring-1 ring-neutral-200 active:scale-95 transition grid place-items-center">
+              <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+            <span class="text-sm text-neutral-600">Creator Onboarding</span>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <h3 class="text-[20px] sm:text-[22px] font-semibold tracking-tight">Become a Troodie Creator</h3>
+              <div class="mt-3 w-full h-32 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 grid place-items-center text-neutral-400 text-sm">Animated illustration of user → $$$</div>
+              <p class="text-[15px] text-neutral-700 mt-3">Your saves are already helping others discover great restaurants. Now get paid for your recommendations!</p>
+            </div>
+            <div class="mt-5 grid md:grid-cols-2 gap-3 sm:gap-4">
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="text-sm"><b class="font-medium">1️⃣ Share</b> what you already save</p>
+                <p class="text-sm mt-2"><b class="font-medium">2️⃣ Restaurants pay</b> for your exposure</p>
+                <p class="text-sm mt-2"><b class="font-medium">3️⃣ Earn</b> $25–100 per campaign</p>
+                <p class="text-sm mt-2"><b class="font-medium">4️⃣ Get paid</b> instantly via Stripe</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="text-sm text-neutral-600 mb-2">Success Stories</p>
+                <div class="p-3 rounded-lg bg-[#FFFAF2] ring-1 ring-black/10">
+                  <p class="text-sm">“I earn $400/month sharing places I already love!”</p>
+                  <p class="text-xs text-neutral-600 mt-1">— Sarah, CLT</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 justify-center">
+              <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Get Started • 2 min setup</button>
+              <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">See Example Creators</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Quick Qualification -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <button class="w-10 h-10 rounded-full hover:bg-neutral-50 ring-1 ring-neutral-200 active:scale-95 transition grid place-items-center">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
+              <span class="text-sm text-neutral-600">Step 1 of 3</span>
+            </div>
+            <span class="text-sm text-neutral-600">Creator Onboarding</span>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <h3 class="text-[20px] sm:text-[22px] font-semibold tracking-tight">Let's Check Your Creator Status</h3>
+            </div>
+            <div class="mt-4 grid md:grid-cols-2 gap-3 sm:gap-4">
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="space-y-2 text-sm">
+                  <div class="flex items-center gap-2 text-emerald-700">
+                    <i data-lucide="check-circle-2" class="w-5 h-5"></i> 47 restaurant saves
+                  </div>
+                  <div class="flex items-center gap-2 text-emerald-700">
+                    <i data-lucide="check-circle-2" class="w-5 h-5"></i> 6 boards created
+                  </div>
+                  <div class="flex items-center gap-2 text-emerald-700">
+                    <i data-lucide="check-circle-2" class="w-5 h-5"></i> Profile photo uploaded
+                  </div>
+                  <div class="flex items-center gap-2 text-emerald-700">
+                    <i data-lucide="check-circle-2" class="w-5 h-5"></i> 12 friends connected
+                  </div>
+                </div>
+                <p class="mt-3 text-sm">Wow! You're already qualified 🎉</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="text-sm text-neutral-700">Choose your creator focus</p>
+                <p class="text-xs text-neutral-500">(Select all that apply)</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <!-- Custom toggle chips -->
+                  <button aria-pressed="true" class="px-3 h-8 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-sm">Local Favorites</button>
+                  <button aria-pressed="false" class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Date Night Spots</button>
+                  <button aria-pressed="true" class="px-3 h-8 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-sm">Hidden Gems</button>
+                  <button aria-pressed="false" class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Family Friendly</button>
+                  <button aria-pressed="false" class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Vegan/Vegetarian</button>
+                  <button aria-pressed="false" class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Fine Dining</button>
+                  <button aria-pressed="true" class="px-3 h-8 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-sm">Casual Eats</button>
+                </div>
+              </div>
+            </div>
+            <div class="mt-5 flex items-center justify-end">
+              <button class="w-full sm:w-auto px-5 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Continue</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Content Showcase -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <button class="w-10 h-10 rounded-full hover:bg-neutral-50 ring-1 ring-neutral-200 active:scale-95 transition grid place-items-center">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
+              <span class="text-sm text-neutral-600">Step 2 of 3</span>
+            </div>
+            <span class="text-sm text-neutral-600">Creator Onboarding</span>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <h3 class="text-[20px] sm:text-[22px] font-semibold tracking-tight">Showcase Your Best Content</h3>
+              <p class="text-sm text-neutral-600">Select 3–5 of your best saves to feature:</p>
+            </div>
+            <div class="mt-5 grid md:grid-cols-2 gap-3">
+              <!-- Save item (selected) -->
+              <button class="w-full text-left p-3 rounded-lg bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                <div class="flex items-start gap-3">
+                  <div class="w-5 h-5 rounded-md bg-[#FFAD27] text-neutral-900 grid place-items-center ring-1 ring-black/10">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-medium">Haberdish</p>
+                    <p class="text-xs text-neutral-600">“Best fried chicken in CLT!” • Saved 2 days ago</p>
+                  </div>
+                </div>
+              </button>
+              <!-- Save item (selected) -->
+              <button class="w-full text-left p-3 rounded-lg bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                <div class="flex items-start gap-3">
+                  <div class="w-5 h-5 rounded-md bg-[#FFAD27] text-neutral-900 grid place-items-center ring-1 ring-black/10">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-medium">Barcelona Wine Bar</p>
+                    <p class="text-xs text-neutral-600">“Perfect date night spot” • Saved last week</p>
+                  </div>
+                </div>
+              </button>
+              <!-- Save item (unselected) -->
+              <button class="w-full text-left p-3 rounded-lg bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                <div class="flex items-start gap-3">
+                  <div class="w-5 h-5 rounded-md bg-white ring-1 ring-neutral-200"></div>
+                  <div class="flex-1">
+                    <p class="font-medium">Amelie's French Bakery</p>
+                    <p class="text-xs text-neutral-600">“Amazing pastries” • Saved last month</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+            <!-- Bio -->
+            <div class="mt-4">
+              <label class="text-xs text-neutral-600">Add a creator bio (optional)</label>
+              <textarea rows="3" class="mt-1 w-full px-3 py-2 rounded-xl bg-white ring-1 ring-neutral-200 focus:ring-[#FFAD27] outline-none placeholder:text-neutral-400" placeholder="Charlotte foodie who loves finding hidden gems..."></textarea>
+            </div>
+            <div class="mt-5 flex items-center justify-end">
+              <button class="w-full sm:w-auto px-5 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Continue</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Payment Setup -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <button class="w-10 h-10 rounded-full hover:bg-neutral-50 ring-1 ring-neutral-200 active:scale-95 transition grid place-items-center">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
+              <span class="text-sm text-neutral-600">Step 3 of 3</span>
+            </div>
+            <span class="text-sm text-neutral-600">Creator Onboarding</span>
+          </div>
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <h3 class="text-[20px] sm:text-[22px] font-semibold tracking-tight">Set Up Instant Payments</h3>
+              <p class="text-sm text-neutral-600">Get paid immediately when campaigns complete.</p>
+            </div>
+            <div class="mt-5 grid md:grid-cols-2 gap-3 sm:gap-4">
+              <!-- Stripe Connect -->
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:ring-neutral-300 hover:bg-neutral-50 transition">
+                <div class="flex items-start justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                      <i data-lucide="credit-card" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium">Connect with Stripe</p>
+                      <ul class="text-sm text-neutral-600 mt-1 space-y-1">
+                        <li>• Instant payouts</li>
+                        <li>• Direct to your bank</li>
+                        <li>• Secure & trusted</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <span class="text-[11px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/30">Recommended</span>
+                </div>
+                <button class="mt-3 w-full h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Connect Stripe</button>
+              </div>
+              <!-- Direct Deposit -->
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200 hover:ring-neutral-300 hover:bg-neutral-50 transition">
+                <div class="flex items-center gap-2">
+                  <div class="w-9 h-9 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                    <i data-lucide="banknote" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <p class="font-medium">Direct Deposit</p>
+                    <ul class="text-sm text-neutral-600 mt-1 space-y-1">
+                      <li>• Weekly payments</li>
+                      <li>• $10 minimum payout</li>
+                    </ul>
+                  </div>
+                </div>
+                <button class="mt-3 w-full h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Add Bank Details</button>
+              </div>
+            </div>
+            <!-- Rate + Terms -->
+            <div class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4">
+              <div class="md:col-span-2 p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="text-sm text-neutral-700">Your Rate (you can change this later)</p>
+                <p class="text-sm mt-1">Starting rate: <b class="font-medium">$25–50</b> per campaign</p>
+                <button class="mt-3 w-full sm:w-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Accept Suggested Rate</button>
+              </div>
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="text-sm text-neutral-700 mb-2">Terms</p>
+                <!-- Custom checks -->
+                <div class="space-y-2 text-sm">
+                  <div class="flex items-center gap-2">
+                    <div class="w-4.5 h-4.5 rounded-[6px] bg-[#FFAD27] text-neutral-900 grid place-items-center ring-1 ring-black/10">
+                      <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span>I agree to create authentic content</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-4.5 h-4.5 rounded-[6px] bg-[#FFAD27] text-neutral-900 grid place-items-center ring-1 ring-black/10">
+                      <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span>I'll disclose sponsored posts</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-5 flex items-center justify-end">
+              <button class="w-full sm:w-auto px-5 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Become a Creator</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Success State -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-4 sm:p-6">
+            <div class="text-center">
+              <div class="text-[34px] leading-none">🎉</div>
+              <h3 class="text-[20px] sm:text-[22px] font-semibold tracking-tight mt-1">You're Now a Troodie Creator!</h3>
+              <div class="mt-3 grid md:grid-cols-2 gap-3 sm:gap-4">
+                <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                  <p class="font-medium">Your first opportunities</p>
+                  <div class="mt-2 p-3 rounded-lg bg-[#FFFAF2] ring-1 ring-black/10">
+                    <p class="text-sm">💰 3 campaigns match your style</p>
+                    <p class="text-sm">Total potential: $125</p>
+                    <button class="mt-2 w-full h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">View Campaigns</button>
+                  </div>
+                </div>
+                <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                  <p class="font-medium mb-2">What's new</p>
+                  <ul class="text-sm text-neutral-700 space-y-1.5">
+                    <li>• “Studio” tab in your navigation</li>
+                    <li>• Creator badge on your profile ✓</li>
+                    <li>• Priority in search results</li>
+                    <li>• Weekly earning opportunities</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
+                <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Go to Creator Studio</button>
+                <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Browse Campaigns</button>
+                <button class="w-full sm:w-auto px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 active:scale-95 transition">Complete Profile</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Creator Studio -->
+      <section id="creator-studio" class="space-y-5 sm:space-y-6">
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 sm:px-5 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="font-medium tracking-tight">Creator Studio</span>
+            </div>
+            <div class="px-2.5 py-1 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-sm">💰 $47 pending</div>
+          </div>
+          <div class="p-4 sm:p-6 space-y-5">
+            <!-- Tabs -->
+            <div class="flex items-center gap-2 overflow-x-auto">
+              <button class="px-3 h-9 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium">Opportunities</button>
+              <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Active</button>
+              <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Completed</button>
+            </div>
+
+            <!-- New Opportunities -->
+            <div>
+              <p class="text-sm text-neutral-700 mb-2">New Opportunities (3)</p>
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p class="font-medium">Optimist Hall Food Hall</p>
+                    <p class="text-sm text-neutral-600">💰 $50 • 📍 0.8 mi • “Share your favorite stall”</p>
+                    <p class="text-xs text-neutral-500 mt-0.5">Match: 92% • Ends in 3 days</p>
+                  </div>
+                  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <button class="w-full sm:w-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">View Details</button>
+                    <button class="w-full sm:w-auto px-3 h-9 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110 active:scale-95 transition">Quick Apply</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid md:grid-cols-2 gap-3 sm:gap-4">
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="font-medium mb-2">Your Stats This Month</p>
+                <ul class="text-sm text-neutral-700 space-y-1.5">
+                  <li>• 12 campaigns completed</li>
+                  <li>• $420 earned</li>
+                  <li>• 1,247 people reached</li>
+                  <li>• 89 restaurant visits attributed</li>
+                </ul>
+              </div>
+              <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="font-medium mb-2">Level Up</p>
+                <p class="text-sm text-neutral-700">🏆 3 more campaigns to Gold</p>
+                <p class="text-xs text-neutral-600">Gold creators earn 20% more</p>
+                <div class="mt-3 h-2.5 rounded-full bg-neutral-100 ring-1 ring-neutral-200 overflow-hidden">
+                  <div class="h-full w-[70%] bg-[#FFAD27]"></div>
+                </div>
+                <p class="mt-1 text-xs text-neutral-600">70% complete</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NEW: DISCOVER SCREEN (Unified Across States) -->
+      <section id="discover" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Discover Screen • Unified Structure</h2>
+          <span class="text-xs text-neutral-500">Always discover, never empty</span>
+        </div>
+
+        <!-- Discover: Anonymous -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sm">
+              <div class="w-7 h-7 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+              </div>
+              <span>Charlotte, NC</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="w-9 h-9 rounded-full ring-1 ring-neutral-200 hover:bg-neutral-50 grid place-items-center relative">
+                <i data-lucide="bell" class="w-4.5 h-4.5"></i>
+                <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#FFAD27] ring-2 ring-white"></span>
+              </button>
+            </div>
+          </div>
+          <div class="p-4">
+            <!-- Pull to refresh indicator -->
+            <div class="flex items-center justify-center gap-2 text-xs text-neutral-500">
+              <div class="h-5 w-5 rounded-md bg-[#FFAD27] grid place-items-center ring-1 ring-black/10">
+                <span class="text-[10px] font-semibold animate-spin">TR</span>
+              </div>
+              <span>Pull to refresh</span>
+            </div>
+
+            <!-- Section 1: Social Layer -->
+            <div class="mt-4">
+              <div class="flex items-center justify-between">
+                <p class="text-[15px] font-medium">Trending Now</p>
+                <span class="text-xs text-neutral-500">Popular in Charlotte</span>
+              </div>
+              <div class="mt-2 p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex items-center gap-2 text-sm">
+                  <i data-lucide="flame" class="w-4 h-4 text-rose-500"></i>
+                  <span>Community favorites rising this hour</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Discovery Cards -->
+            <div class="mt-4 space-y-3">
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600&auto=format&fit=crop" alt="" class="w-16 h-16 rounded-lg object-cover ring-1 ring-neutral-200">
+                  <div class="flex-1">
+                    <p class="font-medium">Barcelona Wine Bar</p>
+                    <p class="text-xs text-neutral-600">⭐ 4.7 • Spanish • 0.8 mi</p>
+                    <p class="text-xs text-neutral-700 mt-1">147 saved this week</p>
+                  </div>
+                  <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Save</button>
+                </div>
+              </div>
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=600&auto=format&fit=crop" alt="" class="w-16 h-16 rounded-lg object-cover ring-1 ring-neutral-200">
+                  <div class="flex-1">
+                    <p class="font-medium">Haberdish</p>
+                    <p class="text-xs text-neutral-600">⭐ 4.6 • Southern • 1.1 mi</p>
+                    <p class="text-xs text-neutral-700 mt-1">New this week</p>
+                  </div>
+                  <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Save</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Categories -->
+            <div class="mt-4">
+              <p class="text-[15px] font-medium">Categories</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Breakfast</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Lunch</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Dinner</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Coffee</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Bars</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Dessert</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">More…</button>
+              </div>
+            </div>
+
+            <!-- Section 4: Smart Recommendations -->
+            <div class="mt-4">
+              <div class="flex items-center justify-between">
+                <p class="text-[15px] font-medium">Popular Right Now 🔥</p>
+              </div>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                <div class="p-2 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <img src="https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop" class="h-20 w-full object-cover rounded-md ring-1 ring-neutral-200" alt="">
+                  <p class="text-xs mt-1">Optimist Hall</p>
+                </div>
+                <div class="p-2 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <img src="https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?q=80&w=600&auto=format&fit=crop" class="h-20 w-full object-cover rounded-md ring-1 ring-neutral-200" alt="">
+                  <p class="text-xs mt-1">Snooze</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 5: Engagement Prompt -->
+            <div class="mt-4">
+              <div class="p-4 rounded-xl bg-[#FFFAF2] ring-1 ring-black/10">
+                <p class="text-sm font-medium">Join to save your favorites</p>
+                <div class="mt-2 flex items-center gap-2">
+                  <button class="px-3 h-9 rounded-full bg-[#FFAD27] text-neutral-900 text-xs font-medium hover:brightness-110">Sign up</button>
+                  <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Continue as guest</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discover: New User (logged in, no friends) -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sm">
+              <div class="w-7 h-7 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+              </div>
+              <span>Charlotte, NC</span>
+            </div>
+            <button class="w-9 h-9 rounded-full ring-1 ring-neutral-200 hover:bg-neutral-50 grid place-items-center">
+              <i data-lucide="bell" class="w-4.5 h-4.5"></i>
+            </button>
+          </div>
+          <div class="p-4">
+            <!-- Conditional Welcome -->
+            <div class="p-4 rounded-xl bg-white ring-1 ring-neutral-200">
+              <p class="font-medium">Welcome to Troodie</p>
+              <p class="text-sm text-neutral-600 mt-1">Follow a few topics to personalize your feed.</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button class="px-3 h-8 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-sm">Brunch</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm">Date Night</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm">Hidden Gems</button>
+              </div>
+            </div>
+
+            <!-- Section 1 -->
+            <div class="mt-4">
+              <div class="flex items-center justify-between">
+                <p class="text-[15px] font-medium">For You</p>
+                <span class="text-xs text-neutral-500">Based on your saved places</span>
+              </div>
+              <div class="mt-2 p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex items-center gap-2 text-sm">
+                  <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+                  <span>Personalized picks to get started</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2 -->
+            <div class="mt-4 space-y-3">
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=600&auto=format&fit=crop" class="w-16 h-16 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                  <div class="flex-1">
+                    <p class="font-medium">Snooze, an A.M. Eatery</p>
+                    <p class="text-xs text-neutral-600">⭐ 4.5 • Breakfast • 0.2 mi</p>
+                    <p class="text-xs text-neutral-700 mt-1">Matches your taste</p>
+                  </div>
+                  <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Save</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3 -->
+            <div class="mt-4">
+              <p class="text-[15px] font-medium">Categories</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button class="px-3 h-8 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-sm">Breakfast</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm">Lunch</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm">Dinner</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-sm">Coffee</button>
+              </div>
+            </div>
+
+            <!-- Section 4 -->
+            <div class="mt-4">
+              <p class="text-[15              <p class="text-[15px] font-medium">Suggested Creators</p>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <div class="flex items-center gap-2">
+                    <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" alt="Ava" class="w-8 h-8 rounded-full object-cover ring-1 ring-neutral-200">
+                    <div>
+                      <p class="text-sm font-medium leading-tight">Ava M.</p>
+                      <p class="text-xs text-neutral-500">Brunch, Coffee</p>
+                    </div>
+                  </div>
+                  <button class="mt-2 w-full h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Follow</button>
+                </div>
+                <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <div class="flex items-center gap-2">
+                    <img src="https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=200&auto=format&fit=crop" alt="Jae" class="w-8 h-8 rounded-full object-cover ring-1 ring-neutral-200">
+                    <div>
+                      <p class="text-sm font-medium leading-tight">Jae P.</p>
+                      <p class="text-xs text-neutral-500">Hidden Gems</p>
+                    </div>
+                  </div>
+                  <button class="mt-2 w-full h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Follow</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 5 -->
+            <div class="mt-4">
+              <div class="p-4 rounded-xl bg-[#FFFAF2] ring-1 ring-black/10">
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-white grid place-items-center ring-1 ring-neutral-200">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium">Find friends on Troodie</p>
+                    <p class="text-xs text-neutral-600 mt-0.5">See places your friends are saving and visiting</p>
+                    <div class="mt-2 flex items-center gap-2">
+                      <button class="px-3 h-9 rounded-full bg-[#FFAD27] text-neutral-900 text-xs font-medium hover:brightness-110">Connect Contacts</button>
+                      <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Skip</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Discover: Active User (friends + saves) -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sm">
+              <div class="w-7 h-7 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+              </div>
+              <span>Charlotte, NC</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="w-9 h-9 rounded-full ring-1 ring-neutral-200 hover:bg-neutral-50 grid place-items-center">
+                <i data-lucide="search" class="w-4.5 h-4.5"></i>
+              </button>
+              <button class="w-9 h-9 rounded-full ring-1 ring-neutral-200 hover:bg-neutral-50 grid place-items-center">
+                <i data-lucide="bell" class="w-4.5 h-4.5"></i>
+              </button>
+            </div>
+          </div>
+          <div class="p-4">
+            <!-- Section: From Friends -->
+            <div>
+              <div class="flex items-center justify-between">
+                <p class="text-[15px] font-medium">From Friends</p>
+                <button class="text-xs text-[#FFAD27] hover:underline">View all</button>
+              </div>
+              <div class="mt-2 space-y-2">
+                <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                  <div class="flex items-start gap-3">
+                    <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" class="w-8 h-8 rounded-full object-cover ring-1 ring-neutral-200" alt="">
+                    <div class="flex-1">
+                      <p class="text-sm"><span class="font-medium">Ava</span> saved <span class="font-medium">Leah & Louise</span></p>
+                      <p class="text-xs text-neutral-600 mt-0.5">“Get the smoked mushroom toast” • 2h ago</p>
+                    </div>
+                    <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Save</button>
+                  </div>
+                </div>
+                <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                  <div class="flex items-start gap-3">
+                    <img src="https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=200&auto=format&fit=crop" class="w-8 h-8 rounded-full object-cover ring-1 ring-neutral-200" alt="">
+                    <div class="flex-1">
+                      <p class="text-sm"><span class="font-medium">Jae</span> visited <span class="font-medium">Optimist Hall</span></p>
+                      <p class="text-xs text-neutral-600 mt-0.5">“Cheesy birria tacos 🔥” • Yesterday</p>
+                    </div>
+                    <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Save</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Near You -->
+            <div class="mt-4">
+              <div class="flex items-center justify-between">
+                <p class="text-[15px] font-medium">New Near You</p>
+                <span class="text-xs text-neutral-500">Within 1 mile</span>
+              </div>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                <div class="p-2 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <img src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=600&auto=format&fit=crop" class="h-20 w-full object-cover rounded-md ring-1 ring-neutral-200" alt="">
+                  <p class="text-xs mt-1">Supperland</p>
+                  <p class="text-[11px] text-neutral-500">Steak • 0.6 mi</p>
+                </div>
+                <div class="p-2 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600&auto=format&fit=crop" class="h-20 w-full object-cover rounded-md ring-1 ring-neutral-200" alt="">
+                  <p class="text-xs mt-1">Mizu</p>
+                  <p class="text-[11px] text-neutral-500">Japanese • 0.9 mi</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Quick Actions -->
+            <div class="mt-4 flex items-center gap-2 overflow-x-auto">
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50 flex items-center gap-1">
+                <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filters
+              </button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Open Now</button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Offers</button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Top Rated</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discover: Creator (same layout, extra insights) -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sm">
+              <div class="w-7 h-7 rounded-full bg-[#FFFAF2] grid place-items-center ring-1 ring-black/10">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+              </div>
+              <span>Charlotte, NC</span>
+            </div>
+            <div class="px-2.5 py-1 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-xs">Creator mode</div>
+          </div>
+          <div class="p-4">
+            <!-- Insight banner -->
+            <div class="p-4 rounded-xl bg-[#FFFAF2] ring-1 ring-black/10">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-full bg-white grid place-items-center ring-1 ring-neutral-200">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium">1,247 views this week</p>
+                    <p class="text-xs text-neutral-600">+23% vs last week</p>
+                  </div>
+                </div>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">View Studio</button>
+              </div>
+            </div>
+
+            <!-- Recommended to share -->
+            <div class="mt-4">
+              <div class="flex items-center justify-between">
+                <p class="text-[15px] font-medium">Recommended to Share</p>
+                <span class="text-xs text-neutral-500">High match</span>
+              </div>
+              <div class="mt-2 space-y-2">
+                <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+                  <div class="flex items-center gap-3">
+                    <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=600&auto=format&fit=crop" class="w-14 h-14 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                    <div class="flex-1">
+                      <p class="font-medium">Trolley Barn</p>
+                      <p class="text-xs text-neutral-600">Food Hall • 1.2 mi</p>
+                      <p class="text-[11px] text-emerald-700 mt-0.5">Opportunity: $50</p>
+                    </div>
+                    <button class="px-3 h-8 rounded-full bg-[#FFAD27] text-neutral-900 text-xs font-medium hover:brightness-110">Share</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Categories (creator) -->
+            <div class="mt-4">
+              <p class="text-[15px] font-medium">Your Topics</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button class="px-3 h-8 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-xs">Hidden Gems</button>
+                <button class="px-3 h-8 rounded-full bg-[#FFFAF2] ring-1 ring-black/10 text-xs">Casual Eats</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">More…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Map -->
+      <section id="map" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Map</h2>
+          <span class="text-xs text-neutral-500">Explore nearby</span>
+        </div>
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200 flex items-center gap-2">
+            <div class="flex-1">
+              <div class="h-10 px-3 rounded-full bg-white ring-1 ring-neutral-200 flex items-center gap-2">
+                <i data-lucide="search" class="w-4 h-4 text-neutral-500"></i>
+                <input aria-label="Search places" class="flex-1 text-sm bg-transparent outline-none" placeholder="Search places, cuisine, or boards">
+              </div>
+            </div>
+            <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 flex items-center gap-1">
+              <i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Filters
+            </button>
+          </div>
+          <div class="p-4 space-y-3">
+            <div class="h-56 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 grid place-items-center text-neutral-400 text-sm">Interactive map placeholder with pins</div>
+            <div class="grid grid-cols-1 gap-2">
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600&auto=format&fit=crop" class="w-14 h-14 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                  <div class="flex-1">
+                    <p class="font-medium">Barcelona Wine Bar</p>
+                    <p class="text-xs text-neutral-600">Spanish • 0.8 mi • Open</p>
+                  </div>
+                  <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Save</button>
+                </div>
+              </div>
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=600&auto=format&fit=crop" class="w-14 h-14 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                  <div class="flex-1">
+                    <p class="font-medium">Haberdish</p>
+                    <p class="text-xs text-neutral-600">Southern • 1.1 mi • Opens 5 PM</p>
+                  </div>
+                  <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Save</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Add Content + Quick Save -->
+      <section id="add-content" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Add Content</h2>
+          <span class="text-xs text-neutral-500">Quick Save flow</span>
+        </div>
+
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200">
+            <div class="flex items-center gap-2">
+              <button class="w-9 h-9 rounded-full ring-1 ring-neutral-200 hover:bg-neutral-50 grid place-items-center">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              </button>
+              <span class="text-sm text-neutral-600">Quick Save</span>
+            </div>
+          </div>
+          <div class="p-4 space-y-4">
+            <!-- Tabs (static) -->
+            <div class="flex items-center gap-2">
+              <button class="px-3 h-8 rounded-full bg-[#FFAD27] text-neutral-900 text-xs font-medium">Quick Save</button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Add Photo</button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Add Note</button>
+            </div>
+
+            <!-- Search -->
+            <div class="h-11 px-3 rounded-xl bg-white ring-1 ring-neutral-200 flex items-center gap-2">
+              <i data-lucide="search" class="w-4 h-4 text-neutral-500"></i>
+              <input aria-label="Search restaurants to save" class="flex-1 text-sm bg-transparent outline-none" placeholder="Search a place to save…">
+            </div>
+
+            <!-- Results -->
+            <div class="space-y-2">
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex items-start gap-3">
+                  <img src="https://images.unsplash.com/photo-1498654200943-1088dd4438ae?q=80&w=600&auto=format&fit=crop" class="w-12 h-12 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                  <div class="flex-1">
+                    <p class="text-sm font-medium">Optimist Hall</p>
+                    <p class="text-[11px] text-neutral-600">Food Hall • 1.2 mi</p>
+                    <div class="mt-2 flex items-center gap-2">
+                      <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">+ Board</button>
+                      <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">+ Note</button>
+                      <button class="ml-auto px-3 h-8 rounded-full bg-[#FFAD27] text-neutral-900 text-xs font-medium hover:brightness-110">Save</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex items-start gap-3">
+                  <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=600&auto=format&fit=crop" class="w-12 h-12 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                  <div class="flex-1">
+                    <p class="text-sm font-medium">Leah & Louise</p>
+                    <p class="text-[11px] text-neutral-600">Southern • 0.9 mi</p>
+                    <div class="mt-2 flex items-center gap-2">
+                      <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">+ Board</button>
+                      <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">+ Note</button>
+                      <button class="ml-auto px-3 h-8 rounded-full bg-[#FFAD27] text-neutral-900 text-xs font-medium hover:brightness-110">Save</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Success toast -->
+            <div class="p-3 rounded-xl bg-emerald-50 ring-1 ring-emerald-200 flex items-center gap-2">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+              <p class="text-xs text-emerald-700">Saved to “Date Nights”. Add a note?</p>
+              <button class="ml-auto px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Add Note</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Boards / Saves -->
+      <section id="boards" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Boards & Saves</h2>
+          <span class="text-xs text-neutral-500">A/B/C states + Detail</span>
+        </div>
+
+        <!-- A: Empty state -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-4">
+            <div class="p-4 rounded-xl bg-[#FFFAF2] ring-1 ring-black/10 text-center">
+              <p class="font-medium">Start your first board</p>
+              <p class="text-sm text-neutral-600">Group places for trips, dates, and more.</p>
+              <button class="mt-3 px-4 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110">Create Board</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- B: Few boards -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <span class="text-sm text-neutral-600">Your Boards (3)</span>
+            <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 flex items-center gap-1">
+              <i data-lucide="plus" class="w-4 h-4"></i> New
+            </button>
+          </div>
+          <div class="p-4 grid grid-cols-2 gap-3">
+            <button class="p-3 text-left rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+              <div class="h-20 rounded-lg bg-neutral-50 ring-1 ring-neutral-200"></div>
+              <p class="mt-2 text-sm font-medium">Date Nights</p>
+              <p class="text-[11px] text-neutral-500">12 places</p>
+            </button>
+            <button class="p-3 text-left rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+              <div class="h-20 rounded-lg bg-neutral-50 ring-1 ring-neutral-200"></div>
+              <p class="mt-2 text-sm font-medium">CLT Brunch</p>
+              <p class="text-[11px] text-neutral-500">7 places</p>
+            </button>
+            <button class="p-3 text-left rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+              <div class="h-20 rounded-lg bg-neutral-50 ring-1 ring-neutral-200"></div>
+              <p class="mt-2 text-sm font-medium">Out-of-Towners</p>
+              <p class="text-[11px] text-neutral-500">5 places</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- C: Power user grid with sorting -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-neutral-600">All Boards</span>
+              <div class="h-8 px-3 rounded-full bg-white ring-1 ring-neutral-200 text-xs grid place-items-center">12 boards</div>
+            </div>
+            <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50 flex items-center gap-1">
+              <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i> Sort
+            </button>
+          </div>
+          <div class="p-4 grid grid-cols-2 gap-3">
+            <!-- Repeatable card -->
+            <button class="group p-3 text-left rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+              <div class="relative h-20 rounded-lg overflow-hidden ring-1 ring-neutral-200">
+                <img src="https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop" alt="" class="h-full w-full object-cover">
+                <span class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-white/90 ring-1 ring-neutral-200">8</span>
+              </div>
+              <p class="mt-2 text-sm font-medium">Neighborhood Gems</p>
+              <p class="text-[11px] text-neutral-500">Updated 2d ago</p>
+            </button>
+            <button class="group p-3 text-left rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+              <div class="relative h-20 rounded-lg overflow-hidden ring-1 ring-neutral-200">
+                <img src="https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?q=80&w=600&auto=format&fit=crop" alt="" class="h-full w-full object-cover">
+                <span class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-white/90 ring-1 ring-neutral-200">14</span>
+              </div>
+              <p class="mt-2 text-sm font-medium">Coffee Crawl</p>
+              <p class="text-[11px] text-neutral-500">Updated 5d ago</p>
+            </button>
+            <button class="group p-3 text-left rounded-xl bg-white ring-1 ring-neutral-200 hover:bg-neutral-50">
+              <div class="relative h-20 rounded-lg overflow-hidden ring-1 ring-neutral-200">
+                <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600&auto=format&fit=crop" alt="" class="h-full w-full object-cover">
+                <span class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-white/90 ring-1 ring-neutral-200">6</span>
+              </div>
+              <p class="mt-2 text-sm font-medium">Date Nights</p>
+              <p class="text-[11px] text-neutral-500">Updated 1w ago</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- Board Detail -->
+        <div id="board-detail" class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="relative">
+            <img src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1200&auto=format&fit=crop" alt="" class="h-28 w-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+            <div class="absolute bottom-2 left-3 right-3 flex items-center justify-between">
+              <div>
+                <p class="text-white font-semibold">Date Nights</p>
+                <p class="text-xs text-white/90">12 places • Shared with 3</p>
+              </div>
+              <div class="flex items-center gap-1">
+                <button class="w-9 h-9 rounded-full bg-white/95 ring-1 ring-neutral-200 grid place-items-center hover:bg-white">
+                  <i data-lucide="share-2" class="w-4 h-4"></i>
+                </button>
+                <button class="w-9 h-9 rounded-full bg-white/95 ring-1 ring-neutral-200 grid place-items-center hover:bg-white">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 space-y-3">
+            <div class="flex items-center gap-2 overflow-x-auto">
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">All</button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Italian</button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Spanish</button>
+              <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Cocktails</button>
+            </div>
+            <!-- Pins -->
+            <div class="grid grid-cols-1 gap-2">
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex items-start gap-3">
+                  <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600&auto=format&fit=crop" class="w-14 h-14 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                  <div class="flex-1">
+                    <p class="font-medium">Barcelona Wine Bar</p>
+                    <p class="text-xs text-neutral-600">Spanish • Uptown • Saved by you</p>
+                  </div>
+                  <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Notes</button>
+                </div>
+              </div>
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <div class="flex items-start gap-3">
+                  <img src="https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?q=80&w=600&auto=format&fit=crop" class="w-14 h-14 rounded-lg object-cover ring-1 ring-neutral-200" alt="">
+                  <div class="flex-1">
+                    <p class="font-medium">The Crunkleton</p>
+                    <p class="text-xs text-neutral-600">Cocktail Bar • Elizabeth</p>
+                  </div>
+                  <button class="px-2.5 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Notes</button>
+                </div>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-neutral-200">
+              <button class="w-full h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">View Map of Board</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Profile -->
+      <section id="profile" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Profile</h2>
+          <span class="text-xs text-neutral-500">Three states</span>
+        </div>
+
+        <!-- New user profile -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-neutral-100 ring-1 ring-neutral-200 grid place-items-center text-neutral-400">
+                <i data-lucide="user" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="font-medium">Add your name</p>
+                <p class="text-xs text-neutral-600">Complete your profile to personalize</p>
+              </div>
+              <button class="ml-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Edit</button>
+            </div>
+            <div class="mt-4 p-4 rounded-xl bg-[#FFFAF2] ring-1 ring-black/10">
+              <p class="text-sm font-medium">Set your food interests</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Brunch</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Vegan</button>
+                <button class="px-3 h-8 rounded-full bg-white ring-1 ring-neutral-200 text-xs hover:bg-neutral-50">Dessert</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regular user profile -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-4">
+            <div class="flex items-center gap-3">
+              <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" alt="" class="w-12 h-12 rounded-full object-cover ring-1 ring-neutral-200">
+              <div>
+                <p class="font-medium">Taylor Brooks</p>
+                <p class="text-xs text-neutral-600">@taylorb • Charlotte</p>
+              </div>
+              <button class="ml-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Edit Profile</button>
+            </div>
+            <div class="mt-4 grid grid-cols-3 gap-2">
+              <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200 text-center">
+                <p class="text-lg font-semibold tracking-tight">47</p>
+                <p class="text-xs text-neutral-600">Saves</p>
+              </div>
+              <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200 text-center">
+                <p class="text-lg font-semibold tracking-tight">6</p>
+                <p class="text-xs text-neutral-600">Boards</p>
+              </div>
+              <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200 text-center">
+                <p class="text-lg font-semibold tracking-tight">32</p>
+                <p class="text-xs text-neutral-600">Friends</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Creator profile -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-4">
+            <div class="flex items-center gap-3">
+              <img src="https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=200&auto=format&fit=crop" alt="" class="w-12 h-12 rounded-full object-cover ring-1 ring-neutral-200">
+              <div>
+                <div class="flex items-center gap-2">
+                  <p class="font-medium">Jae Park</p>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FFFAF2] ring-1 ring-black/10">Creator</span>
+                </div>
+                <p class="text-xs text-neutral-600">@jae.eats • CLT</p>
+              </div>
+              <button class="ml-auto px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 flex items-center gap-1">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Studio
+              </button>
+            </div>
+            <div class="mt-4 grid grid-cols-3 gap-2">
+              <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200 text-center">
+                <p class="text-lg font-semibold tracking-tight">$420</p>
+                <p class="text-xs text-neutral-600">This month</p>
+              </div>
+              <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200 text-center">
+                <p class="text-lg font-semibold tracking-tight">12</p>
+                <p class="text-xs text-neutral-600">Campaigns</p>
+              </div>
+              <div class="p-3 rounded-lg bg-white ring-1 ring-neutral-200 text-center">
+                <p class="text-lg font-semibold tracking-tight">1.2k</p>
+                <p class="text-xs text-neutral-600">Reach</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Restaurant Detail -->
+      <section id="restaurant-detail" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">Restaurant Detail</h2>
+          <span class="text-xs text-neutral-500">Profile page</span>
+        </div>
+
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="relative">
+            <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1200&auto=format&fit=crop" class="h-36 w-full object-cover" alt="">
+            <div class="absolute top-2 left-2 flex items-center gap-1">
+              <button class="w-9 h-9 rounded-full bg-white/95 ring-1 ring-neutral-200 grid place-items-center hover:bg-white">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <div class="absolute top-2 right-2 flex items-center gap-1">
+              <button class="w-9 h-9 rounded-full bg-white/95 ring-1 ring-neutral-200 grid place-items-center hover:bg-white">
+                <i data-lucide="share-2" class="w-4 h-4"></i>
+              </button>
+              <button class="w-9 h-9 rounded-full bg-white/95 ring-1 ring-neutral-200 grid place-items-center hover:bg-white">
+                <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+          <div class="p-4 space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h3 class="text-[18px] font-semibold tracking-tight">Barcelona Wine Bar</h3>
+                <p class="text-xs text-neutral-600">Spanish • Tapas • Uptown</p>
+                <div class="mt-1 flex items-center gap-2 text-xs">
+                  <span class="px-2 py-0.5 rounded-full bg-white ring-1 ring-neutral-200">⭐ 4.7</span>
+                  <span class="px-2 py-0.5 rounded-full bg-white ring-1 ring-neutral-200">$$</span>
+                  <span class="text-neutral-500">0.8 mi</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="px-3 h-9 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50 flex items-center gap-1">
+                  <i data-lucide="bookmark" class="w-4 h-4"></i> Save
+                </button>
+                <button class="px-3 h-9 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110">Call</button>
+              </div>
+            </div>
+
+            <!-- Info -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="text-sm font-medium">Hours</p>
+                <p class="text-xs text-neutral-600 mt-1">Open now • Closes 10:00 PM</p>
+              </div>
+              <div class="p-3 rounded-xl bg-white ring-1 ring-neutral-200">
+                <p class="text-sm font-medium">Location</p>
+                <p class="text-xs text-neutral-600 mt-1">101 W Worthington Ave</p>
+              </div>
+            </div>
+
+            <!-- Popular in Boards -->
+            <div>
+              <div class="flex items-center justify-between">
+                <p class="text-sm font-medium">Popular in these boards</p>
+                <button class="text-xs text-[#FFAD27] hover:underline">View all</button>
+              </div>
+              <div class="mt-2 flex items-center gap-2 overflow-x-auto">
+                <div class="min-w-[140px] p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <p class="text-xs font-medium">Date Nights</p>
+                  <p class="text-[11px] text-neutral-500">3 friends saved</p>
+                </div>
+                <div class="min-w-[140px] p-3 rounded-lg bg-white ring-1 ring-neutral-200">
+                  <p class="text-xs font-medium">Spanish Eats</p>
+                  <p class="text-[11px] text-neutral-500">124 saves</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gallery -->
+            <div>
+              <p class="text-sm font-medium">Photos</p>
+              <div class="mt-2 grid grid-cols-3 gap-2">
+                <img src="https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=600&auto=format&fit=crop" class="h-20 w-full object-cover rounded-lg ring-1 ring-neutral-200" alt="">
+                <img src="https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?q=80&w=600&auto=format&fit=crop" class="h-20 w-full object-cover rounded-lg ring-1 ring-neutral-200" alt="">
+                <img src="https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop" class="h-20 w-full object-cover rounded-lg ring-1 ring-neutral-200" alt="">
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2">
+              <button class="flex-1 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Get Directions</button>
+              <button class="flex-1 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Website</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Onboarding (App) -->
+      <section id="onboarding" class="space-y-6 sm:space-y-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl sm:text-2xl font-semibold tracking-tight">App Onboarding</h2>
+          <span class="text-xs text-neutral-500">3 quick steps</span>
+        </div>
+
+        <!-- Slide 1 -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-5 text-center">
+            <div class="h-28 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 grid place-items-center text-neutral-400 text-sm">Illustration: Discover great places</div>
+            <h3 class="text-[18px] font-semibold tracking-tight mt-3">Discover your city</h3>
+            <p class="text-sm text-neutral-600 mt-1">See what's trending nearby and what friends recommend.</p>
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <button class="px-4 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-5 text-center">
+            <div class="h-28 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 grid place-items-center text-neutral-400 text-sm">Illustration: Save & organize</div>
+            <h3 class="text-[18px] font-semibold tracking-tight mt-3">Save and organize</h3>
+            <p class="text-sm text-neutral-600 mt-1">Create boards for trips, date nights, or casual eats.</p>
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <button class="px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Back</button>
+              <button class="px-4 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="rounded-2xl bg-white ring-1 ring-neutral-200 overflow-hidden">
+          <div class="p-5 text-center">
+            <div class="h-28 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 grid place-items-center text-neutral-400 text-sm">Illustration: Enable location</div>
+            <h3 class="text-[18px] font-semibold tracking-tight mt-3">Enable your location</h3>
+            <p class="text-sm text-neutral-600 mt-1">Get better recommendations and see what's open now.</p>
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <button class="px-4 h-10 rounded-full bg-white ring-1 ring-neutral-200 text-sm hover:bg-neutral-50">Not now</button>
+              <button class="px-4 h-10 rounded-full bg-[#FFAD27] text-neutral-900 text-sm font-medium hover:brightness-110">Enable Location</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="max-w-md mx-auto px-3 sm:px-4 py-8 text-center text-xs text-neutral-500">
+      <p>Built with Tailwind and Lucide. Demo content for Troodie.</p>
+    </footer>
+
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+          lucide.createIcons();
+        }
+      });
+    </script>
+  </body>
+</html>

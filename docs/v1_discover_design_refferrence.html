@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Troodie · Discover</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script defer src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body class="antialiased bg-white text-[#262626] font-[Inter] selection:bg-[#FFAD27]/20 selection:text-[#262626]">
+  <!-- App Frame -->
+  <div class="min-h-dvh w-full flex items-start justify-center">
+    <div class="relative w-full max-w-md min-h-dvh bg-white flex flex-col shadow-none">
+      <!-- Top App Bar / Option Switcher -->
+      <header class="sticky top-0 z-20 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70 border-b border-[#E8E8E8]">
+        <div class="px-5 pt-6 pb-4 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="h-8 w-8 rounded-full bg-[#FFAD27]/10 flex items-center justify-center ring-1 ring-[#FFAD27]/20">
+              <i data-lucide="sparkles" class="w-4 h-4 text-[#FFAD27]"></i>
+            </div>
+            <div>
+              <h1 class="text-[20px] leading-6 font-semibold tracking-tight">Discover</h1>
+              <p class="text-[12px] text-[#8C8C8C]">Good evening, Mike • East Village</p>
+            </div>
+          </div>
+          <button id="openSearch" class="h-10 w-10 rounded-full flex items-center justify-center hover:bg-black/[0.03] active:scale-[0.98] transition" aria-label="Search">
+            <i data-lucide="search" class="w-5 h-5 text-[#262626]"></i>
+          </button>
+        </div>
+
+        <!-- Screen Option Toggle -->
+        <div class="px-5 pb-4">
+          <div role="tablist" aria-label="Feed layout options" class="inline-flex w-full gap-2 rounded-xl p-1 bg-[#F7F7F7] border border-[#E8E8E8]">
+            <button id="optA" role="tab" aria-selected="true" class="flex-1 h-10 rounded-lg text-sm font-medium tracking-tight bg-white text-[#262626] shadow-sm border border-[#E8E8E8] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFAD27]/60 hover:border-[#FFAD27]/40 transition">Stories</button>
+            <button id="optB" role="tab" aria-selected="false" class="flex-1 h-10 rounded-lg text-sm font-medium tracking-tight text-[#262626] hover:bg-white hover:border-[#E8E8E8] border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFAD27]/60 transition">Grid</button>
+            <button id="optC" role="tab" aria-selected="false" class="flex-1 h-10 rounded-lg text-sm font-medium tracking-tight text-[#262626] hover:bg-white hover:border-[#E8E8E8] border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFAD27]/60 transition">Smart</button>
+            <button id="optD" role="tab" aria-selected="false" class="flex-1 h-10 rounded-lg text-sm font-medium tracking-tight text-[#262626] hover:bg-white hover:border-[#E8E8E8] border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFAD27]/60 transition">Blend</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="flex-1 pb-24">
+        <!-- OPTION A: Story-Based Feed (Low/No Users) -->
+        <section id="sectionA" aria-labelledby="optA" class="block">
+          <!-- Onboarding nudges -->
+          <div id="onboardingBanner" class="px-5 pt-4">
+            <div class="rounded-2xl border border-[#FFE2B2] bg-[#FFF8E7] text-[#6F4F1F] px-4 py-3 flex items-start gap-3">
+              <div class="h-9 w-9 rounded-xl bg-white/70 flex items-center justify-center ring-1 ring-black/5">
+                <i data-lucide="stars" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-[16px] font-semibold tracking-tight">New here? Let’s personalize</h3>
+                <p class="text-[12px] text-[#8C8C8C] mt-0.5">We’ll seed your feed while you find friends and set your tastes.</p>
+                <div class="mt-3 flex items-center gap-2">
+                  <button class="h-9 px-3 rounded-lg bg-[#262626] text-white text-[13px] font-medium tracking-tight hover:opacity-90 transition" data-action="open-preferences">
+                    Set preferences
+                  </button>
+                  <button class="h-9 px-3 rounded-lg border border-[#E8E8E8] text-[13px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="connect-contacts">
+                    Find friends
+                  </button>
+                </div>
+              </div>
+              <button class="mt-0.5 text-[#8C8C8C] hover:text-[#262626] transition" aria-label="Dismiss" data-dismiss="#onboardingBanner">
+                <i data-lucide="x" class="w-4.5 h-4.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- NEW: Plan with friends (Differentiator) -->
+          <div class="px-5 pt-4">
+            <div class="rounded-2xl border border-[#E8E8E8] bg-white px-4 py-3 flex items-center gap-3">
+              <div class="h-10 w-10 rounded-xl bg-[#F7F7F7] flex items-center justify-center ring-1 ring-black/5">
+                <i data-lucide="calendar-plus" class="w-5 h-5 text-[#262626]"></i>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-[16px] font-semibold tracking-tight">Plan tonight with friends</h3>
+                <p class="text-[12px] text-[#8C8C8C] mt-0.5">Set vibe, budget, and ask your circle for picks.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="h-9 px-3 rounded-lg border border-[#E8E8E8] text-[13px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="ask-friends">
+                  Ask friends
+                </button>
+                <button class="h-9 px-3 rounded-lg bg-[#262626] text-white text-[13px] font-medium tracking-tight hover:opacity-90 transition" data-action="create-plan">
+                  Create plan
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stories Row (Empty State) -->
+          <div class="px-5 pt-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-[18px] leading-6 font-semibold tracking-tight">Stories</h2>
+              <span class="inline-flex items-center gap-1.5 text-[12px] text-[#8C8C8C]">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                Few friends on Troodie
+              </span>
+            </div>
+
+            <div class="flex gap-4 overflow-x-auto no-scrollbar py-1">
+              <!-- You -->
+              <button class="flex flex-col items-center gap-2 group focus:outline-none" aria-label="Add your story">
+                <div class="h-16 w-16 rounded-full bg-[#FFAD27]/10 border-2 border-dashed border-[#FFAD27]/60 flex items-center justify-center">
+                  <i data-lucide="plus" class="w-5 h-5 text-[#FFAD27]"></i>
+                </div>
+                <span class="text-[12px] text-[#262626]">You</span>
+              </button>
+
+              <!-- Find friends -->
+              <button class="flex flex-col items-center gap-2 group focus:outline-none" aria-label="Find friends">
+                <div class="h-16 w-16 rounded-full bg-[#F7F7F7] border-2 border-dashed border-[#E8E8E8] flex items-center justify-center group-hover:border-[#FFAD27]/50 group-hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="user-plus" class="w-5 h-5 text-[#8C8C8C] group-hover:text-[#FFAD27]"></i>
+                </div>
+                <span class="text-[12px] text-[#262626]">Find friends</span>
+              </button>
+
+              <!-- Invite -->
+              <button class="flex flex-col items-center gap-2 group focus:outline-none" aria-label="Invite friends" data-action="invite-link">
+                <div class="h-16 w-16 rounded-full bg-[#F7F7F7] border-2 border-dashed border-[#E8E8E8] flex items-center justify-center group-hover:border-[#FFAD27]/50 group-hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="share" class="w-5 h-5 text-[#8C8C8C] group-hover:text-[#FFAD27]"></i>
+                </div>
+                <span class="text-[12px] text-[#262626]">Invite</span>
+              </button>
+
+              <!-- Follow local experts -->
+              <button class="flex flex-col items-center gap-2 group focus:outline-none" aria-label="Follow local experts">
+                <div class="h-16 w-16 rounded-full bg-[#F7F7F7] border-2 border-dashed border-[#E8E8E8] flex items-center justify-center group-hover:border-[#FFAD27]/50 group-hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="megaphone" class="w-5 h-5 text-[#8C8C8C] group-hover:text-[#FFAD27]"></i>
+                </div>
+                <span class="text-[12px] text-[#262626]">Experts</span>
+              </button>
+            </div>
+
+            <!-- Stories empty explainer -->
+            <div class="mt-4 rounded-xl border border-[#E8E8E8] bg-white p-4 flex items-start gap-3">
+              <div class="h-10 w-10 rounded-lg bg-[#F7F7F7] flex items-center justify-center ring-1 ring-black/5">
+                <i data-lucide="camera" class="w-5 h-5 text-[#8C8C8C]"></i>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-[14px] font-semibold tracking-tight">No stories from friends yet</h4>
+                <p class="text-[12px] text-[#8C8C8C] mt-0.5">Share your first discovery or invite friends to see what they’re into.</p>
+                <div class="mt-3 flex items-center gap-2">
+                  <button class="h-8 px-3 rounded-lg bg-[#262626] text-white text-[12px] font-medium tracking-tight hover:opacity-90 transition">Post a story</button>
+                  <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="connect-contacts">Find friends</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Build your feed -->
+          <div class="px-5 mt-6">
+            <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Build your feed</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <button class="rounded-xl border border-[#E8E8E8] p-3 text-left hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                <div class="h-9 w-9 rounded-lg bg-[#F7F7F7] flex items-center justify-center mb-2 ring-1 ring-black/5">
+                  <i data-lucide="book-open" class="w-5 h-5 text-[#262626]"></i>
+                </div>
+                <div class="text-[14px] font-medium tracking-tight">Set tastes</div>
+                <div class="text-[12px] text-[#8C8C8C] mt-0.5">Cuisine, budget, vibe</div>
+              </button>
+              <button class="rounded-xl border border-[#E8E8E8] p-3 text-left hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="connect-contacts">
+                <div class="h-9 w-9 rounded-lg bg-[#F7F7F7] flex items-center justify-center mb-2 ring-1 ring-black/5">
+                  <i data-lucide="contact" class="w-5 h-5 text-[#262626]"></i>
+                </div>
+                <div class="text-[14px] font-medium tracking-tight">Connect contacts</div>
+                <div class="text-[12px] text-[#8C8C8C] mt-0.5">Find friends instantly</div>
+              </button>
+              <button class="rounded-xl border border-[#E8E8E8] p-3 text-left hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                <div class="h-9 w-9 rounded-lg bg-[#F7F7F7] flex items-center justify-center mb-2 ring-1 ring-black/5">
+                  <i data-lucide="map-pin" class="w-5 h-5 text-[#262626]"></i>
+                </div>
+                <div class="text-[14px] font-medium tracking-tight">Set neighborhoods</div>
+                <div class="text-[12px] text-[#8C8C8C] mt-0.5">Stay local or explore</div>
+              </button>
+              <button class="rounded-xl border border-[#E8E8E8] p-3 text-left hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="invite-link">
+                <div class="h-9 w-9 rounded-lg bg-[#F7F7F7] flex items-center justify-center mb-2 ring-1 ring-black/5">
+                  <i data-lucide="gift" class="w-5 h-5 text-[#262626]"></i>
+                </div>
+                <div class="text-[14px] font-medium tracking-tight">Invite friends</div>
+                <div class="text-[12px] text-[#8C8C8C] mt-0.5">Share your link</div>
+              </button>
+              <!-- NEW: Join communities (Differentiator) -->
+              <button class="rounded-xl border border-[#E8E8E8] p-3 text-left hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="open-communities">
+                <div class="h-9 w-9 rounded-lg bg-[#F7F7F7] flex items-center justify-center mb-2 ring-1 ring-black/5">
+                  <i data-lucide="users" class="w-5 h-5 text-[#262626]"></i>
+                </div>
+                <div class="text-[14px] font-medium tracking-tight">Join communities</div>
+                <div class="text-[12px] text-[#8C8C8C] mt-0.5">Local groups & clubs</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Friends are loving (Empty) -->
+          <div class="px-5 mt-6">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-[16px] leading-6 font-semibold tracking-tight">Friends are loving</h3>
+              <span class="text-[12px] text-[#8C8C8C]">No activity yet</span>
+            </div>
+
+            <div class="rounded-xl border border-[#E8E8E8] p-4 bg-white">
+              <div class="flex items-start gap-3">
+                <div class="h-10 w-10 rounded-lg bg-[#F7F7F7] flex items-center justify-center ring-1 ring-black/5">
+                  <i data-lucide="heart" class="w-5 h-5 text-[#8C8C8C]"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="text-[13px] text-[#262626]">As your friends join, this section fills with places they love.</p>
+                  <div class="mt-3 flex items-center gap-2">
+                    <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="invite-link">
+                      Invite friends
+                    </button>
+                    <button class="h-8 px-3 rounded-lg text-[12px] font-medium tracking-tight bg-[#262626] text-white hover:opacity-90 transition">
+                      Browse popular
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Popular near you (Substitute content) -->
+          <div class="px-5 mt-6">
+            <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Popular near you</h3>
+
+            <!-- Card 1 -->
+            <article class="rounded-xl border border-[#E8E8E8] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition">
+              <div class="relative aspect-[16/9] overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=1200&auto=format&fit=crop" alt="Ramen Katsu" class="h-full w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div class="absolute top-2 left-2 flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md text-[12px]">
+                  <i data-lucide="flame" class="w-3.5 h-3.5 text-[#E25822]"></i>
+                  Trending
+                </div>
+                <!-- NEW: Source badge -->
+                <div class="absolute top-2 right-2 flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md text-[12px]">
+                  <i data-lucide="users" class="w-3.5 h-3.5 text-[#262626]"></i>
+                  EV Foodies
+                </div>
+              </div>
+              <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 class="text-[18px] font-semibold tracking-tight">Ramen Katsu</h4>
+                    <div class="mt-1 flex items-center gap-2 text-[12px] text-[#8C8C8C]">
+                      <span class="inline-flex items-center gap-1">
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.8
+                      </span>
+                      <span>· $$</span>
+                      <span>· 0.4 mi</span>
+                    </div>
+                  </div>
+                  <button class="h-9 px-3 rounded-lg border border-[#E8E8E8] hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 text-[13px] font-medium tracking-tight transition">
+                    Save
+                  </button>
+                </div>
+                <p class="mt-3 text-[13px] text-[#262626] line-clamp-2">Rich tonkotsu broth, house-made noodles, late-night friendly.</p>
+              </div>
+            </article>
+
+            <!-- Card 2 -->
+            <article class="mt-3 rounded-xl border border-[#E8E8E8] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition">
+              <div class="relative aspect-[16/9] overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop" alt="Sushi Mori" class="h-full w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div class="absolute top-2 left-2 flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md text-[12px]">
+                  <i data-lucide="clock" class="w-3.5 h-3.5 text-[#262626]"></i>
+                  10–20 min wait
+                </div>
+                <!-- NEW: Source badge -->
+                <div class="absolute top-2 right-2 flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md text-[12px]">
+                  <i data-lucide="user-circle-2" class="w-3.5 h-3.5 text-[#262626]"></i>
+                  From Nina
+                </div>
+              </div>
+              <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 class="text-[18px] font-semibold tracking-tight">Sushi Mori</h4>
+                    <div class="mt-1 flex items-center gap-2 text-[12px] text-[#8C8C8C]">
+                      <span class="inline-flex items-center gap-1">
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.7
+                      </span>
+                      <span>· $$$</span>
+                      <span>· 0.6 mi</span>
+                    </div>
+                  </div>
+                  <button class="h-9 px-3 rounded-lg border border-[#E8E8E8] hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 text-[13px] font-medium tracking-tight transition">
+                    Save
+                  </button>
+                </div>
+                <p class="mt-3 text-[13px] text-[#262626] line-clamp-2">Approachable omakase with top-notch nigiri and a cozy bar.</p>
+              </div>
+            </article>
+          </div>
+
+          <!-- Explore categories -->
+          <div class="px-5 mt-6 mb-6">
+            <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Explore categories</h3>
+            <div class="flex flex-wrap gap-2">
+              <button class="h-9 px-3 rounded-full border border-[#E8E8E8] text-[13px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                <i data-lucide="leaf" class="inline-block w-4 h-4 mr-1 align-[-1px]"></i> Healthy
+              </button>
+              <button class="h-9 px-3 rounded-full border border-[#E8E8E8] text-[13px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                <i data-lucide="sun" class="inline-block w-4 h-4 mr-1 align-[-1px]"></i> Brunch
+              </button>
+              <button class="h-9 px-3 rounded-full border border-[#E8E8E8] text-[13px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                <i data-lucide="wine" class="inline-block w-4 h-4 mr-1 align-[-1px]"></i> Date night
+              </button>
+              <button class="h-9 px-3 rounded-full border border-[#E8E8E8] text-[13px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                <i data-lucide="sparkle" class="inline-block w-4 h-4 mr-1 align-[-1px]"></i> New & hot
+              </button>
+              <button class="h-9 px-3 rounded-full border border-[#E8E8E8] text-[13px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                <i data-lucide="wallet" class="inline-block w-4 h-4 mr-1 align-[-1px]"></i> Under $20
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- OPTION B: Grid-Based Discovery (unchanged) -->
+        <section id="sectionB" aria-labelledby="optB" class="hidden">
+          <div class="px-5 pt-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-[18px] leading-6 font-semibold tracking-tight">Mike’s Feed · Evening</h2>
+              <div class="flex items-center gap-2">
+                <button class="h-9 w-9 rounded-lg border border-[#E8E8E8] hover:bg-[#FFAD27]/10 hover:border-[#FFAD27]/50 transition" aria-label="Filters">
+                  <i data-lucide="sliders-horizontal" class="w-4.5 h-4.5 mx-auto text-[#262626]"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="mt-3 inline-flex w-full gap-2 rounded-xl p-1 bg-[#F7F7F7] border border-[#E8E8E8]">
+              <button id="gridFriends" class="flex-1 h-9 rounded-lg bg-white border border-[#E8E8E8] text-sm font-medium tracking-tight shadow-sm">Friends</button>
+              <button id="gridForYou" class="flex-1 h-9 rounded-lg text-sm font-medium tracking-tight hover:bg-white hover:border-[#E8E8E8] border border-transparent">For You</button>
+            </div>
+
+            <!-- Grid -->
+            <div id="gridFriendsPane" class="mt-4 grid grid-cols-2 gap-3">
+              <!-- Empty grid state -->
+              <article class="col-span-2 rounded-xl border border-[#E8E8E8] p-4">
+                <div class="flex items-start gap-3">
+                  <div class="h-10 w-10 rounded-lg bg-[#F7F7F7] flex items-center justify-center ring-1 ring-black/5">
+                    <i data-lucide="users" class="w-5 h-5 text-[#8C8C8C]"></i>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="text-[14px] font-semibold tracking-tight">No friend posts yet</h4>
+                    <p class="text-[12px] text-[#8C8C8C] mt-0.5">Follow people you trust to see their picks here.</p>
+                    <div class="mt-2">
+                      <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition" data-action="connect-contacts">Find friends</button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+              <!-- Substitute recommendations -->
+              <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop" alt="Taco Loco" class="w-full aspect-[4/3] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Taco Loco</h4>
+                  <div class="mt-1 text-[12px] text-[#8C8C8C] flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.5
+                    </span>
+                    <span>· $</span>
+                  </div>
+                </div>
+              </article>
+              <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1642615835477-d303d7dc9ee9?w=1080&q=80" alt="Green Bowl" class="w-full aspect-[4/3] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Green Bowl</h4>
+                  <div class="mt-1 text-[12px] text-[#8C8C8C] flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.7
+                    </span>
+                    <span>· $$</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <!-- For You Pane -->
+            <div id="gridForYouPane" class="hidden mt-4 grid grid-cols-2 gap-3">
+              <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1200&auto=format&fit=crop" alt="Slice Society" class="w-full aspect-[4/3] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Slice Society</h4>
+                  <div class="mt-1 text-[12px] text-[#8C8C8C] flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.6
+                    </span>
+                    <span>· $</span>
+                  </div>
+                </div>
+              </article>
+              <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=1200&auto=format&fit=crop" alt="Curry Club" class="w-full aspect-[4/3] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Curry Club</h4>
+                  <div class="mt-1 text-[12px] text-[#8C8C8C] flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.5
+                    </span>
+                    <span>· $$</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="mt-4 mb-6 flex items-center justify-center">
+              <button class="text-[13px] font-medium text-[#4A90E2] hover:underline">Load more</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- OPTION C: Contextual Smart Feed (unchanged content) -->
+        <section id="sectionC" aria-labelledby="optC" class="hidden">
+          <div class="px-5 pt-4">
+            <!-- Context Bar -->
+            <div class="rounded-2xl border border-[#FFE2B2] bg-[#FFF8E7] text-[#E69A1F] px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i data-lucide="moon" class="w-4.5 h-4.5"></i>
+                <span class="text-[13px] font-medium">Dinner · 6:00 PM</span>
+              </div>
+              <div class="flex items-center gap-2 text-[12px]">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+                Within 15 min walk
+              </div>
+            </div>
+
+            <!-- Right now nearby -->
+            <div class="mt-6">
+              <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Right now nearby</h3>
+              <!-- Hero -->
+              <article class="rounded-xl border border-[#E8E8E8] overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                <div class="relative h-[220px]">
+                  <img src="https://images.unsplash.com/photo-1621619856624-42fd193a0661?w=1080&q=80" alt="Thai House" class="h-full w-full object-cover" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                  <div class="absolute top-3 left-3 inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-white/90 text-[12px] text-[#262626]">
+                    <span class="relative inline-flex h-2 w-2">
+                      <span class="absolute inline-flex h-2 w-2 rounded-full bg-[#FF3B30]"></span>
+                    </span>
+                    Live: busy
+                  </div>
+                  <div class="absolute bottom-3 left-3 right-3">
+                    <div class="text-white">
+                      <p class="text-[12px] uppercase tracking-wide/loose text-white/80 mb-1">Trending</p>
+                      <h4 class="text-[20px] leading-6 font-semibold tracking-tight">Thai House</h4>
+                      <div class="mt-1 flex items-center gap-3 text-[12px] text-white/90">
+                        <span class="inline-flex items-center gap-1"><i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.9</span>
+                        <span>· Thai</span>
+                        <span>· $$</span>
+                        <span class="ml-auto bg-white/90 text-[#262626] px-2 py-1 rounded-md">12 people here now</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="p-4 flex items-center justify-between">
+                  <div class="text-[12px] text-[#8C8C8C]">Open until 11:00 PM · 0.4 mi</div>
+                  <button class="h-9 px-3 rounded-lg border border-[#E8E8E8] hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 text-[13px] font-medium tracking-tight transition">Save</button>
+                </div>
+              </article>
+            </div>
+
+            <!-- More dinner spots (horizontal) -->
+            <div class="mt-6">
+              <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">More dinner spots</h3>
+              <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                <!-- Small Card -->
+                <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                  <img src="https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=1000&auto=format&fit=crop" alt="Pho 88" class="w-full h-[110px] object-cover" />
+                  <div class="p-2.5">
+                    <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">Pho 88</h4>
+                    <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                      <span class="inline-flex items-center gap-1">
+                        <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.6
+                      </span>
+                      <span>· $</span>
+                    </div>
+                  </div>
+                </article>
+                <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                  <img src="https://images.unsplash.com/photo-1517244683847-7456b63c5969?q=80&w=1000&auto=format&fit=crop" alt="Casa Verde" class="w-full h-[110px] object-cover" />
+                  <div class="p-2.5">
+                    <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">Casa Verde</h4>
+                    <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                      <span class="inline-flex items-center gap-1">
+                        <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.7
+                      </span>
+                      <span>· $$</span>
+                    </div>
+                  </div>
+                </article>
+                <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                  <img src="https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?q=80&w=1000&auto=format&fit=crop" alt="Trattoria Leo" class="w-full h-[110px] object-cover" />
+                  <div class="p-2.5">
+                    <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">Trattoria Leo</h4>
+                    <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                      <span class="inline-flex items-center gap-1">
+                        <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.8
+                      </span>
+                      <span>· $$</span>
+                    </div>
+                  </div>
+                </article>
+                <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                  <img src="https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?q=80&w=1000&auto=format&fit=crop" alt="K-BBQ One" class="w-full h-[110px] object-cover" />
+                  <div class="p-2.5">
+                    <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">K-BBQ One</h4>
+                    <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                      <span class="inline-flex items-center gap-1">
+                        <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.6
+                      </span>
+                      <span>· $$$</span>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <!-- Based on your taste -->
+            <div class="mt-6 mb-6">
+              <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Based on your taste</h3>
+              <div class="space-y-3">
+                <!-- List Row -->
+                <article class="rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                  <div class="flex">
+                    <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1200&auto=format&fit=crop" alt="Vegano" class="h-24 w-24 object-cover flex-shrink-0" />
+                    <div class="p-3 flex-1">
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <h4 class="text-[16px] font-semibold tracking-tight">Vegano</h4>
+                          <div class="mt-0.5 text-[12px] text-[#8C8C8C] flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1"><i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.7</span>
+                            <span>· Vegan</span>
+                            <span>· $$</span>
+                          </div>
+                        </div>
+                        <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 text-[13px] font-medium tracking-tight transition">Save</button>
+                      </div>
+                      <p class="mt-2 text-[12px] text-[#262626] line-clamp-1">Matches your “Healthy weekday” collection</p>
+                    </div>
+                  </div>
+                </article>
+                <article class="rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                  <div class="flex">
+                    <img src="https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop" alt="El Camino" class="h-24 w-24 object-cover flex-shrink-0" />
+                    <div class="p-3 flex-1">
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <h4 class="text-[16px] font-semibold tracking-tight">El Camino</h4>
+                          <div class="mt-0.5 text-[12px] text-[#8C8C8C] flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1"><i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.6</span>
+                            <span>· Mexican</span>
+                            <span>· $$</span>
+                          </div>
+                        </div>
+                        <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 text-[13px] font-medium tracking-tight transition">Save</button>
+                      </div>
+                      <p class="mt-2 text-[12px] text-[#262626] line-clamp-1">Similar to places you loved</p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- OPTION D: Blend (unchanged content) -->
+        <section id="sectionD" aria-labelledby="optD" class="hidden">
+          <!-- Context Bar from Smart -->
+          <div class="px-5 pt-4">
+            <div class="rounded-2xl border border-[#FFE2B2] bg-[#FFF8E7] text-[#E69A1F] px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i data-lucide="moon" class="w-4.5 h-4.5"></i>
+                <span class="text-[13px] font-medium">Dinner · 6:00 PM</span>
+              </div>
+              <div class="flex items-center gap-2 text-[12px]">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+                Within 15 min walk
+              </div>
+            </div>
+          </div>
+
+          <!-- Stories Row -->
+          <div class="px-5 pt-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-[18px] leading-6 font-semibold tracking-tight">Friends’ stories</h2>
+              <button class="text-sm text-[#8C8C8C] hover:text-[#262626] transition">See all</button>
+            </div>
+            <div class="flex gap-4 overflow-x-auto no-scrollbar py-1">
+              <button class="flex flex-col items-center gap-2 group focus:outline-none" aria-label="Add your story">
+                <div class="h-16 w-16 rounded-full bg-[#FFAD27]/10 border-2 border-dashed border-[#FFAD27]/60 flex items-center justify-center">
+                  <i data-lucide="plus" class="w-5 h-5 text-[#FFAD27]"></i>
+                </div>
+                <span class="text-[12px] text-[#262626]">You</span>
+              </button>
+              <button class="flex flex-col items-center gap-2 group focus:outline-none" aria-label="Find friends">
+                <div class="h-16 w-16 rounded-full bg-[#F7F7F7] border-2 border-dashed border-[#E8E8E8] flex items-center justify-center group-hover:border-[#FFAD27]/50 group-hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="user-plus" class="w-5 h-5 text-[#8C8C8C] group-hover:text-[#FFAD27]"></i>
+                </div>
+                <span class="text-[12px] text-[#262626]">Find friends</span>
+              </button>
+              <button class="flex flex-col items-center gap-2 group focus:outline-none" aria-label="Invite friends" data-action="invite-link">
+                <div class="h-16 w-16 rounded-full bg-[#F7F7F7] border-2 border-dashed border-[#E8E8E8] flex items-center justify-center group-hover:border-[#FFAD27]/50 group-hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="share" class="w-5 h-5 text-[#8C8C8C] group-hover:text-[#FFAD27]"></i>
+                </div>
+                <span class="text-[12px] text-[#262626]">Invite</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Popular near you -->
+          <div class="px-5 mt-6">
+            <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Popular near you</h3>
+            <article class="rounded-xl border border-[#E8E8E8] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition">
+              <div class="relative aspect-[16/9] overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1635151227785-429f420c6b9d?w=1080&q=80" alt="Italian Kitchen" class="h-full w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                <div class="absolute top-2 left-2 flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md text-[12px]">
+                  <i data-lucide="flame" class="w-3.5 h-3.5 text-[#E25822]"></i>
+                  Trending
+                </div>
+              </div>
+              <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 class="text-[18px] font-semibold tracking-tight">Italian Kitchen</h4>
+                    <div class="mt-1 flex items-center gap-2 text-[12px] text-[#8C8C8C]">
+                      <span class="inline-flex items-center gap-1">
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>
+                        4.8
+                      </span>
+                      <span>· $$</span>
+                      <span>· 0.3 mi</span>
+                    </div>
+                  </div>
+                  <button class="h-9 px-3 rounded-lg border border-[#E8E8E8] hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 text-[13px] font-medium tracking-tight transition">
+                    Save
+                  </button>
+                </div>
+                <p class="mt-3 text-[13px] text-[#262626] line-clamp-2">Comfort classics and a cozy room perfect for a quick dinner.</p>
+              </div>
+            </article>
+          </div>
+
+          <!-- Smart: Right now nearby -->
+          <div class="px-5 mt-6">
+            <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Right now nearby</h3>
+            <article class="rounded-xl border border-[#E8E8E8] overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+              <div class="relative h-[220px]">
+                <img src="https://images.unsplash.com/photo-1621619856624-42fd193a0661?w=1080&q=80" alt="Thai House" class="h-full w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                <div class="absolute top-3 left-3 inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-white/90 text-[12px] text-[#262626]">
+                  <span class="relative inline-flex h-2 w-2">
+                    <span class="absolute inline-flex h-2 w-2 rounded-full bg-[#FF3B30]"></span>
+                  </span>
+                  Live: busy
+                </div>
+                <div class="absolute bottom-3 left-3 right-3">
+                  <div class="text-white">
+                    <p class="text-[12px] uppercase tracking-wide/loose text-white/80 mb-1">Trending</p>
+                    <h4 class="text-[20px] leading-6 font-semibold tracking-tight">Thai House</h4>
+                    <div class="mt-1 flex items-center gap-3 text-[12px] text-white/90">
+                      <span class="inline-flex items-center gap-1"><i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.9</span>
+                      <span>· Thai</span>
+                      <span>· $$</span>
+                      <span class="ml-auto bg-white/90 text-[#262626] px-2 py-1 rounded-md">12 people here now</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="p-4 flex items-center justify-between">
+                <div class="text-[12px] text-[#8C8C8C]">Open until 11:00 PM · 0.4 mi</div>
+                <button class="h-9 px-3 rounded-lg border border-[#E8E8E8] hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 text-[13px] font-medium tracking-tight transition">Save</button>
+              </div>
+            </article>
+          </div>
+
+          <!-- Smart: More dinner spots -->
+          <div class="px-5 mt-6 mb-6">
+            <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">More dinner spots</h3>
+            <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+              <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                <img src="https://images.unsplash.com/photo-1621619856624-42fd193a0661?w=1080&q=80" alt="Noodle Bar" class="w-full h-[110px] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">Noodle Bar</h4>
+                  <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.7
+                    </span>
+                    <span>· $</span>
+                  </div>
+                </div>
+              </article>
+              <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                <img src="https://images.unsplash.com/photo-1565299507177-b0ac66763828?q=80&w=1000&auto=format&fit=crop" alt="Tapas 34" class="w-full h-[110px] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">Tapas 34</h4>
+                  <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.6
+                    </span>
+                    <span>· $$</span>
+                  </div>
+                </div>
+              </article>
+              <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                <img src="https://images.unsplash.com/photo-1548946526-f69e2424cf45?q=80&w=1000&auto=format&fit=crop" alt="Saigon Social" class="w-full h-[110px] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">Saigon Social</h4>
+                  <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.8
+                    </span>
+                    <span>· $$</span>
+                  </div>
+                </div>
+              </article>
+              <article class="min-w-[150px] w-[150px] rounded-xl border border-[#E8E8E8] overflow-hidden hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
+                <img src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop" alt="Burger Joint" class="w-full h-[110px] object-cover" />
+                <div class="p-2.5">
+                  <h4 class="text-[13px] font-medium tracking-tight line-clamp-1">Burger Joint</h4>
+                  <div class="text-[11px] text-[#8C8C8C] flex items-center gap-2 mt-1">
+                    <span class="inline-flex items-center gap-1">
+                      <i data-lucide="star" class="w-3 h-3 text-[#FFAD27]"></i>4.5
+                    </span>
+                    <span>· $</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEARCH: Full-screen overlay -->
+        <section id="searchScreen" class="hidden absolute inset-0 z-40 bg-white">
+          <!-- Search Header -->
+          <div class="sticky top-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70 border-b border-[#E8E8E8]">
+            <div class="px-5 pt-6 pb-3 flex items-center gap-2">
+              <button id="closeSearch" class="h-10 w-10 rounded-full flex items-center justify-center hover:bg-black/[0.03]" aria-label="Back">
+                <i data-lucide="chevron-left" class="w-5 h-5 text-[#262626]"></i>
+              </button>
+              <div class="flex-1 h-10 rounded-xl border border-[#E8E8E8] bg-[#F7F7F7] px-3 flex items-center gap-2">
+                <i data-lucide="search" class="w-4.5 h-4.5 text-[#8C8C8C]"></i>
+                <input id="searchInput" type="text" placeholder="Search places, people, communities" class="flex-1 bg-transparent outline-none text-[14px]" />
+                <button id="clearSearch" class="hidden text-[#8C8C8C] hover:text-[#262626]" aria-label="Clear">
+                  <i data-lucide="x" class="w-4.5 h-4.5"></i>
+                </button>
+              </div>
+            </div>
+            <!-- Segmented filters -->
+            <div class="px-5 pb-4">
+              <div class="inline-flex w-full gap-2 rounded-xl p-1 bg-[#F7F7F7] border border-[#E8E8E8]">
+                <button data-scope="all" class="scope-btn flex-1 h-9 rounded-lg bg-white border border-[#E8E8E8] text-sm font-medium tracking-tight shadow-sm">All</button>
+                <button data-scope="places" class="scope-btn flex-1 h-9 rounded-lg text-sm font-medium tracking-tight hover:bg-white hover:border-[#E8E8E8] border border-transparent">Places</button>
+                <button data-scope="people" class="scope-btn flex-1 h-9 rounded-lg text-sm font-medium tracking-tight hover:bg-white hover:border-[#E8E8E8] border border-transparent">People</button>
+                <button data-scope="communities" class="scope-btn flex-1 h-9 rounded-lg text-sm font-medium tracking-tight hover:bg-white hover:border-[#E8E8E8] border border-transparent">Communities</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Home (no query) -->
+          <div id="searchHome" class="px-5 pt-4 pb-24 space-y-6 overflow-y-auto">
+            <!-- Quick filters -->
+            <div>
+              <div class="flex flex-wrap gap-2">
+                <button class="h-8 px-3 rounded-full border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="clock-3" class="inline-block w-4 h-4 mr-1"></i> Open now
+                </button>
+                <button class="h-8 px-3 rounded-full border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="users-round" class="inline-block w-4 h-4 mr-1"></i> Group of 4
+                </button>
+                <button class="h-8 px-3 rounded-full border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="sparkles" class="inline-block w-4 h-4 mr-1"></i> Vibe: cozy
+                </button>
+                <button class="h-8 px-3 rounded-full border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition">
+                  <i data-lucide="wallet" class="inline-block w-4 h-4 mr-1"></i> $$ budget
+                </button>
+              </div>
+            </div>
+
+            <!-- Recent searches -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-[16px] leading-6 font-semibold tracking-tight">Recent</h3>
+                <button id="clearRecents" class="text-[12px] text-[#8C8C8C] hover:text-[#262626]">Clear</button>
+              </div>
+              <div id="recentWrap" class="flex flex-wrap gap-2">
+                <!-- Chips injected by JS -->
+              </div>
+            </div>
+
+            <!-- Trending restaurants -->
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-[16px] leading-6 font-semibold tracking-tight">Trending near you</h3>
+                <button class="text-[12px] text-[#8C8C8C] hover:text-[#262626]">Refresh</button>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop" alt="Sushi Mori" class="w-full aspect-[4/3] object-cover" />
+                  <div class="p-2.5">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Sushi Mori</h4>
+                      <span class="inline-flex items-center gap-1 text-[12px] text-[#8C8C8C]">
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.7
+                      </span>
+                    </div>
+                    <div class="mt-1 text-[12px] text-[#8C8C8C]">$$ · 0.6 mi</div>
+                  </div>
+                </article>
+                <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=1200&auto=format&fit=crop" alt="Ramen Katsu" class="w-full aspect-[4/3] object-cover" />
+                  <div class="p-2.5">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Ramen Katsu</h4>
+                      <span class="inline-flex items-center gap-1 text-[12px] text-[#8C8C8C]">
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.8
+                      </span>
+                    </div>
+                    <div class="mt-1 text-[12px] text-[#8C8C8C]">$$ · 0.4 mi</div>
+                  </div>
+                </article>
+                <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1200&auto=format&fit=crop" alt="Slice Society" class="w-full aspect-[4/3] object-cover" />
+                  <div class="p-2.5">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Slice Society</h4>
+                      <span class="inline-flex items-center gap-1 text-[12px] text-[#8C8C8C]">
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.6
+                      </span>
+                    </div>
+                    <div class="mt-1 text-[12px] text-[#8C8C8C]">$ · 0.5 mi</div>
+                  </div>
+                </article>
+                <article class="rounded-xl border border-[#E8E8E8] overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=1200&auto=format&fit=crop" alt="Curry Club" class="w-full aspect-[4/3] object-cover" />
+                  <div class="p-2.5">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-[14px] font-medium tracking-tight line-clamp-1">Curry Club</h4>
+                      <span class="inline-flex items-center gap-1 text-[12px] text-[#8C8C8C]">
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-[#FFAD27]"></i>4.5
+                      </span>
+                    </div>
+                    <div class="mt-1 text-[12px] text-[#8C8C8C]">$$ · 0.8 mi</div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <!-- Top communities -->
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-[16px] leading-6 font-semibold tracking-tight">Top communities</h3>
+                <button class="text-[12px] text-[#8C8C8C] hover:text-[#262626]">See all</button>
+              </div>
+              <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                <div class="min-w-[210px] rounded-xl border border-[#E8E8E8] p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="h-8 w-8 rounded-lg bg-[#FFAD27]/10 flex items-center justify-center ring-1 ring-[#FFAD27]/20">
+                      <i data-lucide="users" class="w-4.5 h-4.5 text-[#FFAD27]"></i>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight line-clamp-1">EV Foodies</div>
+                      <div class="text-[12px] text-[#8C8C8C]">2.1K members</div>
+                    </div>
+                    <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Join</button>
+                  </div>
+                  <div class="mt-3 flex -space-x-2">
+                    <img class="w-6 h-6 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/24?img=1" alt="" />
+                    <img class="w-6 h-6 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/24?img=2" alt="" />
+                    <img class="w-6 h-6 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/24?img=3" alt="" />
+                  </div>
+                </div>
+                <div class="min-w-[210px] rounded-xl border border-[#E8E8E8] p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="h-8 w-8 rounded-lg bg-[#F7F7F7] flex items-center justify-center ring-1 ring-black/5">
+                      <i data-lucide="salad" class="w-4.5 h-4.5 text-[#262626]"></i>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight line-clamp-1">Vegan NYC</div>
+                      <div class="text-[12px] text-[#8C8C8C]">8.4K members</div>
+                    </div>
+                    <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Join</button>
+                  </div>
+                  <div class="mt-3 flex -space-x-2">
+                    <img class="w-6 h-6 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/24?img=4" alt="" />
+                    <img class="w-6 h-6 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/24?img=5" alt="" />
+                    <img class="w-6 h-6 rounded-full ring-2 ring-white" src="https://i.pravatar.cc/24?img=6" alt="" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- People to follow -->
+            <div class="mb-6">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-[16px] leading-6 font-semibold tracking-tight">People to follow</h3>
+                <button class="text-[12px] text-[#8C8C8C] hover:text-[#262626]">See all</button>
+              </div>
+              <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                <div class="min-w-[160px] rounded-xl border border-[#E8E8E8] p-3">
+                  <div class="flex items-center gap-2">
+                    <img src="https://i.pravatar.cc/64?img=11" class="w-8 h-8 rounded-full" alt="Nina" />
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">Nina Park</div>
+                      <div class="text-[12px] text-[#8C8C8C]">EV ramen expert</div>
+                    </div>
+                  </div>
+                  <button class="mt-3 w-full h-8 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                </div>
+                <div class="min-w-[160px] rounded-xl border border-[#E8E8E8] p-3">
+                  <div class="flex items-center gap-2">
+                    <img src="https://i.pravatar.cc/64?img=12" class="w-8 h-8 rounded-full" alt="Omar" />
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">Omar Diaz</div>
+                      <div class="text-[12px] text-[#8C8C8C]">Late-night eats</div>
+                    </div>
+                  </div>
+                  <button class="mt-3 w-full h-8 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                </div>
+                <div class="min-w-[160px] rounded-xl border border-[#E8E8E8] p-3">
+                  <div class="flex items-center gap-2">
+                    <img src="https://i.pravatar.cc/64?img=13" class="w-8 h-8 rounded-full" alt="Lia" />
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">L                  ia Chen</div>
+                      <div class="text-[12px] text-[#8C8C8C]">Wine bars & dates</div>
+                    </div>
+                  </div>
+                  <button class="mt-3 w-full h-8 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                </div>
+                <div class="min-w-[160px] rounded-xl border border-[#E8E8E8] p-3">
+                  <div class="flex items-center gap-2">
+                    <img src="https://i.pravatar.cc/64?img=14" class="w-8 h-8 rounded-full" alt="Mark" />
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">Mark Lee</div>
+                      <div class="text-[12px] text-[#8C8C8C]">Budget bites</div>
+                    </div>
+                  </div>
+                  <button class="mt-3 w-full h-8 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Results (with query) -->
+          <div id="searchResults" class="hidden px-5 pt-3 pb-24 space-y-6 overflow-y-auto">
+            <!-- All scope -->
+            <div id="resAll" class="results-pane space-y-6">
+              <!-- Places -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-[14px] font-semibold tracking-tight text-[#8C8C8C] uppercase">Places</h3>
+                  <button class="text-[12px] text-[#8C8C8C] hover:text-[#262626]" data-jump="places">See all</button>
+                </div>
+                <div class="space-y-2">
+                  <article class="result-item rounded-xl border border-[#E8E8E8] overflow-hidden" data-keywords="ramen japanese noodles late night east village">
+                    <div class="flex">
+                      <img src="https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=1200&auto=format&fit=crop" alt="Ramen Katsu" class="h-20 w-20 object-cover flex-shrink-0" />
+                      <div class="p-3 flex-1">
+                        <div class="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 class="text-[14px] font-medium tracking-tight">Ramen Katsu</h4>
+                            <div class="mt-0.5 text-[12px] text-[#8C8C8C]">$$ · 0.4 mi · 4.8</div>
+                          </div>
+                          <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Save</button>
+                        </div>
+                        <p class="mt-1 text-[12px] text-[#595959] line-clamp-1">Rich tonkotsu, house-made noodles</p>
+                      </div>
+                    </div>
+                  </article>
+                  <article class="result-item rounded-xl border border-[#E8E8E8] overflow-hidden" data-keywords="sushi omakase nigiri japanese date night">
+                    <div class="flex">
+                      <img src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop" alt="Sushi Mori" class="h-20 w-20 object-cover flex-shrink-0" />
+                      <div class="p-3 flex-1">
+                        <div class="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 class="text-[14px] font-medium tracking-tight">Sushi Mori</h4>
+                            <div class="mt-0.5 text-[12px] text-[#8C8C8C]">$$$ · 0.6 mi · 4.7</div>
+                          </div>
+                          <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Save</button>
+                        </div>
+                        <p class="mt-1 text-[12px] text-[#595959] line-clamp-1">Approachable omakase, cozy bar</p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <!-- People -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-[14px] font-semibold tracking-tight text-[#8C8C8C] uppercase">People</h3>
+                  <button class="text-[12px] text-[#8C8C8C] hover:text-[#262626]" data-jump="people">See all</button>
+                </div>
+                <div class="space-y-2">
+                  <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="nina ramen noodles expert east village">
+                    <div class="flex items-center gap-3">
+                      <img src="https://i.pravatar.cc/64?img=11" alt="Nina" class="w-9 h-9 rounded-full" />
+                      <div class="flex-1">
+                        <div class="text-[14px] font-medium tracking-tight">Nina Park</div>
+                        <div class="text-[12px] text-[#8C8C8C]">EV ramen expert</div>
+                      </div>
+                      <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                    </div>
+                  </article>
+                  <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="omar late night eats burger tacos">
+                    <div class="flex items-center gap-3">
+                      <img src="https://i.pravatar.cc/64?img=12" alt="Omar" class="w-9 h-9 rounded-full" />
+                      <div class="flex-1">
+                        <div class="text-[14px] font-medium tracking-tight">Omar Diaz</div>
+                        <div class="text-[12px] text-[#8C8C8C]">Late-night eats</div>
+                      </div>
+                      <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <!-- Communities -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-[14px] font-semibold tracking-tight text-[#8C8C8C] uppercase">Communities</h3>
+                  <button class="text-[12px] text-[#8C8C8C] hover:text-[#262626]" data-jump="communities">See all</button>
+                </div>
+                <div class="space-y-2">
+                  <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="ev foodies east village community">
+                    <div class="flex items-center gap-3">
+                      <div class="h-8 w-8 rounded-lg bg-[#FFAD27]/10 flex items-center justify-center ring-1 ring-[#FFAD27]/20">
+                        <i data-lucide="users" class="w-4.5 h-4.5 text-[#FFAD27]"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-[14px] font-medium tracking-tight">EV Foodies</div>
+                        <div class="text-[12px] text-[#8C8C8C]">2.1K members • Local tips</div>
+                      </div>
+                      <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Join</button>
+                    </div>
+                  </article>
+                  <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="vegan nyc plant based community">
+                    <div class="flex items-center gap-3">
+                      <div class="h-8 w-8 rounded-lg bg-[#F7F7F7] flex items-center justify-center ring-1 ring-black/5">
+                        <i data-lucide="salad" class="w-4.5 h-4.5 text-[#262626]"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-[14px] font-medium tracking-tight">Vegan NYC</div>
+                        <div class="text-[12px] text-[#8C8C8C]">8.4K members • Plant-forward</div>
+                      </div>
+                      <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Join</button>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </div>
+
+            <!-- Places scope -->
+            <div id="resPlaces" class="results-pane hidden">
+              <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Places</h3>
+              <div class="space-y-2">
+                <article class="result-item rounded-xl border border-[#E8E8E8] overflow-hidden" data-keywords="pizza slice casual cheap">
+                  <div class="flex">
+                    <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1200&auto=format&fit=crop" alt="Slice Society" class="h-20 w-20 object-cover flex-shrink-0" />
+                    <div class="p-3 flex-1">
+                      <div class="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 class="text-[14px] font-medium tracking-tight">Slice Society</h4>
+                          <div class="mt-0.5 text-[12px] text-[#8C8C8C]">$ · 0.5 mi · 4.6</div>
+                        </div>
+                        <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Save</button>
+                      </div>
+                      <p class="mt-1 text-[12px] text-[#595959] line-clamp-1">Crispy-bottom NY slices</p>
+                    </div>
+                  </div>
+                </article>
+                <article class="result-item rounded-xl border border-[#E8E8E8] overflow-hidden" data-keywords="curry indian spicy comfort">
+                  <div class="flex">
+                    <img src="https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=1200&auto=format&fit=crop" alt="Curry Club" class="h-20 w-20 object-cover flex-shrink-0" />
+                    <div class="p-3 flex-1">
+                      <div class="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 class="text-[14px] font-medium tracking-tight">Curry Club</h4>
+                          <div class="mt-0.5 text-[12px] text-[#8C8C8C]">$$ · 0.8 mi · 4.5</div>
+                        </div>
+                        <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Save</button>
+                      </div>
+                      <p class="mt-1 text-[12px] text-[#595959] line-clamp-1">Comfort curries and naan</p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <!-- People scope -->
+            <div id="resPeople" class="results-pane hidden">
+              <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">People</h3>
+              <div class="space-y-2">
+                <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="lia wine date night bars">
+                  <div class="flex items-center gap-3">
+                    <img src="https://i.pravatar.cc/64?img=13" alt="Lia" class="w-9 h-9 rounded-full" />
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">Lia Chen</div>
+                      <div class="text-[12px] text-[#8C8C8C]">Wine bars & dates</div>
+                    </div>
+                    <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                  </div>
+                </article>
+                <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="mark budget bites cheap eats">
+                  <div class="flex items-center gap-3">
+                    <img src="https://i.pravatar.cc/64?img=14" alt="Mark" class="w-9 h-9 rounded-full" />
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">Mark Lee</div>
+                      <div class="text-[12px] text-[#8C8C8C]">Budget bites</div>
+                    </div>
+                    <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Follow</button>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <!-- Communities scope -->
+            <div id="resCommunities" class="results-pane hidden">
+              <h3 class="text-[16px] leading-6 font-semibold tracking-tight mb-3">Communities</h3>
+              <div class="space-y-2">
+                <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="east village foodies local group">
+                  <div class="flex items-center gap-3">
+                    <div class="h-8 w-8 rounded-lg bg-[#FFAD27]/10 flex items-center justify-center ring-1 ring-[#FFAD27]/20">
+                      <i data-lucide="users" class="w-4.5 h-4.5 text-[#FFAD27]"></i>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">EV Foodies</div>
+                      <div class="text-[12px] text-[#8C8C8C]">2.1K members • Local tips</div>
+                    </div>
+                    <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Join</button>
+                  </div>
+                </article>
+                <article class="result-item rounded-xl border border-[#E8E8E8] p-3" data-keywords="vegan nyc plant based">
+                  <div class="flex items-center gap-3">
+                    <div class="h-8 w-8 rounded-lg bg-[#F7F7F7] flex items-center justify-center ring-1 ring-black/5">
+                      <i data-lucide="salad" class="w-4.5 h-4.5 text-[#262626]"></i>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-[14px] font-medium tracking-tight">Vegan NYC</div>
+                      <div class="text-[12px] text-[#8C8C8C]">8.4K members • Plant-forward</div>
+                    </div>
+                    <button class="h-8 px-3 rounded-lg border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10">Join</button>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <!-- No results -->
+            <div id="noResults" class="hidden">
+              <div class="rounded-xl border border-[#E8E8E8] p-6 text-center">
+                <i data-lucide="search-x" class="w-6 h-6 mx-auto text-[#8C8C8C]"></i>
+                <h4 class="mt-2 text-[14px] font-semibold tracking-tight">No matches</h4>
+                <p class="mt-1 text-[12px] text-[#8C8C8C]">Try a different query or scope.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Toast container -->
+      <div id="toast" class="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center"></div>
+    </div>
+  </div>
+
+  <!-- Utilities -->
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+
+  <!-- Scripts -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+      const qs = (s, el=document) => el.querySelector(s);
+      const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+
+      // Top option tabs (A-D)
+      const sections = {
+        optA: qs('#sectionA'),
+        optB: qs('#sectionB'),
+        optC: qs('#sectionC'),
+        optD: qs('#sectionD'),
+      };
+      qsa('header [role="tab"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          qsa('header [role="tab"]').forEach(b => {
+            b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+            b.classList.toggle('bg-white', b === btn);
+            b.classList.toggle('border', true);
+            b.classList.toggle('border-[#E8E8E8]', true);
+            b.classList.toggle('shadow-sm', b === btn);
+          });
+          Object.entries(sections).forEach(([id, el]) => {
+            el.classList.toggle('hidden', ('#' + el.id) !== ('#' + btn.getAttribute('aria-labelledby')) && btn.id !== id);
+          });
+          // Direct mapping by id
+          Object.keys(sections).forEach(id => sections[id].classList.add('hidden'));
+          sections[btn.id]?.classList.remove('hidden');
+          // Refresh icons after any DOM class changes
+          if (window.lucide && lucide.createIcons) lucide.createIcons();
+        });
+      });
+
+      // Grid inner tabs
+      const gridFriends = qs('#gridFriends');
+      const gridForYou = qs('#gridForYou');
+      const gridFriendsPane = qs('#gridFriendsPane');
+      const gridForYouPane = qs('#gridForYouPane');
+      const setGridTab = (which) => {
+        const active = which === 'friends' ? gridFriends : gridForYou;
+        const inactive = which === 'friends' ? gridForYou : gridFriends;
+        gridFriendsPane.classList.toggle('hidden', which !== 'friends');
+        gridForYouPane.classList.toggle('hidden', which !== 'foryou');
+        active.classList.add('bg-white','border','border-[#E8E8E8]','shadow-sm');
+        inactive.classList.remove('bg-white','shadow-sm');
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+      };
+      gridFriends?.addEventListener('click', () => setGridTab('friends'));
+      gridForYou?.addEventListener('click', () => setGridTab('foryou'));
+
+      // Dismissible banners
+      qsa('[data-dismiss]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sel = btn.getAttribute('data-dismiss');
+          const el = sel ? qs(sel) : btn.closest('.rounded-2xl,.rounded-xl');
+          el?.classList.add('opacity-0','scale-[0.98]');
+          setTimeout(() => el?.remove(), 150);
+        });
+      });
+
+      // Simple toasts
+      const toast = qs('#toast');
+      const showToast = (msg) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'pointer-events-auto bg-[#262626] text-white text-[13px] font-medium tracking-tight px-3.5 py-2 rounded-lg shadow-lg ring-1 ring-black/5';
+        wrap.textContent = msg;
+        toast.appendChild(wrap);
+        setTimeout(() => {
+          wrap.classList.add('opacity-0','translate-y-1','transition');
+          setTimeout(() => wrap.remove(), 200);
+        }, 1600);
+      };
+
+      // Action stubs
+      qsa('[data-action="invite-link"]').forEach(b => b.addEventListener('click', async () => {
+        const link = 'https://troodie.app/invite/mike';
+        try {
+          await navigator.clipboard.writeText(link);
+          showToast('Invite link copied');
+        } catch {
+          showToast('Invite link: ' + link);
+        }
+      }));
+      qsa('[data-action="connect-contacts"]').forEach(b => b.addEventListener('click', () => showToast('Contacts connect coming soon')));
+      qsa('[data-action="ask-friends"]').forEach(b => b.addEventListener('click', () => showToast('Ask friends flow coming soon')));
+      qsa('[data-action="create-plan"]').forEach(b => b.addEventListener('click', () => showToast('Plan created (draft)')));
+
+      // Search overlay
+      const openSearch = qs('#openSearch');
+      const searchScreen = qs('#searchScreen');
+      const closeSearch = qs('#closeSearch');
+      const searchInput = qs('#searchInput');
+      const clearSearch = qs('#clearSearch');
+      const searchHome = qs('#searchHome');
+      const searchResults = qs('#searchResults');
+      const scopeBtns = qsa('.scope-btn');
+      const panes = {
+        all: qs('#resAll'),
+        places: qs('#resPlaces'),
+        people: qs('#resPeople'),
+        communities: qs('#resCommunities'),
+      };
+      const noResults = qs('#noResults');
+
+      const setScope = (scope) => {
+        scopeBtns.forEach(b => {
+          const active = b.getAttribute('data-scope') === scope;
+          b.classList.toggle('bg-white', active);
+          b.classList.toggle('border', true);
+          b.classList.toggle('border-[#E8E8E8]', true);
+          b.classList.toggle('shadow-sm', active);
+          b.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        Object.entries(panes).forEach(([key, el]) => el.classList.toggle('hidden', scope !== 'all' && key !== scope));
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+      };
+
+      const updateResults = () => {
+        const q = (searchInput.value || '').trim().toLowerCase();
+        const scope = (scopeBtns.find(b => b.classList.contains('shadow-sm'))?.getAttribute('data-scope')) || 'all';
+
+        // Toggle home/results
+        const showRes = q.length > 0;
+        searchHome.classList.toggle('hidden', showRes);
+        searchResults.classList.toggle('hidden', !showRes);
+        clearSearch.classList.toggle('hidden', q.length === 0);
+
+        if (!showRes) {
+          noResults.classList.add('hidden');
+          return;
+        }
+
+        // Filter items
+        let visibleCount = 0;
+        const activePanes = scope === 'all' ? Object.values(panes) : [panes[scope]];
+        activePanes.forEach(p => {
+          qsa('.result-item', p).forEach(item => {
+            const keys = (item.getAttribute('data-keywords') || '').toLowerCase();
+            const match = q.split(/\s+/).every(token => keys.includes(token));
+            item.classList.toggle('hidden', !match);
+            if (match) visibleCount++;
+          });
+        });
+
+        // If no matches, show "no results"
+        noResults.classList.toggle('hidden', visibleCount !== 0);
+
+        // Refresh icons
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+      };
+
+      openSearch?.addEventListener('click', () => {
+        searchScreen.classList.remove('hidden');
+        setTimeout(() => searchInput?.focus(), 50);
+        setScope('all');
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+      });
+      closeSearch?.addEventListener('click', () => {
+        searchScreen.classList.add('hidden');
+        searchInput.value = '';
+        updateResults();
+      });
+      clearSearch?.addEventListener('click', () => {
+        searchInput.value = '';
+        updateResults();
+      });
+
+      scopeBtns.forEach(b => b.addEventListener('click', () => {
+        setScope(b.getAttribute('data-scope'));
+        updateResults();
+      }));
+
+      // Jump links from "All" headings
+      qsa('[data-jump]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.getAttribute('data-jump');
+          setScope(target);
+          updateResults();
+          // Scroll to top when changing panes
+          searchResults.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+
+      // Recent searches
+      const REC_KEY = 'troodie.recents';
+      const recentWrap = qs('#recentWrap');
+      const clearRecents = qs('#clearRecents');
+      const getRecents = () => {
+        try { return JSON.parse(localStorage.getItem(REC_KEY) || '[]'); } catch { return []; }
+      };
+      const setRecents = (arr) => localStorage.setItem(REC_KEY, JSON.stringify(arr.slice(0, 8)));
+      const renderRecents = () => {
+        recentWrap.innerHTML = '';
+        const recents = getRecents();
+        if (recents.length === 0) {
+          const hint = document.createElement('div');
+          hint.className = 'text-[12px] text-[#8C8C8C]';
+          hint.textContent = 'Search to see your recent queries';
+          recentWrap.appendChild(hint);
+          return;
+        }
+        recents.forEach(term => {
+          const chip = document.createElement('button');
+          chip.className = 'h-8 px-3 rounded-full border border-[#E8E8E8] text-[12px] font-medium tracking-tight hover:border-[#FFAD27]/50 hover:bg-[#FFAD27]/10 transition';
+          chip.textContent = term;
+          chip.addEventListener('click', () => {
+            searchInput.value = term;
+            setScope('all');
+            updateResults();
+          });
+          recentWrap.appendChild(chip);
+        });
+      };
+      renderRecents();
+      clearRecents?.addEventListener('click', () => {
+        localStorage.removeItem(REC_KEY);
+        renderRecents();
+      });
+
+      const commitQuery = () => {
+        const q = (searchInput.value || '').trim();
+        if (!q) return;
+        const recents = getRecents();
+        const next = [q, ...recents.filter(x => x.toLowerCase() !== q.toLowerCase())];
+        setRecents(next);
+        renderRecents();
+        setScope('all');
+        updateResults();
+      };
+
+      searchInput.addEventListener('input', updateResults);
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitQuery();
+        }
+      });
+
+      // "Join communities" entry should open search on Communities scope
+      qsa('[data-action="open-communities"]').forEach(b => {
+        b.addEventListener('click', () => {
+          searchScreen.classList.remove('hidden');
+          setScope('communities');
+          searchInput.value = '';
+          updateResults();
+          if (window.lucide && lucide.createIcons) lucide.createIcons();
+        });
+      });
+
+      // Initial states
+      setGridTab('friends');
+      setScope('all');
+      updateResults();
+    });
+  </script>
+</body>
+</html>
