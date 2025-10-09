@@ -130,6 +130,71 @@ class EnhancedPostEngagementService {
   }
 
   /**
+   * Simple toggle like method (for useOptimisticMutation pattern)
+   */
+  async togglePostLike(
+    postId: string,
+    userId: string
+  ): Promise<{ success: boolean; is_liked: boolean; likes_count: number; error?: string }> {
+    try {
+      // Check current state
+      const { data: existingLike } = await supabase
+        .from('post_likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      let isLiked: boolean;
+
+      if (existingLike) {
+        // Unlike
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+        isLiked = false;
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('post_likes')
+          .insert({
+            post_id: postId,
+            user_id: userId,
+            created_at: new Date().toISOString()
+          });
+
+        if (error) throw error;
+        isLiked = true;
+      }
+
+      // Get updated count
+      const { data: post } = await supabase
+        .from('posts')
+        .select('likes_count')
+        .eq('id', postId)
+        .single();
+
+      return {
+        success: true,
+        is_liked: isLiked,
+        likes_count: post?.likes_count || 0
+      };
+    } catch (error: any) {
+      console.error('Error in togglePostLike:', error);
+      return {
+        success: false,
+        is_liked: false,
+        likes_count: 0,
+        error: error.message || 'Failed to toggle like'
+      };
+    }
+  }
+
+  /**
    * Toggle save with optimistic update
    */
   async togglePostSaveOptimistic(

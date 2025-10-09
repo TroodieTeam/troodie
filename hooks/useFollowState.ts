@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Platform, Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { FollowService } from '@/services/followService';
 import { supabase } from '@/lib/supabase';
+import { realtimeManager } from '@/services/realtimeManager';
+import { ToastService } from '@/services/toastService';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface UseFollowStateProps {
@@ -16,10 +20,11 @@ interface FollowState {
   followersCount: number;
   followingCount: number;
   loading: boolean;
+  lastSyncTimestamp: number; // Track last sync for conflict resolution
 }
 
 /**
- * Hook to manage follow state with real-time updates
+ * Hook to manage follow state with real-time updates and optimistic UI
  */
 export function useFollowState({
   userId,
@@ -33,15 +38,20 @@ export function useFollowState({
     isFollowing: initialIsFollowing,
     followersCount: initialFollowersCount,
     followingCount: initialFollowingCount,
-    loading: false
+    loading: false,
+    lastSyncTimestamp: Date.now()
   });
+
+  // Prevent concurrent toggle operations
+  const isToggling = useRef(false);
 
   // Update state when initial values change (e.g., when profile loads)
   useEffect(() => {
     setState(prev => ({
       ...prev,
       followersCount: initialFollowersCount,
-      followingCount: initialFollowingCount
+      followingCount: initialFollowingCount,
+      lastSyncTimestamp: Date.now()
     }));
   }, [initialFollowersCount, initialFollowingCount]);
 
@@ -61,189 +71,131 @@ export function useFollowState({
     checkFollowStatus();
   }, [currentUser?.id, userId]);
 
-  // Subscribe to real-time updates for user stats
+  // SIMPLIFIED: Single real-time subscription for count updates using realtimeManager
   useEffect(() => {
     if (!userId) return;
 
-    // Subscribe to user stats updates
-    const channel = supabase
-      .channel(`user-stats-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'users',
-          filter: `id=eq.${userId}`
-        },
-        (payload) => {
-          const newData = payload.new;
-          setState(prev => ({
-            ...prev,
-            followersCount: newData.followers_count || 0,
-            followingCount: newData.following_count || 0
-          }));
-        }
-      )
-      .subscribe();
+    const unsubscribe = realtimeManager.subscribe(
+      `user-follow-stats-${userId}`,
+      {
+        table: 'users',
+        event: 'UPDATE',
+        filter: `id=eq.${userId}`
+      },
+      (data: any) => {
+        const serverTimestamp = new Date(data.updated_at || Date.now()).getTime();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+        // Only update if server data is newer than our last optimistic update
+        setState(prev => {
+          if (serverTimestamp > prev.lastSyncTimestamp) {
+            return {
+              ...prev,
+              followersCount: data.followers_count || 0,
+              followingCount: data.following_count || 0,
+              lastSyncTimestamp: serverTimestamp
+            };
+          }
+          return prev;
+        });
+      },
+      {
+        timestampField: 'updated_at',
+        minTimestamp: state.lastSyncTimestamp
+      }
+    );
+
+    return unsubscribe;
   }, [userId]);
 
-  // Subscribe to relationship changes
-  useEffect(() => {
-    if (!currentUser?.id || !userId) return;
-
-    // If viewing own profile, subscribe to changes in following count
-    if (currentUser.id === userId) {
-      const channel = supabase
-        .channel(`own-follow-status-${currentUser.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'user_relationships',
-            filter: `follower_id=eq.${currentUser.id}`
-          },
-          () => {
-            // When current user follows someone, increment their following count
-            setState(prev => ({
-              ...prev,
-              followingCount: prev.followingCount + 1
-            }));
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'user_relationships',
-            filter: `follower_id=eq.${currentUser.id}`
-          },
-          () => {
-            // When current user unfollows someone, decrement their following count
-            setState(prev => ({
-              ...prev,
-              followingCount: Math.max(0, prev.followingCount - 1)
-            }));
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } else {
-      // Viewing someone else's profile
-      const channel = supabase
-        .channel(`follow-status-${currentUser.id}-${userId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'user_relationships',
-            filter: `follower_id=eq.${currentUser.id}`
-          },
-          (payload) => {
-            if (payload.new.following_id === userId) {
-              setState(prev => ({
-                ...prev,
-                isFollowing: true,
-                followersCount: prev.followersCount + 1
-              }));
-              onFollowChange?.(true);
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'user_relationships',
-            filter: `follower_id=eq.${currentUser.id}`
-          },
-          (payload) => {
-            if (payload.old?.following_id === userId) {
-              setState(prev => ({
-                ...prev,
-                isFollowing: false,
-                followersCount: Math.max(0, prev.followersCount - 1)
-              }));
-              onFollowChange?.(false);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [currentUser?.id, userId, onFollowChange]);
-
-  // Toggle follow status
+  // IMPROVED: Toggle with request deduplication and proper error handling
   const toggleFollow = useCallback(async () => {
     if (!currentUser?.id || !userId || currentUser.id === userId) return;
-    
+
+    // Prevent concurrent toggles
+    if (isToggling.current) return;
+
+    isToggling.current = true;
     setState(prev => ({ ...prev, loading: true }));
-    
-    // Optimistic update
+
+    // Store previous state for rollback
     const wasFollowing = state.isFollowing;
+    const prevFollowersCount = state.followersCount;
+
+    // Optimistic update with timestamp
+    const optimisticTimestamp = Date.now();
     setState(prev => ({
       ...prev,
       isFollowing: !wasFollowing,
-      followersCount: wasFollowing 
-        ? Math.max(0, prev.followersCount - 1) 
-        : prev.followersCount + 1
+      followersCount: wasFollowing
+        ? Math.max(0, prev.followersCount - 1)
+        : prev.followersCount + 1,
+      lastSyncTimestamp: optimisticTimestamp
     }));
 
+    // Haptic feedback on iOS
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
     try {
-      if (wasFollowing) {
-        await FollowService.unfollowUser(userId);
-      } else {
-        await FollowService.followUser(userId);
+      const result = wasFollowing
+        ? await FollowService.unfollowUser(userId)
+        : await FollowService.followUser(userId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update follow status');
       }
-      
+
+      // Success - verify counts with server
+      await refreshCounts();
+
       onFollowChange?.(!wasFollowing);
     } catch (error) {
       console.error('Error toggling follow:', error);
-      
-      // Revert optimistic update on error
+
+      // Rollback optimistic update
       setState(prev => ({
         ...prev,
         isFollowing: wasFollowing,
-        followersCount: wasFollowing 
-          ? prev.followersCount + 1 
-          : Math.max(0, prev.followersCount - 1)
+        followersCount: prevFollowersCount,
+        lastSyncTimestamp: Date.now()
       }));
+
+      ToastService.showError(
+        wasFollowing ? 'Failed to unfollow user' : 'Failed to follow user'
+      );
     } finally {
       setState(prev => ({ ...prev, loading: false }));
+      isToggling.current = false;
     }
   }, [currentUser?.id, userId, state.isFollowing, onFollowChange]);
 
-  // Refresh counts from database
+  // IMPROVED: Refresh counts with timestamp-based conflict resolution
   const refreshCounts = useCallback(async () => {
     if (!userId) return;
 
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('followers_count, following_count')
+        .select('followers_count, following_count, updated_at')
         .eq('id', userId)
         .single();
 
       if (!error && data) {
-        setState(prev => ({
-          ...prev,
-          followersCount: data.followers_count || 0,
-          followingCount: data.following_count || 0
-        }));
+        const serverTimestamp = new Date(data.updated_at || Date.now()).getTime();
+
+        setState(prev => {
+          // Only update if server data is newer
+          if (serverTimestamp >= prev.lastSyncTimestamp) {
+            return {
+              ...prev,
+              followersCount: data.followers_count || 0,
+              followingCount: data.following_count || 0,
+              lastSyncTimestamp: serverTimestamp
+            };
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error('Error refreshing counts:', error);

@@ -9,7 +9,7 @@ import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -97,6 +97,7 @@ const useTabData = <T extends any>(
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('restaurants');
@@ -105,6 +106,13 @@ export default function ExploreScreen() {
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isReRandomizing, setIsReRandomizing] = useState(false);
   const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
+
+  // Handle tab parameter from URL (e.g., when redirected after post creation)
+  useEffect(() => {
+    if (params.tab && (params.tab === 'restaurants' || params.tab === 'posts' || params.tab === 'communities')) {
+      setActiveTab(params.tab as TabType);
+    }
+  }, [params.tab]);
   
   
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -380,7 +388,20 @@ export default function ExploreScreen() {
         windowSize={10}
         removeClippedSubviews
       />
-      
+
+      {/* Floating Create Post Button - only show on posts tab */}
+      {activeTab === 'posts' && (
+        <TouchableOpacity
+          style={styles.createPostButton}
+          onPress={() => router.push('/add/create-post')}
+          accessibilityLabel="Create a new post"
+          accessibilityRole="button"
+        >
+          <Plus size={20} color="#FFFFFF" />
+          <Text style={styles.createPostButtonText}>Create Post</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Add Restaurant Modal */}
       <AddRestaurantModal
         visible={showAddRestaurantModal}
@@ -523,5 +544,28 @@ const styles = StyleSheet.create({
     ...designTokens.typography.buttonText,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  createPostButton: {
+    position: 'absolute',
+    bottom: 90, // Adjusted to clear tab bar (tab bar ~65-70px + 20px margin)
+    right: 20,
+    backgroundColor: designTokens.colors.primaryOrange,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 999, // Ensure it's above other elements
+  },
+  createPostButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
   },
 });

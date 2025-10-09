@@ -5,8 +5,11 @@ import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Community, communityService } from '@/services/communityService';
 import { CommunityAdminService } from '@/services/communityAdminService';
+import { ToastService } from '@/services/toastService';
 import { useCommunityPermissions, getRoleDisplayName, getRoleBadgeColor } from '@/utils/communityPermissions';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { useCallback } from 'react';
 import {
   Calendar,
   ChevronLeft,
@@ -22,13 +25,14 @@ import {
   Users,
   FileText
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
   Image,
+  Platform,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -56,11 +60,15 @@ export default function CommunityDetailScreen() {
   const [community, setCommunity] = useState<Community | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const [activeTab, setActiveTab] = useState<'feed' | 'members' | 'about'>('feed');
   const [members, setMembers] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  
+
+  // Track if we just performed an action that modified posts
+  const skipNextFocusRefresh = useRef(false);
+
   // Admin modals
   const [removeMemberModal, setRemoveMemberModal] = useState<{ visible: boolean; member: any }>({ 
     visible: false, 
@@ -125,6 +133,24 @@ export default function CommunityDetailScreen() {
     loadCommunityData();
   }, [communityId, user]);
 
+  // Refresh posts when screen comes back into focus (e.g., after creating a post)
+  useFocusEffect(
+    useCallback(() => {
+      // Skip refresh if we just deleted a post (optimistic update already handled it)
+      if (skipNextFocusRefresh.current) {
+        skipNextFocusRefresh.current = false;
+        return;
+      }
+
+      // Reload posts when screen gains focus (e.g., returning from create post screen)
+      if (communityId && !loading) {
+        communityService.getCommunityPosts(communityId, 20)
+          .then(postsData => setPosts(postsData))
+          .catch(err => console.error('Error refreshing posts on focus:', err));
+      }
+    }, [communityId, loading])
+  );
+
   const handleJoinLeave = async () => {
     if (!user) {
       router.push('/login');
@@ -133,59 +159,65 @@ export default function CommunityDetailScreen() {
 
     if (!community) return;
 
-    // Optimistic update - immediately update UI
+    // Prevent double-taps
+    if (isJoining) return;
+
+    setIsJoining(true);
+
+    // Store previous state for revert
     const previousMemberState = isMember;
     const previousMemberCount = community.member_count;
-    
-    // Update UI optimistically
+
+    // Optimistic UI update - immediate feedback
     setIsMember(!isMember);
     setCommunity({
       ...community,
-      member_count: isMember ? community.member_count - 1 : community.member_count + 1
+      member_count: isMember
+        ? Math.max(0, community.member_count - 1)
+        : community.member_count + 1
     });
 
+    // Haptic feedback on iOS
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
     try {
-      if (previousMemberState) {
-        const { success, error } = await communityService.leaveCommunity(user.id, community.id);
-        if (success) {
-          // Success - UI already updated optimistically
-          // No toast for successful leave to avoid interrupting user flow
-        } else {
-          // Revert optimistic update on failure
-          setIsMember(previousMemberState);
-          setCommunity({
-            ...community,
-            member_count: previousMemberCount
-          });
-          // Only show error if it's not a duplicate action
-          if (error && error !== 'Owners cannot leave their own community') {
-            Alert.alert('Unable to leave', error);
-          } else if (error === 'Owners cannot leave their own community') {
-            Alert.alert('Action not allowed', error);
-          }
+      const result = previousMemberState
+        ? await communityService.leaveCommunity(user.id, community.id)
+        : await communityService.joinCommunity(user.id, community.id);
+
+      if (result.success) {
+        // Update with server count if provided
+        if (result.member_count !== undefined) {
+          setCommunity(prev => ({
+            ...prev!,
+            member_count: result.member_count!
+          }));
         }
+
+        // Refresh member list in background (non-blocking)
+        communityService.getCommunityMembers(community.id)
+          .then(membersData => setMembers(membersData))
+          .catch(err => console.error('Background refresh failed:', err));
+
+        // Show subtle success feedback
+        ToastService.showSuccess(previousMemberState ? 'Left community' : 'Joined community');
       } else {
-        const { success, error } = await communityService.joinCommunity(user.id, community.id);
-        if (success) {
-          // Success - UI already updated optimistically
-          // Show subtle success feedback
-        } else {
-          // Revert optimistic update on failure
-          setIsMember(previousMemberState);
-          setCommunity({
-            ...community,
-            member_count: previousMemberCount
-          });
-          // Only show error if it's not a duplicate action
-          if (error) {
-            Alert.alert('Unable to join', error);
-          }
+        // Revert optimistic update on failure
+        setIsMember(previousMemberState);
+        setCommunity({
+          ...community,
+          member_count: previousMemberCount
+        });
+
+        // Show error message
+        if (result.error === 'Owners cannot leave their own community') {
+          Alert.alert('Cannot Leave', result.error);
+        } else if (result.error) {
+          ToastService.showError(result.error);
         }
       }
-      
-      // Refresh member list in background
-      const membersData = await communityService.getCommunityMembers(community.id);
-      setMembers(membersData);
     } catch (error) {
       // Revert optimistic update on network error
       setIsMember(previousMemberState);
@@ -194,7 +226,9 @@ export default function CommunityDetailScreen() {
         member_count: previousMemberCount
       });
       console.error('Error in handleJoinLeave:', error);
-      // Don't show error toast for network issues, just revert the UI
+      ToastService.showError('Network error. Please check your connection.');
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -270,24 +304,66 @@ export default function CommunityDetailScreen() {
   const handleDeletePost = (postId: string) => {
     setDeletePostModal({ visible: true, postId });
   };
-  
-  const handleDeletePostConfirm = async (reason: string) => {
-    if (!deletePostModal.postId) return;
-    
+
+  // Handle delete from PostCard (when user deletes their own post via PostCard menu)
+  const handlePostCardDelete = async (postId: string) => {
     try {
-      const { success, error } = await CommunityAdminService.deletePost(
-        deletePostModal.postId,
-        reason
-      );
-      
-      if (success) {
-        setPosts(posts.filter(p => p.id !== deletePostModal.postId));
-        Alert.alert('Success', 'Post deleted successfully');
-      } else {
-        Alert.alert('Error', error || 'Failed to delete post');
+      // Refresh posts list after PostCard delete completes
+      const postsData = await communityService.getCommunityPosts(communityId, 20);
+      setPosts(postsData);
+
+      // Update post count
+      if (community) {
+        setCommunity({
+          ...community,
+          post_count: Math.max(0, (community.post_count || 0) - 1)
+        });
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete post');
+      console.error('Error refreshing after delete:', error);
+    }
+  };
+
+  const handleDeletePostConfirm = async (reason: string) => {
+    if (!deletePostModal.postId) return;
+
+    const postIdToDelete = deletePostModal.postId;
+
+    // Close modal immediately for better UX
+    setDeletePostModal({ visible: false, postId: '' });
+
+    // Haptic feedback on iOS
+    if (Platform.OS === 'ios') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    try {
+      // Call delete API FIRST
+      const { success, error } = await CommunityAdminService.deletePost(
+        postIdToDelete,
+        reason
+      );
+
+      if (success) {
+        // After successful deletion, refresh the posts list from server
+        const postsData = await communityService.getCommunityPosts(communityId, 20);
+        setPosts(postsData);
+
+        // Update post count
+        if (community) {
+          setCommunity({
+            ...community,
+            post_count: Math.max(0, (community.post_count || 0) - 1)
+          });
+        }
+
+        ToastService.showSuccess('Post deleted');
+      } else {
+        throw new Error(error || 'Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      ToastService.showError('Failed to delete post. Please try again.');
     }
   };
 
@@ -414,13 +490,22 @@ export default function CommunityDetailScreen() {
         </View>
         
         {(!hasPermission('update_settings') || role === 'member') && (
-          <TouchableOpacity 
-            style={[styles.joinButton, isMember && styles.leaveButton]}
+          <TouchableOpacity
+            style={[
+              styles.joinButton,
+              isMember && styles.leaveButton,
+              isJoining && styles.joinButtonLoading
+            ]}
             onPress={handleJoinLeave}
+            disabled={isJoining || loading}
           >
-            <Text style={[styles.joinButtonText, isMember && styles.leaveButtonText]}>
-              {isMember ? 'Leave' : 'Join Community'}
-            </Text>
+            {isJoining ? (
+              <ActivityIndicator size="small" color={isMember ? theme.colors.text.primary : '#FFFFFF'} />
+            ) : (
+              <Text style={[styles.joinButtonText, isMember && styles.leaveButtonText]}>
+                {isMember ? 'Leave' : 'Join Community'}
+              </Text>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -452,10 +537,11 @@ export default function CommunityDetailScreen() {
 
   const renderPostItem = ({ item }: { item: any }) => (
     <View style={styles.postWrapper}>
-      <PostCard 
+      <PostCard
         post={item}
         onPress={() => router.push(`/posts/${item.id}`)}
         showActions={true}
+        onDelete={handlePostCardDelete}
       />
     </View>
   );
@@ -771,6 +857,9 @@ const styles = StyleSheet.create({
   },
   leaveButtonText: {
     color: theme.colors.text.primary,
+  },
+  joinButtonLoading: {
+    opacity: 0.7,
   },
   tabs: {
     flexDirection: 'row',

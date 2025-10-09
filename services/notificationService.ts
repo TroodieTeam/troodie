@@ -47,6 +47,14 @@ export class NotificationService implements NotificationServiceInterface {
    * Get user notifications with pagination
    */
   async getUserNotifications(userId: string, limit: number = 50): Promise<Notification[]> {
+    console.log('[NotificationService] Fetching notifications for user:', userId);
+
+    // Check current auth session
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('[NotificationService] Current auth session:', session ? 'EXISTS' : 'NULL');
+    console.log('[NotificationService] Auth user ID:', session?.user?.id || 'NULL');
+    console.log('[NotificationService] Querying for user_id:', userId);
+
     const { data: notifications, error } = await supabase
       .from('notifications')
       .select('*')
@@ -55,8 +63,14 @@ export class NotificationService implements NotificationServiceInterface {
       .limit(limit);
 
     if (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('[NotificationService] Error fetching notifications:', error);
+      console.error('[NotificationService] Error details:', JSON.stringify(error, null, 2));
       throw new Error(`Failed to fetch notifications: ${error.message}`);
+    }
+
+    console.log('[NotificationService] Successfully fetched notifications:', notifications?.length || 0);
+    if (notifications && notifications.length > 0) {
+      console.log('[NotificationService] First notification:', JSON.stringify(notifications[0], null, 2));
     }
 
     return notifications || [];

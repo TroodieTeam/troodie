@@ -1,11 +1,11 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { BetaAccessGate } from '@/components/BetaAccessGate';
 import { useRouter } from 'expo-router';
 import {
     ArrowLeft,
     Building,
     CheckCircle2,
-    FileText,
     Mail,
     Phone,
 } from 'lucide-react-native';
@@ -22,8 +22,7 @@ import {
     View,
 } from 'react-native';
 
-type VerificationMethod = 'email' | 'phone' | 'documents';
-type ClaimStep = 'search' | 'verification' | 'details' | 'success';
+type ClaimStep = 'search' | 'contact' | 'pending';
 
 interface Restaurant {
   id: string;
@@ -33,275 +32,37 @@ interface Restaurant {
   owner_id?: string;
 }
 
-export default function ClaimRestaurant() {
+export default function ClaimRestaurantSimple() {
   const router = useRouter();
   const { user } = useAuth();
+  const [showBetaGate, setShowBetaGate] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
   const [currentStep, setCurrentStep] = useState<ClaimStep>('search');
-  const [selectedMethod, setSelectedMethod] = useState<VerificationMethod | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [searchResults, setSearchResults] = useState<Restaurant[]>([]);
   const [searching, setSearching] = useState(false);
-  const [businessDetails, setBusinessDetails] = useState({
-    name: '',
-    address: '',
-    phone: '',
+  const [contactInfo, setContactInfo] = useState({
     email: '',
+    phone: '',
   });
+
+  const handleBetaAccessGranted = () => {
+    setHasAccess(true);
+    setShowBetaGate(false);
+  };
+
+  const handleBetaAccessClose = () => {
+    router.back();
+  };
 
   const handleBack = () => {
     if (currentStep === 'search') {
       router.back();
-    } else {
-      // Go to previous step
-      const steps: ClaimStep[] = ['search', 'verification', 'details', 'success'];
-      const currentIndex = steps.indexOf(currentStep);
-      if (currentIndex > 0) {
-        setCurrentStep(steps[currentIndex - 1]);
-      }
+    } else if (currentStep === 'contact') {
+      setCurrentStep('search');
     }
-  };
-
-  const handleVerificationMethodSelect = (method: VerificationMethod) => {
-    setSelectedMethod(method);
-    setCurrentStep('details');
-  };
-
-  const handleClaim = async () => {
-    if (!businessDetails.name || !businessDetails.email) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-
-    // For bypass accounts, check session directly since user might not be set
-    const { data: { session } } = await supabase.auth.getSession();
-    const currentUser = user || session?.user;
-
-    if (!currentUser) {
-      Alert.alert('Error', 'You must be logged in to claim a restaurant');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      console.log('Starting claim process for user:', currentUser.id);
-
-      // For bypass accounts, we already have the session
-      if (session) {
-        console.log('Active session found for user:', session.user.id);
-      } else if (!currentUser.email?.endsWith('@bypass.com')) {
-        console.error('No active session found');
-        throw new Error('Authentication session expired. Please log in again.');
-      }
-
-      // First, check if business profile already exists
-      const { data: existingProfile, error: profileCheckError } = await supabase
-        .from('business_profiles')
-        .select('id')
-        .eq('user_id', currentUser.id)
-        .single();
-
-      if (existingProfile) {
-        console.log('Business profile already exists for user');
-        Alert.alert('Info', 'You already have a business profile');
-        setCurrentStep('success');
-        return;
-      }
-
-      // Check/create user in public.users table
-      const { data: existingUser, error: userCheckError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', currentUser.id)
-        .single();
-
-      if (userCheckError && userCheckError.code !== 'PGRST116') {
-        console.error('Error checking user:', userCheckError);
-        throw new Error(`User check failed: ${userCheckError.message}`);
-      }
-
-      // If user doesn't exist in public.users, create them
-      if (!existingUser) {
-        console.log('Creating user in public.users table');
-        const { error: createUserError } = await supabase
-          .from('users')
-          .insert({
-            id: currentUser.id,
-            email: currentUser.email,
-            name: currentUser.user_metadata?.name || businessDetails.name,
-            account_type: 'business',
-            account_status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-
-        if (createUserError) {
-          console.error('Error creating user profile:', createUserError);
-          throw new Error(`User creation failed: ${createUserError.message} (Code: ${createUserError.code})`);
-        }
-      }
-
-      let restaurantId = selectedRestaurantId;
-
-      // If no existing restaurant selected, create a new one
-      if (!restaurantId) {
-        // First check if restaurant exists by name and address
-        const { data: existingRestaurant } = await supabase
-          .from('restaurants')
-          .select('id')
-          .ilike('name', businessDetails.name)
-          .limit(1)
-          .single();
-
-        if (existingRestaurant) {
-          restaurantId = existingRestaurant.id;
-          console.log('Found existing restaurant:', restaurantId);
-        } else {
-          // Create new restaurant record
-          console.log('Creating new restaurant');
-          const { data: newRestaurant, error: restaurantError } = await supabase
-            .from('restaurants')
-            .insert({
-              name: businessDetails.name,
-              address: businessDetails.address,
-              phone: businessDetails.phone,
-              is_verified: true,
-              is_claimed: true,
-              owner_id: currentUser.id,
-              data_source: 'user',
-            })
-            .select()
-            .single();
-
-          if (restaurantError) {
-            console.error('Error creating restaurant:', restaurantError);
-            throw new Error(`Restaurant creation failed: ${restaurantError.message} (Code: ${restaurantError.code})`);
-          }
-
-          restaurantId = newRestaurant.id;
-          console.log('Created new restaurant:', restaurantId);
-        }
-      }
-
-      // For bypass test accounts, mock the business profile creation
-      if (currentUser.email?.endsWith('@bypass.com')) {
-        console.log('Bypass account detected - mocking business profile creation');
-
-        // Mock successful profile creation
-        const mockProfileData = {
-          id: `mock-profile-${Date.now()}`,
-          user_id: currentUser.id,
-          restaurant_id: restaurantId,
-          business_email: businessDetails.email,
-          business_role: 'owner',
-          verification_method: 'manual_review',
-          verification_status: 'verified',
-          claimed_at: new Date().toISOString(),
-          management_permissions: ['full_access'],
-        };
-
-        console.log('Business profile mocked successfully:', mockProfileData);
-      } else {
-        // Real users go through actual database insert
-        console.log('Creating business profile for restaurant:', restaurantId);
-        const { data: profileData, error: profileError } = await supabase
-          .from('business_profiles')
-          .insert({
-            user_id: currentUser.id,
-            restaurant_id: restaurantId,
-            business_email: businessDetails.email,
-            business_role: 'owner',
-            verification_method: 'manual_review',
-            verification_status: 'verified',
-            claimed_at: new Date().toISOString(),
-            management_permissions: ['full_access'],
-          })
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('Error creating business profile:', {
-            error: profileError,
-            code: profileError.code,
-            message: profileError.message,
-            details: profileError.details,
-            hint: profileError.hint,
-          });
-
-          // More specific error message based on error code
-          if (profileError.code === '42501') {
-            throw new Error('Permission denied. Please run the RLS fix SQL script in Supabase.');
-          } else if (profileError.code === '23505') {
-            throw new Error('A business profile already exists for this user.');
-          } else {
-            throw new Error(`Business profile creation failed: ${profileError.message} (Code: ${profileError.code})`);
-          }
-        }
-
-        console.log('Business profile created successfully:', profileData);
-      }
-
-      // Update user's account type to business
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ account_type: 'business' })
-        .eq('id', currentUser.id);
-
-      if (updateError) {
-        console.error('Error updating account type:', updateError);
-        // Non-critical, continue
-      }
-
-      // Update restaurant as claimed if it wasn't already
-      if (restaurantId && restaurantId !== 'mock-restaurant-id') {
-        const { error: claimError } = await supabase
-          .from('restaurants')
-          .update({
-            owner_id: currentUser.id,
-            is_claimed: true
-          })
-          .eq('id', restaurantId);
-
-        if (claimError) {
-          console.error('Error marking restaurant as claimed:', claimError);
-          // Non-critical error, continue
-        }
-      }
-
-      console.log('Claim process completed successfully');
-      setCurrentStep('success');
-    } catch (error: any) {
-      console.error('Error in claim process:', error);
-      Alert.alert('Error', error.message || 'Failed to claim restaurant. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStepTitle = () => {
-    switch (currentStep) {
-      case 'search':
-        return 'Find Your Restaurant';
-      case 'verification':
-        return 'Verify You Own This Business';
-      case 'details':
-        return 'Confirm Business Details';
-      case 'success':
-        return 'Welcome to Troodie for Business!';
-      default:
-        return '';
-    }
-  };
-
-  const getStepNumber = () => {
-    const stepNumbers = {
-      search: '1 of 4',
-      verification: '2 of 4',
-      details: '3 of 4',
-      success: '4 of 4',
-    };
-    return stepNumbers[currentStep];
   };
 
   const searchRestaurants = async () => {
@@ -340,15 +101,115 @@ export default function ClaimRestaurant() {
       return;
     }
 
-    setBusinessDetails({
-      name: restaurant.name,
-      address: restaurant.address || '',
-      phone: '',
-      email: '',
-    });
-    setSelectedRestaurantId(restaurant.id);
-    setCurrentStep('verification');
+    setSelectedRestaurant(restaurant);
+    setCurrentStep('contact');
   };
+
+  const handleAddNew = () => {
+    setSelectedRestaurant({
+      id: '',
+      name: searchQuery,
+      address: '',
+    });
+    setCurrentStep('contact');
+  };
+
+  const handleSubmitClaim = async () => {
+    // Email is required by database schema
+    if (!contactInfo.email) {
+      Alert.alert('Error', 'Email is required to submit a claim');
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to claim a restaurant');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create or get restaurant
+      let restaurantId = selectedRestaurant?.id;
+
+      if (!restaurantId) {
+        // Create new restaurant
+        const { data: newRestaurant, error: restaurantError } = await supabase
+          .from('restaurants')
+          .insert({
+            name: selectedRestaurant?.name || searchQuery,
+            address: selectedRestaurant?.address || '',
+            data_source: 'user',
+          })
+          .select()
+          .single();
+
+        if (restaurantError) {
+          throw new Error('Failed to create restaurant');
+        }
+
+        restaurantId = newRestaurant.id;
+      }
+
+      // Create claim in pending state
+      const { error: claimError } = await supabase
+        .from('restaurant_claims')
+        .insert({
+          user_id: user.id,
+          restaurant_id: restaurantId,
+          status: 'pending',
+          email: contactInfo.email,
+          business_phone: contactInfo.phone,
+          ownership_proof_type: 'manual_review',
+          submitted_at: new Date().toISOString()
+        });
+
+      if (claimError) {
+        console.error('Error creating claim:', claimError);
+        throw new Error('Failed to submit claim. Please try again.');
+      }
+
+      setCurrentStep('pending');
+    } catch (error: any) {
+      console.error('Error in claim process:', error);
+      Alert.alert('Error', error.message || 'Failed to claim restaurant. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 'search':
+        return 'Find Your Restaurant';
+      case 'contact':
+        return 'Contact Information';
+      case 'pending':
+        return 'Claim Submitted!';
+      default:
+        return '';
+    }
+  };
+
+  const getStepNumber = () => {
+    const stepNumbers = {
+      search: '1 of 3',
+      contact: '2 of 3',
+      pending: '3 of 3',
+    };
+    return stepNumbers[currentStep];
+  };
+
+  if (!hasAccess) {
+    return (
+      <BetaAccessGate
+        visible={showBetaGate}
+        onClose={handleBetaAccessClose}
+        onSuccess={handleBetaAccessGranted}
+        title="Claim Your Restaurant"
+        message="This feature is currently in beta. Please reach out to taylor@troodieapp.com to be onboarded."
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -376,7 +237,7 @@ export default function ClaimRestaurant() {
             <View style={styles.searchContainer}>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search by restaurant name or address"
+                placeholder="Search by restaurant name"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 returnKeyType="search"
@@ -424,19 +285,9 @@ export default function ClaimRestaurant() {
                   </TouchableOpacity>
                 ))}
 
-                {/* Option to add new restaurant if not found */}
                 <TouchableOpacity
                   style={styles.addNewCard}
-                  onPress={() => {
-                    setSelectedRestaurantId(null);
-                    setBusinessDetails({
-                      name: searchQuery,
-                      address: '',
-                      phone: '',
-                      email: '',
-                    });
-                    setCurrentStep('details');
-                  }}
+                  onPress={handleAddNew}
                 >
                   <Text style={styles.addNewTitle}>Can't find your restaurant?</Text>
                   <Text style={styles.addNewSubtitle}>Add "{searchQuery}" as a new restaurant</Text>
@@ -446,164 +297,116 @@ export default function ClaimRestaurant() {
           </View>
         )}
 
-        {currentStep === 'verification' && (
-          <View style={styles.stepContainer}>
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>{getStepTitle()}</Text>
-              <Text style={styles.stepSubtitle}>Choose verification method:</Text>
-            </View>
-
-            <View style={styles.methodsContainer}>
-              <TouchableOpacity
-                style={styles.methodCard}
-                onPress={() => handleVerificationMethodSelect('email')}
-              >
-                <View style={styles.methodHeader}>
-                  <Mail size={20} color="#10B981" />
-                  <View style={styles.methodInfo}>
-                    <Text style={styles.methodTitle}>Business Email</Text>
-                    <Text style={styles.methodSubtitle}>We'll send you a verification code</Text>
-                  </View>
-                </View>
-                <Text style={styles.methodTiming}>2-5 minutes</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.methodCard}
-                onPress={() => handleVerificationMethodSelect('phone')}
-              >
-                <View style={styles.methodHeader}>
-                  <Phone size={20} color="#3B82F6" />
-                  <View style={styles.methodInfo}>
-                    <Text style={styles.methodTitle}>Phone Call</Text>
-                    <Text style={styles.methodSubtitle}>We'll call your business number</Text>
-                  </View>
-                </View>
-                <Text style={styles.methodTiming}>1-2 minutes</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.methodCard}
-                onPress={() => handleVerificationMethodSelect('documents')}
-              >
-                <View style={styles.methodHeader}>
-                  <FileText size={20} color="#F59E0B" />
-                  <View style={styles.methodInfo}>
-                    <Text style={styles.methodTitle}>Upload Documents</Text>
-                    <Text style={styles.methodSubtitle}>Business license or tax documents</Text>
-                  </View>
-                </View>
-                <Text style={styles.methodTiming}>1-2 business days</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {currentStep === 'details' && (
+        {currentStep === 'contact' && (
           <View style={styles.stepContainer}>
             <View style={styles.stepHeader}>
               <Text style={styles.stepTitle}>{getStepTitle()}</Text>
               <Text style={styles.stepSubtitle}>
-                Please confirm and complete your business information
+                Provide your contact information so we can verify your claim
               </Text>
+            </View>
+
+            <View style={styles.restaurantInfo}>
+              <Building size={24} color="#FFAD27" />
+              <View style={styles.restaurantDetails}>
+                <Text style={styles.restaurantName}>{selectedRestaurant?.name}</Text>
+                {selectedRestaurant?.address && (
+                  <Text style={styles.restaurantAddress}>{selectedRestaurant.address}</Text>
+                )}
+              </View>
             </View>
 
             <View style={styles.formContainer}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Business Name *</Text>
+                <View style={styles.inputHeader}>
+                  <Mail size={20} color="#666" />
+                  <Text style={styles.inputLabel}>Email Address *</Text>
+                </View>
                 <TextInput
                   style={styles.textInput}
-                  value={businessDetails.name}
-                  onChangeText={(text) =>
-                    setBusinessDetails({ ...businessDetails, name: text })
-                  }
-                  placeholder="Enter your business name"
+                  value={contactInfo.email}
+                  onChangeText={(text) => setContactInfo({ ...contactInfo, email: text })}
+                  placeholder="your@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Address</Text>
+                <View style={styles.inputHeader}>
+                  <Phone size={20} color="#666" />
+                  <Text style={styles.inputLabel}>Phone Number (Optional)</Text>
+                </View>
                 <TextInput
                   style={styles.textInput}
-                  value={businessDetails.address}
-                  onChangeText={(text) =>
-                    setBusinessDetails({ ...businessDetails, address: text })
-                  }
-                  placeholder="Business address"
-                  multiline
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Business Phone</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={businessDetails.phone}
-                  onChangeText={(text) =>
-                    setBusinessDetails({ ...businessDetails, phone: text })
-                  }
+                  value={contactInfo.phone}
+                  onChangeText={(text) => setContactInfo({ ...contactInfo, phone: text })}
                   placeholder="(555) 123-4567"
                   keyboardType="phone-pad"
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Business Email *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={businessDetails.email}
-                  onChangeText={(text) =>
-                    setBusinessDetails({ ...businessDetails, email: text })
-                  }
-                  placeholder="business@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+              <Text style={styles.helperText}>
+                We'll use your email to verify ownership and get in touch. Phone is optional.
+              </Text>
             </View>
 
             <TouchableOpacity
               style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
-              onPress={handleClaim}
+              onPress={handleSubmitClaim}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryButtonText}>Claim Restaurant</Text>
+                <Text style={styles.primaryButtonText}>Submit Claim</Text>
               )}
             </TouchableOpacity>
-
           </View>
         )}
 
-        {currentStep === 'success' && (
+        {currentStep === 'pending' && (
           <View style={styles.stepContainer}>
             <View style={styles.successContainer}>
-              <View style={styles.successBadge}>
-                <Text style={styles.successEmoji}>🎉</Text>
-                <Text style={styles.successBadgeText}>Welcome to Troodie for Business!</Text>
+              <View style={styles.successIconContainer}>
+                <CheckCircle2 size={64} color="#10B981" />
               </View>
-              <Text style={styles.successTitle}>Your restaurant is now verified</Text>
-              <Text style={styles.successSubtitle}>
-                You can now access business tools and create campaigns
+
+              <Text style={styles.successTitle}>Claim Submitted Successfully!</Text>
+
+              <Text style={styles.successMessage}>
+                Your restaurant claim has been submitted and is now pending review.
+                Our team will verify your information and get back to you within 24-48 hours.
+              </Text>
+
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>What happens next?</Text>
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoBullet}>1.</Text>
+                  <Text style={styles.infoText}>We'll verify your ownership information</Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoBullet}>2.</Text>
+                  <Text style={styles.infoText}>You'll receive an email with the decision</Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoBullet}>3.</Text>
+                  <Text style={styles.infoText}>Once approved, you'll have access to business tools</Text>
+                </View>
+              </View>
+
+              <Text style={styles.contactText}>
+                Questions? Contact us at{' '}
+                <Text style={styles.emailText}>taylor@troodieapp.com</Text>
               </Text>
             </View>
 
             <View style={styles.actionsContainer}>
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => router.replace('/(tabs)/business/dashboard')}
-              >
-                <Building size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Go to Business Dashboard</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.secondaryButton}
                 onPress={() => router.replace('/(tabs)/more')}
               >
-                <Text style={styles.secondaryButtonText}>Continue Exploring</Text>
+                <Text style={styles.primaryButtonText}>Back to More</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -685,160 +488,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000',
   },
-  resultsContainer: {
-    gap: 12,
-  },
-  resultCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 12,
-    padding: 16,
-  },
-  resultContent: {
-    gap: 4,
-  },
-  resultName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-  },
-  resultAddress: {
-    fontSize: 14,
-    color: '#737373',
-  },
-  resultDetails: {
-    fontSize: 12,
-    color: '#737373',
-  },
-  methodsContainer: {
-    gap: 16,
-  },
-  methodCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 12,
-    padding: 16,
-  },
-  methodHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  methodInfo: {
-    flex: 1,
-  },
-  methodTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-    marginBottom: 2,
-  },
-  methodSubtitle: {
-    fontSize: 14,
-    color: '#737373',
-  },
-  methodTiming: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '500',
-  },
-  formContainer: {
-    gap: 20,
-    marginBottom: 32,
-  },
-  inputGroup: {
-    gap: 8,
-  },
-  inputLabel: {
-    fontSize: 12,
-    color: '#737373',
-    fontWeight: '500',
-  },
-  textInput: {
-    height: 44,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#000000',
-  },
-  successContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  successBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFFBF0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-    marginBottom: 16,
-  },
-  successEmoji: {
-    fontSize: 16,
-  },
-  successBadgeText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#000000',
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#000000',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  successSubtitle: {
-    fontSize: 14,
-    color: '#737373',
-    textAlign: 'center',
-  },
-  actionsContainer: {
-    gap: 12,
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  secondaryButton: {
-    height: 48,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-  },
   searchButton: {
     height: 44,
     backgroundColor: '#10B981',
@@ -852,9 +501,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  resultsContainer: {
+    gap: 12,
+  },
+  resultCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    padding: 16,
+  },
   resultCardClaimed: {
     opacity: 0.7,
     backgroundColor: '#F9FAFB',
+  },
+  resultContent: {
+    gap: 4,
+  },
+  resultName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  resultAddress: {
+    fontSize: 14,
+    color: '#737373',
   },
   claimedBadge: {
     flexDirection: 'row',
@@ -884,5 +555,154 @@ const styles = StyleSheet.create({
   addNewSubtitle: {
     fontSize: 12,
     color: '#737373',
+  },
+  restaurantInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    gap: 12,
+  },
+  restaurantDetails: {
+    flex: 1,
+  },
+  restaurantName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  restaurantAddress: {
+    fontSize: 14,
+    color: '#737373',
+  },
+  formContainer: {
+    gap: 20,
+    marginBottom: 32,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#000000',
+    fontWeight: '500',
+  },
+  textInput: {
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#000000',
+  },
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E5E5',
+  },
+  orText: {
+    fontSize: 12,
+    color: '#737373',
+    fontWeight: '500',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#737373',
+    textAlign: 'center',
+  },
+  successContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  successIconContainer: {
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  successMessage: {
+    fontSize: 16,
+    color: '#737373',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  infoCard: {
+    backgroundColor: '#F9FAFB',
+    padding: 20,
+    borderRadius: 12,
+    width: '100%',
+    marginBottom: 24,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 16,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  infoBullet: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
+    marginRight: 12,
+    width: 20,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#737373',
+    flex: 1,
+    lineHeight: 20,
+  },
+  contactText: {
+    fontSize: 14,
+    color: '#737373',
+    textAlign: 'center',
+  },
+  emailText: {
+    color: '#FFAD27',
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    gap: 12,
+  },
+  primaryButton: {
+    height: 48,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
 });

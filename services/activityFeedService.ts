@@ -3,7 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 
 export interface ActivityFeedItem {
-  activity_type: 'post' | 'save' | 'follow' | 'community_join' | 'like' | 'comment';
+  activity_type: 'post' | 'save' | 'follow' | 'community_join' | 'like' | 'comment' | 'board_created';
   activity_id: string;
   actor_id: string;
   actor_name: string;
@@ -208,6 +208,22 @@ class ActivityFeedService {
         async (payload) => {
           const activity = await this.transformCommentToActivity(payload.new);
           if (activity) onNewActivity(activity);
+        }
+      )
+      // Subscribe to new board creations
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'boards',
+        },
+        async (payload) => {
+          // Only show public boards (is_private = false)
+          if (payload.new.is_private === false) {
+            const activity = await this.transformBoardCreatedToActivity(payload.new);
+            if (activity) onNewActivity(activity);
+          }
         }
       )
       .subscribe();
@@ -530,6 +546,57 @@ class ActivityFeedService {
       };
     } catch (error) {
       console.error('Error transforming comment to activity:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Transform a new board creation into an activity item
+   */
+  private async transformBoardCreatedToActivity(board: any): Promise<ActivityFeedItem | null> {
+    try {
+      // Only show public boards (is_private = false)
+      if (board.is_private === true) return null;
+
+      const userResult = await supabase
+        .from('users')
+        .select('name, username, avatar_url, is_verified')
+        .eq('id', board.user_id)
+        .single();
+
+      if (userResult.error) return null;
+
+      return {
+        activity_type: 'board_created',
+        activity_id: board.id,
+        actor_id: board.user_id,
+        actor_name: userResult.data.name,
+        actor_username: userResult.data.username,
+        actor_avatar: userResult.data.avatar_url,
+        actor_is_verified: userResult.data.is_verified,
+        action: 'created new board',
+        target_name: board.title,
+        target_id: board.id,
+        target_type: 'board',
+        rating: null,
+        content: board.description,
+        photos: board.cover_image_url ? [board.cover_image_url] : null,
+        related_user_id: null,
+        related_user_name: null,
+        related_user_username: null,
+        related_user_avatar: null,
+        privacy: board.is_private ? 'private' : 'public',
+        created_at: board.created_at,
+        restaurant_id: null,
+        cuisine_types: null,
+        restaurant_location: null,
+        community_id: null,
+        community_name: null,
+        board_id: board.id,
+        board_name: board.title,
+      };
+    } catch (error) {
+      console.error('Error transforming board creation to activity:', error);
       return null;
     }
   }
