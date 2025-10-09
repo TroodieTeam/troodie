@@ -173,12 +173,44 @@ Key themes from user feedback:
 
 ---
 
+---
+
+## 🆕 REACTIVE Epic - Urgent Priority (October 9, 2025)
+
+### Critical Reactive UX Issues
+Users are experiencing buggy reactive behavior across the app - buttons that don't respond, counts that are wrong, flickering states. This epic addresses all reactive/optimistic UI issues.
+
+| Task ID | Task | Priority | Estimate | Status | File |
+|---------|------|----------|----------|--------|------|
+| REACTIVE-1 | Post Like - Optimistic UI & State Sync | 🔴 Critical | 2 days | 🔴 Not Started | `task-reactive-1-post-like-optimistic-ui.md` |
+| REACTIVE-2 | Community Join/Leave - Smooth State Management | 🟠 High | 1.5 days | 🔴 Not Started | `task-reactive-2-community-join-leave.md` |
+| REACTIVE-3 | Follower/Following Count - Real-time Sync | 🟠 High | 2 days | 🔴 Not Started | `task-reactive-3-follow-count-sync.md` |
+| REACTIVE-4 | Delete Post in Community - Immediate UI Update | 🟠 High | 1 day | 🔴 Not Started | `task-reactive-4-delete-post-community.md` |
+| REACTIVE-5 | Deeper Reactive Audit - App-Wide Improvements | 🟡 Medium | 3 days | 🔴 Not Started | `task-reactive-5-deeper-reactive-audit.md` |
+
+**Total Estimate**: 9.5 days
+**Epic Owner**: -
+**Epic Status**: 🔴 Not Started
+
+### REACTIVE Epic Goals
+- 95% of reactive actions respond <100ms (perceived)
+- <2% optimistic update revert rate
+- 99.5% count accuracy (followers, likes, members)
+- Zero user reports of "laggy buttons"
+
+### Implementation Plan
+**Week 1**: REACTIVE-1 (Like), REACTIVE-3 (Follow), REACTIVE-2 (Community Join)
+**Week 2**: REACTIVE-4 (Delete Post), REACTIVE-5 (App-Wide Audit)
+
+---
+
 ## 🔄 Update Log
 
 | Date | Update | By |
 |------|--------|---|
 | 2025-10-01 | Initial task breakdown from v1.0.2 feedback session | - |
+| 2025-10-09 | Added REACTIVE epic - critical reactive UX fixes | Claude |
 
 ---
 
-**Last Updated**: 2025-10-01
+**Last Updated**: 2025-10-09

@@ -81,8 +81,12 @@ export default function MoreScreen() {
     businessProfile
   } = useAccountType();
 
-  // Check if user is admin (you might need to add this to your auth context)
-  const isAdmin = user?.user_metadata?.account_type === 'admin' || user?.user_metadata?.is_admin;
+  // Check if user is admin - using specific admin user IDs
+  const ADMIN_USER_IDS = [
+    'b08d9600-358d-4be9-9552-4607d9f50227',
+    '31744191-f7c0-44a4-8673-10b34ccbb87f'
+  ];
+  const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
 
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
 

@@ -1,6 +1,7 @@
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { boardService } from '@/services/boardService';
 import { boardInvitationService } from '@/services/boardInvitationService';
 import { restaurantService } from '@/services/restaurantService';
@@ -51,17 +52,25 @@ export default function BoardDetailScreen() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [pendingInvitation, setPendingInvitation] = useState<any>(null);
+  const [showInvitationAcceptModal, setShowInvitationAcceptModal] = useState(false);
+  const [invitationActionLoading, setInvitationActionLoading] = useState(false);
 
   useEffect(() => {
+    console.log('[BoardDetail] Component mounted with boardId:', boardId);
     loadBoardDetails();
   }, [boardId]);
 
   const loadBoardDetails = async () => {
     try {
       setLoading(true);
+      console.log('[BoardDetail] Loading board details for boardId:', boardId);
 
       const boardData = await boardService.getBoardWithRestaurants(boardId);
+      console.log('[BoardDetail] Board data loaded:', boardData ? 'success' : 'null');
+
       if (!boardData) {
+        console.log('[BoardDetail] Board not found, navigating back');
         Alert.alert('Error', 'Board not found');
         router.back();
         return;
@@ -69,6 +78,76 @@ export default function BoardDetailScreen() {
 
       setBoard(boardData);
       setIsOwner(boardData.user_id === user?.id);
+      console.log('[BoardDetail] Is owner:', boardData.user_id === user?.id);
+
+      // Check if user has a pending invitation for this board
+      if (user?.id) {
+        console.log('[BoardDetail] Checking for pending invitations for user:', user.id);
+
+        // First, try to get invitation ID from route params (if coming from notification)
+        const invitationIdFromParams = params.invitation_id as string | undefined;
+        console.log('[BoardDetail] Invitation ID from params:', invitationIdFromParams);
+
+        let invitation = null;
+
+        // If we have an invitation_id, fetch that specific invitation
+        if (invitationIdFromParams) {
+          console.log('[BoardDetail] Fetching specific invitation:', invitationIdFromParams);
+          console.log('[BoardDetail] Current user ID:', user.id);
+
+          // Try without the invitee_id filter to see if RLS is the issue
+          const { data: allData, error: allError } = await supabase
+            .from('board_invitations')
+            .select('id, board_id, inviter_id, invitee_id, status, created_at, expires_at')
+            .eq('id', invitationIdFromParams);
+
+          console.log('[BoardDetail] Query without invitee filter - data:', allData);
+          console.log('[BoardDetail] Query without invitee filter - error:', allError);
+
+          const { data, error } = await supabase
+            .from('board_invitations')
+            .select('id, board_id, inviter_id, invitee_id, status, created_at, expires_at')
+            .eq('id', invitationIdFromParams)
+            .maybeSingle();
+
+          if (error) {
+            console.error('[BoardDetail] Error fetching specific invitation:', error);
+          } else if (data) {
+            console.log('[BoardDetail] Found invitation with status:', data.status);
+            invitation = data;
+          } else {
+            console.log('[BoardDetail] Invitation not found by ID, it may have been deleted or already processed');
+          }
+        }
+
+        // Otherwise, look for any pending invitations for this board and user
+        if (!invitation) {
+          console.log('[BoardDetail] Looking for pending invitations by board_id and invitee_id');
+          const { data: invitations, error: invitationError } = await supabase
+            .from('board_invitations')
+            .select('id, board_id, inviter_id, invitee_id, status, created_at, expires_at')
+            .eq('board_id', boardId)
+            .eq('invitee_id', user.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (invitationError) {
+            console.error('[BoardDetail] Error fetching invitations:', invitationError);
+          }
+
+          invitation = invitations && invitations.length > 0 ? invitations[0] : null;
+        }
+
+        console.log('[BoardDetail] Final invitation:', invitation ? 'found' : 'not found');
+        console.log('[BoardDetail] Invitation data:', JSON.stringify(invitation, null, 2));
+
+        if (invitation && invitation.status === 'pending') {
+          console.log('[BoardDetail] Setting pending invitation and showing modal');
+          setPendingInvitation(invitation);
+          setShowInvitationAcceptModal(true);
+        }
+      }
 
       if (boardData.restaurants && boardData.restaurants.length > 0) {
         const restaurantPromises = boardData.restaurants.map(async (br: BoardRestaurant) => {
@@ -218,6 +297,54 @@ export default function BoardDetailScreen() {
         }
       ]
     );
+  };
+
+  const handleAcceptInvitation = async () => {
+    if (!pendingInvitation || !user?.id) return;
+
+    try {
+      setInvitationActionLoading(true);
+      const result = await boardInvitationService.acceptInvitation(pendingInvitation.id, user.id);
+
+      if (result.success) {
+        ToastService.showSuccess('Invitation accepted! You are now a collaborator');
+        setShowInvitationAcceptModal(false);
+        setPendingInvitation(null);
+        // Reload board to show updated member status
+        await loadBoardDetails();
+      } else {
+        ToastService.showError(result.error || 'Failed to accept invitation');
+      }
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+      ToastService.showError('Failed to accept invitation');
+    } finally {
+      setInvitationActionLoading(false);
+    }
+  };
+
+  const handleDeclineInvitation = async () => {
+    if (!pendingInvitation || !user?.id) return;
+
+    try {
+      setInvitationActionLoading(true);
+      const result = await boardInvitationService.declineInvitation(pendingInvitation.id, user.id);
+
+      if (result.success) {
+        ToastService.showSuccess('Invitation declined');
+        setShowInvitationAcceptModal(false);
+        setPendingInvitation(null);
+        // Navigate back since user declined
+        router.back();
+      } else {
+        ToastService.showError(result.error || 'Failed to decline invitation');
+      }
+    } catch (error) {
+      console.error('Error declining invitation:', error);
+      ToastService.showError('Failed to decline invitation');
+    } finally {
+      setInvitationActionLoading(false);
+    }
   };
 
   const renderHeader = () => (
@@ -418,6 +545,62 @@ export default function BoardDetailScreen() {
     </Modal>
   );
 
+  const renderInvitationAcceptModal = () => (
+    <Modal
+      visible={showInvitationAcceptModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => {
+        setShowInvitationAcceptModal(false);
+        router.back();
+      }}
+    >
+      <Pressable
+        style={styles.modalOverlay}
+        onPress={() => {
+          setShowInvitationAcceptModal(false);
+          router.back();
+        }}
+      >
+        <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Board Invitation</Text>
+          </View>
+
+          <Text style={styles.modalDescription}>
+            You've been invited to collaborate on "{board?.title || 'this board'}".
+            Accept to start adding and curating places together!
+          </Text>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonSecondary]}
+              onPress={handleDeclineInvitation}
+              disabled={invitationActionLoading}
+            >
+              {invitationActionLoading ? (
+                <ActivityIndicator size="small" color={theme.colors.text.primary} />
+              ) : (
+                <Text style={styles.modalButtonTextSecondary}>Decline</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonPrimary]}
+              onPress={handleAcceptInvitation}
+              disabled={invitationActionLoading}
+            >
+              {invitationActionLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.modalButtonTextPrimary}>Accept</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+
   const renderRestaurantsList = () => {
     if (restaurants.length === 0) {
       return (
@@ -475,6 +658,7 @@ export default function BoardDetailScreen() {
       {renderHeader()}
       {renderMoreMenu()}
       {renderInviteModal()}
+      {renderInvitationAcceptModal()}
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}

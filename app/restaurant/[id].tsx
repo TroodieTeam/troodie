@@ -59,6 +59,7 @@ export default function RestaurantDetailScreen() {
   const [restaurant, setRestaurant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('info');
+  const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -93,11 +94,27 @@ export default function RestaurantDetailScreen() {
     }
   }, [id, user]);
 
+  // Load social data on mount to determine initial tab
   useEffect(() => {
-    if (id && activeTab === 'social' && user) {
+    if (id && user && !hasSetInitialTab) {
       loadSocialData(id as string);
     }
-  }, [id, activeTab, user]);
+  }, [id, user, hasSetInitialTab]);
+
+  // Smart tab selection based on social activity
+  useEffect(() => {
+    if (!socialDataLoading && !hasSetInitialTab && user) {
+      const hasSocialActivity =
+        friendsWhoVisited.length > 0 ||
+        recentActivity.length > 0;
+
+      if (hasSocialActivity) {
+        setActiveTab('social');
+      }
+
+      setHasSetInitialTab(true);
+    }
+  }, [socialDataLoading, friendsWhoVisited, recentActivity, hasSetInitialTab, user]);
 
   useEffect(() => {
     if (id && activeTab === 'photos') {
@@ -679,19 +696,19 @@ export default function RestaurantDetailScreen() {
 
     return (
       <View style={styles.tabContent}>
-        {/* Friends Who Visited */}
-        <View style={styles.socialCard}>
-          <View style={styles.socialHeader}>
-            <View style={styles.socialHeaderLeft}>
-              <Users size={16} color={designTokens.colors.primaryOrange} />
-              <Text style={styles.socialTitle}>Friends Who Visited</Text>
+        {/* Friends Who Visited - Only show if there are friends */}
+        {friendsWhoVisited.length > 0 && (
+          <View style={styles.socialCard}>
+            <View style={styles.socialHeader}>
+              <View style={styles.socialHeaderLeft}>
+                <Users size={16} color={designTokens.colors.primaryOrange} />
+                <Text style={styles.socialTitle}>Friends Who Visited</Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{friendsWhoVisited.length}</Text>
+              </View>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{friendsWhoVisited.length}</Text>
-            </View>
-          </View>
 
-          {friendsWhoVisited.length > 0 ? (
             <View style={styles.socialList}>
               {friendsWhoVisited.map((friend) => {
                 const rating = friend.post?.rating || friend.save?.personal_rating || 0;
@@ -738,15 +755,12 @@ export default function RestaurantDetailScreen() {
                 );
               })}
             </View>
-          ) : (
-            <Text style={styles.emptyStateText}>
-              {user ? 'No friends have visited yet. Be the first!' : 'Sign in to see friend activity'}
-            </Text>
-          )}
-        </View>
+          </View>
+        )}
 
-        {/* Power Users & Critics */}
-        <View style={[styles.socialCard, styles.powerUsersCard]}>
+        {/* Power Users & Critics Section - Hidden until feature is complete */}
+        {/* TODO: Re-enable when power user algorithm is implemented */}
+        {/* <View style={[styles.socialCard, styles.powerUsersCard]}>
           <View style={styles.socialHeader}>
             <View style={styles.socialHeaderLeft}>
               <Award size={16} color="#8B5CF6" />
@@ -800,7 +814,7 @@ export default function RestaurantDetailScreen() {
           ) : (
             <Text style={styles.emptyStateText}>No reviews from power users yet.</Text>
           )}
-        </View>
+        </View> */}
 
         {/* Recent Activity */}
         <View style={styles.socialCard}>

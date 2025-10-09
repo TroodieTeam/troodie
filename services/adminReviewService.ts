@@ -33,6 +33,12 @@ export interface RejectRequest extends ReviewActionRequest {
 }
 
 class AdminReviewService {
+  // Admin user IDs
+  private readonly ADMIN_USER_IDS = [
+    'b08d9600-358d-4be9-9552-4607d9f50227',
+    '31744191-f7c0-44a4-8673-10b34ccbb87f'
+  ];
+
   /**
    * Check if current user is admin
    */
@@ -40,13 +46,8 @@ class AdminReviewService {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) throw new Error('Not authenticated');
 
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('account_type, is_verified')
-      .eq('id', user.id)
-      .single();
-
-    if (!userProfile || (userProfile.account_type !== 'admin' && !userProfile.is_verified)) {
+    // Check if user is in the admin list
+    if (!this.ADMIN_USER_IDS.includes(user.id)) {
       throw new Error('Admin access required');
     }
 

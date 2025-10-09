@@ -223,8 +223,50 @@ export default function HomeScreen() {
   };
 
   const handleNotificationPress = (notification: Notification) => {
+    console.log('[Feed] Notification pressed:', notification.type, notification.related_id);
     setShowNotificationCenter(false);
-    // The notification center will handle navigation
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'board_invite':
+        if (notification.related_id) {
+          // Extract invitation_id from notification data
+          const invitationId = notification.data && typeof notification.data === 'object' && 'invitation_id' in notification.data
+            ? (notification.data as any).invitation_id
+            : undefined;
+
+          console.log('[Feed] Navigating to board:', notification.related_id, 'with invitation_id:', invitationId);
+
+          // Navigate with invitation_id as a query parameter
+          router.push({
+            pathname: `/boards/${notification.related_id}`,
+            params: invitationId ? { invitation_id: invitationId } : {}
+          });
+        } else if (notification.data && typeof notification.data === 'object' && ('board_id' in notification.data || 'boardId' in notification.data)) {
+          const boardId = (notification.data as any).board_id || (notification.data as any).boardId;
+          const invitationId = (notification.data as any).invitation_id;
+
+          console.log('[Feed] Navigating to board via data:', boardId, 'with invitation_id:', invitationId);
+
+          router.push({
+            pathname: `/boards/${boardId}`,
+            params: invitationId ? { invitation_id: invitationId } : {}
+          });
+        }
+        break;
+      case 'restaurant_recommendation':
+        if (notification.data && typeof notification.data === 'object' && 'restaurantId' in notification.data) {
+          router.push(`/restaurant/${notification.data.restaurantId}`);
+        }
+        break;
+      case 'achievement':
+        router.push('/profile?tab=achievements');
+        break;
+      // Add other notification types as needed
+      default:
+        console.log('[Feed] Unhandled notification type:', notification.type);
+        break;
+    }
   };
 
   const transformToTopRatedContent = useCallback((restaurants: any[]): TrendingContent[] => {

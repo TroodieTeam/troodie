@@ -30,9 +30,9 @@ class BoardInvitationService {
     inviteeId: string
   ): Promise<{ success: boolean; invitation?: BoardInvitation; error?: string }> {
     try {
-      // Check if user is already a member
+      // Check if user is already a member (using board_collaborators table)
       const { data: existingMember } = await supabase
-        .from('board_members')
+        .from('board_collaborators')
         .select('id')
         .eq('board_id', boardId)
         .eq('user_id', inviteeId)
@@ -70,27 +70,46 @@ class BoardInvitationService {
       if (error) throw error;
 
       // Create notification for invitee
-      const { data: board } = await supabase
+      const { data: board, error: boardError } = await supabase
         .from('boards')
         .select('title')
         .eq('id', boardId)
         .single();
 
-      const { data: inviter } = await supabase
+      const { data: inviter, error: inviterError } = await supabase
         .from('users')
-        .select('name')
+        .select('name, avatar_url')
         .eq('id', inviterId)
         .single();
 
-      await supabase.from('notifications').insert({
+      if (boardError) {
+        console.error('Error fetching board for notification:', boardError);
+      }
+
+      if (inviterError) {
+        console.error('Error fetching inviter for notification:', inviterError);
+      }
+
+      const { error: notificationError } = await supabase.from('notifications').insert({
         user_id: inviteeId,
         type: 'board_invite',
         title: 'Board Invitation',
         message: `${inviter?.name || 'Someone'} invited you to collaborate on "${board?.title || 'a board'}"`,
         related_id: boardId,
         related_type: 'board',
-        data: { invitation_id: data.id },
+        data: {
+          invitation_id: data.id,
+          board_id: boardId,
+          board_name: board?.title,
+          inviter_id: inviterId,
+          inviter_name: inviter?.name,
+          inviter_avatar: inviter?.avatar_url
+        },
       });
+
+      if (notificationError) {
+        console.error('Error creating notification:', notificationError);
+      }
 
       return { success: true, invitation: data };
     } catch (error: any) {

@@ -255,9 +255,9 @@ export default function CreatePostScreen() {
           formData.postType === 'restaurant' ? 'Review posted!' : 'Posted!',
           'Your post is now live in the community'
         );
-        
-        // Navigate back to previous screen (stays in context)
-        router.back();
+
+        // Navigate to explore screen with posts tab focused to see the new post
+        router.push('/(tabs)/explore?tab=posts');
       }
 
     } catch (error) {

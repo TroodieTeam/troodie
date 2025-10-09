@@ -92,7 +92,7 @@ BEGIN
 
   -- Check if already a member
   IF EXISTS (
-    SELECT 1 FROM board_members
+    SELECT 1 FROM board_collaborators
     WHERE board_id = v_invitation.board_id
     AND user_id = p_user_id
   ) THEN
@@ -107,9 +107,9 @@ BEGIN
     );
   END IF;
 
-  -- Add user as board member
-  INSERT INTO board_members (board_id, user_id, role, joined_at)
-  VALUES (v_invitation.board_id, p_user_id, 'member', NOW());
+  -- Add user as board collaborator
+  INSERT INTO board_collaborators (board_id, user_id, role)
+  VALUES (v_invitation.board_id, p_user_id, 'member');
 
   -- Update invitation status
   UPDATE board_invitations
