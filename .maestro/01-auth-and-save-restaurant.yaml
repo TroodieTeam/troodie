@@ -1,0 +1,63 @@
+appId: com.troodie.troodie.com
+---
+# Test 1: Authentication and Save Restaurant
+# Tests: Sign in with @bypass.com account and save a restaurant
+
+- launchApp
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+
+# Enter email in text field
+- tapOn: "user@example.com"
+- inputText: "consumer2@bypass.com"
+- tapOn: "Send Code"
+- waitForAnimationToEnd
+
+# Enter OTP (6 separate digits)
+# Dismiss paste permission dialog if it appears (from previous runs)
+- tapOn:
+    text: "Don't Allow Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Enter each digit individually
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+# Wait for auto-submit and navigation
+- waitForAnimationToEnd
+- wait: 2000
+
+# Should be on home screen - verify we're logged in
+- assertVisible: "Welcome to Troodie!"
+- wait: 2000
+
+# Navigate to Explore tab - tap on the Explore text in bottom tab bar
+- tapOn:
+    text: "Explore"
+    index: 0
+- waitForAnimationToEnd
+
+# Find a restaurant card and tap the bookmark icon
+- tapOn:
+    id: "restaurant-card-0"
+- waitForAnimationToEnd
+
+# Tap the bookmark/save button
+- tapOn:
+    id: "save-button"
+- waitForAnimationToEnd
+
+# Should see success toast
+- assertVisible: "Added to Your Saves|Saved"
+
+# Verify bookmark icon is filled/active
+- assertVisible:
+    id: "save-button-filled"
+
+# Test passed
+- stopApp
