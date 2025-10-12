@@ -11,9 +11,11 @@
         "EAS_BUILD_PROFILE": "development"
       },
       "ios": {
+        "simulator": true,
         "resourceClass": "m-medium"
       },
       "android": {
+        "buildType": "apk",
         "resourceClass": "medium"
       }
     },

@@ -1,0 +1,71 @@
+appId: com.troodie.troodie.com
+---
+# Test 2: Create a Custom Board
+# Tests: Creating a new board with @bypass.com account
+
+- launchApp
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+
+# Sign in - enter email in text field
+- tapOn: "user@example.com"
+- inputText: "consumer2@bypass.com"
+- tapOn: "Send Code"
+- waitForAnimationToEnd
+
+# Enter OTP (6 separate digits)
+# Dismiss paste permission dialog if it appears (from previous runs)
+- tapOn:
+    text: "Don't Allow Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Enter each digit individually
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+# Wait for auto-submit and navigation
+- waitForAnimationToEnd
+- wait: 2000
+
+# Navigate to More tab
+- tapOn:
+    text: "More"
+    index: 0
+- waitForAnimationToEnd
+
+# Navigate to Boards or My Boards section
+- tapOn: "My Boards|Boards"
+- waitForAnimationToEnd
+
+# Tap create board button (usually a + icon)
+- tapOn:
+    id: "create-board-button"
+- waitForAnimationToEnd
+
+# Select board type - Free/Private/Paid
+- tapOn: "Private Board|Create Private Board"
+- waitForAnimationToEnd
+
+# Fill in board details
+- tapOn: "Board Name|Title"
+- inputText: "Test Board Maestro"
+- hideKeyboard
+
+- tapOn: "Description"
+- inputText: "Testing board creation with Maestro"
+- hideKeyboard
+
+# Create the board
+- tapOn: "Create|Next|Continue"
+- waitForAnimationToEnd
+
+# Should see success message or board list
+- assertVisible: "Test Board Maestro|Board created|Success"
+
+# Test passed
+- stopApp
