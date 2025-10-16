@@ -21,7 +21,20 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Check if we have the service role key (required for creating auth users)
+const isServiceRole = supabaseServiceKey && supabaseServiceKey.length > 100; // Service role keys are longer
+if (!isServiceRole) {
+  console.warn('⚠️  WARNING: Using anon key instead of service role key.');
+  console.warn('⚠️  Auth users will NOT be created. Add SUPABASE_SERVICE_ROLE_KEY to .env.development');
+  console.warn('⚠️  You can find it in: Supabase Dashboard > Settings > API > service_role key\n');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 // Test user configurations
 const TEST_USERS = [
@@ -563,31 +576,64 @@ const ALL_RESTAURANTS = [...TEST_RESTAURANTS, ...ADDITIONAL_RESTAURANTS];
 async function createTestUsers() {
   console.log('\n📝 Creating test users...\n');
   const createdUsers = [];
-  
+
   for (const userData of TEST_USERS) {
     try {
-      // Check if user already exists
+      // Check if user already exists in auth.users
+      let authUserId = null;
+
+      if (isServiceRole) {
+        // Try to get existing auth user
+        const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
+        const existingAuthUser = authUsers.find(u => u.email === userData.email);
+
+        if (existingAuthUser) {
+          console.log(`✓ Auth user exists: ${userData.email}`);
+          authUserId = existingAuthUser.id;
+        } else {
+          // Create auth user using Admin API
+          console.log(`Creating auth user: ${userData.email}`);
+          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: userData.email,
+            email_confirm: true, // Auto-confirm email
+            user_metadata: {
+              name: userData.name,
+              username: userData.username
+            }
+          });
+
+          if (authError) {
+            console.error(`❌ Failed to create auth user ${userData.email}:`, authError.message);
+            continue;
+          }
+
+          authUserId = authData.user.id;
+          console.log(`✅ Created auth user: ${userData.email} (ID: ${authUserId})`);
+        }
+      }
+
+      // Check if user already exists in public.users
       const { data: existingUser } = await supabase
         .from('users')
         .select('id, email, account_type')
         .eq('email', userData.email)
         .single();
-      
+
       if (existingUser) {
-        console.log(`✓ User already exists: ${userData.email} (${existingUser.account_type})`);
+        console.log(`✓ Profile already exists: ${userData.email} (${existingUser.account_type})`);
         createdUsers.push(existingUser);
         continue;
       }
-      
-      // Generate a UUID for the user
-      const userId = crypto.randomUUID ? crypto.randomUUID() : 
+
+      // Use the auth user ID if we have one, otherwise generate UUID
+      const userId = authUserId || (crypto.randomUUID ? crypto.randomUUID() :
                      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                        const r = Math.random() * 16 | 0;
                        const v = c === 'x' ? r : (r & 0x3 | 0x8);
                        return v.toString(16);
-                     });
-      
-      // Insert user into users table
+                     }));
+
+      // Insert user profile into public.users table
       const { data: newUser, error } = await supabase
         .from('users')
         .insert({
@@ -606,22 +652,22 @@ async function createTestUsers() {
         })
         .select()
         .single();
-      
+
       if (error) {
-        console.error(`❌ Failed to create user ${userData.email}:`, error.message);
+        console.error(`❌ Failed to create user profile ${userData.email}:`, error.message);
         continue;
       }
-      
-      console.log(`✅ Created ${userData.account_type} user: ${userData.email}`);
-      
+
+      console.log(`✅ Created ${userData.account_type} profile: ${userData.email}`);
+
       // Store user data for later processing
       createdUsers.push({ ...newUser, ...userData });
-      
+
     } catch (error) {
       console.error(`❌ Error creating user ${userData.email}:`, error.message);
     }
   }
-  
+
   return createdUsers;
 }
 

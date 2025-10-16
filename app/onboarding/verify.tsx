@@ -260,13 +260,14 @@ export default function VerifyScreen() {
                 }}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
                 onFocus={() => {
+                  // Disable auto-paste for testing/automation
                   // Only trigger paste check on first input to avoid multiple paste attempts
-                  if (index === 0 && code.every(d => !d)) {
-                    // Small delay to allow focus to complete
-                    setTimeout(() => {
-                      handlePaste();
-                    }, 100);
-                  }
+                  // if (index === 0 && code.every(d => !d)) {
+                  //   // Small delay to allow focus to complete
+                  //   setTimeout(() => {
+                  //     handlePaste();
+                  //   }, 100);
+                  // }
                 }}
                 keyboardType="number-pad"
                 maxLength={index === 0 ? 6 : 1}

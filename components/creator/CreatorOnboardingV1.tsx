@@ -3,7 +3,7 @@
  * Simplified 2-step flow focusing on portfolio and terms
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -19,20 +19,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { 
-  ArrowLeft, 
-  Camera, 
-  X, 
-  CheckCircle2,
-  TrendingUp,
-  DollarSign,
-  Users,
+import {
+  ArrowLeft,
+  Camera,
+  X,
   Check
 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { boardService } from '@/services/boardService';
-import { profileService } from '@/services/profileService';
 
 interface CreatorOnboardingV1Props {
   onComplete: () => void;
@@ -46,56 +40,17 @@ interface PortfolioImage {
   selected?: boolean;
 }
 
-const CREATOR_FOCUSES = [
-  'Local Favorites',
-  'Date Night Spots',
-  'Hidden Gems',
-  'Family Friendly',
-  'Vegan/Vegetarian',
-  'Fine Dining',
-  'Casual Eats',
-  'Brunch Spots',
-  'Coffee & Cafes',
-  'International Cuisine',
-];
-
 export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
   onComplete,
   onCancel,
 }) => {
   const { user, refreshAccountInfo, upgradeAccount } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedFocuses, setSelectedFocuses] = useState<string[]>([]);
   const [portfolioImages, setPortfolioImages] = useState<PortfolioImage[]>([]);
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
-  const [boards, setBoards] = useState<any[]>([]);
-  const [profile, setProfile] = useState<any>(null);
 
-  const totalSteps = 3;
-
-  // Load user data on mount
-  useEffect(() => {
-    loadUserData();
-  }, [user?.id]);
-
-  const loadUserData = async () => {
-    if (!user?.id) return;
-    
-    try {
-      // Get updated profile with counts
-      const profileData = await profileService.getProfile(user.id);
-      if (profileData) {
-        setProfile(profileData);
-      }
-      
-      // Get user's boards
-      const userBoards = await boardService.getUserBoards(user.id);
-      setBoards(userBoards || []);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    }
-  };
+  const totalSteps = 2;
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
@@ -109,14 +64,6 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
     } else {
       onCancel();
     }
-  };
-
-  const toggleFocus = (focus: string) => {
-    setSelectedFocuses(prev =>
-      prev.includes(focus)
-        ? prev.filter(f => f !== focus)
-        : [...prev, focus]
-    );
   };
 
   const pickImages = async () => {
@@ -174,10 +121,10 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
       if (upgradeAccount) {
         const upgradeResult = await upgradeAccount('creator', {
           display_name: user.name || user.username || 'Creator',
-          bio: bio || `Food lover exploring ${selectedFocuses.join(', ').toLowerCase()}`,
+          bio: bio || 'Food lover and content creator',
           location: 'Charlotte',
-          food_specialties: selectedFocuses.length > 0 ? selectedFocuses : ['General'],
-          specialties: selectedFocuses.length > 0 ? selectedFocuses : ['General'],
+          food_specialties: ['General'],
+          specialties: ['General'],
         });
         
         if (!upgradeResult.success) {
@@ -214,10 +161,10 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
           .insert({
             user_id: user.id,
             display_name: user.name || user.username || 'Creator',
-            bio: bio || `Food lover exploring ${selectedFocuses.join(', ').toLowerCase()}`,
+            bio: bio || 'Food lover and content creator',
             location: 'Charlotte',
-            food_specialties: selectedFocuses.length > 0 ? selectedFocuses : ['General'],
-            specialties: selectedFocuses.length > 0 ? selectedFocuses : ['General'],
+            food_specialties: ['General'],
+            specialties: ['General'],
             verification_status: 'verified',
             instant_approved: true,
             portfolio_uploaded: true,
@@ -326,7 +273,7 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
-            <Text style={styles.primaryButtonText}>Get Started • 2 min setup</Text>
+            <Text style={styles.primaryButtonText}>Get Started</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryButton} onPress={onCancel}>
             <Text style={styles.secondaryButtonText}>See Example Creators</Text>
@@ -335,102 +282,6 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
       </View>
     </ScrollView>
   );
-
-  const renderQualification = () => {
-    // Use real user data for qualification check
-    const saveCount = profile?.saves_count || user?.saves_count || 0;
-    const boardCount = boards?.length || 0;
-    const friendCount = (profile?.followers_count || 0) + (profile?.following_count || 0);
-    const hasAvatar = !!user?.avatar_url || !!profile?.avatar_url;
-    
-    // Check all qualification requirements
-    const meetsAllRequirements = saveCount >= 40 && boardCount >= 3 && hasAvatar && friendCount >= 5;
-    const isQualified = saveCount >= 40;
-    
-    return (
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.centerContent}>
-            <Text style={styles.title}>Let's Check Your Creator Status</Text>
-          </View>
-
-          <View style={styles.gridContainer}>
-            <View style={styles.card}>
-              <View style={styles.checkList}>
-                <View style={styles.checkItem}>
-                  <CheckCircle2 size={20} color={saveCount >= 40 ? "#10B981" : "#737373"} />
-                  <Text style={[styles.checkText, saveCount >= 40 ? styles.checkTextGreen : styles.checkTextGray]}>
-                    {saveCount} restaurant saves {saveCount >= 40 ? '✓' : '(need 40+)'}
-                  </Text>
-                </View>
-                <View style={styles.checkItem}>
-                  <CheckCircle2 size={20} color={boardCount >= 3 ? "#10B981" : "#737373"} />
-                  <Text style={[styles.checkText, boardCount >= 3 ? styles.checkTextGreen : styles.checkTextGray]}>
-                    {boardCount} boards created {boardCount >= 3 ? '✓' : '(need 3+)'}
-                  </Text>
-                </View>
-                <View style={styles.checkItem}>
-                  <CheckCircle2 size={20} color={hasAvatar ? "#10B981" : "#737373"} />
-                  <Text style={[styles.checkText, hasAvatar ? styles.checkTextGreen : styles.checkTextGray]}>
-                    Profile photo {hasAvatar ? 'uploaded ✓' : 'needed'}
-                  </Text>
-                </View>
-                <View style={styles.checkItem}>
-                  <CheckCircle2 size={20} color={friendCount >= 5 ? "#10B981" : "#737373"} />
-                  <Text style={[styles.checkText, friendCount >= 5 ? styles.checkTextGreen : styles.checkTextGray]}>
-                    {friendCount} friends connected {friendCount >= 5 ? '✓' : '(need 5+)'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.qualifiedText}>
-                {meetsAllRequirements 
-                  ? "Wow! You're fully qualified 🎉" 
-                  : `${4 - [saveCount >= 40, boardCount >= 3, hasAvatar, friendCount >= 5].filter(Boolean).length} requirement${
-                      [saveCount >= 40, boardCount >= 3, hasAvatar, friendCount >= 5].filter(Boolean).length === 3 ? '' : 's'
-                    } left to meet`}
-              </Text>
-            </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Choose your creator focus</Text>
-            <Text style={styles.cardSubtitle}>(Select all that apply)</Text>
-            <View style={styles.chipsContainer}>
-              {CREATOR_FOCUSES.map(focus => (
-                <TouchableOpacity
-                  key={focus}
-                  style={[
-                    styles.chip,
-                    selectedFocuses.includes(focus) && styles.chipSelected,
-                  ]}
-                  onPress={() => toggleFocus(focus)}
-                >
-                  <Text style={[
-                    styles.chipText,
-                    selectedFocuses.includes(focus) && styles.chipTextSelected,
-                  ]}>
-                    {focus}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.buttonContainerEnd}>
-          <TouchableOpacity 
-            style={[styles.primaryButton, !meetsAllRequirements && styles.primaryButtonDisabled]} 
-            onPress={handleNext}
-            disabled={!meetsAllRequirements}
-          >
-            <Text style={[styles.primaryButtonText, !meetsAllRequirements && styles.primaryButtonTextDisabled]}>
-              {meetsAllRequirements ? 'Continue' : 'Complete Requirements to Continue'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
-    );
-  };
 
   const renderContentShowcase = () => (
     <KeyboardAvoidingView 
@@ -539,8 +390,7 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
 
       {/* Content */}
       {currentStep === 0 && renderValueProp()}
-      {currentStep === 1 && renderQualification()}
-      {currentStep === 2 && renderContentShowcase()}
+      {currentStep === 1 && renderContentShowcase()}
     </SafeAreaView>
   );
 };
@@ -706,63 +556,6 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
-  },
-  checkList: {
-    gap: 8,
-  },
-  checkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkText: {
-    fontSize: 14,
-    color: '#171717',
-  },
-  checkTextGreen: {
-    color: '#10B981',
-  },
-  checkTextGray: {
-    color: '#737373',
-  },
-  qualifiedText: {
-    fontSize: 14,
-    color: '#171717',
-    marginTop: 12,
-  },
-  cardTitle: {
-    fontSize: 14,
-    color: '#525252',
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#737373',
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    justifyContent: 'center',
-  },
-  chipSelected: {
-    backgroundColor: '#FFFAF2',
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  chipText: {
-    fontSize: 14,
-    color: '#171717',
-  },
-  chipTextSelected: {
-    color: '#171717',
   },
   uploadButton: {
     flexDirection: 'row',

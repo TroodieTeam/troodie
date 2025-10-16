@@ -99,7 +99,7 @@ export default function CreatePostScreen() {
   
   const loadPostForEditing = async () => {
     if (!postId) return;
-    
+
     setLoading(true);
     try {
       const post = await postService.getPost(postId);
@@ -246,7 +246,7 @@ export default function CreatePostScreen() {
       } else {
         // Create new post
         post = await postService.createPost(postData);
-        
+
         // Update network progress
         await updateNetworkProgress('post');
 

@@ -1,0 +1,58 @@
+# Regression Test Suite
+# Purpose: Full coverage of P0 and P1 features
+# Run time: ~30 minutes
+# Run: maestro test e2e/suites/regression.yaml
+
+name: Regression Tests
+env:
+  APP_ID: com.troodie.troodie.com
+  TEST_EMAIL: regression@troodie.test
+  TEST_PASSWORD: RegressionTest123!
+
+tags:
+  - regression
+  - p0
+  - p1
+
+flows:
+  # === P0 Critical Flows ===
+
+  # Onboarding
+  - onboarding/complete-onboarding.yaml
+
+  # Authentication
+  - auth/signup.yaml
+  - auth/login.yaml
+  - auth/logout.yaml
+
+  # Discovery
+  - discovery/search-restaurants.yaml
+  - discovery/filter-restaurants.yaml
+  - discovery/city-selector.yaml
+  - discovery/save-restaurant.yaml
+  - restaurant/view-restaurant-details.yaml
+
+  # Content Creation
+  - content/create-review.yaml
+  - content/save-to-board.yaml
+
+  # Boards
+  - boards/create-and-manage-board.yaml
+  - boards/board-collaboration.yaml
+
+  # Social
+  - social/follow-user.yaml
+  - social/like-review.yaml
+  - social/comment-review.yaml
+
+  # Notifications
+  - notifications/notification-interactions.yaml
+
+  # Profile
+  - profile/edit-profile.yaml
+  - profile/upload-avatar.yaml
+
+  # === P1 Important Flows ===
+  # (To be added as they're implemented)
+  # - feed/interact-with-feed.yaml
+  # - community/join-and-participate.yaml
