@@ -66,3 +66,7 @@ dev-debug.log
 *.sw?
 # OS specific
 
+# Data files (large datasets)
+data/*.json
+!data/README.md
+

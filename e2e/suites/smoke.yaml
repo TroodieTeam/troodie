@@ -1,0 +1,30 @@
+# Smoke Test Suite
+# Purpose: Quick validation of critical functionality
+# Run time: ~10 minutes
+# Run: maestro test e2e/suites/smoke.yaml
+
+name: Smoke Tests
+env:
+  APP_ID: com.troodie.troodie.com
+  TEST_EMAIL: smoketest@troodie.test
+  TEST_PASSWORD: SmokeTest123!
+
+tags:
+  - smoke
+  - critical
+  - p0
+
+# Core critical flows
+flows:
+  # Authentication
+  - auth/login.yaml
+
+  # Discovery & Content
+  - discovery/search-restaurants.yaml
+  - content/create-review.yaml
+
+  # Boards
+  - boards/create-and-manage-board.yaml
+
+  # Notifications
+  - notifications/notification-interactions.yaml

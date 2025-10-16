@@ -1,0 +1,209 @@
+appId: com.troodie.troodie.com
+---
+# Test: Board collaboration - invite and accept
+# Priority: P0 (Critical)
+# Tags: boards, collaboration, social, critical
+# Prerequisites: Two user accounts needed
+# Note: This test simulates board collaboration
+
+- launchApp
+
+# User A: Login and create shared board
+- runFlow: ../helpers/auth.yaml
+
+# Navigate to create board
+- tapOn:
+    id: "tab-profile"
+
+- scrollUntilVisible:
+    element:
+      text: "Boards"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Boards"
+    optional: true
+
+- tapOn:
+    text: "Create"
+    optional: true
+
+# Create collaborative board
+- tapOn:
+    id: "board-name-input"
+
+- inputText: "Team Lunch Spots ${randomInt}"
+
+- tapOn:
+    id: "board-description-input"
+    optional: true
+
+- inputText: "Shared board for team lunches"
+  optional: true
+
+# Make it collaborative (public or shared)
+- tapOn:
+    id: "board-privacy-selector"
+    optional: true
+
+- tapOn:
+    text: "Public"
+    optional: true
+
+- tapOn:
+    text: "Shared"
+    optional: true
+
+- tapOn:
+    text: "Create"
+
+# Add a restaurant to the board
+- tapOn:
+    text: "Add Restaurant"
+    optional: true
+
+- inputText: "Cafe"
+
+- waitForAnimationToEnd
+
+- tapOn:
+    index: 0
+
+- tapOn:
+    text: "Add"
+    optional: true
+
+# Invite collaborator
+- tapOn:
+    id: "board-menu-button"
+    optional: true
+
+- tapOn:
+    text: "Invite"
+    optional: true
+
+- tapOn:
+    id: "board-invite-button"
+    optional: true
+
+# Search for user to invite
+- tapOn:
+    id: "user-search-input"
+
+- inputText: "testuser"
+
+- waitForAnimationToEnd
+
+# Select user
+- tapOn:
+    id: "user-search-result-0"
+    optional: true
+
+- tapOn:
+    text: "testuser"
+    index: 0
+    optional: true
+
+# Set permissions
+- tapOn:
+    text: "Can Edit"
+    optional: true
+
+# Send invitation
+- tapOn:
+    text: "Send Invitation"
+
+- tapOn:
+    id: "send-invitation-button"
+    optional: true
+
+# Verify invitation sent
+- assertVisible:
+    text: "Invitation sent"
+    timeout: 5000
+
+- takeScreenshot: "board-invitation-sent"
+
+# === User B perspective (simulated) ===
+# Note: In real test, would switch to second device/account
+# For now, we'll verify the invitation appears in notifications
+
+# Go to notifications/activity
+- tapOn:
+    id: "tab-activity"
+
+# Look for board invitation notification
+- scrollUntilVisible:
+    element:
+      text: "invited you to"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+# Tap on invitation notification
+- tapOn:
+    text: "invited you to"
+    optional: true
+
+# Should show invitation details
+- assertVisible:
+    text: "Board Invitation"
+    timeout: 5000
+    optional: true
+
+- assertVisible:
+    text: "Team Lunch Spots"
+    optional: true
+
+# Accept invitation
+- tapOn:
+    text: "Accept"
+    optional: true
+
+- tapOn:
+    id: "accept-invitation-button"
+    optional: true
+
+# Verify access to board
+- assertVisible:
+    text: "Team Lunch Spots"
+    timeout: 10000
+
+# User B adds a restaurant
+- tapOn:
+    text: "Add Restaurant"
+    optional: true
+
+- inputText: "Sushi"
+
+- waitForAnimationToEnd
+
+- tapOn:
+    index: 0
+
+- tapOn:
+    text: "Add"
+    optional: true
+
+# Verify restaurant added
+- assertVisible:
+    text: "Sushi"
+    timeout: 5000
+    optional: true
+
+# Take screenshot of collaboration success
+- takeScreenshot: "board-collaboration-complete"
+
+# Clean up - leave board
+- tapOn:
+    id: "board-menu-button"
+    optional: true
+
+- tapOn:
+    text: "Leave Board"
+    optional: true
+
+- tapOn:
+    text: "Leave"
+    optional: true

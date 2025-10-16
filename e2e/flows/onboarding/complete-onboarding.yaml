@@ -1,0 +1,197 @@
+appId: com.troodie.troodie.com
+---
+# Test: Complete onboarding journey for new user
+# Priority: P0 (Critical)
+# Tags: onboarding, smoke, critical
+
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      notifications: allow
+      location: allow
+
+# Welcome screen
+- assertVisible:
+    text: "Welcome to TROODIE"
+    timeout: 10000
+
+# Start onboarding
+- tapOn: "Get Started"
+
+# Signup - Phone/Email selection
+- assertVisible: "Create your account"
+- tapOn: "Continue with Email"
+
+# Enter email
+- assertVisible: "Enter your email"
+- inputText: "newuser${randomInt}@troodie.test"
+- tapOn: "Next"
+
+# Enter password
+- assertVisible: "Create a password"
+- inputText: "TestPass123!"
+- tapOn: "Create Account"
+
+# Verify email (in test env, auto-verify)
+- assertVisible:
+    text: "Verify your email"
+    timeout: 5000
+    optional: true
+
+# Wait for verification or skip
+- tapOn:
+    text: "Skip for now"
+    optional: true
+    timeout: 3000
+
+# Username setup
+- assertVisible:
+    text: "Choose a username"
+    timeout: 10000
+
+- tapOn:
+    id: "username-input"
+
+- inputText: "foodlover${randomInt}"
+
+- tapOn: "Continue"
+
+# Bio (optional step)
+- assertVisible:
+    text: "Tell us about yourself"
+    optional: true
+
+- tapOn:
+    id: "bio-input"
+    optional: true
+
+- inputText: "Love discovering new restaurants!"
+  optional: true
+
+- tapOn:
+    text: "Continue"
+    optional: true
+
+- tapOn:
+    text: "Skip"
+    optional: true
+
+# Profile photo (optional)
+- assertVisible:
+    text: "Add a profile photo"
+    optional: true
+
+- tapOn:
+    text: "Skip"
+    optional: true
+
+# Persona quiz intro
+- assertVisible:
+    text: "Discover your dining persona"
+    timeout: 10000
+
+- tapOn: "Start Quiz"
+
+# Quiz questions (simplified - answer first 3)
+- assertVisible: "Question"
+
+# Question 1
+- tapOn:
+    index: 0
+    optional: true
+
+- tapOn:
+    text: "Next"
+    optional: true
+
+# Question 2
+- tapOn:
+    index: 1
+    optional: true
+
+- tapOn:
+    text: "Next"
+    optional: true
+
+# Question 3
+- tapOn:
+    index: 0
+    optional: true
+
+- tapOn:
+    text: "See Results"
+    optional: true
+
+# Persona result
+- assertVisible:
+    text: "Your dining persona"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "persona-result"
+
+- tapOn:
+    text: "Continue"
+    optional: true
+
+# Location setup
+- assertVisible:
+    text: "Where are you located"
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "Charlotte"
+    optional: true
+
+- tapOn:
+    text: "Confirm"
+    optional: true
+
+# Favorite cuisines
+- assertVisible:
+    text: "favorite cuisines"
+    timeout: 5000
+    optional: true
+
+- tapOn:
+    text: "Italian"
+    optional: true
+
+- tapOn:
+    text: "Mexican"
+    optional: true
+
+- tapOn:
+    text: "Continue"
+    optional: true
+
+# Onboarding complete - should see main app
+- assertVisible:
+    text: "Home"
+    timeout: 15000
+
+# Verify main navigation
+- assertVisible:
+    id: "tab-feed"
+    optional: true
+
+- assertVisible:
+    id: "tab-explore"
+    optional: true
+
+- assertVisible:
+    id: "tab-add"
+    optional: true
+
+- assertVisible:
+    id: "tab-activity"
+    optional: true
+
+- assertVisible:
+    id: "tab-profile"
+    optional: true
+
+# Success screenshot
+- takeScreenshot: "onboarding-complete"

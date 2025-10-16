@@ -75,9 +75,16 @@ class PostService {
    * Create a new post
    */
   async createPost(postData: PostCreationData): Promise<Post> {
+    console.log('[PostService] createPost called with data:', JSON.stringify(postData, null, 2));
+
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    console.log('[PostService] Current user:', user?.id);
+
+    if (!user) {
+      console.error('[PostService] User not authenticated');
+      throw new Error('User not authenticated');
+    }
 
     // Only require restaurant_id for restaurant posts (simple posts can have null)
     const insertData: any = {
@@ -97,6 +104,8 @@ class PostService {
       content_type: postData.contentType || 'original',
     };
 
+    console.log('[PostService] Insert data:', JSON.stringify(insertData, null, 2));
+
     // Add external content fields if applicable
     if (postData.contentType === 'external' && postData.externalContent) {
       insertData.external_source = postData.externalContent.source;
@@ -108,6 +117,7 @@ class PostService {
     }
 
     // Create the post
+    console.log('[PostService] Inserting post into database...');
     const { data, error } = await supabase
       .from('posts')
       .insert(insertData)
@@ -115,8 +125,11 @@ class PostService {
       .single();
 
     if (error) {
+      console.error('[PostService] Failed to create post:', error);
       throw new Error(`Failed to create post: ${error.message}`);
     }
+
+    console.log('[PostService] Post created successfully:', data.id);
 
     // Handle cross-posting to communities
     if (data && postData.communityIds && postData.communityIds.length > 0) {

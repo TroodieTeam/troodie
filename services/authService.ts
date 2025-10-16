@@ -23,7 +23,25 @@ export const authService = {
       // Special case for App Review and test accounts
       if (email.toLowerCase() === 'review@troodieapp.com' || email.toLowerCase().endsWith('@bypass.com')) {
         console.log('[AuthService] Bypass account detected in signup, OTP will be bypassed with code 000000')
-        // Don't call Supabase to avoid signup restrictions
+
+        // For bypass accounts, verify they exist (they should be pre-created)
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, email')
+          .eq('email', email.toLowerCase())
+          .single()
+
+        if (userError || !userData) {
+          console.error('[AuthService] Bypass account not found for signup:', userError)
+          return {
+            success: false,
+            error: 'Test account not found. Bypass accounts must be pre-created in Supabase.',
+          }
+        }
+
+        console.log('[AuthService] Bypass account exists, proceeding with bypass flow')
+
+        // Don't call Supabase OTP to avoid signup restrictions
         return {
           success: true,
           messageId: null,
@@ -87,13 +105,32 @@ export const authService = {
    */
   async signInWithEmail(email: string): Promise<OtpResponse> {
     try {
-      // Special case for App Review and test accounts
+      // Special case for bypass accounts - skip OTP entirely
       if (email.toLowerCase() === 'review@troodieapp.com' || email.toLowerCase().endsWith('@bypass.com')) {
-        console.log('[AuthService] Bypass account detected, OTP will be bypassed with code 000000')
-        // Do not call Supabase in review flow to avoid signup restrictions
+        console.log('[AuthService] Bypass account detected - will use password auth')
+
+        // Check if profile exists in public.users
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, email')
+          .eq('email', email.toLowerCase())
+          .single()
+
+        if (userError || !userData) {
+          console.error('[AuthService] Bypass account not found in database')
+          return {
+            success: false,
+            error: 'Test account not found. Please run the seed script first.',
+          }
+        }
+
+        console.log('[AuthService] Bypass account found - skipping OTP email')
+
+        // Return success without sending OTP
+        // We'll authenticate with password in verifyOtp
         return {
           success: true,
-          messageId: null,
+          messageId: null, // No email sent
         }
       }
       
@@ -151,97 +188,54 @@ export const authService = {
    */
   async verifyOtp(email: string, token: string): Promise<AuthResponse> {
     try {
-      // Special handling for App Store Review and test accounts with password auth
+      // For bypass accounts, use password authentication instead of OTP
+      // This works with fake emails that can't receive real OTPs
       if ((email.toLowerCase() === 'review@troodieapp.com' || email.toLowerCase().endsWith('@bypass.com')) && token === '000000') {
-        console.log('[AuthService] Bypass account detected, using password authentication')
+        console.log('[AuthService] Bypass account - using password auth instead of OTP')
 
-        try {
-          // For test accounts with @bypass.com, we'll use direct authentication
-          // First check if user exists in the database
-          const { data: userData } = await supabase
-            .from('users')
-            .select('id, email')
-            .eq('email', email.toLowerCase())
-            .single()
+        // Use password authentication with a known password
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.toLowerCase(),
+          password: 'BypassPassword123', // Fixed password for all bypass accounts
+        })
 
-          if (!userData) {
-            console.log('[AuthService] Bypass account not found in database, needs to be seeded first')
-            return {
-              success: false,
-              error: 'Test account not found. Please run the seed-test-accounts.js script first.',
-            }
-          }
-
-          // For review@troodieapp.com, use password auth
-          if (email.toLowerCase() === 'review@troodieapp.com') {
-            const { data, error } = await supabase.auth.signInWithPassword({
-              email: 'review@troodieapp.com',
-              password: 'ReviewPass000000'
-            })
-
-            if (error) {
-              console.error('[AuthService] Password auth error:', error)
-              return {
-                success: false,
-                error: 'Review account authentication failed.',
-              }
-            }
-
-            if (data.session) {
-              console.log('[AuthService] Review account authenticated successfully')
-              return {
-                success: true,
-                session: data.session,
-              }
-            }
-          }
-
-          // For @bypass.com test accounts, create a mock session
-          console.log('[AuthService] Creating mock session for bypass account')
-
-          // Get the session from existing auth state if available
-          const { data: { session: existingSession } } = await supabase.auth.getSession()
-
-          if (existingSession) {
-            console.log('[AuthService] Using existing session for bypass account')
-            return {
-              success: true,
-              session: existingSession,
-            }
-          }
-
-          // If no session exists, we need to handle this differently
-          // For test accounts, we'll return success with user data
-          console.log('[AuthService] Bypass account authenticated (mock mode)')
-
-          // Return success to proceed with the flow
-          return {
-            success: true,
-            session: {
-              access_token: 'bypass-token-' + Date.now(),
-              refresh_token: 'bypass-refresh-' + Date.now(),
-              expires_in: 3600,
-              token_type: 'bearer',
-              user: {
-                id: userData.id,
-                email: userData.email,
-                app_metadata: {},
-                user_metadata: {},
-                aud: 'authenticated',
-                created_at: new Date().toISOString()
-              }
-            } as any
-          }
-        } catch (err) {
-          console.error('[AuthService] Error in bypass account auth:', err)
+        if (error) {
+          console.error('[AuthService] Password auth failed:', error)
           return {
             success: false,
-            error: 'Test account authentication failed',
+            error: 'Bypass authentication failed. Auth user may not exist or password not set.',
           }
         }
+
+        if (!data.session) {
+          return {
+            success: false,
+            error: 'Authentication succeeded but no session created.',
+          }
+        }
+
+        console.log('[AuthService] Bypass account authenticated successfully!')
+        console.log('[AuthService] Session user ID:', data.session.user.id)
+
+        // Ensure user profile exists
+        if (data.user) {
+          const { error: profileError } = await supabase.rpc('ensure_user_profile', {
+            p_user_id: data.user.id,
+            p_email: email.toLowerCase()
+          })
+
+          if (profileError) {
+            console.error('[AuthService] Error ensuring profile exists:', profileError)
+          }
+        }
+
+        return {
+          success: true,
+          session: data.session,
+        }
       }
-      
-      // Normal OTP verification flow
+
+      // Normal OTP verification flow for real users
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token,

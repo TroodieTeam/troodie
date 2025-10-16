@@ -27,6 +27,8 @@
     "test:data:seed": "node e2e/helpers/test-data.js seed",
     "test:data:cleanup": "node e2e/helpers/test-data.js cleanup",
     "test:data:reset": "node e2e/helpers/test-data.js reset",
+    "demo:seed": "node scripts/seed-user-demo-data.js",
+    "demo:cleanup": "node scripts/cleanup-user-demo-data.js",
     "setup:storage": "node scripts/setup-dev-storage.js",
     "db:migrate": "npx supabase db push"
   },
