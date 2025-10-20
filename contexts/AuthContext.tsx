@@ -111,13 +111,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       // Auth event received
       
-      // Only handle specific events we care about
       if (event === 'TOKEN_REFRESHED' && session) {
         // Token refreshed
         setSession(session)
         setUser(session.user)
+      } else if (event === 'SIGNED_OUT') {
+        // User signed out - clear all state
+        setSession(null)
+        setUser(null)
+        setProfile(null)
+        setAccountInfo(null)
+        setIsAnonymous(false)
+        setLoading(false)
       }
-      // Don't handle SIGNED_IN or SIGNED_OUT here - we'll manage those manually
+      // Don't handle SIGNED_IN here - we'll manage that manually
     })
 
     return () => subscription.unsubscribe()
