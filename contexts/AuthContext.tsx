@@ -211,14 +211,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setLoading(true)
     try {
+      // Check if we actually have a session before trying to sign out
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      console.log('[AuthContext] Current Supabase session:', !!currentSession)
+      
+      if (!currentSession) {
+        console.log('[AuthContext] No Supabase session found, clearing local state directly')
+        // No session to sign out from, just clear our local state
+        setSession(null)
+        setUser(null)
+        setProfile(null)
+        setAccountInfo(null)
+        setIsAnonymous(false)
+        return
+      }
+      
       console.log('[AuthContext] Calling supabase.auth.signOut()...')
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('[AuthContext] signOut error:', error)
-        throw error
+        // Even if signOut fails, clear our local state
+        setSession(null)
+        setUser(null)
+        setProfile(null)
+        setAccountInfo(null)
+        setIsAnonymous(false)
+        return
       }
       console.log('[AuthContext] supabase.auth.signOut() completed successfully')
       // State will be cleared by the SIGNED_OUT event listener
+      // Add a fallback timeout in case the event doesn't fire
+      setTimeout(async () => {
+        const { data: { session: fallbackSession } } = await supabase.auth.getSession()
+        if (!fallbackSession && session) {
+          console.log('[AuthContext] Fallback: SIGNED_OUT event did not fire, clearing state manually')
+          setSession(null)
+          setUser(null)
+          setProfile(null)
+          setAccountInfo(null)
+          setIsAnonymous(false)
+        }
+      }, 1000)
     } finally {
       setLoading(false)
       console.log('[AuthContext] signOut function completed')
