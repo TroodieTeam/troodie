@@ -205,12 +205,24 @@ export default function ExploreCampaigns() {
 
     setApplying(true);
     try {
+      // Get creator profile ID for the current user
+      const { data: creatorProfile, error: creatorError } = await supabase
+        .from('creator_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (creatorError || !creatorProfile) {
+        Alert.alert('Error', 'Creator profile not found. Please complete your creator profile first.');
+        return;
+      }
+
       // Check if already applied
       const { data: existingApp } = await supabase
         .from('campaign_applications')
         .select('id')
         .eq('campaign_id', campaign.id)
-        .eq('creator_id', user.id)
+        .eq('creator_id', creatorProfile.id)
         .single();
 
       if (existingApp) {
@@ -221,7 +233,7 @@ export default function ExploreCampaigns() {
       // Create application
       const { error } = await supabase.from('campaign_applications').insert({
         campaign_id: campaign.id,
-        creator_id: user.id,
+        creator_id: creatorProfile.id,
         status: 'pending',
         applied_at: new Date().toISOString(),
       });
@@ -290,7 +302,9 @@ export default function ExploreCampaigns() {
           <View style={styles.campaignStats}>
             <View style={styles.statItem}>
               <DollarSign size={14} color="#10B981" />
-              <Text style={styles.statText}>${(campaign.budget_cents / 100).toFixed(0)}</Text>
+              <Text style={styles.statText}>
+                ${campaign.max_creators > 0 ? ((campaign.budget_cents / campaign.max_creators) / 100).toFixed(0) : (campaign.budget_cents / 100).toFixed(0)}
+              </Text>
             </View>
             <View style={styles.statItem}>
               <Clock size={14} color="#F59E0B" />
@@ -469,7 +483,7 @@ export default function ExploreCampaigns() {
                       <View>
                         <Text style={styles.modalStatLabel}>Budget</Text>
                         <Text style={styles.modalStatValue}>
-                          ${(selectedCampaign.budget_cents / 100).toFixed(0)}
+                          ${selectedCampaign.max_creators > 0 ? ((selectedCampaign.budget_cents / selectedCampaign.max_creators) / 100).toFixed(0) : (selectedCampaign.budget_cents / 100).toFixed(0)}
                         </Text>
                       </View>
                     </View>
