@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { authService } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,12 +21,14 @@ import {
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signInWithEmail, isAuthenticated } = useAuth();
+  const { signInWithEmail, isAuthenticated, refreshAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [isValidEmail, setIsValidEmail] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [devPassword, setDevPassword] = useState('');
   const [lastRequestTime, setLastRequestTime] = useState<number | null>(null);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+  const loginMode = process.env.EXPO_PUBLIC_AUTH_LOGIN_MODE || 'otp';
 
   // Check if already authenticated
   useEffect(() => {
@@ -105,6 +108,27 @@ export default function LoginScreen() {
     }
   };
 
+  const handleDevPasswordLogin = async () => {
+    if (!isValidEmail || !devPassword) {
+      Alert.alert('Missing Credentials', 'Enter a valid email and password');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.toLowerCase(), password: devPassword });
+      if (error || !data?.session) {
+        Alert.alert('Login Failed', error?.message || 'Could not sign in with password');
+        return;
+      }
+      await refreshAuth();
+      router.replace('/(tabs)');
+    } catch (e) {
+      Alert.alert('Error', 'Unexpected error during password login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBack = () => {
     router.back();
   };
@@ -154,6 +178,19 @@ export default function LoginScreen() {
             autoFocus
           />
 
+          {loginMode === 'password' && (
+            <TextInput
+              style={[styles.input, { marginTop: 16 }]}
+              value={devPassword}
+              onChangeText={setDevPassword}
+              placeholder="password (dev only)"
+              placeholderTextColor="#999"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          )}
+
           {rateLimitCountdown > 0 && (
             <View style={styles.rateLimitContainer}>
               <Text style={styles.rateLimitText}>
@@ -182,6 +219,20 @@ export default function LoginScreen() {
               <Text style={styles.loginButtonText}>Send Code</Text>
             )}
           </TouchableOpacity>
+
+          {loginMode === 'password' && (
+            <TouchableOpacity 
+              style={[styles.loginButton, { marginTop: 12 }]}
+              onPress={handleDevPasswordLogin}
+              disabled={!isValidEmail || !devPassword || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>Sign In (Password)</Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>Don't have an account? </Text>

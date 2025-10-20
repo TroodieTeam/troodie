@@ -14,6 +14,21 @@ export interface OtpResponse {
 }
 
 export const authService = {
+  // Internal helpers for bypass/test login behavior
+  _getBypassDomains(): string[] {
+    const envList = (process.env.EXPO_PUBLIC_TEST_EMAIL_DOMAINS || '').split(',').map(d => d.trim()).filter(Boolean)
+    // Always include legacy/default domains
+    const defaults = ['@bypass.com', '@troodieapp.com']
+    const merged = new Set<string>([...envList, ...defaults])
+    return Array.from(merged)
+  },
+  _isBypassEmail(email: string): boolean {
+    const lower = email.toLowerCase()
+    return this._getBypassDomains().some(suffix => lower.endsWith(suffix)) || lower === 'review@troodieapp.com'
+  },
+  _getBypassPassword(): string {
+    return process.env.EXPO_PUBLIC_TEST_AUTH_PASSWORD || 'BypassPassword123'
+  },
   /**
    * Sign up a new user with email OTP
    * According to Supabase docs, signInWithOtp will create user if doesn't exist
@@ -21,7 +36,7 @@ export const authService = {
   async signUpWithEmail(email: string): Promise<OtpResponse> {
     try {
       // Special case for App Review and test accounts
-      if (email.toLowerCase() === 'review@troodieapp.com' || email.toLowerCase().endsWith('@bypass.com')) {
+      if (this._isBypassEmail(email)) {
         console.log('[AuthService] Bypass account detected in signup, OTP will be bypassed with code 000000')
 
         // For bypass accounts, verify they exist (they should be pre-created)
@@ -106,7 +121,7 @@ export const authService = {
   async signInWithEmail(email: string): Promise<OtpResponse> {
     try {
       // Special case for bypass accounts - skip OTP entirely
-      if (email.toLowerCase() === 'review@troodieapp.com' || email.toLowerCase().endsWith('@bypass.com')) {
+      if (this._isBypassEmail(email)) {
         console.log('[AuthService] Bypass account detected - will use password auth')
 
         // Check if profile exists in public.users
@@ -190,13 +205,13 @@ export const authService = {
     try {
       // For bypass accounts, use password authentication instead of OTP
       // This works with fake emails that can't receive real OTPs
-      if ((email.toLowerCase() === 'review@troodieapp.com' || email.toLowerCase().endsWith('@bypass.com')) && token === '000000') {
+      if (this._isBypassEmail(email) && token === '000000') {
         console.log('[AuthService] Bypass account - using password auth instead of OTP')
 
         // Use password authentication with a known password
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.toLowerCase(),
-          password: 'BypassPassword123', // Fixed password for all bypass accounts
+          password: this._getBypassPassword(), // Fixed password for test/bypass accounts
         })
 
         if (error) {
