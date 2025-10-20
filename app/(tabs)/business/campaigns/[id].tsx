@@ -104,8 +104,16 @@ export default function CampaignDetail() {
     try {
       if (!user?.id || !id) return;
 
-      // Load campaign details
-      const { data: campaignData, error: campaignError } = await supabase
+      // Check if user is admin
+      const ADMIN_USER_IDS = [
+        'b08d9600-358d-4be9-9552-4607d9f50227',
+        '31744191-f7c0-44a4-8673-10b34ccbb87f',
+        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
+      ];
+      const isAdmin = ADMIN_USER_IDS.includes(user.id);
+
+      // Load campaign details - admins can see all campaigns, regular users only their own
+      let query = supabase
         .from('campaigns')
         .select(`
           *,
@@ -115,9 +123,13 @@ export default function CampaignDetail() {
             cover_photo_url
           )
         `)
-        .eq('id', id)
-        .eq('owner_id', user.id)
-        .single();
+        .eq('id', id);
+
+      if (!isAdmin) {
+        query = query.eq('owner_id', user.id);
+      }
+
+      const { data: campaignData, error: campaignError } = await query.single();
 
       if (campaignError) throw campaignError;
 
