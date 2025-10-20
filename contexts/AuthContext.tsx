@@ -114,13 +114,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Simple listener - only handle TOKEN_REFRESHED and user-initiated SIGNED_OUT
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Auth event received
+      console.log('[AuthContext] Auth state change event:', event)
+      console.log('[AuthContext] Session in event:', !!session)
+      console.log('[AuthContext] User in event:', session?.user?.email)
       
       if (event === 'TOKEN_REFRESHED' && session) {
+        console.log('[AuthContext] Token refreshed, updating session')
         // Token refreshed
         setSession(session)
         setUser(session.user)
       } else if (event === 'SIGNED_OUT') {
+        console.log('[AuthContext] SIGNED_OUT event received, clearing all state')
         // User signed out - clear all state
         setSession(null)
         setUser(null)
@@ -128,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccountInfo(null)
         setIsAnonymous(false)
         setLoading(false)
+        console.log('[AuthContext] All state cleared after SIGNED_OUT')
       }
       // Don't handle SIGNED_IN here - we'll manage that manually
     })
@@ -200,13 +205,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    console.log('[AuthContext] signOut called')
+    console.log('[AuthContext] Current session before signOut:', !!session)
+    console.log('[AuthContext] Current user before signOut:', user?.email)
+    
     setLoading(true)
     try {
+      console.log('[AuthContext] Calling supabase.auth.signOut()...')
       const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      if (error) {
+        console.error('[AuthContext] signOut error:', error)
+        throw error
+      }
+      console.log('[AuthContext] supabase.auth.signOut() completed successfully')
       // State will be cleared by the SIGNED_OUT event listener
     } finally {
       setLoading(false)
+      console.log('[AuthContext] signOut function completed')
     }
   }
 
@@ -268,7 +283,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     skipAuth,
     loading,
-    isAuthenticated: !!session,
+    isAuthenticated: (() => {
+      const auth = !!session;
+      console.log('[AuthContext] isAuthenticated computed:', auth, 'session:', !!session, 'user:', user?.email);
+      return auth;
+    })(),
     isAnonymous,
     error,
     refreshAuth,
