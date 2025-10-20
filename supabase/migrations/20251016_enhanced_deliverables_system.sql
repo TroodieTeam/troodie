@@ -28,42 +28,42 @@ CREATE INDEX IF NOT EXISTS idx_campaigns_deliverable_goal
 ON campaigns ((deliverable_requirements->>'goal'));
 
 -- ============================================================================
--- 2. EXTEND CREATOR_CAMPAIGNS TABLE - Add submission tracking
+-- 2. EXTEND CAMPAIGN_APPLICATIONS TABLE - Add submission tracking
 -- ============================================================================
 
-ALTER TABLE creator_campaigns
+ALTER TABLE campaign_applications
 ADD COLUMN IF NOT EXISTS deliverables_submitted JSONB DEFAULT '[]'::jsonb;
 
-ALTER TABLE creator_campaigns
+ALTER TABLE campaign_applications
 ADD COLUMN IF NOT EXISTS all_deliverables_submitted BOOLEAN DEFAULT FALSE;
 
-ALTER TABLE creator_campaigns
+ALTER TABLE campaign_applications
 ADD COLUMN IF NOT EXISTS restaurant_review_deadline TIMESTAMPTZ;
 
-ALTER TABLE creator_campaigns
+ALTER TABLE campaign_applications
 ADD COLUMN IF NOT EXISTS auto_approved BOOLEAN DEFAULT FALSE;
 
-COMMENT ON COLUMN creator_campaigns.deliverables_submitted IS
+COMMENT ON COLUMN campaign_applications.deliverables_submitted IS
 'Array of submitted deliverables with basic metadata.
 Detailed tracking in campaign_deliverables table.';
 
-COMMENT ON COLUMN creator_campaigns.all_deliverables_submitted IS
+COMMENT ON COLUMN campaign_applications.all_deliverables_submitted IS
 'Boolean flag indicating if all required deliverables have been submitted.';
 
-COMMENT ON COLUMN creator_campaigns.restaurant_review_deadline IS
+COMMENT ON COLUMN campaign_applications.restaurant_review_deadline IS
 'Timestamp when deliverables will auto-approve if not reviewed (72 hours after submission).';
 
-COMMENT ON COLUMN creator_campaigns.auto_approved IS
+COMMENT ON COLUMN campaign_applications.auto_approved IS
 'Flag indicating if deliverables were auto-approved due to restaurant timeout.';
 
 -- ============================================================================
 -- 3. CREATE CAMPAIGN_DELIVERABLES TABLE - Detailed deliverable tracking
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS campaign_deliverables (
+CREATE TABLE IF NOT EXISTS campaign_deliverables_new (
   -- Primary identification
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_campaign_id UUID NOT NULL REFERENCES creator_campaigns(id) ON DELETE CASCADE,
+  campaign_application_id UUID NOT NULL REFERENCES campaign_applications(id) ON DELETE CASCADE,
   campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
   creator_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 
@@ -92,31 +92,31 @@ CREATE TABLE IF NOT EXISTS campaign_deliverables (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
 
-  -- Ensure one deliverable per index per creator campaign
-  UNIQUE(creator_campaign_id, deliverable_index)
+  -- Ensure one deliverable per index per campaign application
+  UNIQUE(campaign_application_id, deliverable_index)
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_deliverables_creator_campaign
-ON campaign_deliverables(creator_campaign_id);
+CREATE INDEX IF NOT EXISTS idx_deliverables_new_campaign_application
+ON campaign_deliverables_new(campaign_application_id);
 
-CREATE INDEX IF NOT EXISTS idx_deliverables_campaign
-ON campaign_deliverables(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_deliverables_new_campaign
+ON campaign_deliverables_new(campaign_id);
 
-CREATE INDEX IF NOT EXISTS idx_deliverables_creator
-ON campaign_deliverables(creator_id);
+CREATE INDEX IF NOT EXISTS idx_deliverables_new_creator
+ON campaign_deliverables_new(creator_id);
 
-CREATE INDEX IF NOT EXISTS idx_deliverables_status
-ON campaign_deliverables(status);
+CREATE INDEX IF NOT EXISTS idx_deliverables_new_status
+ON campaign_deliverables_new(status);
 
-CREATE INDEX IF NOT EXISTS idx_deliverables_submitted
-ON campaign_deliverables(submitted_at);
+CREATE INDEX IF NOT EXISTS idx_deliverables_new_submitted
+ON campaign_deliverables_new(submitted_at);
 
-CREATE INDEX IF NOT EXISTS idx_deliverables_auto_approval_check
-ON campaign_deliverables(status, submitted_at)
+CREATE INDEX IF NOT EXISTS idx_deliverables_new_auto_approval_check
+ON campaign_deliverables_new(status, submitted_at)
 WHERE status = 'pending';
 
-COMMENT ON TABLE campaign_deliverables IS
+COMMENT ON TABLE campaign_deliverables_new IS
 'Tracks individual deliverable submissions with detailed review and approval workflow.
 Each row represents one deliverable submission (e.g., a single Instagram post).
 Supports revision tracking, auto-approval after 72 hours, and detailed feedback.';
@@ -125,57 +125,57 @@ Supports revision tracking, auto-approval after 72 hours, and detailed feedback.
 -- 4. ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================================
 
-ALTER TABLE campaign_deliverables ENABLE ROW LEVEL SECURITY;
+ALTER TABLE campaign_deliverables_new ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Creators can view own deliverables" ON campaign_deliverables;
-DROP POLICY IF EXISTS "Creators can create own deliverables" ON campaign_deliverables;
-DROP POLICY IF EXISTS "Creators can update own deliverables" ON campaign_deliverables;
-DROP POLICY IF EXISTS "Restaurants can view campaign deliverables" ON campaign_deliverables;
-DROP POLICY IF EXISTS "Restaurants can update campaign deliverables" ON campaign_deliverables;
-DROP POLICY IF EXISTS "Admins can view all deliverables" ON campaign_deliverables;
-DROP POLICY IF EXISTS "Admins can update all deliverables" ON campaign_deliverables;
+DROP POLICY IF EXISTS "Creators can view own deliverables" ON campaign_deliverables_new;
+DROP POLICY IF EXISTS "Creators can create own deliverables" ON campaign_deliverables_new;
+DROP POLICY IF EXISTS "Creators can update own deliverables" ON campaign_deliverables_new;
+DROP POLICY IF EXISTS "Restaurants can view campaign deliverables" ON campaign_deliverables_new;
+DROP POLICY IF EXISTS "Restaurants can update campaign deliverables" ON campaign_deliverables_new;
+DROP POLICY IF EXISTS "Admins can view all deliverables" ON campaign_deliverables_new;
+DROP POLICY IF EXISTS "Admins can update all deliverables" ON campaign_deliverables_new;
 
 -- Creators can view and manage their own deliverables
 CREATE POLICY "Creators can view own deliverables"
-  ON campaign_deliverables FOR SELECT
+  ON campaign_deliverables_new FOR SELECT
   USING (auth.uid() = creator_id);
 
 CREATE POLICY "Creators can create own deliverables"
-  ON campaign_deliverables FOR INSERT
+  ON campaign_deliverables_new FOR INSERT
   WITH CHECK (auth.uid() = creator_id);
 
 CREATE POLICY "Creators can update own pending deliverables"
-  ON campaign_deliverables FOR UPDATE
+  ON campaign_deliverables_new FOR UPDATE
   USING (auth.uid() = creator_id AND status IN ('pending', 'needs_revision'))
   WITH CHECK (auth.uid() = creator_id);
 
 -- Restaurants can view and review deliverables for their campaigns
 CREATE POLICY "Restaurants can view campaign deliverables"
-  ON campaign_deliverables FOR SELECT
+  ON campaign_deliverables_new FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM campaigns c
       JOIN business_profiles bp ON bp.restaurant_id = c.restaurant_id
-      WHERE c.id = campaign_deliverables.campaign_id
+      WHERE c.id = campaign_deliverables_new.campaign_id
       AND bp.user_id = auth.uid()
     )
   );
 
 CREATE POLICY "Restaurants can update campaign deliverables"
-  ON campaign_deliverables FOR UPDATE
+  ON campaign_deliverables_new FOR UPDATE
   USING (
     EXISTS (
       SELECT 1 FROM campaigns c
       JOIN business_profiles bp ON bp.restaurant_id = c.restaurant_id
-      WHERE c.id = campaign_deliverables.campaign_id
+      WHERE c.id = campaign_deliverables_new.campaign_id
       AND bp.user_id = auth.uid()
     )
   );
 
 -- Admins can view and manage all deliverables
 CREATE POLICY "Admins can view all deliverables"
-  ON campaign_deliverables FOR SELECT
+  ON campaign_deliverables_new FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM users
@@ -185,7 +185,7 @@ CREATE POLICY "Admins can view all deliverables"
   );
 
 CREATE POLICY "Admins can update all deliverables"
-  ON campaign_deliverables FOR UPDATE
+  ON campaign_deliverables_new FOR UPDATE
   USING (
     EXISTS (
       SELECT 1 FROM users
@@ -202,7 +202,7 @@ CREATE POLICY "Admins can update all deliverables"
 CREATE OR REPLACE FUNCTION get_auto_approval_deadline(p_deliverable_id UUID)
 RETURNS TIMESTAMPTZ AS $$
   SELECT submitted_at + INTERVAL '72 hours'
-  FROM campaign_deliverables
+  FROM campaign_deliverables_new
   WHERE id = p_deliverable_id;
 $$ LANGUAGE sql STABLE;
 
@@ -215,7 +215,7 @@ RETURNS BOOLEAN AS $$
   SELECT
     status = 'pending' AND
     submitted_at < NOW() - INTERVAL '72 hours'
-  FROM campaign_deliverables
+  FROM campaign_deliverables_new
   WHERE id = p_deliverable_id;
 $$ LANGUAGE sql STABLE;
 
@@ -230,7 +230,7 @@ RETURNS INTERVAL AS $$
       (submitted_at + INTERVAL '72 hours') - NOW(),
       INTERVAL '0 seconds'
     )
-  FROM campaign_deliverables
+  FROM campaign_deliverables_new
   WHERE id = p_deliverable_id;
 $$ LANGUAGE sql STABLE;
 
@@ -246,14 +246,14 @@ RETURNS TABLE (
   deliverable_id UUID,
   creator_id UUID,
   campaign_id UUID,
-  creator_campaign_id UUID,
+  campaign_application_id UUID,
   approved_at TIMESTAMPTZ,
   creator_email TEXT,
   campaign_title TEXT
 ) AS $$
 BEGIN
   RETURN QUERY
-  UPDATE campaign_deliverables cd
+  UPDATE campaign_deliverables_new cd
   SET
     status = 'approved',
     auto_approved = TRUE,
@@ -269,7 +269,7 @@ BEGIN
     cd.id AS deliverable_id,
     cd.creator_id,
     cd.campaign_id,
-    cd.creator_campaign_id,
+    cd.campaign_application_id,
     cd.reviewed_at AS approved_at,
     u.email AS creator_email,
     c.title AS campaign_title;
@@ -282,32 +282,32 @@ Returns details of auto-approved deliverables for notification purposes.
 Should be called by Supabase Edge Function (cron job) every hour.';
 
 -- ============================================================================
--- 7. TRIGGER TO UPDATE creator_campaigns WHEN DELIVERABLE CHANGES
+-- 7. TRIGGER TO UPDATE campaign_applications WHEN DELIVERABLE CHANGES
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION update_creator_campaign_deliverable_status()
+CREATE OR REPLACE FUNCTION update_campaign_application_deliverable_status()
 RETURNS TRIGGER AS $$
 DECLARE
   total_required INTEGER;
   total_submitted INTEGER;
   all_approved BOOLEAN;
 BEGIN
-  -- Count total deliverables submitted for this creator campaign
+  -- Count total deliverables submitted for this campaign application
   SELECT COUNT(*)
   INTO total_submitted
-  FROM campaign_deliverables
-  WHERE creator_campaign_id = NEW.creator_campaign_id
+  FROM campaign_deliverables_new
+  WHERE campaign_application_id = NEW.campaign_application_id
   AND status IN ('approved', 'pending', 'under_review');
 
   -- Check if all submitted deliverables are approved
   SELECT COUNT(*) = 0
   INTO all_approved
-  FROM campaign_deliverables
-  WHERE creator_campaign_id = NEW.creator_campaign_id
+  FROM campaign_deliverables_new
+  WHERE campaign_application_id = NEW.campaign_application_id
   AND status NOT IN ('approved');
 
-  -- Update creator_campaigns table
-  UPDATE creator_campaigns
+  -- Update campaign_applications table
+  UPDATE campaign_applications
   SET
     all_deliverables_submitted = (total_submitted > 0),
     restaurant_review_deadline = CASE
@@ -320,19 +320,19 @@ BEGIN
       ELSE auto_approved
     END,
     updated_at = NOW()
-  WHERE id = NEW.creator_campaign_id;
+  WHERE id = NEW.campaign_application_id;
 
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_update_creator_campaign_on_deliverable_change
-AFTER INSERT OR UPDATE ON campaign_deliverables
+CREATE TRIGGER trigger_update_campaign_application_on_deliverable_change
+AFTER INSERT OR UPDATE ON campaign_deliverables_new
 FOR EACH ROW
-EXECUTE FUNCTION update_creator_campaign_deliverable_status();
+EXECUTE FUNCTION update_campaign_application_deliverable_status();
 
-COMMENT ON FUNCTION update_creator_campaign_deliverable_status IS
-'Updates creator_campaigns table when deliverables are submitted or reviewed.
+COMMENT ON FUNCTION update_campaign_application_deliverable_status IS
+'Updates campaign_applications table when deliverables are submitted or reviewed.
 Tracks submission status, review deadlines, and auto-approval flags.';
 
 -- ============================================================================
@@ -384,7 +384,7 @@ CREATE OR REPLACE VIEW pending_deliverables_summary AS
 SELECT
   cd.id AS deliverable_id,
   cd.campaign_id,
-  cd.creator_campaign_id,
+  cd.campaign_application_id,
   cd.creator_id,
   cd.deliverable_index,
   cd.platform,
@@ -404,11 +404,11 @@ SELECT
   c.title AS campaign_title,
   c.restaurant_id,
   -- Creator details
-  u.full_name AS creator_name,
+  u.name AS creator_name,
   u.username AS creator_username,
   u.avatar_url AS creator_avatar,
   u.email AS creator_email
-FROM campaign_deliverables cd
+FROM campaign_deliverables_new cd
 JOIN campaigns c ON c.id = cd.campaign_id
 JOIN users u ON u.id = cd.creator_id
 WHERE cd.status = 'pending'
@@ -438,7 +438,7 @@ SELECT
   MAX(cd.submitted_at) AS last_submission_at,
   MAX(cd.reviewed_at) AS last_review_at
 FROM campaigns c
-LEFT JOIN campaign_deliverables cd ON cd.campaign_id = c.id
+LEFT JOIN campaign_deliverables_new cd ON cd.campaign_id = c.id
 GROUP BY c.id, c.title, c.restaurant_id;
 
 COMMENT ON VIEW deliverable_statistics IS
@@ -450,7 +450,7 @@ Used for analytics dashboards and performance tracking.';
 -- ============================================================================
 
 -- Grant access to authenticated users
-GRANT SELECT, INSERT, UPDATE ON campaign_deliverables TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON campaign_deliverables_new TO authenticated;
 GRANT SELECT ON pending_deliverables_summary TO authenticated;
 GRANT SELECT ON deliverable_statistics TO authenticated;
 
@@ -467,11 +467,11 @@ BEGIN
 
   Changes Applied:
   ✓ Added deliverable_requirements to campaigns table
-  ✓ Extended creator_campaigns with submission tracking
-  ✓ Created campaign_deliverables table with full workflow support
+  ✓ Extended campaign_applications with submission tracking
+  ✓ Created campaign_deliverables_new table with full workflow support
   ✓ Added RLS policies for creators, restaurants, and admins
   ✓ Created helper functions for auto-approval logic
-  ✓ Added trigger to sync creator_campaigns status
+  ✓ Added trigger to sync campaign_applications status
   ✓ Created views for pending deliverables and statistics
   ✓ Granted appropriate permissions
 

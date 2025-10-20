@@ -4,9 +4,10 @@
 
 This guide explains how to set up and use test accounts for the Troodie app. All test accounts use a special authentication bypass pattern for easier testing.
 
-## Test Account Pattern
+## Test Account Pattern (OTP-first + dev password fallback)
 
-All test accounts use emails ending with `@bypass.com` and authenticate using OTP code `000000`.
+- Primary: OTP via email (unchanged UX)
+- Dev-only fallback: For seeded test domains (e.g., `@troodieapp.com`), use verification code `000000` to trigger password login under the hood and create a real session. Password defaults to `BypassPassword123` and can be overridden via `EXPO_PUBLIC_TEST_AUTH_PASSWORD`.
 
 ## Setup Instructions
 
@@ -24,13 +25,14 @@ This script will:
 - Set up business profiles and claim restaurants
 - Create sample boards for users
 
-### 2. Alternative: Run SQL Script Directly
+### 2. Alternative: Run SQL Script Directly (Auth users with passwords)
 
 If you prefer to use SQL directly in Supabase:
 
 ```bash
-# Copy the contents of scripts/seed-test-data.sql
-# Paste and run in Supabase SQL Editor
+# In Supabase SQL Editor:
+# Run the idempotent auth seed to create confirmed users with passwords
+supabase/seeds/seed_auth_test_users.sql
 ```
 
 ## Test Accounts
@@ -53,9 +55,9 @@ If you prefer to use SQL directly in Supabase:
 
 ## Authentication
 
-All test accounts use:
-- **OTP Code:** `000000`
-- **No actual email verification required**
+- OTP-first: request code and enter the received code.
+- Dev-only: for test domains, enter `000000` on the verification screen to sign in with password (no email needed).
+- Optional: set `EXPO_PUBLIC_AUTH_LOGIN_MODE=password` to show a password field and sign in directly on the login screen.
 
 ## Testing Scenarios
 
@@ -144,8 +146,9 @@ SELECT COUNT(*) as total FROM restaurants WHERE website LIKE '%.test';
   - `SUPABASE_ANON_KEY` or `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
 ### Authentication fails with test accounts
-- Verify the authService.ts includes bypass logic for `@bypass.com` emails
-- Ensure you're using OTP code `000000`
+- Verify `services/authService.ts` includes bypass logic via env: `EXPO_PUBLIC_TEST_EMAIL_DOMAINS`
+- Ensure you used `000000` on the verify screen (dev only)
+- Confirm users exist in both `auth.users` and `public.users`
 
 ### Users created but no profiles
 - Check that the account type migrations have been run

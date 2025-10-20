@@ -47,7 +47,7 @@ BEGIN
   SELECT id INTO v_troodie_restaurant_id
   FROM restaurants
   WHERE is_platform_managed = TRUE
-  AND managed_by = v_system_user_id
+  AND managed_by = 'troodie'
   LIMIT 1;
 
   IF v_troodie_restaurant_id IS NULL THEN
@@ -85,11 +85,9 @@ END $$;
 
 INSERT INTO campaigns (
   restaurant_id,
-  created_by,
   title,
   description,
   requirements,
-  compensation,
   budget,
   budget_cents,
   max_creators,
@@ -104,7 +102,6 @@ INSERT INTO campaigns (
 )
 SELECT
   r.id as restaurant_id,
-  u.id as created_by,
   'Troodie Creators: Local Gems' as title,
   'Create authentic, fun content featuring your favorite local spot! This is an opportunity to showcase a restaurant you genuinely love while helping promote the Troodie Creator Marketplace.
 
@@ -129,7 +126,6 @@ SELECT
     'Post must be public on Instagram Reels or TikTok',
     'Submit post link once published'
   ] as requirements,
-  50 as compensation, -- $50 per creator
   250 as budget, -- $250 total
   25000 as budget_cents, -- $250 in cents
   5 as max_creators, -- 5 creators
@@ -165,10 +161,8 @@ SELECT
       "extra_notes": "Be authentic! Choose a restaurant you genuinely love and want to share with your audience."
     }
   }'::jsonb as deliverable_requirements
-FROM users u
-CROSS JOIN restaurants r
-WHERE u.email = 'kouame@troodieapp.com'
-AND r.is_platform_managed = TRUE
+FROM restaurants r
+WHERE r.is_platform_managed = TRUE
 AND NOT EXISTS (
   -- Only insert if campaign doesn't already exist
   SELECT 1 FROM campaigns
@@ -189,8 +183,7 @@ INSERT INTO platform_managed_campaigns (
   target_creators,
   target_content_pieces,
   target_reach,
-  partnership_details,
-  notes
+  internal_notes
 )
 SELECT
   c.id as campaign_id,
@@ -200,8 +193,7 @@ SELECT
   5 as target_creators,
   5 as target_content_pieces, -- 1 per creator
   25000 as target_reach, -- Estimate: 5,000 avg reach × 5 creators
-  NULL as partnership_details, -- No partnership for direct campaigns
-  'First Troodie Originals campaign - "Local Gems" initiative to generate high-quality UGC and demonstrate the creator marketplace value proposition to restaurants.' as notes
+  'First Troodie Originals campaign - "Local Gems" initiative to generate high-quality UGC and demonstrate the creator marketplace value proposition to restaurants.' as internal_notes
 FROM campaigns c
 WHERE c.title = 'Troodie Creators: Local Gems'
 AND c.campaign_source = 'troodie_direct'
@@ -246,7 +238,7 @@ BEGIN
   RAISE NOTICE '  Title: %', v_campaign_title;
   RAISE NOTICE '  Budget: $%', v_budget;
   RAISE NOTICE '  Max Creators: 5';
-  RAISE NOTICE '  Compensation per Creator: $50';
+  RAISE NOTICE '  Compensation per Creator: $50 (from deliverable_requirements)';
   RAISE NOTICE '  Campaign Type: troodie_direct (Troodie-sponsored)';
   RAISE NOTICE '  Status: active';
   RAISE NOTICE '';
@@ -287,11 +279,9 @@ SELECT
   c.is_subsidized,
   c.status,
   c.deliverable_requirements,
-  r.name as restaurant_name,
-  u.email as created_by_email
+  r.name as restaurant_name
 FROM campaigns c
 JOIN restaurants r ON r.id = c.restaurant_id
-JOIN users u ON u.id = c.created_by
 WHERE c.title = 'Troodie Creators: Local Gems'
 AND c.campaign_source = 'troodie_direct';
 
