@@ -84,7 +84,8 @@ export default function MoreScreen() {
   // Check if user is admin - using specific admin user IDs
   const ADMIN_USER_IDS = [
     'b08d9600-358d-4be9-9552-4607d9f50227',
-    '31744191-f7c0-44a4-8673-10b34ccbb87f'
+    '31744191-f7c0-44a4-8673-10b34ccbb87f',
+    'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
   ];
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
 
