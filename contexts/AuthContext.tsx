@@ -41,9 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserProfile = async (userId: string) => {
     try {
+      console.log('[AuthContext] Loading profile for user:', userId)
       // Loading profile for user
       const profile = await userService.getProfile(userId)
       if (!profile) {
+        console.log('[AuthContext] No profile found, creating new profile')
         // No profile found, creating new profile
         const newProfile = await userService.createProfile({
           id: userId,
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
         setProfile(newProfile)
       } else {
+        console.log('[AuthContext] Profile loaded successfully:', profile.email)
         // Profile loaded successfully
         setProfile(profile)
       }
@@ -66,7 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadAccountInfo = async (userId: string) => {
     try {
+      console.log('[AuthContext] Loading account info for user:', userId)
       const accountInfo = await accountService.getUserAccountInfo(userId)
+      console.log('[AuthContext] Account info loaded:', accountInfo)
       setAccountInfo(accountInfo)
     } catch (error) {
       console.error('[AuthContext] Error loading account info:', error)
@@ -149,28 +154,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const verifyOtp = async (email: string, token: string) => {
+    console.log('[AuthContext] verifyOtp called with email:', email, 'token:', token)
     setError(null)
     setLoading(true)
     
     try {
       // Verifying OTP
       const result = await authService.verifyOtp(email, token)
+      console.log('[AuthContext] verifyOtp result:', result.success, result.session ? 'session exists' : 'no session')
       
       // No special handling needed - password auth returns a real session
       
       if (result.success && result.session) {
         // OTP verified successfully
+        console.log('[AuthContext] OTP verified successfully, setting session and user')
         
         // Directly set our state - don't rely on auth state changes
         setSession(result.session)
         setUser(result.session.user)
         
         // Load profile
+        console.log('[AuthContext] Loading user profile...')
         await loadUserProfile(result.session.user.id)
+        console.log('[AuthContext] Profile loading completed')
         
         return { ...result, session: result.session }
       } else {
         // OTP verification failed
+        console.log('[AuthContext] OTP verification failed:', result.error)
         setError(result.error || 'Verification failed')
         return result
       }
