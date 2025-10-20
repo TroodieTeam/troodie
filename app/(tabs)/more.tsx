@@ -91,6 +91,9 @@ export default function MoreScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
 
   const handleSignOut = async () => {
+    console.log('[More] handleSignOut called')
+    console.log('[More] Current user before signOut:', user?.email)
+    
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
@@ -100,9 +103,12 @@ export default function MoreScreen() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
+            console.log('[More] User confirmed sign out, calling signOut()...')
             await signOut();
+            console.log('[More] signOut() completed, setting timeout for navigation...')
             // Small delay to ensure auth state is cleared before navigation
             setTimeout(() => {
+              console.log('[More] Navigating to splash screen...')
               router.replace('/onboarding/splash');
             }, 100);
           }
