@@ -81,15 +81,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshAuth = async () => {
     try {
+      console.log('[AuthContext] refreshAuth called - checking for persisted session')
       // Refreshing auth state
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('[AuthContext] Supabase session found:', !!session, session?.user?.email)
       
       if (session) {
+        console.log('[AuthContext] Session found during refresh, loading profile')
         // Session found during refresh
         setSession(session)
         setUser(session.user)
         await loadUserProfile(session.user.id)
       } else {
+        console.log('[AuthContext] No session found during refresh, clearing state')
         // No session found during refresh
         setSession(null)
         setUser(null)
@@ -243,6 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Add a fallback timeout in case the event doesn't fire
       setTimeout(async () => {
         const { data: { session: fallbackSession } } = await supabase.auth.getSession()
+        console.log('[AuthContext] Fallback check - Supabase session:', !!fallbackSession, 'Local session:', !!session)
         if (!fallbackSession && session) {
           console.log('[AuthContext] Fallback: SIGNED_OUT event did not fire, clearing state manually')
           setSession(null)

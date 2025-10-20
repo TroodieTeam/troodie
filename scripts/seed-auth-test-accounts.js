@@ -26,6 +26,12 @@ const TEST_ACCOUNTS = [
     accountType: 'business'
   },
   {
+    email: 'kouame@troodieapp.com',
+    password: 'BypassPassword123',
+    role: 'admin',
+    accountType: 'business'
+  },
+  {
     email: 'creator1@troodieapp.com', 
     password: 'BypassPassword123',
     role: 'creator',
