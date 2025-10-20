@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
+import { accountService, AccountType, UserAccountInfo } from '@/services/accountService'
 import { authService } from '@/services/authService'
 import { userService } from '@/services/userService'
-import { accountService, AccountType, UserAccountInfo } from '@/services/accountService'
 import { Session, User } from '@supabase/supabase-js'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
@@ -193,13 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-
-      // Clear our state
-      setSession(null)
-      setUser(null)
-      setProfile(null)
-      setAccountInfo(null)
-      setIsAnonymous(false)
+      // State will be cleared by the SIGNED_OUT event listener
     } finally {
       setLoading(false)
     }
