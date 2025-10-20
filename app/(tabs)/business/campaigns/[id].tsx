@@ -335,304 +335,135 @@ export default function CampaignDetail() {
         }
         style={{ flex: 1 }}
       >
-        {/* Hero Section */}
+        {/* Condensed Hero Section */}
         <View style={{
           backgroundColor: '#FFFFFF',
           marginHorizontal: 20,
-          marginTop: 16,
-          borderRadius: 16,
+          marginTop: 12,
+          borderRadius: 12,
           borderWidth: 1,
           borderColor: '#E8E8E8',
-          overflow: 'hidden',
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
+          shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.04,
-          shadowRadius: 12,
-          elevation: 4,
+          shadowRadius: 8,
+          elevation: 2,
         }}>
-          {/* Campaign Header */}
           <View style={{ padding: 16 }}>
-            <View style={{ marginBottom: 12 }}>
+            {/* Title and Status */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <Text style={{
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: '700',
                 color: '#262626',
-                letterSpacing: -0.5,
-                marginBottom: 8,
+                flex: 1,
               }}>{campaign.title || campaign.name}</Text>
               
               <View style={{
                 backgroundColor: getStatusColor(campaign.status),
                 paddingHorizontal: 8,
-                paddingVertical: 4,
+                paddingVertical: 3,
                 borderRadius: 6,
-                alignSelf: 'flex-start',
               }}>
                 <Text style={{
                   color: 'white',
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: '600',
                   textTransform: 'uppercase',
-                  letterSpacing: 0.5,
                 }}>{campaign.status}</Text>
               </View>
             </View>
 
-            <Text style={{
-              fontSize: 14,
-              color: '#8C8C8C',
-              lineHeight: 20,
-              marginBottom: 16,
-            }}>{campaign.description}</Text>
-
-            {/* Stats Grid */}
+            {/* Key Metrics Row */}
             <View style={{
               flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: 12,
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}>
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#F7F7F7',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                flex: 1,
-                minWidth: '45%',
-              }}>
-                <DollarSign size={16} color="#8C8C8C" />
-                <Text style={{ marginLeft: 6, fontSize: 13, color: '#262626', fontWeight: '500' }}>
-                  ${(campaign.spent_amount_cents / 100).toFixed(0)} / ${(campaign.budget_cents / 100).toFixed(0)}
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <DollarSign size={14} color="#8C8C8C" />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: '#262626', fontWeight: '500' }}>
+                  ${(campaign.spent_amount_cents / 100).toFixed(0)}/${(campaign.budget_cents / 100).toFixed(0)}
                 </Text>
               </View>
               
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#F7F7F7',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                flex: 1,
-                minWidth: '45%',
-              }}>
-                <Users size={16} color="#8C8C8C" />
-                <Text style={{ marginLeft: 6, fontSize: 13, color: '#262626', fontWeight: '500' }}>
-                  {campaign.selected_creators_count} / {campaign.max_creators} creators
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Users size={14} color="#8C8C8C" />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: '#262626', fontWeight: '500' }}>
+                  {campaign.selected_creators_count}/{campaign.max_creators}
                 </Text>
               </View>
               
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#F7F7F7',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                flex: 1,
-                minWidth: '45%',
-              }}>
-                <Clock size={16} color="#8C8C8C" />
-                <Text style={{ marginLeft: 6, fontSize: 13, color: '#262626', fontWeight: '500' }}>
-                  {getDaysRemaining()} days left
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Clock size={14} color="#8C8C8C" />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: '#262626', fontWeight: '500' }}>
+                  {getDaysRemaining()}d left
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Modern Tab Navigation */}
+        {/* Condensed Tab Navigation */}
         <View style={{
           marginHorizontal: 20,
-          marginTop: 16,
-          backgroundColor: '#F7F7F7',
-          borderRadius: 12,
-          padding: 4,
-          borderWidth: 1,
-          borderColor: '#E8E8E8',
+          marginTop: 12,
+          flexDirection: 'row',
+          borderBottomWidth: 1,
+          borderBottomColor: '#E8E8E8',
         }}>
-          <View style={{ flexDirection: 'row' }}>
-            {['overview', 'applications', 'content'].map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  alignItems: 'center',
-                  borderRadius: 8,
-                  backgroundColor: activeTab === tab ? '#FFFFFF' : 'transparent',
-                  shadowColor: activeTab === tab ? '#000' : 'transparent',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.04,
-                  shadowRadius: 4,
-                  elevation: activeTab === tab ? 2 : 0,
-                }}
-                onPress={() => setActiveTab(tab as any)}
-              >
-                <Text style={{
-                  fontSize: 13,
-                  fontWeight: activeTab === tab ? '600' : '500',
-                  color: activeTab === tab ? '#262626' : '#8C8C8C',
-                  textTransform: 'capitalize',
-                  letterSpacing: -0.2,
-                }}>
-                  {tab}
-                  {tab === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
-                    <Text style={{ color: '#DC2626', fontWeight: '600' }}> ({applications.filter(a => a.status === 'pending').length})</Text>
-                  )}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {['overview', 'applications', 'content'].map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                alignItems: 'center',
+                borderBottomWidth: 2,
+                borderBottomColor: activeTab === tab ? '#FFAD27' : 'transparent',
+              }}
+              onPress={() => setActiveTab(tab as any)}
+            >
+              <Text style={{
+                fontSize: 14,
+                fontWeight: activeTab === tab ? '600' : '500',
+                color: activeTab === tab ? '#262626' : '#8C8C8C',
+                textTransform: 'capitalize',
+              }}>
+                {tab}
+                {tab === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
+                  <Text style={{ color: '#DC2626', fontWeight: '600' }}> ({applications.filter(a => a.status === 'pending').length})</Text>
+                )}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
-          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-            {/* Metrics Cards */}
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-              <View style={{
-                flex: 1,
-                backgroundColor: '#FFFFFF',
-                padding: 16,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: '#E8E8E8',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.04,
-                shadowRadius: 8,
-                elevation: 2,
-              }}>
-                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 8, fontWeight: '500' }}>Budget Used</Text>
-                <Text style={{ fontSize: 24, fontWeight: '700', color: '#262626', marginBottom: 8 }}>
-                  {Math.round((campaign.spent_amount_cents / campaign.budget_cents) * 100)}%
-                </Text>
-                <View style={{
-                  height: 6,
-                  backgroundColor: '#F7F7F7',
-                  borderRadius: 3,
-                }}>
-                  <View style={{
-                    height: 6,
-                    backgroundColor: '#FFAD27',
-                    borderRadius: 3,
-                    width: `${(campaign.spent_amount_cents / campaign.budget_cents) * 100}%`,
-                  }} />
-                </View>
-              </View>
-
-              <View style={{
-                flex: 1,
-                backgroundColor: '#FFFFFF',
-                padding: 16,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: '#E8E8E8',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.04,
-                shadowRadius: 8,
-                elevation: 2,
-              }}>
-                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 8, fontWeight: '500' }}>Deliverables</Text>
-                <Text style={{ fontSize: 24, fontWeight: '700', color: '#262626', marginBottom: 8 }}>
-                  {campaign.delivered_content_count} / {campaign.total_deliverables}
-                </Text>
-                <View style={{
-                  height: 6,
-                  backgroundColor: '#F7F7F7',
-                  borderRadius: 3,
-                }}>
-                  <View style={{
-                    height: 6,
-                    backgroundColor: '#10B981',
-                    borderRadius: 3,
-                    width: `${(campaign.delivered_content_count / (campaign.total_deliverables || 1)) * 100}%`,
-                  }} />
-                </View>
-              </View>
-            </View>
-
-            {/* Campaign Details Card */}
-            <View style={{
-              backgroundColor: '#FFFFFF',
-              padding: 16,
-              borderRadius: 12,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: '#E8E8E8',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.04,
-              shadowRadius: 8,
-              elevation: 2,
-            }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#262626', marginBottom: 16 }}>
-                Campaign Details
-              </Text>
-              
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 4, fontWeight: '500' }}>Duration</Text>
-                <Text style={{ fontSize: 14, color: '#262626', fontWeight: '500' }}>
-                  {new Date(campaign.start_date).toLocaleDateString()} - {new Date(campaign.end_date).toLocaleDateString()}
-                </Text>
-              </View>
-
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 4, fontWeight: '500' }}>Restaurant</Text>
-                <Text style={{ fontSize: 14, color: '#262626', fontWeight: '500' }}>{campaign.restaurant?.name}</Text>
-              </View>
-
-              <View>
-                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 4, fontWeight: '500' }}>Created</Text>
-                <Text style={{ fontSize: 14, color: '#262626', fontWeight: '500' }}>
-                  {new Date(campaign.created_at).toLocaleDateString()}
-                </Text>
-              </View>
-            </View>
-
-            {/* Modern Action Buttons */}
+          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+            {/* Quick Actions - Prioritized */}
             {campaign.status === 'active' && (
-              <View style={{ gap: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                 <TouchableOpacity
                   style={{
-                    backgroundColor: '#FFFFFF',
-                    padding: 16,
-                    borderRadius: 12,
+                    flex: 1,
+                    backgroundColor: '#FFAD27',
+                    padding: 12,
+                    borderRadius: 8,
                     alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: '#E8E8E8',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 8,
-                    elevation: 2,
                   }}
                   onPress={() => handleStatusChange('pending')}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Pause size={18} color="#F59E0B" />
-                    <Text style={{ color: '#F59E0B', fontWeight: '600', marginLeft: 8, fontSize: 14 }}>
-                      Pause Campaign
-                    </Text>
-                  </View>
+                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Pause</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={{
-                    backgroundColor: '#FFFFFF',
-                    padding: 16,
-                    borderRadius: 12,
+                    flex: 1,
+                    backgroundColor: '#DC2626',
+                    padding: 12,
+                    borderRadius: 8,
                     alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: '#E8E8E8',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 8,
-                    elevation: 2,
                   }}
                   onPress={() => {
                     Alert.alert(
@@ -645,12 +476,7 @@ export default function CampaignDetail() {
                     );
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <XCircle size={18} color="#DC2626" />
-                    <Text style={{ color: '#DC2626', fontWeight: '600', marginLeft: 8, fontSize: 14 }}>
-                      End Campaign
-                    </Text>
-                  </View>
+                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>End</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -658,70 +484,112 @@ export default function CampaignDetail() {
             {campaign.status === 'pending' && (
               <TouchableOpacity
                 style={{
-                  backgroundColor: '#FFFFFF',
-                  padding: 16,
-                  borderRadius: 12,
+                  backgroundColor: '#10B981',
+                  padding: 12,
+                  borderRadius: 8,
                   alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: '#E8E8E8',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.04,
-                  shadowRadius: 8,
-                  elevation: 2,
+                  marginBottom: 16,
                 }}
                 onPress={() => handleStatusChange('active')}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Play size={18} color="#10B981" />
-                  <Text style={{ color: '#10B981', fontWeight: '600', marginLeft: 8, fontSize: 14 }}>
-                    Resume Campaign
-                  </Text>
-                </View>
+                <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Resume Campaign</Text>
               </TouchableOpacity>
             )}
+
+            {/* Condensed Campaign Info */}
+            <View style={{
+              backgroundColor: '#FFFFFF',
+              padding: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: '#E8E8E8',
+              marginBottom: 12,
+            }}>
+              <Text style={{ fontSize: 13, color: '#8C8C8C', marginBottom: 8 }}>{campaign.description}</Text>
+              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 11, color: '#8C8C8C' }}>
+                  {new Date(campaign.start_date).toLocaleDateString()} - {new Date(campaign.end_date).toLocaleDateString()}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#8C8C8C' }}>{campaign.restaurant?.name}</Text>
+              </View>
+            </View>
+
+            {/* Compact Progress */}
+            <View style={{
+              backgroundColor: '#FFFFFF',
+              padding: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: '#E8E8E8',
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ fontSize: 12, color: '#8C8C8C' }}>Budget Used</Text>
+                <Text style={{ fontSize: 12, color: '#262626', fontWeight: '600' }}>
+                  {Math.round((campaign.spent_amount_cents / campaign.budget_cents) * 100)}%
+                </Text>
+              </View>
+              <View style={{
+                height: 4,
+                backgroundColor: '#F7F7F7',
+                borderRadius: 2,
+                marginBottom: 12,
+              }}>
+                <View style={{
+                  height: 4,
+                  backgroundColor: '#FFAD27',
+                  borderRadius: 2,
+                  width: `${(campaign.spent_amount_cents / campaign.budget_cents) * 100}%`,
+                }} />
+              </View>
+              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 12, color: '#8C8C8C' }}>Deliverables</Text>
+                <Text style={{ fontSize: 12, color: '#262626', fontWeight: '600' }}>
+                  {campaign.delivered_content_count}/{campaign.total_deliverables}
+                </Text>
+              </View>
+              <View style={{
+                height: 4,
+                backgroundColor: '#F7F7F7',
+                borderRadius: 2,
+                marginTop: 8,
+              }}>
+                <View style={{
+                  height: 4,
+                  backgroundColor: '#10B981',
+                  borderRadius: 2,
+                  width: `${(campaign.delivered_content_count / (campaign.total_deliverables || 1)) * 100}%`,
+                }} />
+              </View>
+            </View>
+
           </View>
         )}
 
         {activeTab === 'applications' && (
-          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
             {applications.length === 0 ? (
               <View style={{
                 backgroundColor: '#FFFFFF',
-                padding: 32,
-                borderRadius: 16,
+                padding: 24,
+                borderRadius: 8,
                 alignItems: 'center',
                 borderWidth: 1,
                 borderColor: '#E8E8E8',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.04,
-                shadowRadius: 12,
-                elevation: 4,
               }}>
-                <View style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 32,
-                  backgroundColor: '#F7F7F7',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 16,
-                }}>
-                  <Users size={32} color="#8C8C8C" />
-                </View>
+                <Users size={32} color="#8C8C8C" />
                 <Text style={{
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: '600',
                   color: '#262626',
-                  marginBottom: 8,
-                  textAlign: 'center',
+                  marginTop: 12,
+                  marginBottom: 4,
                 }}>No Applications Yet</Text>
                 <Text style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   color: '#8C8C8C',
                   textAlign: 'center',
-                  lineHeight: 20,
                 }}>Creators will apply once your campaign is active</Text>
               </View>
             ) : (
@@ -730,81 +598,69 @@ export default function CampaignDetail() {
                   key={application.id}
                   style={{
                     backgroundColor: '#FFFFFF',
-                    padding: 16,
-                    borderRadius: 12,
-                    marginBottom: 12,
+                    padding: 12,
+                    borderRadius: 8,
+                    marginBottom: 8,
                     borderWidth: 1,
                     borderColor: '#E8E8E8',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 8,
-                    elevation: 2,
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Image
                       source={{ uri: application.creator_profiles.avatar_url || 'https://via.placeholder.com/50' }}
                       style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 24,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
                         marginRight: 12,
                       }}
                     />
                     <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#262626' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#262626' }}>
                           {application.creator_profiles.display_name}
                         </Text>
                         <View style={{
                           backgroundColor: application.status === 'accepted' ? '#10B981' : 
                                          application.status === 'rejected' ? '#DC2626' : '#F59E0B',
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 6,
-                          marginLeft: 8,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 4,
                         }}>
-                          <Text style={{ color: 'white', fontSize: 10, fontWeight: '600', textTransform: 'uppercase' }}>
+                          <Text style={{ color: 'white', fontSize: 9, fontWeight: '600', textTransform: 'uppercase' }}>
                             {application.status}
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 8 }}>
-                        {application.creator_profiles.followers_count.toLocaleString()} followers
-                      </Text>
-                      <Text style={{ fontSize: 14, color: '#262626', marginBottom: 8, fontWeight: '500' }}>
-                        ${(application.proposed_rate_cents / 100).toFixed(0)} • {application.proposed_deliverables}
-                      </Text>
-                      <Text style={{ fontSize: 13, color: '#8C8C8C', fontStyle: 'italic', lineHeight: 18 }}>
-                        "{application.cover_letter}"
+                      <Text style={{ fontSize: 11, color: '#8C8C8C', marginBottom: 4 }}>
+                        {application.creator_profiles.followers_count.toLocaleString()} followers • ${(application.proposed_rate_cents / 100).toFixed(0)}
                       </Text>
                       
                       {application.status === 'pending' && (
-                        <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
                           <TouchableOpacity
                             style={{
                               flex: 1,
                               backgroundColor: '#10B981',
-                              padding: 12,
-                              borderRadius: 8,
+                              padding: 8,
+                              borderRadius: 6,
                               alignItems: 'center',
                             }}
                             onPress={() => handleApplicationAction(application.id, 'accepted')}
                           >
-                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Accept</Text>
+                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Accept</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={{
                               flex: 1,
                               backgroundColor: '#DC2626',
-                              padding: 12,
-                              borderRadius: 8,
+                              padding: 8,
+                              borderRadius: 6,
                               alignItems: 'center',
                             }}
                             onPress={() => handleApplicationAction(application.id, 'rejected')}
                           >
-                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Reject</Text>
+                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Reject</Text>
                           </TouchableOpacity>
                         </View>
                       )}
@@ -817,91 +673,70 @@ export default function CampaignDetail() {
         )}
 
         {activeTab === 'content' && (
-          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
             {content.length === 0 ? (
               <View style={{
                 backgroundColor: '#FFFFFF',
-                padding: 32,
-                borderRadius: 16,
+                padding: 24,
+                borderRadius: 8,
                 alignItems: 'center',
                 borderWidth: 1,
                 borderColor: '#E8E8E8',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.04,
-                shadowRadius: 12,
-                elevation: 4,
               }}>
-                <View style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 32,
-                  backgroundColor: '#F7F7F7',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 16,
-                }}>
-                  <Target size={32} color="#8C8C8C" />
-                </View>
+                <Target size={32} color="#8C8C8C" />
                 <Text style={{
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: '600',
                   color: '#262626',
-                  marginBottom: 8,
-                  textAlign: 'center',
+                  marginTop: 12,
+                  marginBottom: 4,
                 }}>No Content Yet</Text>
                 <Text style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   color: '#8C8C8C',
                   textAlign: 'center',
-                  lineHeight: 20,
                 }}>Content will appear here as creators deliver</Text>
               </View>
             ) : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {content.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={{
-                      width: '47%',
+                      width: '48%',
                     }}
                   >
                     <View style={{
                       backgroundColor: '#FFFFFF',
-                      borderRadius: 12,
+                      borderRadius: 8,
                       overflow: 'hidden',
                       borderWidth: 1,
                       borderColor: '#E8E8E8',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.04,
-                      shadowRadius: 8,
-                      elevation: 2,
                     }}>
                       <Image
                         source={{ uri: item.thumbnail_url }}
                         style={{
                           width: '100%',
-                          height: 120,
+                          height: 100,
                           backgroundColor: '#F7F7F7',
                         }}
                       />
-                      <View style={{ padding: 12 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                      <View style={{ padding: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                           <Image
-                            source={{ uri: item.creator_profiles.avatar_url || 'https://via.placeholder.com/20' }}
+                            source={{ uri: item.creator_profiles.avatar_url || 'https://via.placeholder.com/16' }}
                             style={{
-                              width: 20,
-                              height: 20,
-                              borderRadius: 10,
-                              marginRight: 6,
+                              width: 16,
+                              height: 16,
+                              borderRadius: 8,
+                              marginRight: 4,
                             }}
                           />
-                          <Text style={{ fontSize: 12, color: '#262626', flex: 1, fontWeight: '500' }} numberOfLines={1}>
+                          <Text style={{ fontSize: 11, color: '#262626', flex: 1, fontWeight: '500' }} numberOfLines={1}>
                             {item.creator_profiles.display_name}
                           </Text>
                         </View>
-                        <Text style={{ fontSize: 11, color: '#8C8C8C' }}>
+                        <Text style={{ fontSize: 10, color: '#8C8C8C' }}>
                           {item.views} views • {item.likes} likes
                         </Text>
                       </View>
