@@ -3,24 +3,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  DollarSign,
-  Plus,
-  Target,
-  Users,
+    ChevronLeft,
+    Clock,
+    DollarSign,
+    Plus,
+    Target,
+    Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -62,7 +61,14 @@ export default function ManageCampaigns() {
 
   const loadCampaigns = async () => {
     try {
-      if (!user?.id) return;
+      console.log('[Campaigns] loadCampaigns called');
+      console.log('[Campaigns] User ID:', user?.id);
+      console.log('[Campaigns] User email:', user?.email);
+      
+      if (!user?.id) {
+        console.log('[Campaigns] No user ID, returning');
+        return;
+      }
 
       // Check if user is admin
       const ADMIN_USER_IDS = [
@@ -71,6 +77,8 @@ export default function ManageCampaigns() {
         'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
       ];
       const isAdmin = ADMIN_USER_IDS.includes(user.id);
+      console.log('[Campaigns] Is admin:', isAdmin);
+      console.log('[Campaigns] Admin user IDs:', ADMIN_USER_IDS);
 
       // Get campaigns - admins see all, regular users see only their own
       let query = supabase
@@ -84,22 +92,35 @@ export default function ManageCampaigns() {
         `);
 
       if (!isAdmin) {
+        console.log('[Campaigns] Filtering by owner_id:', user.id);
         query = query.eq('owner_id', user.id);
+      } else {
+        console.log('[Campaigns] Admin user - fetching all campaigns');
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Campaigns] Error fetching campaigns:', error);
+        throw error;
+      }
+      
+      console.log('[Campaigns] Raw data from Supabase:', data);
+      console.log('[Campaigns] Number of campaigns:', data?.length);
 
       // Process campaigns with counts
       const processedCampaigns = data?.map(campaign => {
+        console.log('[Campaigns] Processing campaign:', campaign.id, campaign.title || campaign.name);
+        console.log('[Campaigns] Campaign owner_id:', campaign.owner_id);
+        console.log('[Campaigns] Campaign applications:', campaign.campaign_applications);
+        
         const pendingApps = campaign.campaign_applications?.filter(
           a => a.status === 'pending'
         ).length || 0;
 
-        return {
+        const processed = {
           id: campaign.id,
-          name: campaign.name,
+          name: campaign.title || campaign.name, // Use title first, fallback to name
           status: campaign.status,
           budget_cents: campaign.budget_cents,
           spent_amount_cents: campaign.spent_amount_cents || 0,
@@ -112,8 +133,12 @@ export default function ManageCampaigns() {
           total_deliverables: campaign.total_deliverables || 0,
           created_at: campaign.created_at,
         };
+        
+        console.log('[Campaigns] Processed campaign:', processed);
+        return processed;
       }) || [];
 
+      console.log('[Campaigns] Final processed campaigns:', processedCampaigns);
       setCampaigns(processedCampaigns);
     } catch (error) {
       console.error('Failed to load campaigns:', error);

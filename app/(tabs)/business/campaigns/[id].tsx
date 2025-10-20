@@ -1,36 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Image,
-  RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  ArrowLeft,
-  Calendar,
-  DollarSign,
-  Users,
-  Target,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Edit,
-  Pause,
-  Play,
-  Trash2,
-  Plus,
-  ChevronRight,
-} from 'lucide-react-native';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+    ArrowLeft,
+    Clock,
+    DollarSign,
+    Edit,
+    Pause,
+    Play,
+    Target,
+    Users,
+    XCircle
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CampaignDetail {
   id: string;
@@ -102,7 +96,15 @@ export default function CampaignDetail() {
 
   const loadCampaignData = async () => {
     try {
-      if (!user?.id || !id) return;
+      console.log('[CampaignDetails] loadCampaignData called');
+      console.log('[CampaignDetails] User ID:', user?.id);
+      console.log('[CampaignDetails] User email:', user?.email);
+      console.log('[CampaignDetails] Campaign ID:', id);
+      
+      if (!user?.id || !id) {
+        console.log('[CampaignDetails] Missing user ID or campaign ID, returning');
+        return;
+      }
 
       // Check if user is admin
       const ADMIN_USER_IDS = [
@@ -111,6 +113,7 @@ export default function CampaignDetail() {
         'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
       ];
       const isAdmin = ADMIN_USER_IDS.includes(user.id);
+      console.log('[CampaignDetails] Is admin:', isAdmin);
 
       // Load campaign details - admins can see all campaigns, regular users only their own
       let query = supabase
@@ -126,12 +129,20 @@ export default function CampaignDetail() {
         .eq('id', id);
 
       if (!isAdmin) {
+        console.log('[CampaignDetails] Filtering by owner_id:', user.id);
         query = query.eq('owner_id', user.id);
+      } else {
+        console.log('[CampaignDetails] Admin user - fetching campaign without owner filter');
       }
 
       const { data: campaignData, error: campaignError } = await query.single();
 
-      if (campaignError) throw campaignError;
+      if (campaignError) {
+        console.error('[CampaignDetails] Error fetching campaign:', campaignError);
+        throw campaignError;
+      }
+      
+      console.log('[CampaignDetails] Campaign data:', campaignData);
 
       setCampaign({
         ...campaignData,
@@ -310,7 +321,7 @@ export default function CampaignDetail() {
                 fontWeight: '700',
                 color: DS.colors.text,
                 marginBottom: DS.spacing.xs,
-              }}>{campaign.name}</Text>
+              }}>{campaign.title || campaign.name}</Text>
               <View style={{
                 backgroundColor: getStatusColor(campaign.status),
                 paddingHorizontal: DS.spacing.xs,
