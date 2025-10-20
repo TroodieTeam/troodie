@@ -136,6 +136,7 @@ export default function CampaignDetail() {
       });
 
       // Load applications
+      console.log('[CampaignDetails] Loading applications for campaign:', id);
       const { data: applicationsData, error: appsError } = await supabase
         .from('campaign_applications')
         .select(`
@@ -151,7 +152,12 @@ export default function CampaignDetail() {
         .eq('campaign_id', id)
         .order('applied_at', { ascending: false });
 
-      if (appsError) throw appsError;
+      if (appsError) {
+        console.error('[CampaignDetails] Applications load error:', appsError);
+        throw appsError;
+      }
+      
+      console.log('[CampaignDetails] Applications loaded from database:', applicationsData);
       setApplications(applicationsData || []);
 
       // Load content
@@ -202,6 +208,11 @@ export default function CampaignDetail() {
 
   const handleApplicationAction = async (applicationId: string, action: 'accepted' | 'rejected') => {
     try {
+      console.log('[CampaignDetails] handleApplicationAction called');
+      console.log('[CampaignDetails] Application ID:', applicationId);
+      console.log('[CampaignDetails] Action:', action);
+      console.log('[CampaignDetails] User ID:', user?.id);
+      
       const { error } = await supabase
         .from('campaign_applications')
         .update({ 
@@ -211,20 +222,32 @@ export default function CampaignDetail() {
         })
         .eq('id', applicationId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[CampaignDetails] Database update error:', error);
+        throw error;
+      }
+      
+      console.log('[CampaignDetails] Database update successful');
       
       // Update the local applications state immediately for better UX
-      setApplications(prev => prev.map(app => 
-        app.id === applicationId 
-          ? { ...app, status: action, reviewed_at: new Date().toISOString(), reviewer_id: user?.id }
-          : app
-      ));
+      setApplications(prev => {
+        console.log('[CampaignDetails] Previous applications:', prev);
+        const updated = prev.map(app => 
+          app.id === applicationId 
+            ? { ...app, status: action, reviewed_at: new Date().toISOString(), reviewer_id: user?.id }
+            : app
+        );
+        console.log('[CampaignDetails] Updated applications:', updated);
+        return updated;
+      });
       
       Alert.alert('Success', `Application ${action}`);
       
       // Refresh campaign data to update counts
+      console.log('[CampaignDetails] Refreshing campaign data...');
       loadCampaignData();
     } catch (error) {
+      console.error('[CampaignDetails] handleApplicationAction error:', error);
       Alert.alert('Error', 'Failed to update application');
     }
   };
