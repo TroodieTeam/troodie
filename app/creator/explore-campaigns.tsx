@@ -1,39 +1,37 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  SafeAreaView,
-  TextInput,
-  RefreshControl,
-  Modal,
-  Alert,
-  Image,
-} from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { mockCampaigns } from '@/data/mockCampaigns';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  Search,
+  Building,
+  Calendar,
+  Clock,
+  DollarSign,
   Filter,
   MapPin,
-  Calendar,
-  DollarSign,
-  Target,
-  Clock,
-  ChevronRight,
-  Building,
-  Users,
-  Star,
-  TrendingUp,
-  X,
+  Search,
   Sparkles,
+  Star,
+  Target,
+  Users,
+  X
 } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import { mockCampaigns } from '@/data/mockCampaigns';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface Campaign {
   id: string;
@@ -92,8 +90,8 @@ export default function ExploreCampaigns() {
 
   const fetchCampaigns = async () => {
     try {
-      // For now, use mock data
-      const USE_MOCK_DATA = true;
+      // Use real Supabase data
+      const USE_MOCK_DATA = false;
 
       if (USE_MOCK_DATA) {
         // Simulate loading delay
@@ -121,7 +119,6 @@ export default function ExploreCampaigns() {
           `)
           .eq('status', 'active')
           .gte('end_date', new Date().toISOString())
-          .lt('selected_creators_count', supabase.raw('max_creators'))
           .order('created_at', { ascending: false });
 
         if (error) throw error;
