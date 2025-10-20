@@ -103,17 +103,18 @@ Dev note:
 ### 3.5 Verify Application
 Run in SQL editor:
 ```sql
-SELECT cc.id, cc.status, u.display_name
-FROM creator_campaigns cc
-JOIN users u ON u.id = cc.creator_id
-WHERE cc.campaign_id = (
+SELECT ca.id, ca.status, ca.applied_at, cp.display_name, u.email
+FROM campaign_applications ca
+JOIN creator_profiles cp ON cp.id = ca.creator_id
+JOIN users u ON u.id = cp.user_id
+WHERE ca.campaign_id = (
   SELECT id FROM campaigns WHERE title = 'Troodie Creators: Local Gems'
 )
-ORDER BY cc.created_at DESC
+ORDER BY ca.applied_at DESC
 LIMIT 1;
 ```
 
-**Expected Result:** Application with status = 'pending'
+**Expected Result:** Application with status = 'pending' and creator email = 'creator1@troodieapp.com'
 
 ---
 
