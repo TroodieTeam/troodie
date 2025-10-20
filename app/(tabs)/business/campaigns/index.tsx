@@ -64,8 +64,16 @@ export default function ManageCampaigns() {
     try {
       if (!user?.id) return;
 
-      // Get campaigns using owner_id
-      const { data, error } = await supabase
+      // Check if user is admin
+      const ADMIN_USER_IDS = [
+        'b08d9600-358d-4be9-9552-4607d9f50227',
+        '31744191-f7c0-44a4-8673-10b34ccbb87f',
+        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
+      ];
+      const isAdmin = ADMIN_USER_IDS.includes(user.id);
+
+      // Get campaigns - admins see all, regular users see only their own
+      let query = supabase
         .from('campaigns')
         .select(`
           *,
@@ -73,9 +81,13 @@ export default function ManageCampaigns() {
             id,
             status
           )
-        `)
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false });
+        `);
+
+      if (!isAdmin) {
+        query = query.eq('owner_id', user.id);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
 
