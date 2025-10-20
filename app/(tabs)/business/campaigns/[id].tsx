@@ -7,11 +7,8 @@ import {
     Clock,
     DollarSign,
     Edit,
-    Pause,
-    Play,
     Target,
-    Users,
-    XCircle
+    Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -61,6 +58,8 @@ interface Application {
   proposed_deliverables: string;
   cover_letter: string;
   applied_at: string;
+  reviewed_at?: string;
+  reviewer_id?: string;
 }
 
 interface Content {
@@ -96,13 +95,7 @@ export default function CampaignDetail() {
 
   const loadCampaignData = async () => {
     try {
-      console.log('[CampaignDetails] loadCampaignData called');
-      console.log('[CampaignDetails] User ID:', user?.id);
-      console.log('[CampaignDetails] User email:', user?.email);
-      console.log('[CampaignDetails] Campaign ID:', id);
-      
       if (!user?.id || !id) {
-        console.log('[CampaignDetails] Missing user ID or campaign ID, returning');
         return;
       }
 
@@ -113,7 +106,6 @@ export default function CampaignDetail() {
         'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
       ];
       const isAdmin = ADMIN_USER_IDS.includes(user.id);
-      console.log('[CampaignDetails] Is admin:', isAdmin);
 
       // Load campaign details - admins can see all campaigns, regular users only their own
       let query = supabase
@@ -129,20 +121,14 @@ export default function CampaignDetail() {
         .eq('id', id);
 
       if (!isAdmin) {
-        console.log('[CampaignDetails] Filtering by owner_id:', user.id);
         query = query.eq('owner_id', user.id);
-      } else {
-        console.log('[CampaignDetails] Admin user - fetching campaign without owner filter');
       }
 
       const { data: campaignData, error: campaignError } = await query.single();
 
       if (campaignError) {
-        console.error('[CampaignDetails] Error fetching campaign:', campaignError);
         throw campaignError;
       }
-      
-      console.log('[CampaignDetails] Campaign data:', campaignData);
 
       setCampaign({
         ...campaignData,
@@ -227,7 +213,16 @@ export default function CampaignDetail() {
 
       if (error) throw error;
       
+      // Update the local applications state immediately for better UX
+      setApplications(prev => prev.map(app => 
+        app.id === applicationId 
+          ? { ...app, status: action, reviewed_at: new Date().toISOString(), reviewer_id: user?.id }
+          : app
+      ));
+      
       Alert.alert('Success', `Application ${action}`);
+      
+      // Refresh campaign data to update counts
       loadCampaignData();
     } catch (error) {
       Alert.alert('Error', 'Failed to update application');
