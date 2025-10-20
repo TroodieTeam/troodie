@@ -273,30 +273,59 @@ export default function CampaignDetail() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
-      {/* Header */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+      {/* Modern Header */}
       <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: DS.spacing.md,
-        backgroundColor: DS.colors.backgroundWhite,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(10px)',
         borderBottomWidth: 1,
-        borderBottomColor: DS.colors.border,
+        borderBottomColor: '#E8E8E8',
+        paddingTop: 24,
+        paddingBottom: 16,
+        paddingHorizontal: 20,
       }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color={DS.colors.text} />
-        </TouchableOpacity>
-        <Text style={{
-          fontSize: 17,
-          fontWeight: '600',
-          color: DS.colors.text,
-          flex: 1,
-          textAlign: 'center',
-        }}>Campaign Details</Text>
-        <TouchableOpacity onPress={() => router.push(`/business/campaigns/edit/${id}`)}>
-          <Edit size={20} color={DS.colors.primary} />
-        </TouchableOpacity>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <TouchableOpacity 
+            onPress={() => router.back()}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(0, 0, 0, 0.03)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ArrowLeft size={20} color="#262626" />
+          </TouchableOpacity>
+          
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={{
+              fontSize: 20,
+              fontWeight: '600',
+              color: '#262626',
+              letterSpacing: -0.5,
+            }}>Campaign Details</Text>
+          </View>
+          
+          <TouchableOpacity 
+            onPress={() => router.push(`/business/campaigns/edit/${id}`)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(0, 0, 0, 0.03)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Edit size={18} color="#FFAD27" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -304,137 +333,191 @@ export default function CampaignDetail() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
+        style={{ flex: 1 }}
       >
-        {/* Campaign Header */}
+        {/* Hero Section */}
         <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          padding: DS.spacing.md,
+          backgroundColor: '#FFFFFF',
+          marginHorizontal: 20,
+          marginTop: 16,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: '#E8E8E8',
+          overflow: 'hidden',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.04,
+          shadowRadius: 12,
+          elevation: 4,
         }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            marginBottom: DS.spacing.md,
-          }}>
-            <View style={{ flex: 1 }}>
+          {/* Campaign Header */}
+          <View style={{ padding: 16 }}>
+            <View style={{ marginBottom: 12 }}>
               <Text style={{
                 fontSize: 20,
                 fontWeight: '700',
-                color: DS.colors.text,
-                marginBottom: DS.spacing.xs,
+                color: '#262626',
+                letterSpacing: -0.5,
+                marginBottom: 8,
               }}>{campaign.title || campaign.name}</Text>
+              
               <View style={{
                 backgroundColor: getStatusColor(campaign.status),
-                paddingHorizontal: DS.spacing.xs,
+                paddingHorizontal: 8,
                 paddingVertical: 4,
-                borderRadius: DS.borderRadius.xs,
+                borderRadius: 6,
                 alignSelf: 'flex-start',
               }}>
                 <Text style={{
                   color: 'white',
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: '600',
                   textTransform: 'uppercase',
+                  letterSpacing: 0.5,
                 }}>{campaign.status}</Text>
               </View>
             </View>
-          </View>
 
-          <Text style={{
-            fontSize: 14,
-            color: DS.colors.textLight,
-            lineHeight: 20,
-            marginBottom: DS.spacing.md,
-          }}>{campaign.description}</Text>
+            <Text style={{
+              fontSize: 14,
+              color: '#8C8C8C',
+              lineHeight: 20,
+              marginBottom: 16,
+            }}>{campaign.description}</Text>
 
-          {/* Quick Stats */}
-          <View style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            marginTop: DS.spacing.sm,
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: DS.spacing.md, marginBottom: DS.spacing.xs }}>
-              <DollarSign size={16} color={DS.colors.textLight} />
-              <Text style={{ marginLeft: 4, fontSize: 14, color: DS.colors.text }}>
-                ${(campaign.spent_amount_cents / 100).toFixed(0)} / ${(campaign.budget_cents / 100).toFixed(0)}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: DS.spacing.md, marginBottom: DS.spacing.xs }}>
-              <Users size={16} color={DS.colors.textLight} />
-              <Text style={{ marginLeft: 4, fontSize: 14, color: DS.colors.text }}>
-                {campaign.selected_creators_count} / {campaign.max_creators} creators
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.xs }}>
-              <Clock size={16} color={DS.colors.textLight} />
-              <Text style={{ marginLeft: 4, fontSize: 14, color: DS.colors.text }}>
-                {getDaysRemaining()} days left
-              </Text>
+            {/* Stats Grid */}
+            <View style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F7F7F7',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                flex: 1,
+                minWidth: '45%',
+              }}>
+                <DollarSign size={16} color="#8C8C8C" />
+                <Text style={{ marginLeft: 6, fontSize: 13, color: '#262626', fontWeight: '500' }}>
+                  ${(campaign.spent_amount_cents / 100).toFixed(0)} / ${(campaign.budget_cents / 100).toFixed(0)}
+                </Text>
+              </View>
+              
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F7F7F7',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                flex: 1,
+                minWidth: '45%',
+              }}>
+                <Users size={16} color="#8C8C8C" />
+                <Text style={{ marginLeft: 6, fontSize: 13, color: '#262626', fontWeight: '500' }}>
+                  {campaign.selected_creators_count} / {campaign.max_creators} creators
+                </Text>
+              </View>
+              
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F7F7F7',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                flex: 1,
+                minWidth: '45%',
+              }}>
+                <Clock size={16} color="#8C8C8C" />
+                <Text style={{ marginLeft: 6, fontSize: 13, color: '#262626', fontWeight: '500' }}>
+                  {getDaysRemaining()} days left
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Tabs */}
+        {/* Modern Tab Navigation */}
         <View style={{
-          flexDirection: 'row',
-          backgroundColor: DS.colors.backgroundWhite,
-          borderBottomWidth: 1,
-          borderBottomColor: DS.colors.border,
+          marginHorizontal: 20,
+          marginTop: 16,
+          backgroundColor: '#F7F7F7',
+          borderRadius: 12,
+          padding: 4,
+          borderWidth: 1,
+          borderColor: '#E8E8E8',
         }}>
-          {['overview', 'applications', 'content'].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={{
-                flex: 1,
-                paddingVertical: DS.spacing.sm,
-                alignItems: 'center',
-                borderBottomWidth: 2,
-                borderBottomColor: activeTab === tab ? DS.colors.primary : 'transparent',
-              }}
-              onPress={() => setActiveTab(tab as any)}
-            >
-              <Text style={{
-                fontSize: 14,
-                fontWeight: activeTab === tab ? '600' : '400',
-                color: activeTab === tab ? DS.colors.primary : DS.colors.textLight,
-                textTransform: 'capitalize',
-              }}>
-                {tab}
-                {tab === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
-                  <Text style={{ color: '#DC2626' }}> ({applications.filter(a => a.status === 'pending').length})</Text>
-                )}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <View style={{ flexDirection: 'row' }}>
+            {['overview', 'applications', 'content'].map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  borderRadius: 8,
+                  backgroundColor: activeTab === tab ? '#FFFFFF' : 'transparent',
+                  shadowColor: activeTab === tab ? '#000' : 'transparent',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 4,
+                  elevation: activeTab === tab ? 2 : 0,
+                }}
+                onPress={() => setActiveTab(tab as any)}
+              >
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: activeTab === tab ? '600' : '500',
+                  color: activeTab === tab ? '#262626' : '#8C8C8C',
+                  textTransform: 'capitalize',
+                  letterSpacing: -0.2,
+                }}>
+                  {tab}
+                  {tab === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
+                    <Text style={{ color: '#DC2626', fontWeight: '600' }}> ({applications.filter(a => a.status === 'pending').length})</Text>
+                  )}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
-          <View style={{ padding: DS.spacing.md }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
             {/* Metrics Cards */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: DS.spacing.md }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
               <View style={{
                 flex: 1,
-                minWidth: '45%',
-                backgroundColor: DS.colors.backgroundWhite,
-                padding: DS.spacing.md,
-                borderRadius: DS.borderRadius.md,
-                marginRight: DS.spacing.sm,
-                marginBottom: DS.spacing.sm,
+                backgroundColor: '#FFFFFF',
+                padding: 16,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#E8E8E8',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 8,
+                elevation: 2,
               }}>
-                <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Budget Used</Text>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: DS.colors.text }}>
+                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 8, fontWeight: '500' }}>Budget Used</Text>
+                <Text style={{ fontSize: 24, fontWeight: '700', color: '#262626', marginBottom: 8 }}>
                   {Math.round((campaign.spent_amount_cents / campaign.budget_cents) * 100)}%
                 </Text>
                 <View style={{
-                  height: 4,
-                  backgroundColor: DS.colors.border,
-                  borderRadius: 2,
-                  marginTop: DS.spacing.xs,
+                  height: 6,
+                  backgroundColor: '#F7F7F7',
+                  borderRadius: 3,
                 }}>
                   <View style={{
-                    height: 4,
-                    backgroundColor: DS.colors.primary,
-                    borderRadius: 2,
+                    height: 6,
+                    backgroundColor: '#FFAD27',
+                    borderRadius: 3,
                     width: `${(campaign.spent_amount_cents / campaign.budget_cents) * 100}%`,
                   }} />
                 </View>
@@ -442,79 +525,96 @@ export default function CampaignDetail() {
 
               <View style={{
                 flex: 1,
-                minWidth: '45%',
-                backgroundColor: DS.colors.backgroundWhite,
-                padding: DS.spacing.md,
-                borderRadius: DS.borderRadius.md,
-                marginBottom: DS.spacing.sm,
+                backgroundColor: '#FFFFFF',
+                padding: 16,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#E8E8E8',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 8,
+                elevation: 2,
               }}>
-                <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Deliverables</Text>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: DS.colors.text }}>
+                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 8, fontWeight: '500' }}>Deliverables</Text>
+                <Text style={{ fontSize: 24, fontWeight: '700', color: '#262626', marginBottom: 8 }}>
                   {campaign.delivered_content_count} / {campaign.total_deliverables}
                 </Text>
                 <View style={{
-                  height: 4,
-                  backgroundColor: DS.colors.border,
-                  borderRadius: 2,
-                  marginTop: DS.spacing.xs,
+                  height: 6,
+                  backgroundColor: '#F7F7F7',
+                  borderRadius: 3,
                 }}>
                   <View style={{
-                    height: 4,
+                    height: 6,
                     backgroundColor: '#10B981',
-                    borderRadius: 2,
+                    borderRadius: 3,
                     width: `${(campaign.delivered_content_count / (campaign.total_deliverables || 1)) * 100}%`,
                   }} />
                 </View>
               </View>
             </View>
 
-            {/* Campaign Details */}
+            {/* Campaign Details Card */}
             <View style={{
-              backgroundColor: DS.colors.backgroundWhite,
-              padding: DS.spacing.md,
-              borderRadius: DS.borderRadius.md,
-              marginBottom: DS.spacing.md,
+              backgroundColor: '#FFFFFF',
+              padding: 16,
+              borderRadius: 12,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: '#E8E8E8',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.04,
+              shadowRadius: 8,
+              elevation: 2,
             }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: DS.spacing.md }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#262626', marginBottom: 16 }}>
                 Campaign Details
               </Text>
               
-              <View style={{ marginBottom: DS.spacing.sm }}>
-                <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Duration</Text>
-                <Text style={{ fontSize: 14, color: DS.colors.text }}>
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 4, fontWeight: '500' }}>Duration</Text>
+                <Text style={{ fontSize: 14, color: '#262626', fontWeight: '500' }}>
                   {new Date(campaign.start_date).toLocaleDateString()} - {new Date(campaign.end_date).toLocaleDateString()}
                 </Text>
               </View>
 
-              <View style={{ marginBottom: DS.spacing.sm }}>
-                <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Restaurant</Text>
-                <Text style={{ fontSize: 14, color: DS.colors.text }}>{campaign.restaurant?.name}</Text>
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 4, fontWeight: '500' }}>Restaurant</Text>
+                <Text style={{ fontSize: 14, color: '#262626', fontWeight: '500' }}>{campaign.restaurant?.name}</Text>
               </View>
 
               <View>
-                <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Created</Text>
-                <Text style={{ fontSize: 14, color: DS.colors.text }}>
+                <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 4, fontWeight: '500' }}>Created</Text>
+                <Text style={{ fontSize: 14, color: '#262626', fontWeight: '500' }}>
                   {new Date(campaign.created_at).toLocaleDateString()}
                 </Text>
               </View>
             </View>
 
-            {/* Actions */}
+            {/* Modern Action Buttons */}
             {campaign.status === 'active' && (
-              <View style={{ marginBottom: DS.spacing.md }}>
+              <View style={{ gap: 12 }}>
                 <TouchableOpacity
                   style={{
-                    backgroundColor: '#F59E0B',
-                    padding: DS.spacing.md,
-                    borderRadius: DS.borderRadius.sm,
+                    backgroundColor: '#FFFFFF',
+                    padding: 16,
+                    borderRadius: 12,
                     alignItems: 'center',
-                    marginBottom: DS.spacing.sm,
+                    borderWidth: 1,
+                    borderColor: '#E8E8E8',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 8,
+                    elevation: 2,
                   }}
                   onPress={() => handleStatusChange('pending')}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Pause size={20} color="white" />
-                    <Text style={{ color: 'white', fontWeight: '600', marginLeft: DS.spacing.xs }}>
+                    <Pause size={18} color="#F59E0B" />
+                    <Text style={{ color: '#F59E0B', fontWeight: '600', marginLeft: 8, fontSize: 14 }}>
                       Pause Campaign
                     </Text>
                   </View>
@@ -522,10 +622,17 @@ export default function CampaignDetail() {
 
                 <TouchableOpacity
                   style={{
-                    backgroundColor: '#DC2626',
-                    padding: DS.spacing.md,
-                    borderRadius: DS.borderRadius.sm,
+                    backgroundColor: '#FFFFFF',
+                    padding: 16,
+                    borderRadius: 12,
                     alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#E8E8E8',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 8,
+                    elevation: 2,
                   }}
                   onPress={() => {
                     Alert.alert(
@@ -539,8 +646,8 @@ export default function CampaignDetail() {
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <XCircle size={20} color="white" />
-                    <Text style={{ color: 'white', fontWeight: '600', marginLeft: DS.spacing.xs }}>
+                    <XCircle size={18} color="#DC2626" />
+                    <Text style={{ color: '#DC2626', fontWeight: '600', marginLeft: 8, fontSize: 14 }}>
                       End Campaign
                     </Text>
                   </View>
@@ -551,17 +658,23 @@ export default function CampaignDetail() {
             {campaign.status === 'pending' && (
               <TouchableOpacity
                 style={{
-                  backgroundColor: '#10B981',
-                  padding: DS.spacing.md,
-                  borderRadius: DS.borderRadius.sm,
+                  backgroundColor: '#FFFFFF',
+                  padding: 16,
+                  borderRadius: 12,
                   alignItems: 'center',
-                  marginBottom: DS.spacing.md,
+                  borderWidth: 1,
+                  borderColor: '#E8E8E8',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 8,
+                  elevation: 2,
                 }}
                 onPress={() => handleStatusChange('active')}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Play size={20} color="white" />
-                  <Text style={{ color: 'white', fontWeight: '600', marginLeft: DS.spacing.xs }}>
+                  <Play size={18} color="#10B981" />
+                  <Text style={{ color: '#10B981', fontWeight: '600', marginLeft: 8, fontSize: 14 }}>
                     Resume Campaign
                   </Text>
                 </View>
@@ -571,26 +684,44 @@ export default function CampaignDetail() {
         )}
 
         {activeTab === 'applications' && (
-          <View style={{ padding: DS.spacing.md }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
             {applications.length === 0 ? (
               <View style={{
-                backgroundColor: DS.colors.backgroundWhite,
-                padding: DS.spacing.xl,
-                borderRadius: DS.borderRadius.md,
+                backgroundColor: '#FFFFFF',
+                padding: 32,
+                borderRadius: 16,
                 alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#E8E8E8',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.04,
+                shadowRadius: 12,
+                elevation: 4,
               }}>
-                <Users size={48} color={DS.colors.textLight} />
+                <View style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: '#F7F7F7',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Users size={32} color="#8C8C8C" />
+                </View>
                 <Text style={{
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: '600',
-                  color: DS.colors.text,
-                  marginTop: DS.spacing.md,
+                  color: '#262626',
+                  marginBottom: 8,
+                  textAlign: 'center',
                 }}>No Applications Yet</Text>
                 <Text style={{
                   fontSize: 14,
-                  color: DS.colors.textLight,
+                  color: '#8C8C8C',
                   textAlign: 'center',
-                  marginTop: DS.spacing.xs,
+                  lineHeight: 20,
                 }}>Creators will apply once your campaign is active</Text>
               </View>
             ) : (
@@ -598,76 +729,82 @@ export default function CampaignDetail() {
                 <View
                   key={application.id}
                   style={{
-                    backgroundColor: DS.colors.backgroundWhite,
-                    padding: DS.spacing.md,
-                    borderRadius: DS.borderRadius.md,
-                    marginBottom: DS.spacing.sm,
+                    backgroundColor: '#FFFFFF',
+                    padding: 16,
+                    borderRadius: 12,
+                    marginBottom: 12,
+                    borderWidth: 1,
+                    borderColor: '#E8E8E8',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 8,
+                    elevation: 2,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                     <Image
                       source={{ uri: application.creator_profiles.avatar_url || 'https://via.placeholder.com/50' }}
                       style={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: 25,
-                        marginRight: DS.spacing.sm,
+                        width: 48,
+                        height: 48,
+                        borderRadius: 24,
+                        marginRight: 12,
                       }}
                     />
                     <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#262626' }}>
                           {application.creator_profiles.display_name}
                         </Text>
                         <View style={{
                           backgroundColor: application.status === 'accepted' ? '#10B981' : 
                                          application.status === 'rejected' ? '#DC2626' : '#F59E0B',
-                          paddingHorizontal: 6,
-                          paddingVertical: 2,
-                          borderRadius: 4,
-                          marginLeft: DS.spacing.xs,
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 6,
+                          marginLeft: 8,
                         }}>
                           <Text style={{ color: 'white', fontSize: 10, fontWeight: '600', textTransform: 'uppercase' }}>
                             {application.status}
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: DS.spacing.xs }}>
+                      <Text style={{ fontSize: 12, color: '#8C8C8C', marginBottom: 8 }}>
                         {application.creator_profiles.followers_count.toLocaleString()} followers
                       </Text>
-                      <Text style={{ fontSize: 14, color: DS.colors.text, marginBottom: DS.spacing.xs }}>
+                      <Text style={{ fontSize: 14, color: '#262626', marginBottom: 8, fontWeight: '500' }}>
                         ${(application.proposed_rate_cents / 100).toFixed(0)} • {application.proposed_deliverables}
                       </Text>
-                      <Text style={{ fontSize: 13, color: DS.colors.textLight, fontStyle: 'italic' }}>
+                      <Text style={{ fontSize: 13, color: '#8C8C8C', fontStyle: 'italic', lineHeight: 18 }}>
                         "{application.cover_letter}"
                       </Text>
                       
                       {application.status === 'pending' && (
-                        <View style={{ flexDirection: 'row', marginTop: DS.spacing.sm }}>
+                        <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
                           <TouchableOpacity
                             style={{
                               flex: 1,
                               backgroundColor: '#10B981',
-                              padding: DS.spacing.xs,
-                              borderRadius: DS.borderRadius.xs,
+                              padding: 12,
+                              borderRadius: 8,
                               alignItems: 'center',
-                              marginRight: DS.spacing.xs,
                             }}
                             onPress={() => handleApplicationAction(application.id, 'accepted')}
                           >
-                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Accept</Text>
+                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Accept</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={{
                               flex: 1,
                               backgroundColor: '#DC2626',
-                              padding: DS.spacing.xs,
-                              borderRadius: DS.borderRadius.xs,
+                              padding: 12,
+                              borderRadius: 8,
                               alignItems: 'center',
                             }}
                             onPress={() => handleApplicationAction(application.id, 'rejected')}
                           >
-                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Reject</Text>
+                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Reject</Text>
                           </TouchableOpacity>
                         </View>
                       )}
@@ -680,67 +817,91 @@ export default function CampaignDetail() {
         )}
 
         {activeTab === 'content' && (
-          <View style={{ padding: DS.spacing.md }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
             {content.length === 0 ? (
               <View style={{
-                backgroundColor: DS.colors.backgroundWhite,
-                padding: DS.spacing.xl,
-                borderRadius: DS.borderRadius.md,
+                backgroundColor: '#FFFFFF',
+                padding: 32,
+                borderRadius: 16,
                 alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#E8E8E8',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.04,
+                shadowRadius: 12,
+                elevation: 4,
               }}>
-                <Target size={48} color={DS.colors.textLight} />
+                <View style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: '#F7F7F7',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Target size={32} color="#8C8C8C" />
+                </View>
                 <Text style={{
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: '600',
-                  color: DS.colors.text,
-                  marginTop: DS.spacing.md,
+                  color: '#262626',
+                  marginBottom: 8,
+                  textAlign: 'center',
                 }}>No Content Yet</Text>
                 <Text style={{
                   fontSize: 14,
-                  color: DS.colors.textLight,
+                  color: '#8C8C8C',
                   textAlign: 'center',
-                  marginTop: DS.spacing.xs,
+                  lineHeight: 20,
                 }}>Content will appear here as creators deliver</Text>
               </View>
             ) : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -DS.spacing.xs }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                 {content.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={{
-                      width: '50%',
-                      padding: DS.spacing.xs,
+                      width: '47%',
                     }}
                   >
                     <View style={{
-                      backgroundColor: DS.colors.backgroundWhite,
-                      borderRadius: DS.borderRadius.sm,
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 12,
                       overflow: 'hidden',
+                      borderWidth: 1,
+                      borderColor: '#E8E8E8',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.04,
+                      shadowRadius: 8,
+                      elevation: 2,
                     }}>
                       <Image
                         source={{ uri: item.thumbnail_url }}
                         style={{
                           width: '100%',
-                          height: 150,
-                          backgroundColor: DS.colors.border,
+                          height: 120,
+                          backgroundColor: '#F7F7F7',
                         }}
                       />
-                      <View style={{ padding: DS.spacing.sm }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={{ padding: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                           <Image
                             source={{ uri: item.creator_profiles.avatar_url || 'https://via.placeholder.com/20' }}
                             style={{
                               width: 20,
                               height: 20,
                               borderRadius: 10,
-                              marginRight: 4,
+                              marginRight: 6,
                             }}
                           />
-                          <Text style={{ fontSize: 12, color: DS.colors.text, flex: 1 }} numberOfLines={1}>
+                          <Text style={{ fontSize: 12, color: '#262626', flex: 1, fontWeight: '500' }} numberOfLines={1}>
                             {item.creator_profiles.display_name}
                           </Text>
                         </View>
-                        <Text style={{ fontSize: 10, color: DS.colors.textLight }}>
+                        <Text style={{ fontSize: 11, color: '#8C8C8C' }}>
                           {item.views} views • {item.likes} likes
                         </Text>
                       </View>
