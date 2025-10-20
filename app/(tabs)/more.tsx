@@ -101,7 +101,10 @@ export default function MoreScreen() {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            router.replace('/onboarding/splash');
+            // Small delay to ensure auth state is cleared before navigation
+            setTimeout(() => {
+              router.replace('/onboarding/splash');
+            }, 100);
           }
         }
       ]
