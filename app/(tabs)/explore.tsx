@@ -1,28 +1,29 @@
 import { AddRestaurantModal } from '@/components/AddRestaurantModal';
+import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { ErrorState } from '@/components/ErrorState';
 import { RestaurantCardSkeleton } from '@/components/LoadingSkeleton';
 import { PostCard } from '@/components/PostCard';
-import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
-import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Dimensions,
+    FlatList,
+    Pressable,
+    RefreshControl,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 type TabType = 'restaurants' | 'posts' | 'communities';
@@ -205,7 +206,10 @@ export default function ExploreScreen() {
     <View style={styles.header}>
       {/* Compact Title Bar */}
       <View style={styles.titleBar}>
-        <Text style={styles.title}>Explore</Text>
+        <View style={styles.headerLeft}>
+          <ProfileAvatar size={36} style={styles.profileAvatar} />
+          <Text style={styles.title}>Explore</Text>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.iconButton}
@@ -435,6 +439,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: compactDesign.header.paddingHorizontal,
     paddingVertical: compactDesign.header.paddingVertical,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileAvatar: {
+    marginRight: compactDesign.content.gap,
   },
   title: {
     ...designTokens.typography.sectionTitle,
