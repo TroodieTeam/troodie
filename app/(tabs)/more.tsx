@@ -7,6 +7,8 @@ import { DS } from '@/components/design-system/tokens';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAccountType } from '@/hooks/useAccountType';
+import { pushNotificationService } from '@/services/pushNotificationService';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import {
   Activity,
@@ -15,29 +17,23 @@ import {
   Building,
   ChevronRight,
   Compass,
-  DollarSign,
   FileText,
-  Grid3X3,
-  Heart,
   HelpCircle,
-  Info,
+  Lock,
   LogOut,
   Megaphone,
-  MessageSquare,
   Settings,
   Shield,
   Star,
   Store,
-  Target,
-  TrendingUp,
-  UserPlus,
-  Users
+  Target
 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import {
   Alert,
   Image,
-  SafeAreaView,
+  Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -45,6 +41,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface MenuItem {
   id: string;
@@ -77,7 +74,6 @@ export default function MoreScreen() {
     accountType,
     isCreator,
     isBusiness,
-    creatorProfile,
     businessProfile
   } = useAccountType();
 
@@ -89,12 +85,141 @@ export default function MoreScreen() {
   ];
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
 
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
+  const [checkingNotifications, setCheckingNotifications] = React.useState(true);
+
+  // Check notification permission status on mount
+  React.useEffect(() => {
+    const checkNotificationStatus = async () => {
+      try {
+        const status = await pushNotificationService.getPermissionsStatus();
+        setNotificationsEnabled(status === 'granted');
+      } catch (error) {
+        console.error('Error checking notification status:', error);
+      } finally {
+        setCheckingNotifications(false);
+      }
+    };
+
+    checkNotificationStatus();
+  }, []);
+
+  const handleNotificationToggle = async (value: boolean) => {
+    if (value) {
+      // Request permission when enabling
+      try {
+        const status = await pushNotificationService.requestPermissions();
+
+        if (status === 'granted') {
+          setNotificationsEnabled(true);
+          // Initialize notifications after permission granted
+          await pushNotificationService.initialize();
+
+          // Register device if user is logged in
+          if (user?.id) {
+            const token = await pushNotificationService.getPushToken();
+            if (token) {
+              const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+              await pushNotificationService.registerDevice(user.id, token, platform as any);
+            }
+          }
+
+          Alert.alert('Notifications Enabled', 'You will now receive notifications from Troodie');
+        } else {
+          setNotificationsEnabled(false);
+          Alert.alert(
+            'Permission Required',
+            'Please enable notifications in your device settings to receive updates from Troodie',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error requesting notification permissions:', error);
+        setNotificationsEnabled(false);
+      }
+    } else {
+      // Disable notifications
+      setNotificationsEnabled(false);
+      Alert.alert(
+        'Notifications Disabled',
+        'You can re-enable notifications anytime from settings'
+      );
+    }
+  };
+
+  const handlePrivacyPolicy = async () => {
+    const url = 'https://www.troodieapp.com/privacy-policy';
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open Privacy Policy link');
+      }
+    } catch (error) {
+      console.error('Error opening privacy policy:', error);
+      Alert.alert('Error', 'Failed to open Privacy Policy');
+    }
+  };
+
+  const handleTermsOfService = async () => {
+    const url = 'https://www.troodieapp.com/terms-of-service';
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open Terms of Service link');
+      }
+    } catch (error) {
+      console.error('Error opening terms of service:', error);
+      Alert.alert('Error', 'Failed to open Terms of Service');
+    }
+  };
+
+  const handleHelpSupport = async () => {
+    // Gather device information for support
+    const appVersion = Constants.expoConfig?.version || '1.0.0';
+    const platform = Platform.OS;
+    const osVersion = Platform.Version as string | number;
+
+    const bodyPlain = [
+      'Hi Troodie Team,',
+      '',
+      'I need help with:',
+      '',
+      '[Please describe your issue here]',
+      '',
+      '----',
+      `App Version: ${appVersion}`,
+      `Platform: ${platform}`,
+      `OS Version: ${osVersion}`,
+      `User: ${user?.user_metadata?.username || user?.user_metadata?.name || user?.email || 'Not logged in'}`,
+    ].join('\n');
+
+    const subject = 'Help & Support Request';
+    const mailtoUrl = `mailto:team@troodieapp.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyPlain)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+      } else {
+        Alert.alert('Contact Support', 'Please email us at: team@troodieapp.com');
+      }
+    } catch (error) {
+      console.error('Error opening email client:', error);
+      Alert.alert('Contact Support', 'Please email us at: team@troodieapp.com');
+    }
+  };
 
   const handleSignOut = async () => {
     console.log('[More] handleSignOut called')
     console.log('[More] Current user before signOut:', user?.email)
-    
+
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
@@ -120,30 +245,11 @@ export default function MoreScreen() {
 
   // Admin Tools Section
   const adminItems: MenuItem[] = isAdmin ? [
-    {
-      id: 'admin-reviews',
-      title: 'Review Queue',
-      subtitle: 'Review pending submissions',
-      icon: Shield,
-      iconColor: '#DC2626',
-      action: () => router.push('/admin/reviews'),
-      showBadge: true,
-      badgeCount: 0, // You can fetch actual count
-    },
+
   ] : [];
 
   // Creator Tools Section
   const creatorItems: MenuItem[] = isCreator ? [
-    {
-      id: 'creator-dashboard',
-      title: 'Creator Dashboard',
-      subtitle: 'View your creator overview and performance',
-      icon: BarChart3,
-      iconColor: '#6366F1',
-      action: () => router.push('/creator/dashboard'),
-      // showBadge: activeCampaigns > 0,
-      // badgeCount: activeCampaigns,
-    },
     {
       id: 'explore-campaigns',
       title: 'Explore Campaigns',
@@ -151,8 +257,6 @@ export default function MoreScreen() {
       icon: Compass,
       iconColor: '#F59E0B',
       action: () => router.push('/creator/explore-campaigns'),
-      showBadge: true,
-      badgeText: 'NEW',
     },
     {
       id: 'my-campaigns',
@@ -162,24 +266,6 @@ export default function MoreScreen() {
       iconColor: '#8B5CF6',
       action: () => router.push('/creator/campaigns'),
     },
-    {
-      id: 'earnings',
-      title: 'Earnings',
-      subtitle: 'View earnings history and payouts',
-      icon: DollarSign,
-      iconColor: '#10B981',
-      action: () => router.push('/creator/earnings'),
-      // showBadge: pendingEarnings > 0,
-      // badgeCount: '$',
-    },
-    {
-      id: 'creator-analytics',
-      title: 'Creator Analytics',
-      subtitle: 'Performance insights and metrics',
-      icon: TrendingUp,
-      iconColor: '#F59E0B',
-      action: () => router.push('/creator/analytics'),
-    }
   ] : [];
 
   // Business Tools Section
@@ -234,7 +320,6 @@ export default function MoreScreen() {
         icon: Star,
         iconColor: '#F59E0B',
         action: () => router.push('/creator/onboarding'),
-        betaFeature: true,
       });
     }
 
@@ -252,7 +337,7 @@ export default function MoreScreen() {
     return items;
   }, [isCreator, isBusiness, router]);
 
-  // Discover & Social Section (existing)
+  // Discover & Social Section
   const discoverItems: MenuItem[] = [
     {
       id: 'activity',
@@ -261,111 +346,55 @@ export default function MoreScreen() {
       icon: Activity,
       iconColor: DS.colors.primaryOrange,
       action: () => router.push('/(tabs)/activity'),
-      showBadge: true,
-      badgeCount: 3,
-    },
-    {
-      id: 'communities',
-      title: 'Communities',
-      subtitle: 'Join and create communities',
-      icon: Users,
-      iconColor: '#4ECDC4',
-      action: () => router.push('/(tabs)/communities'),
-    },
-    {
-      id: 'trending',
-      title: 'Trending',
-      subtitle: 'Discover what\'s popular',
-      icon: TrendingUp,
-      iconColor: '#FF6B6B',
-      action: () => router.push('/discover-gems'),
-    },
-    {
-      id: 'invite-friends',
-      title: 'Invite Friends',
-      subtitle: 'Grow your network',
-      icon: UserPlus,
-      iconColor: '#5B8DEE',
-      action: () => router.push('/friends/invite'),
     },
   ];
 
-  // Account & Settings Section (existing)
+  // Account & Settings Section
   const accountItems: MenuItem[] = [
-    {
-      id: 'my-boards',
-      title: 'Boards',
-      subtitle: 'Organize your favorite places',
-      icon: Grid3X3,
-      iconColor: '#8B5CF6',
-      action: () => router.push('/boards'),
-    },
-    {
-      id: 'my-submissions',
-      title: 'My Submissions',
-      subtitle: 'Track claims and applications',
-      icon: FileText,
-      iconColor: '#FFAD27',
-      action: () => router.push('/my-submissions'),
-      showBadge: false,
-    },
     {
       id: 'notifications',
       title: 'Notifications',
+      subtitle: 'Push notification preferences',
       icon: Bell,
       iconColor: '#FFB800',
-      action: () => router.push('/notifications'),
+      action: () => handleNotificationToggle(!notificationsEnabled),
       hasToggle: true,
       toggleValue: notificationsEnabled,
-      onToggleChange: setNotificationsEnabled,
+      onToggleChange: handleNotificationToggle,
     },
     {
-      id: 'settings',
-      title: 'Settings',
-      subtitle: 'Privacy, account, preferences',
-      icon: Settings,
+      id: 'privacy-settings',
+      title: 'Privacy & Security',
+      subtitle: 'Manage your privacy settings',
+      icon: Shield,
       iconColor: '#64748B',
-      action: () => router.push('/settings'),
-    },
-    {
-      id: 'saved-places',
-      title: 'Quick Saves',
-      subtitle: 'Your bookmarked places',
-      icon: Heart,
-      iconColor: '#FF6B6B',
-      action: () => router.push('/quick-saves'),
+      action: () => router.push('/settings/privacy'),
     },
   ];
 
-  // Support Section (existing)
+  // Support & Legal Section
   const supportItems: MenuItem[] = [
     {
       id: 'help',
       title: 'Help & Support',
+      subtitle: 'Get help or contact us',
       icon: HelpCircle,
       iconColor: '#4ECDC4',
-      action: () => router.push('/help'),
+      action: handleHelpSupport,
     },
     {
-      id: 'feedback',
-      title: 'Send Feedback',
-      icon: MessageSquare,
-      iconColor: '#5B8DEE',
-      action: () => router.push('/feedback'),
-    },
-    {
-      id: 'about',
-      title: 'About Troodie',
-      icon: Info,
+      id: 'privacy',
+      title: 'Privacy Policy',
+      icon: Lock,
       iconColor: '#64748B',
-      action: () => router.push('/about'),
+      action: handlePrivacyPolicy,
     },
     {
       id: 'terms',
-      title: 'Terms & Privacy',
-      icon: Shield,
+      title: 'Terms of Service',
+      icon: FileText,
       iconColor: '#9CA3AF',
-      action: () => router.push('/terms'),
+      action: handleTermsOfService,
     },
   ];
 
@@ -425,7 +454,7 @@ export default function MoreScreen() {
       },
       {
         id: 'support',
-        title: 'Support',
+        title: 'Support & Legal',
         visible: true,
         items: supportItems,
         priority: 6,
@@ -478,8 +507,9 @@ export default function MoreScreen() {
           <Switch
             value={item.toggleValue}
             onValueChange={item.onToggleChange}
-            trackColor={{ false: DS.colors.borderLight, true: DS.colors.primaryOrange }}
+            trackColor={{ false: '#E5E5E5', true: DS.colors.primaryOrange }}
             thumbColor={DS.colors.textWhite}
+            disabled={checkingNotifications}
           />
         ) : (
           <ChevronRight size={20} color={DS.colors.textGray} />
@@ -530,7 +560,7 @@ export default function MoreScreen() {
               )}
               <View style={styles.profileText}>
                 <Text style={styles.profileName}>
-                  {user.user_metadata?.name || 'User'}
+                  {user.user_metadata?.username || user.user_metadata?.name || 'User'}
                 </Text>
                 <Text style={styles.profileEmail}>{user.email}</Text>
                 <View style={styles.accountTypeBadge}>

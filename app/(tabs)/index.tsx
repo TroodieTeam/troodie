@@ -6,6 +6,7 @@ import { InfoModal } from '@/components/InfoModal';
 import { RestaurantCardWithSaveSkeleton } from '@/components/LoadingSkeleton';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
@@ -27,29 +28,29 @@ import { Notification } from '@/types/notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
-  Bell,
-  Bookmark,
-  Coffee,
-  Globe,
-  Lock,
-  MessageSquare,
-  Plus,
-  Search,
-  Sparkles,
-  UserPlus,
-  Users,
-  Utensils
+    Bell,
+    Bookmark,
+    Coffee,
+    Globe,
+    Lock,
+    MessageSquare,
+    Plus,
+    Search,
+    Sparkles,
+    UserPlus,
+    Users,
+    Utensils
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 
@@ -351,7 +352,10 @@ export default function HomeScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerTop}>
-        <Text style={styles.brandName}>{strings.app.name}</Text>
+        <View style={styles.headerLeft}>
+          <ProfileAvatar size={36} style={styles.profileAvatar} />
+          <Text style={styles.brandName}>{strings.app.name}</Text>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/explore')}>
             <Search size={24} color={designTokens.colors.textDark} />
@@ -720,6 +724,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileAvatar: {
+    marginRight: designTokens.spacing.md,
   },
   brandName: {
     ...designTokens.typography.brandHeading,
