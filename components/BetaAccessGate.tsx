@@ -23,6 +23,7 @@ interface BetaAccessGateProps {
   onClose: () => void;
   onSuccess: () => void;
   title: string;
+  description?: string;
   message?: string;
 }
 
@@ -33,7 +34,8 @@ export function BetaAccessGate({
   onClose,
   onSuccess,
   title,
-  message = 'This feature is currently in beta. Please reach out to taylor@troodieapp.com to be onboarded.'
+  description,
+  message = 'This feature is currently in beta. Please reach out to team@troodieapp.com to be onboarded.'
 }: BetaAccessGateProps) {
   const [passcode, setPasscode] = useState(['', '', '', '']);
   const [error, setError] = useState('');
@@ -119,6 +121,9 @@ export function BetaAccessGate({
             </View>
 
             <Text style={styles.title}>{title}</Text>
+            {description && (
+              <Text style={styles.description}>{description}</Text>
+            )}
             <Text style={styles.message}>{message}</Text>
 
             <View style={styles.divider} />
@@ -130,7 +135,7 @@ export function BetaAccessGate({
               {passcode.map((digit, index) => (
                 <TextInput
                   key={index}
-                  ref={(ref) => (inputRefs.current[index] = ref)}
+                  ref={(ref) => { inputRefs.current[index] = ref; }}
                   style={[
                     styles.passcodeInput,
                     error && styles.passcodeInputError
@@ -156,7 +161,7 @@ export function BetaAccessGate({
               <Text style={styles.contactTitle}>Need Access?</Text>
               <Text style={styles.contactText}>
                 Contact{' '}
-                <Text style={styles.emailText}>taylor@troodieapp.com</Text>
+                <Text style={styles.emailText}>team@troodieapp.com</Text>
                 {' '}for your passcode
               </Text>
             </View>
@@ -218,6 +223,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: DS.spacing.md,
   },
+  description: {
+    ...DS.typography.body,
+    color: DS.colors.textDark,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: DS.spacing.sm,
+    paddingHorizontal: DS.spacing.md,
+  },
   message: {
     ...DS.typography.body,
     color: DS.colors.textGray,
@@ -270,7 +283,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: DS.spacing.lg,
   },
   contactTitle: {
-    ...DS.typography.h4,
+    ...DS.typography.h3,
     color: DS.colors.textDark,
     marginBottom: DS.spacing.xs,
   },
