@@ -206,7 +206,8 @@ export default function ClaimRestaurantSimple() {
         onClose={handleBetaAccessClose}
         onSuccess={handleBetaAccessGranted}
         title="Claim Your Restaurant"
-        message="This feature is currently in beta. Please reach out to taylor@troodieapp.com to be onboarded."
+        description="Take ownership of your restaurant and access powerful business tools"
+        message="This feature is currently in beta. Please reach out to team@troodieapp.com to be onboarded."
       />
     );
   }
@@ -397,7 +398,7 @@ export default function ClaimRestaurantSimple() {
 
               <Text style={styles.contactText}>
                 Questions? Contact us at{' '}
-                <Text style={styles.emailText}>taylor@troodieapp.com</Text>
+                <Text style={styles.emailText}>team@troodieapp.com</Text>
               </Text>
             </View>
 

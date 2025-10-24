@@ -40,7 +40,8 @@ export default function CreatorOnboardingScreen() {
         onClose={handleBetaAccessClose}
         onSuccess={handleBetaAccessGranted}
         title="Become a Creator"
-        message="This feature is currently in beta. Please reach out to taylor@troodieapp.com to be onboarded."
+        description="Earn money by sharing your food discoveries and collaborating with restaurants"
+        message="This feature is currently in beta. Please reach out to team@troodieapp.com to be onboarded."
       />
     );
   }
