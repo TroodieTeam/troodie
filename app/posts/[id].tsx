@@ -1,21 +1,21 @@
+import { BottomNavigation } from '@/components/BottomNavigation';
 import { ErrorState } from '@/components/ErrorState';
+import { PostComments } from '@/components/PostComments';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePostEngagement } from '@/hooks/usePostEngagement';
-import { PostComments } from '@/components/PostComments';
 import { postService } from '@/services/postService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Bookmark, Heart, MessageCircle, Share, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Bookmark, ChevronRight, Heart, MessageCircle, Share } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BottomNavigation } from '@/components/BottomNavigation';
 import {
   ActivityIndicator,
+  DeviceEventEmitter,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -26,8 +26,8 @@ import {
   Text,
   TouchableOpacity,
   View,
-  DeviceEventEmitter,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BOTTOM_NAV_HEIGHT = 84;
