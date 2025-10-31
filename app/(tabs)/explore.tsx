@@ -23,7 +23,8 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    DeviceEventEmitter,
 } from 'react-native';
 
 type TabType = 'restaurants' | 'posts' | 'communities';
@@ -58,7 +59,7 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue;
 };
 
-const useTabData = <T extends any>(
+const useTabData = <T extends { id: string }>(
   loadFn: (searchQuery?: string) => Promise<T[]>,
   filterFn?: (items: T[], query: string) => T[],
   shouldRandomize: boolean = false
@@ -93,7 +94,18 @@ const useTabData = <T extends any>(
     }
   };
 
-  return { ...state, load, filter };
+  const updateItem = useCallback((id: string, updater: (item: T) => T) => {
+    setState(prev => {
+      const updateList = (list: T[]) => list.map(item => (item.id === id ? updater(item) : item));
+      return {
+        ...prev,
+        data: updateList(prev.data),
+        filtered: updateList(prev.filtered),
+      };
+    });
+  }, []);
+
+  return { ...state, load, filter, updateItem };
 };
 
 export default function ExploreScreen() {
@@ -137,6 +149,7 @@ export default function ExploreScreen() {
       );
     }
   );
+  const { updateItem: updatePostItem } = posts;
 
   // Handle user blocking - refresh posts to remove blocked user's content
   const handleUserBlocked = useCallback((blockedUserId: string) => {
@@ -268,6 +281,13 @@ export default function ExploreScreen() {
 
 
 
+  const handleNavigateToPost = useCallback((postId: string) => {
+    router.push({
+      pathname: '/posts/[id]',
+      params: { id: postId },
+    });
+  }, [router]);
+
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     // Handle regular items
     if (activeTab === 'restaurants') {
@@ -296,18 +316,28 @@ export default function ExploreScreen() {
     return (
       <PostCard
         post={item as PostWithUser}
-        onPress={() => router.push({
-          pathname: '/posts/[id]',
-          params: { id: item.id }
-        })}
+        onPress={() => handleNavigateToPost(item.id)}
         onLike={() => {}}
-        onComment={() => {}}
+        onComment={handleNavigateToPost}
         onSave={() => {}}
         onBlock={handleUserBlocked}
         onDelete={handlePostDeleted}
       />
     );
-  }, [activeTab, router]);
+  }, [activeTab, handleNavigateToPost, handleUserBlocked, handlePostDeleted]);
+
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('post-comment-added', ({ postId }: { postId: string }) => {
+      updatePostItem(postId, (item) => ({
+        ...item,
+        comments_count: (item.comments_count || 0) + 1,
+      }));
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [updatePostItem]);
 
   const EmptyComponent = useCallback(() => {
     if (currentTab.error) {
