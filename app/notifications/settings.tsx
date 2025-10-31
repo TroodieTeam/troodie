@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { notificationPreferencesService } from '@/services/notificationPreferencesService';
 import { UserNotificationPreferences } from '@/types/notifications';
 import React, { useEffect, useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NotificationSettingsScreen() {
   const { user } = useAuth();

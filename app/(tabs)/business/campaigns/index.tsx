@@ -1,25 +1,25 @@
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    ChevronLeft,
-    Clock,
-    DollarSign,
-    Plus,
-    Target,
-    Users
+  ChevronLeft,
+  Clock,
+  DollarSign,
+  Plus,
+  Target,
+  Users
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -36,6 +36,7 @@ interface Campaign {
   pending_applications_count: number;
   delivered_content_count: number;
   total_deliverables: number;
+  pending_deliverables_count: number;
   created_at: string;
 }
 
@@ -59,14 +60,16 @@ export default function ManageCampaigns() {
     filterCampaigns();
   }, [selectedFilter, campaigns]);
 
+  // Refresh campaigns when screen comes into focus (e.g., returning from campaign detail)
+  useFocusEffect(
+    useCallback(() => {
+      loadCampaigns();
+    }, [])
+  );
+
   const loadCampaigns = async () => {
     try {
-      console.log('[Campaigns] loadCampaigns called');
-      console.log('[Campaigns] User ID:', user?.id);
-      console.log('[Campaigns] User email:', user?.email);
-      
       if (!user?.id) {
-        console.log('[Campaigns] No user ID, returning');
         return;
       }
 
@@ -77,8 +80,6 @@ export default function ManageCampaigns() {
         'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
       ];
       const isAdmin = ADMIN_USER_IDS.includes(user.id);
-      console.log('[Campaigns] Is admin:', isAdmin);
-      console.log('[Campaigns] Admin user IDs:', ADMIN_USER_IDS);
 
       // Get campaigns - admins see all, regular users see only their own
       let query = supabase
@@ -88,37 +89,34 @@ export default function ManageCampaigns() {
           campaign_applications (
             id,
             status
+          ),
+          campaign_deliverables (
+            id,
+            status
           )
         `);
 
       if (!isAdmin) {
-        console.log('[Campaigns] Filtering by owner_id:', user.id);
         query = query.eq('owner_id', user.id);
-      } else {
-        console.log('[Campaigns] Admin user - fetching all campaigns');
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[Campaigns] Error fetching campaigns:', error);
         throw error;
       }
-      
-      console.log('[Campaigns] Raw data from Supabase:', data);
-      console.log('[Campaigns] Number of campaigns:', data?.length);
 
       // Process campaigns with counts
       const processedCampaigns = data?.map(campaign => {
-        console.log('[Campaigns] Processing campaign:', campaign.id, campaign.title || campaign.name);
-        console.log('[Campaigns] Campaign owner_id:', campaign.owner_id);
-        console.log('[Campaigns] Campaign applications:', campaign.campaign_applications);
-        
         const pendingApps = campaign.campaign_applications?.filter(
-          a => a.status === 'pending'
+          (a: any) => a.status === 'pending'
+        ).length || 0;
+        
+        const pendingDeliverables = campaign.campaign_deliverables?.filter(
+          (d: any) => d.status === 'pending_review'
         ).length || 0;
 
-        const processed = {
+        return {
           id: campaign.id,
           name: campaign.title || campaign.name, // Use title first, fallback to name
           status: campaign.status,
@@ -131,14 +129,11 @@ export default function ManageCampaigns() {
           pending_applications_count: pendingApps,
           delivered_content_count: campaign.delivered_content_count || 0,
           total_deliverables: campaign.total_deliverables || 0,
+          pending_deliverables_count: pendingDeliverables,
           created_at: campaign.created_at,
         };
-        
-        console.log('[Campaigns] Processed campaign:', processed);
-        return processed;
       }) || [];
 
-      console.log('[Campaigns] Final processed campaigns:', processedCampaigns);
       setCampaigns(processedCampaigns);
     } catch (error) {
       console.error('Failed to load campaigns:', error);
@@ -184,28 +179,28 @@ export default function ManageCampaigns() {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: DS.spacing.md,
-        backgroundColor: DS.colors.backgroundWhite,
+        backgroundColor: DS.colors.surface,
         borderBottomWidth: 1,
         borderBottomColor: DS.colors.border,
       }}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ChevronLeft size={24} color={DS.colors.text} />
+          <ChevronLeft size={24} color={DS.colors.textDark} />
         </TouchableOpacity>
         <Text style={{
           fontSize: 18,
           fontWeight: '600',
-          color: DS.colors.text,
+          color: DS.colors.textDark,
         }}>
           Manage Campaigns
         </Text>
         <TouchableOpacity onPress={() => router.push('/business/campaigns/create')}>
-          <Plus size={24} color={DS.colors.primary} />
+          <Plus size={24} color={DS.colors.primaryOrange} />
         </TouchableOpacity>
       </View>
 
       {/* Filter Tabs */}
       <View style={{
-        backgroundColor: DS.colors.backgroundWhite,
+        backgroundColor: DS.colors.surface,
         borderBottomWidth: 1,
         borderBottomColor: DS.colors.border,
       }}>
@@ -225,7 +220,7 @@ export default function ManageCampaigns() {
                 marginRight: DS.spacing.lg,
                 borderBottomWidth: 2,
                 borderBottomColor: selectedFilter === filter.id 
-                  ? DS.colors.primary 
+                  ? DS.colors.primaryOrange 
                   : 'transparent',
               }}
               onPress={() => setSelectedFilter(filter.id)}
@@ -238,7 +233,7 @@ export default function ManageCampaigns() {
                   fontSize: 15,
                   fontWeight: selectedFilter === filter.id ? '600' : '400',
                   color: selectedFilter === filter.id 
-                    ? DS.colors.text 
+                    ? DS.colors.textDark 
                     : DS.colors.textLight,
                 }}>
                   {filter.label}
@@ -249,7 +244,7 @@ export default function ManageCampaigns() {
                     fontSize: 15,
                     fontWeight: '600',
                     color: selectedFilter === filter.id 
-                      ? DS.colors.text 
+                      ? DS.colors.textDark 
                       : DS.colors.textLight,
                   }}>
                     {filter.count}
@@ -264,7 +259,7 @@ export default function ManageCampaigns() {
       {/* Campaigns List */}
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={DS.colors.primary} />
+          <ActivityIndicator size="large" color={DS.colors.primaryOrange} />
         </View>
       ) : filteredCampaigns.length === 0 ? (
         <EmptyState filter={selectedFilter} onCreate={() => router.push('/business/campaigns/create')} />
@@ -316,7 +311,7 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
   return (
     <TouchableOpacity
       style={{
-        backgroundColor: DS.colors.backgroundWhite,
+        backgroundColor: DS.colors.surface,
         borderRadius: DS.borderRadius.lg,
         padding: DS.spacing.md,
         marginBottom: DS.spacing.md,
@@ -339,7 +334,7 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
         <Text style={{
           fontSize: 18,
           fontWeight: '700',
-          color: DS.colors.text,
+          color: DS.colors.textDark,
           flex: 1,
           marginRight: DS.spacing.sm,
         }}>
@@ -370,7 +365,7 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
           <Users size={16} color={DS.colors.textLight} />
           <Text style={{
             fontSize: 14,
-            color: DS.colors.text,
+            color: DS.colors.textDark,
             marginLeft: 6,
           }}>
             {campaign.selected_creators_count}/{campaign.max_creators} creators
@@ -385,7 +380,7 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
           <DollarSign size={16} color={DS.colors.textLight} />
           <Text style={{
             fontSize: 14,
-            color: DS.colors.text,
+            color: DS.colors.textDark,
             marginLeft: 6,
           }}>
             ${spent.toLocaleString()}/${budget.toLocaleString()}
@@ -399,7 +394,7 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
           <Clock size={16} color={DS.colors.textLight} />
           <Text style={{
             fontSize: 14,
-            color: DS.colors.text,
+            color: DS.colors.textDark,
             marginLeft: 6,
           }}>
             {getDaysText()}
@@ -410,7 +405,7 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
       {/* Progress Bar */}
       <View style={{
         height: 6,
-        backgroundColor: DS.colors.backgroundLight,
+        backgroundColor: DS.colors.surfaceLight,
         borderRadius: 3,
         overflow: 'hidden',
         marginBottom: DS.spacing.xs,
@@ -418,7 +413,7 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
         <View style={{
           height: '100%',
           width: `${Math.min(deliverableProgress, 100)}%`,
-          backgroundColor: DS.colors.primary,
+          backgroundColor: DS.colors.primaryOrange,
           borderRadius: 3,
         }} />
       </View>
@@ -431,38 +426,74 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
         {campaign.delivered_content_count}/{campaign.total_deliverables} deliverables completed
       </Text>
 
-      {/* Pending Applications Badge */}
-      {campaign.pending_applications_count > 0 && (
+      {/* Action Badges */}
+      {(campaign.pending_applications_count > 0 || campaign.pending_deliverables_count > 0) && (
         <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
           marginTop: DS.spacing.sm,
           paddingTop: DS.spacing.sm,
           borderTopWidth: 1,
           borderTopColor: DS.colors.border,
         }}>
-          <View style={{
-            backgroundColor: DS.colors.error,
-            borderRadius: 12,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            marginRight: 6,
-          }}>
-            <Text style={{
-              color: 'white',
-              fontSize: 11,
-              fontWeight: '700',
+          {campaign.pending_applications_count > 0 && (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: campaign.pending_deliverables_count > 0 ? DS.spacing.xs : 0,
             }}>
-              {campaign.pending_applications_count}
-            </Text>
-          </View>
-          <Text style={{
-            fontSize: 13,
-            color: DS.colors.text,
-            fontWeight: '500',
-          }}>
-            New application{campaign.pending_applications_count > 1 ? 's' : ''} to review
-          </Text>
+              <View style={{
+                backgroundColor: DS.colors.error,
+                borderRadius: 12,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                marginRight: 6,
+              }}>
+                <Text style={{
+                  color: 'white',
+                  fontSize: 11,
+                  fontWeight: '700',
+                }}>
+                  {campaign.pending_applications_count}
+                </Text>
+              </View>
+              <Text style={{
+                fontSize: 13,
+                color: DS.colors.textDark,
+                fontWeight: '500',
+              }}>
+                New application{campaign.pending_applications_count > 1 ? 's' : ''} to review
+              </Text>
+            </View>
+          )}
+          
+          {campaign.pending_deliverables_count > 0 && (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}>
+              <View style={{
+                backgroundColor: '#F59E0B',
+                borderRadius: 12,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                marginRight: 6,
+              }}>
+                <Text style={{
+                  color: 'white',
+                  fontSize: 11,
+                  fontWeight: '700',
+                }}>
+                  {campaign.pending_deliverables_count}
+                </Text>
+              </View>
+              <Text style={{
+                fontSize: 13,
+                color: DS.colors.textDark,
+                fontWeight: '500',
+              }}>
+                Deliverable{campaign.pending_deliverables_count > 1 ? 's' : ''} pending review
+              </Text>
+            </View>
+          )}
         </View>
       )}
     </TouchableOpacity>
@@ -512,7 +543,7 @@ const EmptyState = ({ filter, onCreate }: { filter: string; onCreate: () => void
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: DS.colors.backgroundLight,
+        backgroundColor: DS.colors.surfaceLight,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: DS.spacing.md,
@@ -522,7 +553,7 @@ const EmptyState = ({ filter, onCreate }: { filter: string; onCreate: () => void
       <Text style={{
         fontSize: 20,
         fontWeight: '600',
-        color: DS.colors.text,
+        color: DS.colors.textDark,
         marginBottom: DS.spacing.xs,
       }}>
         {title}
@@ -538,7 +569,7 @@ const EmptyState = ({ filter, onCreate }: { filter: string; onCreate: () => void
       {filter !== 'completed' && (
         <TouchableOpacity
           style={{
-            backgroundColor: DS.colors.primary,
+            backgroundColor: DS.colors.primaryOrange,
             paddingHorizontal: DS.spacing.lg,
             paddingVertical: DS.spacing.md,
             borderRadius: DS.borderRadius.sm,

@@ -3,10 +3,10 @@
  * V1 design following v1_component_reference.html
  */
 
-import React, { useState } from 'react';
-import { CreatorOnboardingV1 } from '@/components/creator/CreatorOnboardingV1';
 import { BetaAccessGate } from '@/components/BetaAccessGate';
+import { CreatorOnboardingV1 } from '@/components/creator/CreatorOnboardingV1';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 
 export default function CreatorOnboardingScreen() {
   const router = useRouter();

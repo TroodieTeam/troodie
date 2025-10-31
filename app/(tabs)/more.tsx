@@ -23,7 +23,6 @@ import {
   LogOut,
   Megaphone,
   Settings,
-  Shield,
   Star,
   Store,
   Target
@@ -361,14 +360,6 @@ export default function MoreScreen() {
       hasToggle: true,
       toggleValue: notificationsEnabled,
       onToggleChange: handleNotificationToggle,
-    },
-    {
-      id: 'privacy-settings',
-      title: 'Privacy & Security',
-      subtitle: 'Manage your privacy settings',
-      icon: Shield,
-      iconColor: '#64748B',
-      action: () => router.push('/settings/privacy'),
     },
   ];
 

@@ -20,6 +20,7 @@ import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import { toastConfig } from '@/components/CustomToast';
@@ -177,11 +178,12 @@ function InnerLayout() {
   }
 
   return (
-    <AppProvider>
-      <OnboardingProvider>
-        <ThemeProvider value={DefaultTheme}>
-          <NetworkStatusBanner />
-          <Stack>
+    <SafeAreaProvider>
+      <AppProvider>
+        <OnboardingProvider>
+          <ThemeProvider value={DefaultTheme}>
+            <NetworkStatusBanner />
+            <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="add" options={{ headerShown: false }} />
@@ -198,11 +200,12 @@ function InnerLayout() {
             <Stack.Screen name="business" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
-          <StatusBar style="dark" />
-          <Toast config={toastConfig} />
-        </ThemeProvider>
-      </OnboardingProvider>
-    </AppProvider>
+            <StatusBar style="dark" />
+            <Toast config={toastConfig} />
+          </ThemeProvider>
+        </OnboardingProvider>
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }
 

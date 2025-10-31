@@ -8,6 +8,9 @@ const getBuildProfile = () => {
   if (profile === 'production') {
     // Load production environment variables
     require('dotenv').config({ path: '.env.production' });
+  } else if (profile === 'staging') {
+    // Load staging environment variables
+    require('dotenv').config({ path: '.env.staging' });
   } else {
     // Default to development for local builds and dev profile
     require('dotenv').config({ path: '.env.development' });
@@ -23,16 +26,16 @@ export default {
   expo: {
     name: "Troodie",
     slug: "troodie",
-    version: "1.0.0",
+    version: "1.0.4",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/troodie_icon_logo.jpg",
     scheme: "troodie",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     ios: {
       supportsTablet: false,
       bundleIdentifier: "com.troodie.troodie.com",
-      buildNumber: "13",
+      buildNumber: "4",
       infoPlist: {
         NSLocationWhenInUseUsageDescription: "Troodie uses your location to show nearby restaurants and recommendations.",
         NSCameraUsageDescription: "Troodie uses your camera to take photos of restaurants and food.",
@@ -41,7 +44,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/images/adaptive-icon.png",
+        foregroundImage: "./assets/images/troodie_icon_logo.jpg",
         backgroundColor: "#ffffff"
       },
       edgeToEdgeEnabled: true
@@ -56,7 +59,7 @@ export default {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/splash-icon.png",
+          image: "./assets/images/troodie_icon_logo.jpg",
           imageWidth: 200,
           resizeMode: "contain",
           backgroundColor: "#ffffff"

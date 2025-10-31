@@ -1,6 +1,6 @@
+import { BetaAccessGate } from '@/components/BetaAccessGate';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { BetaAccessGate } from '@/components/BetaAccessGate';
 import { useRouter } from 'expo-router';
 import {
     ArrowLeft,
