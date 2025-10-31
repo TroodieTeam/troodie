@@ -1,3 +1,6 @@
+import { AddRestaurantModal } from '@/components/AddRestaurantModal';
+import { CommunitySelector } from '@/components/CommunitySelector';
+import { LinkInputModal } from '@/components/modals/LinkInputModal';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useApp } from '@/contexts/AppContext';
@@ -11,29 +14,25 @@ import { RestaurantInfo } from '@/types/core';
 import { ExternalContent, PostCreationData } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    InputAccessoryView,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { AddRestaurantModal } from '@/components/AddRestaurantModal';
-import { CommunitySelector } from '@/components/CommunitySelector';
-import { LinkInputModal } from '@/components/modals/LinkInputModal';
-import { linkMetadataService } from '@/services/linkMetadataService';
-import { Users } from 'lucide-react-native';
 
 type ContentType = 'original' | 'external';
 type AttachmentType = 'photo' | 'link' | 'restaurant' | 'rating' | 'details';
@@ -578,9 +577,20 @@ export default function CreatePostScreen() {
         {formData.photos.length > 0 && (
           <View style={styles.previewSection}>
             <Text style={[styles.sectionTitle, styles.sectionTitlePadding]}>📸 Your Photos</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosPreview}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.photosPreview}
+              contentContainerStyle={styles.photosPreviewContent}
+            >
               {formData.photos.map((photo, index) => (
-                <View key={index} style={styles.photoPreview}>
+                <View 
+                  key={index} 
+                  style={[
+                    styles.photoPreview,
+                    index === formData.photos.length - 1 && styles.photoPreviewLast
+                  ]}
+                >
                   <Image source={{ uri: photo }} style={styles.previewImage} />
                   <TouchableOpacity
                     style={styles.removePreview}
@@ -1801,9 +1811,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: designTokens.spacing.lg,
     paddingBottom: designTokens.spacing.lg,
   },
+  photosPreviewContent: {
+    marginTop: designTokens.spacing.md,
+    paddingRight: designTokens.spacing.xl, // Extra padding on right to prevent clipping
+  },
   photoPreview: {
     position: 'relative',
     marginRight: designTokens.spacing.md,
+    overflow: 'visible', // Allow the remove button to extend outside
+  },
+  photoPreviewLast: {
+    marginRight: designTokens.spacing.xl, // Extra margin on last item for remove button
   },
   previewImage: {
     width: 90,
@@ -1813,8 +1831,8 @@ const styles = StyleSheet.create({
   },
   removePreview: {
     position: 'absolute',
-    top: -8,
-    right: -8,
+    top: -6,
+    right: -6,
     backgroundColor: designTokens.colors.error,
     borderRadius: 12,
     width: 24,
@@ -1826,6 +1844,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    zIndex: 10, // Ensure it's on top
   },
 
   // Link preview
