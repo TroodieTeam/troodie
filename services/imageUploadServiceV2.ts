@@ -1,7 +1,8 @@
+import config from '@/lib/config';
 import { supabase } from '@/lib/supabase';
-import * as FileSystem from 'expo-file-system';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system/legacy';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 interface UploadResult {
   publicUrl: string;
@@ -17,23 +18,20 @@ export class ImageUploadServiceV2 {
     bucket: string,
     path: string
   ): Promise<UploadResult> {
-    
     // Try different upload methods in order of reliability
     const methods = [
       { name: 'base64FileSystem', fn: () => this.uploadViaBase64FileSystem(imageUri, bucket, path) },
-      { name: 'directBlob', fn: () => this.uploadViaDirectBlob(imageUri, bucket, path) },
       { name: 'formData', fn: () => this.uploadViaFormData(imageUri, bucket, path) },
     ];
     
-    let lastError: any;
+    let lastError: Error | null = null;
     
     for (const method of methods) {
       try {
-        const result = await method.fn();
-        return result;
+        return await method.fn();
       } catch (error) {
         console.error(`[ImageUploadV2] ${method.name} method failed:`, error);
-        lastError = error;
+        lastError = error instanceof Error ? error : new Error(String(error));
       }
     }
     
@@ -55,16 +53,12 @@ export class ImageUploadServiceV2 {
       { compress: 0.7, format: SaveFormat.JPEG }
     );
     
-    // Generate filename
     const fileName = this.generateFileName(path);
     
-    // Read as base64
+    // Read as base64 and convert to ArrayBuffer
     const base64 = await FileSystem.readAsStringAsync(processedImage.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    
-    
-    // Convert to ArrayBuffer
     const arrayBuffer = decode(base64);
     
     // Upload to Supabase
@@ -92,99 +86,38 @@ export class ImageUploadServiceV2 {
   }
   
   /**
-   * Method 2: Direct blob upload
-   */
-  private static async uploadViaDirectBlob(
-    imageUri: string,
-    bucket: string,
-    path: string
-  ): Promise<UploadResult> {
-    // Process image
-    const processedImage = await manipulateAsync(
-      imageUri,
-      [{ resize: { width: 800 } }],
-      { compress: 0.7, format: SaveFormat.JPEG }
-    );
-    
-    // Generate filename
-    const fileName = this.generateFileName(path);
-    
-    // Fetch as blob
-    const response = await fetch(processedImage.uri);
-    const blob = await response.blob();
-    
-    
-    // Create a new blob with explicit type
-    const imageBlob = new Blob([blob], { type: 'image/jpeg' });
-    
-    // Upload to Supabase
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, imageBlob, {
-        contentType: 'image/jpeg',
-        cacheControl: '3600',
-        upsert: true
-      });
-    
-    if (error) {
-      throw error;
-    }
-    
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-    
-    // Verify the upload
-    await this.verifyUpload(publicUrl);
-    
-    return { publicUrl, fileName };
-  }
-  
-  /**
-   * Method 3: FormData upload
+   * Method 2: FormData upload (fallback method)
    */
   private static async uploadViaFormData(
     imageUri: string,
     bucket: string,
     path: string
   ): Promise<UploadResult> {
-    // Process image
     const processedImage = await manipulateAsync(
       imageUri,
       [{ resize: { width: 800 } }],
       { compress: 0.7, format: SaveFormat.JPEG }
     );
     
-    // Generate filename
     const fileName = this.generateFileName(path);
     
-    // Create FormData
     const formData = new FormData();
-    const file = {
+    formData.append('file', {
       uri: processedImage.uri,
       type: 'image/jpeg',
       name: fileName.split('/').pop() || 'image.jpg',
-    } as any;
+    } as any);
     
-    formData.append('file', file);
+    const { data: { session } } = await supabase.auth.getSession();
+    const authToken = session?.access_token || config.supabaseAnonKey;
     
-    // Get Supabase config
-    const supabaseUrl = (supabase as any).supabaseUrl;
-    const supabaseKey = (supabase as any).supabaseKey;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase configuration not found');
-    }
-    
-    // Direct upload
     const uploadResponse = await fetch(
-      `${supabaseUrl}/storage/v1/object/${bucket}/${fileName}`,
+      `${config.supabaseUrl}/storage/v1/object/${bucket}/${fileName}`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey,
+          'Authorization': `Bearer ${authToken}`,
+          'apikey': config.supabaseAnonKey,
         },
         body: formData,
       }
@@ -221,15 +154,12 @@ export class ImageUploadServiceV2 {
   private static async verifyUpload(publicUrl: string): Promise<void> {
     try {
       const response = await fetch(publicUrl, { method: 'HEAD' });
-      
       if (!response.ok) {
         console.warn('[Verify] Upload verification failed:', response.status);
-        // Don't throw - sometimes verification fails but upload succeeds
-      } else {
       }
     } catch (error) {
       console.warn('[Verify] Could not verify upload:', error);
-      // Don't throw - verification is optional
+      // Verification is optional - don't throw
     }
   }
   
@@ -241,14 +171,7 @@ export class ImageUploadServiceV2 {
       throw new Error('No image URI provided');
     }
     
-    
-    const { publicUrl } = await this.uploadImage(
-      imageUri,
-      'avatars',
-      userId
-    );
-    
-    
+    const { publicUrl } = await this.uploadImage(imageUri, 'avatars', userId);
     return publicUrl;
   }
   
