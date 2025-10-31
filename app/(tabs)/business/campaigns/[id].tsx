@@ -3,29 +3,32 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    ArrowLeft,
-    Clock,
-    DollarSign,
-    Edit,
-    Target,
-    Users
+  ArrowLeft,
+  Clock,
+  DollarSign,
+  Edit,
+  ExternalLink,
+  Target,
+  Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CampaignDetail {
   id: string;
   name: string;
+  title?: string;
   description: string;
   status: string;
   budget_cents: number;
@@ -76,6 +79,25 @@ interface Content {
   posted_at: string;
 }
 
+interface Deliverable {
+  id: string;
+  campaign_application_id: string;
+  creator_id: string;
+  platform: string;
+  platform_post_url: string;
+  caption: string;
+  status: 'pending_review' | 'approved' | 'rejected' | 'needs_revision';
+  submitted_at: string;
+  reviewed_at?: string;
+  reviewer_id?: string;
+  restaurant_feedback?: string;
+  auto_approved: boolean;
+  creator_profiles: {
+    display_name: string;
+    avatar_url: string;
+  };
+}
+
 export default function CampaignDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -85,7 +107,8 @@ export default function CampaignDetail() {
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [content, setContent] = useState<Content[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'content'>('overview');
+  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'content' | 'deliverables'>('overview');
 
   useEffect(() => {
     if (id) {
@@ -176,6 +199,22 @@ export default function CampaignDetail() {
       if (contentError) throw contentError;
       setContent(contentData || []);
 
+      // Load deliverables
+      const { data: deliverablesData, error: deliverablesError } = await supabase
+        .from('campaign_deliverables')
+        .select(`
+          *,
+          creator_profiles (
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('campaign_id', id)
+        .order('submitted_at', { ascending: false });
+
+      if (deliverablesError) throw deliverablesError;
+      setDeliverables(deliverablesData || []);
+
     } catch (error) {
       console.error('Failed to load campaign:', error);
       Alert.alert('Error', 'Failed to load campaign details');
@@ -188,6 +227,34 @@ export default function CampaignDetail() {
   const handleRefresh = () => {
     setRefreshing(true);
     loadCampaignData();
+  };
+
+  const handleDeliverableStatusChange = async (deliverableId: string, status: string, feedback?: string) => {
+    try {
+      const { error } = await supabase
+        .from('campaign_deliverables')
+        .update({
+          status,
+          reviewed_at: new Date().toISOString(),
+          reviewer_id: user?.id,
+          restaurant_feedback: feedback,
+        })
+        .eq('id', deliverableId);
+
+      if (error) throw error;
+
+      // Update local state
+      setDeliverables(prev => prev.map(d => 
+        d.id === deliverableId 
+          ? { ...d, status: status as any, reviewed_at: new Date().toISOString(), reviewer_id: user?.id, restaurant_feedback: feedback }
+          : d
+      ));
+
+      Alert.alert('Success', `Deliverable ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'marked for revision'}`);
+    } catch (error) {
+      console.error('Failed to update deliverable status:', error);
+      Alert.alert('Error', 'Failed to update deliverable status');
+    }
   };
 
   const handleStatusChange = async (newStatus: string) => {
@@ -274,7 +341,7 @@ export default function CampaignDetail() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={DS.colors.primary} />
+          <ActivityIndicator size="large" color={DS.colors.primaryOrange} />
         </View>
       </SafeAreaView>
     );
@@ -430,7 +497,7 @@ export default function CampaignDetail() {
           borderBottomWidth: 1,
           borderBottomColor: '#E8E8E8',
         }}>
-          {['overview', 'applications', 'content'].map((tab) => (
+          {['overview', 'applications', 'content', 'deliverables'].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={{
@@ -451,6 +518,9 @@ export default function CampaignDetail() {
                 {tab}
                 {tab === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
                   <Text style={{ color: '#DC2626', fontWeight: '600' }}> ({applications.filter(a => a.status === 'pending').length})</Text>
+                )}
+                {tab === 'deliverables' && deliverables.filter(d => d.status === 'pending_review').length > 0 && (
+                  <Text style={{ color: '#F59E0B', fontWeight: '600' }}> ({deliverables.filter(d => d.status === 'pending_review').length})</Text>
                 )}
               </Text>
             </TouchableOpacity>
@@ -765,7 +835,396 @@ export default function CampaignDetail() {
             )}
           </View>
         )}
+
+        {activeTab === 'deliverables' && (
+          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+            {deliverables.length === 0 ? (
+              <View style={{
+                backgroundColor: '#FFFFFF',
+                padding: 24,
+                borderRadius: 8,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#E8E8E8',
+              }}>
+                <Target size={32} color="#8C8C8C" />
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#262626',
+                  marginTop: 12,
+                  marginBottom: 4,
+                }}>No Deliverables Yet</Text>
+                <Text style={{
+                  fontSize: 13,
+                  color: '#8C8C8C',
+                  textAlign: 'center',
+                }}>Deliverables will appear here as creators submit content</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 12 }}>
+                {deliverables.map((deliverable) => (
+                  <DeliverableCard 
+                    key={deliverable.id} 
+                    deliverable={deliverable} 
+                    onStatusChange={(status, feedback) => handleDeliverableStatusChange(deliverable.id, status, feedback)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const DeliverableCard = ({ 
+  deliverable, 
+  onStatusChange 
+}: { 
+  deliverable: Deliverable; 
+  onStatusChange: (status: string, feedback?: string) => void;
+}) => {
+  const [showDetails, setShowDetails] = useState(false);
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending_review': return '#F59E0B';
+      case 'approved': return '#10B981';
+      case 'rejected': return '#DC2626';
+      case 'needs_revision': return '#8B5CF6';
+      default: return '#6B7280';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending_review': return 'Pending Review';
+      case 'approved': return 'Approved';
+      case 'rejected': return 'Rejected';
+      case 'needs_revision': return 'Needs Revision';
+      default: return 'Unknown';
+    }
+  };
+
+  const getTimeRemaining = () => {
+    if (deliverable.status !== 'pending_review') return null;
+    
+    const submittedAt = new Date(deliverable.submitted_at);
+    const deadline = new Date(submittedAt.getTime() + 72 * 60 * 60 * 1000); // 72 hours
+    const now = new Date();
+    const diffMs = deadline.getTime() - now.getTime();
+    
+    if (diffMs <= 0) return 'Overdue';
+    
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) return `${hours}h ${minutes}m left`;
+    return `${minutes}m left`;
+  };
+
+  const timeRemaining = getTimeRemaining();
+
+  return (
+    <View style={{
+      backgroundColor: '#FFFFFF',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#E8E8E8',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+    }}>
+      {/* Compact Header */}
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 12,
+        paddingBottom: deliverable.status === 'pending_review' ? 8 : 12,
+      }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+            <Image
+              source={{ uri: deliverable.creator_profiles.avatar_url || 'https://via.placeholder.com/18' }}
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                marginRight: 6,
+              }}
+            />
+            <Text style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: '#262626',
+            }}>
+              {deliverable.creator_profiles.display_name}
+            </Text>
+            <Text style={{
+              fontSize: 10,
+              color: '#8C8C8C',
+              textTransform: 'uppercase',
+              fontWeight: '500',
+              marginLeft: 4,
+            }}>
+              {deliverable.platform}
+            </Text>
+          </View>
+          
+          {/* Time Remaining - Compact */}
+          {timeRemaining && (
+            <View style={{
+              backgroundColor: timeRemaining === 'Overdue' ? '#FEE2E2' : '#FEF3C7',
+              paddingHorizontal: 4,
+              paddingVertical: 1,
+              borderRadius: 3,
+              alignSelf: 'flex-start',
+            }}>
+              <Text style={{
+                fontSize: 9,
+                fontWeight: '600',
+                color: timeRemaining === 'Overdue' ? '#DC2626' : '#D97706',
+              }}>
+                {timeRemaining === 'Overdue' ? '⚠️ Overdue' : `⏰ ${timeRemaining}`}
+              </Text>
+            </View>
+          )}
+        </View>
+        
+        <View style={{
+          backgroundColor: `${getStatusColor(deliverable.status)}20`,
+          paddingHorizontal: 6,
+          paddingVertical: 3,
+          borderRadius: 4,
+        }}>
+          <Text style={{
+            fontSize: 10,
+            fontWeight: '600',
+            color: getStatusColor(deliverable.status),
+          }}>
+            {getStatusText(deliverable.status)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Collapsible Details */}
+      {showDetails && (
+        <View style={{
+          paddingHorizontal: 12,
+          paddingBottom: 8,
+          borderTopWidth: 1,
+          borderTopColor: '#F0F0F0',
+        }}>
+          {/* Content */}
+          {deliverable.caption && (
+            <Text style={{
+              fontSize: 13,
+              color: '#262626',
+              marginBottom: 8,
+              lineHeight: 18,
+            }}>
+              {deliverable.caption}
+            </Text>
+          )}
+          
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#F7F7F7',
+              padding: 8,
+              borderRadius: 6,
+              borderWidth: 1,
+              borderColor: '#E8E8E8',
+              marginBottom: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onPress={async () => {
+              try {
+                const url = deliverable.platform_post_url;
+                if (!url) {
+                  Alert.alert('Error', 'No post URL available');
+                  return;
+                }
+
+                // Check if the URL can be opened
+                const canOpen = await Linking.canOpenURL(url);
+                if (!canOpen) {
+                  Alert.alert('Error', 'Cannot open this URL');
+                  return;
+                }
+
+                // Open the URL
+                await Linking.openURL(url);
+              } catch (error) {
+                console.error('Error opening URL:', error);
+                Alert.alert('Error', 'Failed to open the post URL');
+              }
+            }}
+          >
+            <ExternalLink size={14} color="#FFAD27" style={{ marginRight: 4 }} />
+            <Text style={{
+              fontSize: 12,
+              color: '#FFAD27',
+              fontWeight: '500',
+            }}>
+              View Post
+            </Text>
+          </TouchableOpacity>
+
+          {/* Feedback */}
+          {deliverable.restaurant_feedback && (
+            <View style={{
+              backgroundColor: '#F0F9FF',
+              padding: 8,
+              borderRadius: 6,
+            }}>
+              <Text style={{
+                fontSize: 11,
+                fontWeight: '600',
+                color: '#0369A1',
+                marginBottom: 2,
+              }}>
+                Your Feedback:
+              </Text>
+              <Text style={{
+                fontSize: 12,
+                color: '#0369A1',
+              }}>
+                {deliverable.restaurant_feedback}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Actions - Always Visible for Pending */}
+      {deliverable.status === 'pending_review' && (
+        <View style={{
+          flexDirection: 'row',
+          paddingHorizontal: 16,
+          paddingBottom: 12,
+          gap: 6,
+        }}>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: '#10B981',
+              paddingVertical: 8,
+              paddingHorizontal: 6,
+              borderRadius: 6,
+              alignItems: 'center',
+              minHeight: 36,
+            }}
+            onPress={() => onStatusChange('approved')}
+          >
+            <Text style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: '#FFFFFF',
+              textAlign: 'center',
+            }}>
+              Approve
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: '#8B5CF6',
+              paddingVertical: 8,
+              paddingHorizontal: 6,
+              borderRadius: 6,
+              alignItems: 'center',
+              minHeight: 36,
+            }}
+            onPress={() => {
+              Alert.prompt(
+                'Request Revision',
+                'What changes would you like the creator to make?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Send', onPress: (feedback?: string) => onStatusChange('needs_revision', feedback || '') }
+                ]
+              );
+            }}
+          >
+            <Text style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: '#FFFFFF',
+              textAlign: 'center',
+            }}>
+              Revision
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: '#DC2626',
+              paddingVertical: 8,
+              paddingHorizontal: 6,
+              borderRadius: 6,
+              alignItems: 'center',
+              minHeight: 36,
+            }}
+            onPress={() => {
+              Alert.prompt(
+                'Reject Deliverable',
+                'Please provide feedback for the rejection:',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Reject', onPress: (feedback?: string) => onStatusChange('rejected', feedback || '') }
+                ]
+              );
+            }}
+          >
+            <Text style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: '#FFFFFF',
+              textAlign: 'center',
+            }}>
+              Reject
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Toggle Details Button */}
+      <TouchableOpacity
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 8,
+          borderTopWidth: 1,
+          borderTopColor: '#F0F0F0',
+        }}
+        onPress={() => setShowDetails(!showDetails)}
+      >
+        <Text style={{
+          fontSize: 12,
+          color: '#8C8C8C',
+          fontWeight: '500',
+          marginRight: 4,
+        }}>
+          {showDetails ? 'Hide Details' : 'Show Details'}
+        </Text>
+        <Text style={{
+          fontSize: 12,
+          color: '#8C8C8C',
+          transform: [{ rotate: showDetails ? '180deg' : '0deg' }],
+        }}>
+          ▼
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};

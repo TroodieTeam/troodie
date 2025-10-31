@@ -10,7 +10,8 @@ import { useActivityRealtime } from '@/hooks/useActivityRealtime';
 import { activityFeedService } from '@/services/activityFeedService';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 /**
  * Activity Screen Component

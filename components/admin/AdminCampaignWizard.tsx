@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { designTokens } from '@/constants/designTokens';
-import { ChevronLeft } from 'lucide-react-native';
-import CampaignTypeSelector from './CampaignTypeSelector';
-import CampaignDetailsForm from './CampaignDetailsForm';
-import BudgetTrackingForm from './BudgetTrackingForm';
-import PartnershipDetailsForm from './PartnershipDetailsForm';
-import CampaignPreview from './CampaignPreview';
 import { ManagementType } from '@/types/campaign';
+import { ChevronLeft } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import BudgetTrackingForm from './BudgetTrackingForm';
+import CampaignDetailsForm from './CampaignDetailsForm';
+import CampaignPreview from './CampaignPreview';
+import CampaignTypeSelector from './CampaignTypeSelector';
+import PartnershipDetailsForm from './PartnershipDetailsForm';
 
 interface AdminCampaignWizardProps {
   onComplete: (campaignData: any) => void;

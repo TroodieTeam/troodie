@@ -3,20 +3,20 @@
  * Password protection for beta features
  */
 
+import { DS } from '@/components/design-system/tokens';
+import { Lock, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Modal,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from 'react-native';
-import { X, Lock } from 'lucide-react-native';
-import { DS } from '@/components/design-system/tokens';
 
 interface BetaAccessGateProps {
   visible: boolean;

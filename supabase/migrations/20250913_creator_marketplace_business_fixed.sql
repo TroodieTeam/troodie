@@ -147,6 +147,11 @@ CREATE POLICY "Creators can create applications" ON campaign_applications
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
 
+CREATE POLICY "Business owners can update applications to their campaigns" ON campaign_applications
+  FOR UPDATE USING (campaign_id IN (
+    SELECT id FROM campaigns WHERE owner_id = auth.uid() OR creator_id = auth.uid()
+  ));
+
 -- Portfolio items policies
 CREATE POLICY "Anyone can view portfolio items" ON portfolio_items
   FOR SELECT USING (true);

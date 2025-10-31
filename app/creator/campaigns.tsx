@@ -1,33 +1,33 @@
 import { CreatorHeader } from '@/components/creator/CreatorHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
-    Calendar,
-    Check,
-    Clock,
-    DollarSign,
-    Filter,
-    MapPin,
-    Target,
-    X
+  Check,
+  Clock,
+  Filter,
+  MapPin,
+  Target,
+  X
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type CampaignStatus = 'applied' | 'accepted' | 'active' | 'completed' | 'rejected';
-type TabType = 'active' | 'available' | 'pending' | 'completed';
+type TabType = 'active' | 'pending' | 'completed';
 
 interface Campaign {
   id: string;
@@ -46,9 +46,12 @@ interface Campaign {
   creator_status?: CampaignStatus;
   applied_at?: Date;
   deliverables_status?: Record<string, boolean>;
+  has_deliverables_submitted?: boolean;
+  deliverable_status?: string;
 }
 
 export default function MyCampaigns() {
+  const router = useRouter();
   const { user } = useAuth();
   const [creatorProfileId, setCreatorProfileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('active');
@@ -75,6 +78,15 @@ export default function MyCampaigns() {
       loadCampaigns();
     }
   }, [creatorProfileId, activeTab]);
+
+  // Refresh campaigns when screen comes into focus (e.g., returning from submit-deliverable)
+  useFocusEffect(
+    useCallback(() => {
+      if (creatorProfileId) {
+        loadCampaigns();
+      }
+    }, [creatorProfileId])
+  );
 
   const loadCreatorProfile = async () => {
     if (!user?.id) return;
@@ -104,32 +116,33 @@ export default function MyCampaigns() {
     if (!creatorProfileId) return;
     
     try {
+      console.log('[Campaigns] loadCampaigns called');
+      console.log('[Campaigns] creatorProfileId:', creatorProfileId);
+      console.log('[Campaigns] activeTab:', activeTab);
+      
+      // Always filter by creator's applications - this is "My Campaigns" screen
       let query = supabase.from('campaigns').select(`
         *,
         restaurants!inner(name, cover_photo_url, photos),
-        campaign_applications!left(
+        campaign_applications!inner(
           status,
           applied_at,
           proposed_rate_cents
+        ),
+        campaign_deliverables!left(
+          id,
+          status,
+          submitted_at
         )
-      `);
-
-      // Add creator filter
-      if (activeTab !== 'available') {
-        query = query.eq('campaign_applications.creator_id', creatorProfileId);
-      }
+      `).eq('campaign_applications.creator_id', creatorProfileId);
 
       // Filter based on active tab
       switch (activeTab) {
         case 'active':
           query = query.eq('campaign_applications.status', 'accepted');
           break;
-        case 'available':
-          query = query.eq('status', 'active');
-          // Don't show campaigns already applied to
-          break;
         case 'pending':
-          query = query.eq('campaign_applications.status', 'pending');
+          query = query.eq('campaign_applications.status', 'applied');
           break;
         case 'completed':
           query = query.eq('campaign_applications.status', 'completed');
@@ -140,8 +153,11 @@ export default function MyCampaigns() {
       
       if (error) throw error;
       
+      console.log('[Campaigns] Raw data from Supabase:', data);
+      console.log('[Campaigns] Number of campaigns:', data?.length);
+
       // Transform data
-      const transformedCampaigns = data?.map(campaign => ({
+      let transformedCampaigns = data?.map(campaign => ({
         id: campaign.id,
         restaurant_id: campaign.restaurant_id,
         restaurant_name: campaign.restaurants?.name || 'Unknown Restaurant',
@@ -159,8 +175,11 @@ export default function MyCampaigns() {
         applied_at: campaign.campaign_applications?.[0]?.applied_at ? 
           new Date(campaign.campaign_applications[0].applied_at) : undefined,
         deliverables_status: {},
+        has_deliverables_submitted: campaign.campaign_deliverables && campaign.campaign_deliverables.length > 0,
+        deliverable_status: campaign.campaign_deliverables?.[0]?.status,
       })) || [];
       
+      console.log('[Campaigns] Final transformed campaigns:', transformedCampaigns);
       setCampaigns(transformedCampaigns);
     } catch (error) {
       console.error('Error loading campaigns:', error);
@@ -219,8 +238,6 @@ export default function MyCampaigns() {
           : c
       ));
       
-      if (error) throw error;
-      
       loadCampaigns();
     } catch (error) {
       console.error('Error updating deliverable:', error);
@@ -264,7 +281,30 @@ export default function MyCampaigns() {
     <TouchableOpacity
       key={campaign.id}
       style={styles.campaignCard}
-      onPress={() => setSelectedCampaign(campaign)}
+      onPress={() => {
+        // Direct navigation based on campaign status
+        if (campaign.creator_status === 'accepted') {
+          router.push(`/creator/submit-deliverable?campaignId=${campaign.id}`);
+        } else if (campaign.creator_status === 'applied') {
+          // Show application pending state
+          Alert.alert(
+            'Application Pending',
+            'Your application is under review. You\'ll be notified once the restaurant makes a decision.',
+            [{ text: 'OK' }]
+          );
+        } else if (campaign.creator_status === 'rejected') {
+          // Show rejection state
+          Alert.alert(
+            'Application Not Selected',
+            'Thank you for your interest. Keep an eye out for other opportunities!',
+            [{ text: 'OK' }]
+          );
+        } else {
+          // Available campaign - show application modal
+          setSelectedCampaign(campaign);
+          setShowApplicationModal(true);
+        }
+      }}
     >
       <View style={styles.campaignHeader}>
         {campaign.restaurant_image && (
@@ -290,12 +330,32 @@ export default function MyCampaigns() {
           <Text style={styles.payoutAmount}>${campaign.payout_per_creator}</Text>
           {campaign.creator_status && (
             <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(campaign.creator_status)}20` }]}>
-              <Text style={[styles.statusText, { color: getStatusColor(campaign.creator_status) }]}>
+              <Text style={[styles.statusTextBadge, { color: getStatusColor(campaign.creator_status) }]}>
                 {getStatusText(campaign.creator_status)}
               </Text>
             </View>
           )}
         </View>
+      </View>
+      
+      {/* Action Indicator */}
+      <View style={styles.actionIndicator}>
+        {campaign.creator_status === 'accepted' && !campaign.has_deliverables_submitted && (
+          <Text style={styles.actionText}>Submit Deliverables →</Text>
+        )}
+        {campaign.creator_status === 'accepted' && campaign.has_deliverables_submitted && (
+          <Text style={styles.actionTextPending}>
+            {campaign.deliverable_status === 'pending_review' ? 'Under Review' : 
+             campaign.deliverable_status === 'approved' ? 'Approved' :
+             campaign.deliverable_status === 'rejected' ? 'Needs Revision' : 'Deliverables Submitted'}
+          </Text>
+        )}
+        {campaign.creator_status === 'applied' && (
+          <Text style={styles.actionTextPending}>Pending Review</Text>
+        )}
+        {campaign.creator_status === 'rejected' && (
+          <Text style={styles.actionTextRejected}>Not Selected</Text>
+        )}
       </View>
       
       {activeTab === 'active' && campaign.deliverables && (
@@ -332,15 +392,11 @@ export default function MyCampaigns() {
     const emptyMessages: Record<TabType, { title: string; description: string }> = {
       active: {
         title: 'No Active Campaigns',
-        description: 'Browse available campaigns to get started',
-      },
-      available: {
-        title: 'No Available Campaigns',
-        description: 'Check back soon for new opportunities',
+        description: 'Your accepted campaigns will appear here',
       },
       pending: {
         title: 'No Pending Applications',
-        description: 'Apply to campaigns to see them here',
+        description: 'Your applications under review will appear here',
       },
       completed: {
         title: 'No Completed Campaigns',
@@ -383,7 +439,7 @@ export default function MyCampaigns() {
       {/* Tabs */}
       <View style={styles.tabs}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {(['active', 'available', 'pending', 'completed'] as TabType[]).map((tab) => (
+          {(['active', 'pending', 'completed'] as TabType[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -413,84 +469,6 @@ export default function MyCampaigns() {
         )}
       </ScrollView>
 
-      {/* Campaign Details Modal */}
-      <Modal
-        visible={!!selectedCampaign}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setSelectedCampaign(null)}
-      >
-        {selectedCampaign && (
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Campaign Details</Text>
-              <TouchableOpacity onPress={() => setSelectedCampaign(null)}>
-                <X size={24} color="#000000" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalContent}>
-              <Text style={styles.modalRestaurant}>{selectedCampaign.restaurant_name}</Text>
-              <Text style={styles.modalCampaignTitle}>{selectedCampaign.title}</Text>
-              
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Description</Text>
-                <Text style={styles.modalText}>{selectedCampaign.description}</Text>
-              </View>
-              
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Requirements</Text>
-                {selectedCampaign.requirements.map((req, index) => (
-                  <View key={index} style={styles.modalListItem}>
-                    <Check size={16} color="#10B981" />
-                    <Text style={styles.modalListText}>{req}</Text>
-                  </View>
-                ))}
-              </View>
-              
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Deliverables</Text>
-                {selectedCampaign.deliverables.map((del, index) => (
-                  <View key={index} style={styles.modalListItem}>
-                    <Target size={16} color="#737373" />
-                    <Text style={styles.modalListText}>{del}</Text>
-                  </View>
-                ))}
-              </View>
-              
-              <View style={styles.modalMetrics}>
-                <View style={styles.modalMetricItem}>
-                  <DollarSign size={20} color="#10B981" />
-                  <Text style={styles.modalMetricValue}>${selectedCampaign.payout_per_creator}</Text>
-                  <Text style={styles.modalMetricLabel}>Payout</Text>
-                </View>
-                <View style={styles.modalMetricItem}>
-                  <Calendar size={20} color="#F59E0B" />
-                  <Text style={styles.modalMetricValue}>
-                    {Math.ceil((selectedCampaign.deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
-                  </Text>
-                  <Text style={styles.modalMetricLabel}>Deadline</Text>
-                </View>
-                <View style={styles.modalMetricItem}>
-                  <MapPin size={20} color="#3B82F6" />
-                  <Text style={styles.modalMetricValue}>{selectedCampaign.location}</Text>
-                  <Text style={styles.modalMetricLabel}>Location</Text>
-                </View>
-              </View>
-              
-              {activeTab === 'available' && (
-                <TouchableOpacity
-                  style={styles.applyButton}
-                  onPress={() => {
-                    setShowApplicationModal(true);
-                  }}
-                >
-                  <Text style={styles.applyButtonText}>Apply to Campaign</Text>
-                </TouchableOpacity>
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        )}
-      </Modal>
 
       {/* Application Modal */}
       <Modal
@@ -575,11 +553,16 @@ const styles = StyleSheet.create({
   },
   campaignCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: '#F3F4F6',
     marginBottom: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   campaignHeader: {
     flexDirection: 'row',
@@ -632,7 +615,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  statusText: {
+  statusTextBadge: {
     fontSize: 11,
     fontWeight: '600',
   },
@@ -801,5 +784,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 120,
     marginBottom: 16,
+  },
+  submitButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  statusContainer: {
+    backgroundColor: '#F5F5F5',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  statusSubtext: {
+    fontSize: 14,
+    color: '#737373',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  actionIndicator: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    alignItems: 'center',
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  actionTextPending: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#F59E0B',
+  },
+  actionTextRejected: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#EF4444',
   },
 });

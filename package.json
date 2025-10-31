@@ -4,10 +4,14 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "start:production": "EAS_BUILD_PROFILE=production expo start",
+    "start:staging": "EAS_BUILD_PROFILE=staging expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "web:production": "EAS_BUILD_PROFILE=production expo start --web",
+    "web:staging": "EAS_BUILD_PROFILE=staging expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "jest",
@@ -30,7 +34,15 @@
     "demo:seed": "node scripts/seed-user-demo-data.js",
     "demo:cleanup": "node scripts/cleanup-user-demo-data.js",
     "setup:storage": "node scripts/setup-dev-storage.js",
-    "db:migrate": "npx supabase db push"
+    "db:migrate": "npx supabase db push",
+    "supabase:link-staging": "supabase link --project-ref gyhuhywytzdxijvlfilf",
+    "supabase:status": "supabase status",
+    "supabase:migrate": "supabase db push --linked",
+    "supabase:reset": "supabase db reset --linked",
+    "supabase:types": "supabase gen types typescript --linked > types/supabase-staging.ts",
+    "supabase:seed": "node scripts/seed-staging-data.js",
+    "staging:setup": "npm run supabase:link-staging && npm run supabase:migrate && npm run supabase:types",
+    "staging:reset": "npm run supabase:reset && npm run supabase:migrate && npm run supabase:types"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",

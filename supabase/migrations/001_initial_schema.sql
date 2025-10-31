@@ -2,6 +2,14 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "postgis";
 
+-- Create uuid_generate_v4 function if it doesn't exist (for compatibility)
+CREATE OR REPLACE FUNCTION uuid_generate_v4()
+RETURNS uuid AS $$
+BEGIN
+    RETURN gen_random_uuid();
+END;
+$$ LANGUAGE plpgsql;
+
 -- Users table (extends Supabase auth.users)
 CREATE TABLE users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
