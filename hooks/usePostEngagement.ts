@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { enhancedPostEngagementService } from '@/services/enhancedPostEngagementService';
 import { useAuth } from '@/contexts/AuthContext';
 import { PostEngagementStats, CommentWithUser } from '@/types/post';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Alert } from 'react-native';
 import { useOptimisticMutation } from './useOptimisticMutation';
 import { ToastService } from '@/services/toastService';
@@ -170,14 +171,20 @@ export function usePostEngagement({
     setLikesCount(previousIsLiked ? previousCount - 1 : previousCount + 1);
 
     try {
-      const result = await enhancedPostEngagementService.togglePostLike(postId, user.id);
-
-      if (result.success) {
-        // Update with server counts
-        setLikesCount(result.likes_count || (previousIsLiked ? previousCount - 1 : previousCount + 1));
-      } else {
-        throw new Error(result.error || 'Failed to toggle like');
-      }
+      await enhancedPostEngagementService.togglePostLikeOptimistic(
+        postId,
+        user.id,
+        (newIsLiked, newLikesCount) => {
+          setIsLiked(newIsLiked);
+          setLikesCount(newLikesCount);
+          // Emit engagement changed event
+          eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { postId });
+        },
+        (error) => {
+          onEngagementError?.(error);
+          Alert.alert('Error', 'Failed to update like. Please try again.');
+        }
+      );
     } catch (error) {
       console.error('Failed to toggle like:', error);
 
@@ -251,6 +258,8 @@ export function usePostEngagement({
         (comment) => {
           setComments((prev) => [comment, ...prev]);
           setCommentsCount((prev) => prev + 1);
+          // Emit engagement changed event
+          eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { postId });
         },
         (error) => {
           onEngagementError?.(error);

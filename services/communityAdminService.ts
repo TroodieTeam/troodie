@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { notificationService } from './notificationService'
 import { getCurrentUserId } from './authService'
+import { eventBus, EVENTS } from '@/utils/eventBus'
 
 export type AdminAction = 'remove_member' | 'delete_post' | 'delete_message' | 'update_role' | 'view_audit_logs'
 export type CommunityRole = 'owner' | 'admin' | 'moderator' | 'member'
@@ -149,10 +150,10 @@ export class CommunityAdminService {
         return { success: true };
       }
 
-      // Get post details (no community_id in posts table)
+      // Get post details for notification from the posts table
       const { data: post, error: postError } = await supabase
         .from('posts')
-        .select('id, user_id')
+        .select('id, user_id, users!user_id(name)')
         .eq('id', postId)
         .maybeSingle();
 
@@ -222,13 +223,19 @@ export class CommunityAdminService {
         // Notify post author that their post was removed
         await notificationService.createSystemNotification(
           post.user_id,
-          'Post Removed',
-          `Your post has been removed by a community admin${reason ? `: ${reason}` : ''}`,
+          'Post Removed from Community',
+          `Your post has been removed from the community${reason ? `: ${reason}` : ''}`,
           undefined,
           undefined,
           { communityId: communityId, relatedType: 'community' }
         );
       }
+
+      // Emit event for post deletion so UI can update
+      eventBus.emit(EVENTS.COMMUNITY_POST_DELETED, {
+        postId,
+        communityId
+      });
 
       // Note: post_count updated automatically via DB trigger on post_communities
       return { success: true };

@@ -12,6 +12,7 @@ import { restaurantService } from '@/services/restaurantService';
 import { ToastService } from '@/services/toastService';
 import { RestaurantInfo } from '@/types/core';
 import { ExternalContent, PostCreationData } from '@/types/post';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Users } from 'lucide-react-native';
@@ -255,9 +256,20 @@ export default function CreatePostScreen() {
           'Your post is now live in the community'
         );
 
-        // Navigate to explore screen with posts tab focused to see the new post
-        router.push('/(tabs)/explore?tab=posts');
-      }
+        // Emit event for community posts
+        if (communityId) {
+          eventBus.emit(EVENTS.COMMUNITY_POST_CREATED, {
+            communityId,
+            postId: post.id
+          });
+        }
+
+        // Navigate to explore screen with posts tab focused to see the new post (if not in community context)
+        if (communityId) {
+          router.back();
+        } else {
+          router.push('/(tabs)/explore?tab=posts');
+        }
 
     } catch (error) {
       Alert.alert('Error', editMode ? 'Failed to update post. Please try again.' : 'Failed to create post. Please try again.');
