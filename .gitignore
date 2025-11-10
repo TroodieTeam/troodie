@@ -49,6 +49,7 @@ README.md
 TODO.md
 
 .env.local
+.env*
 
 # Logs
 logs
