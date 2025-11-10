@@ -13,8 +13,11 @@ export const boardService = {
    * Create a new board
    */
   async createBoard(userId: string, boardData: BoardCreationForm): Promise<Board | null> {
+    console.log('[BoardService] createBoard called:', { userId, boardData });
+
     try {
       // Try to use the RPC function first
+      console.log('[BoardService] Trying RPC function create_simple_board...');
       const { data: rpcData, error: rpcError } = await supabase
         .rpc('create_simple_board', {
           p_user_id: userId,
@@ -32,7 +35,7 @@ export const boardService = {
 
       // If RPC fails, try direct insert
       if (rpcError) {
-        // RPC failed, trying direct insert
+        console.log('[BoardService] RPC failed, trying direct insert:', rpcError);
         
         const { data: insertData, error: insertError } = await supabase
           .from('boards')
@@ -54,10 +57,15 @@ export const boardService = {
           .select()
           .single()
 
-        if (insertError) throw insertError
+        if (insertError) {
+          console.error('[BoardService] Direct insert failed:', insertError);
+          throw insertError;
+        }
+        console.log('[BoardService] Board created via direct insert:', insertData.id);
         return insertData
       }
 
+      console.log('[BoardService] RPC succeeded, fetching board data...');
       // Fetch the created board from RPC
       const { data: board, error: fetchError } = await supabase
         .from('boards')
@@ -65,11 +73,15 @@ export const boardService = {
         .eq('id', rpcData)
         .single()
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        console.error('[BoardService] Failed to fetch created board:', fetchError);
+        throw fetchError;
+      }
 
+      console.log('[BoardService] Board created successfully via RPC:', board.id);
       return board
     } catch (error: any) {
-      console.error('Error creating board:', error)
+      console.error('[BoardService] Error creating board:', error)
       return null
     }
   },
@@ -79,15 +91,16 @@ export const boardService = {
    */
   async getUserBoards(userId: string): Promise<Board[]> {
     try {
-      // Use the user_boards view which handles all the complex permissions
-      const { data, error } = await supabase
-        .from('user_boards')
+      // First try direct query since user_boards view has issues with auth.uid()
+      // Get boards owned by user
+      const { data: ownedBoards, error: ownedError } = await supabase
+        .from('boards')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-
-      if (error) throw error
-      return data || []
+      
+      if (ownedError) throw ownedError
+      return ownedBoards || []
     } catch (error: any) {
       console.error('Error fetching user boards:', error)
       // Fallback to direct query if view doesn't exist yet
@@ -220,13 +233,41 @@ export const boardService = {
    * Add a restaurant to a board
    */
   async addRestaurantToBoard(
-    boardId: string, 
-    restaurantId: string, 
+    boardId: string,
+    restaurantId: string,
     userId: string,
     notes?: string,
     rating?: number
   ): Promise<void> {
     try {
+      // First, verify the board exists and check its ownership
+      const { data: boardData, error: boardError } = await supabase
+        .from('boards')
+        .select('id, user_id, title')
+        .eq('id', boardId)
+        .single();
+
+      if (boardError) {
+        console.error('[BoardService] Error fetching board:', boardError);
+        throw boardError;
+      }
+
+      console.log('[BoardService] Board details:', {
+        boardId: boardData.id,
+        boardUserId: boardData.user_id,
+        boardTitle: boardData.title,
+        requestingUserId: userId,
+        ownership: boardData.user_id === userId ? 'OWNED BY USER' : 'NOT OWNED BY USER'
+      });
+
+      // Check current auth session
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      console.log('[BoardService] Current auth user:', {
+        authUserId: authUser?.id,
+        matchesRequestingUser: authUser?.id === userId,
+        matchesBoardOwner: authUser?.id === boardData.user_id
+      });
+
       // Get current max position
       const { data: existingRestaurants } = await supabase
         .from('board_restaurants')
@@ -238,6 +279,13 @@ export const boardService = {
       const nextPosition = existingRestaurants && existingRestaurants[0]
         ? existingRestaurants[0].position + 1
         : 0
+
+      console.log('[BoardService] Attempting to insert into board_restaurants:', {
+        board_id: boardId,
+        restaurant_id: restaurantId,
+        added_by: userId,
+        position: nextPosition
+      });
 
       const { error } = await supabase
         .from('board_restaurants')
@@ -251,8 +299,11 @@ export const boardService = {
         })
 
       if (error && error.code !== '23505') { // Ignore duplicate key errors
+        console.error('[BoardService] Insert error:', error);
         throw error
       }
+
+      console.log('[BoardService] Successfully inserted restaurant into board');
       
       // Emit event to update UI
       eventBus.emit(EVENTS.BOARD_UPDATED, { boardId, restaurantId, userId })
@@ -639,14 +690,20 @@ export const boardService = {
   ): Promise<void> {
     try {
       // Get or create Your Saves board
+      console.log('[BoardService] Getting or creating Your Saves board for user:', userId);
       const boardId = await this.ensureQuickSavesBoard(userId)
-      
+
       if (!boardId) {
+        console.error('[BoardService] Failed to get Your Saves board');
         throw new Error('Failed to get Your Saves board')
       }
 
+      console.log('[BoardService] Got Your Saves board:', boardId);
+      console.log('[BoardService] Adding restaurant to board:', { boardId, restaurantId, userId });
+
       // Add restaurant to Your Saves board
       await this.addRestaurantToBoard(boardId, restaurantId, userId, notes, rating)
+      console.log('[BoardService] Successfully added restaurant to Your Saves board');
       
       // Emit event to update UI
       eventBus.emit(EVENTS.QUICK_SAVES_UPDATED, { restaurantId, userId })
@@ -752,12 +809,17 @@ export const boardService = {
    */
   async getQuickSavesRestaurants(userId: string, limit?: number): Promise<BoardRestaurant[]> {
     try {
+      console.log(`[boardService] Getting quick saves for user: ${userId}`);
+      
       // First get the Your Saves board
       const board = await this.getUserQuickSavesBoard(userId)
       
       if (!board) {
+        console.log(`[boardService] No Your Saves board found for user: ${userId}`);
         return []
       }
+      
+      console.log(`[boardService] Found Your Saves board: ${board.id}`);
 
       let request = supabase
         .from('board_restaurants')
@@ -772,6 +834,8 @@ export const boardService = {
       const { data, error } = await request
 
       if (error) throw error
+      
+      console.log(`[boardService] Found ${data?.length || 0} quick saves`);
       return data || []
     } catch (error: any) {
       console.error('Error fetching Your Saves restaurants:', error)

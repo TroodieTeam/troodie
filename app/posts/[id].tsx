@@ -1,21 +1,21 @@
+import { BottomNavigation } from '@/components/BottomNavigation';
 import { ErrorState } from '@/components/ErrorState';
+import { PostComments } from '@/components/PostComments';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePostEngagement } from '@/hooks/usePostEngagement';
-import { PostComments } from '@/components/PostComments';
 import { postService } from '@/services/postService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Bookmark, Heart, MessageCircle, Share, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Bookmark, ChevronRight, Heart, MessageCircle, Share } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BottomNavigation } from '@/components/BottomNavigation';
 import {
   ActivityIndicator,
+  DeviceEventEmitter,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -27,8 +27,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BOTTOM_NAV_HEIGHT = 84;
+const COMMENT_INPUT_HEIGHT = 140;
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -252,7 +255,12 @@ export default function PostDetailScreen() {
         <ArrowLeft size={24} color={designTokens.colors.textDark} />
       </TouchableOpacity>
 
-      <ScrollView ref={scrollViewRef} style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* User Header - Clickable */}
         <TouchableOpacity 
           style={styles.userHeader}
@@ -479,6 +487,7 @@ export default function PostDetailScreen() {
           showInput={true} // Only show input
           showComments={false} // Don't show comments list
           postAuthorName={post.user?.username || post.user?.name} // For "Replying to" text
+          bottomOffset={BOTTOM_NAV_HEIGHT}
           onCommentAdded={() => {
             // Update comment count (toast is handled in PostComments component)
             if (refreshStats && post) {
@@ -493,6 +502,7 @@ export default function PostDetailScreen() {
                 comments_count: (prev.comments_count || 0) + 1
               } : null);
             }
+            DeviceEventEmitter.emit('post-comment-added', { postId: post.id });
           }}
           onCommentDeleted={() => {
             if (refreshStats && post) {
@@ -542,6 +552,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 80,
+  },
+  contentContainer: {
+    paddingBottom: BOTTOM_NAV_HEIGHT + COMMENT_INPUT_HEIGHT + 40,
   },
   loadingContainer: {
     flex: 1,
@@ -796,6 +809,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   bottomSpacer: {
-    height: 150, // Increased to account for comment input + bottom navigation
+    height: BOTTOM_NAV_HEIGHT + COMMENT_INPUT_HEIGHT,
   },
 }); 

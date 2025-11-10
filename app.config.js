@@ -1,10 +1,70 @@
-import 'dotenv/config';
+const fs = require('fs');
+const dotenv = require('dotenv');
+
+// Helper to load an env file with logging
+const loadEnvFile = (envFile) => {
+  if (fs.existsSync(envFile)) {
+    try {
+      const fileContents = fs.readFileSync(envFile);
+      const parsed = dotenv.parse(fileContents);
+      Object.entries(parsed).forEach(([key, value]) => {
+        process.env[key] = value;
+      });
+      console.log(
+        `[app.config] Loaded ${Object.keys(parsed).length} variables from ${envFile}`
+      );
+      return true;
+    } catch (error) {
+      console.warn(`[app.config] Failed to load ${envFile}:`, error);
+      return false;
+    }
+  }
+
+  console.warn(`[app.config] Environment file not found: ${envFile}`);
+  return false;
+};
+
+// Determine which environment file to load
+// Note: We load dotenv manually here instead of using 'dotenv/config' import
+// to ensure we load the correct file based on EAS_BUILD_PROFILE
+const getBuildProfile = () => {
+  // EAS_BUILD_PROFILE is set automatically by EAS during builds or via npm scripts
+  const profile = process.env.EAS_BUILD_PROFILE;
+  const resolvedProfile = profile || 'development';
+
+  console.log(`[app.config] Detected build profile: ${resolvedProfile}`);
+
+  if (resolvedProfile === 'production') {
+    const loaded = loadEnvFile('.env.production');
+    if (!loaded) {
+      console.warn('[app.config] Falling back to default .env file for production');
+      loadEnvFile('.env');
+    }
+  } else if (resolvedProfile === 'staging') {
+    const loaded = loadEnvFile('.env.staging');
+    if (!loaded) {
+      console.warn('[app.config] Falling back to default .env file for staging');
+      loadEnvFile('.env');
+    }
+  } else {
+    const loaded = loadEnvFile('.env.development');
+    if (!loaded) {
+      console.warn('[app.config] Falling back to default .env file for development');
+      loadEnvFile('.env');
+    }
+  }
+
+  return resolvedProfile;
+};
+
+// Load the appropriate environment
+const currentProfile = getBuildProfile();
 
 export default {
   expo: {
     name: "Troodie",
     slug: "troodie",
-    version: "1.0.3",
+    version: "1.0.5",
     orientation: "portrait",
     icon: "./assets/images/troodie_icon_logo.jpg",
     scheme: "troodie",
@@ -52,21 +112,10 @@ export default {
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
       googlePlacesApiKey: process.env.GOOGLE_MAPS_API_KEY,
+      buildProfile: currentProfile,
       eas: {
         projectId: "68397d45-255f-4b4c-ba93-d51a044ddfb2"
       }
-    },
-    hooks: {
-      postPublish: [
-        {
-          file: "sentry-expo/upload-sourcemaps",
-          config: {
-            organization: "troodie",
-            project: "troodie",
-            authToken: process.env.SENTRY_AUTH_TOKEN,
-          },
-        },
-      ],
     }
   }
 };

@@ -22,5 +22,17 @@ module.exports = {
     'utils/**/*.{ts,tsx}',
     '!**/node_modules/**',
     '!**/__tests__/**',
+    '!**/*.config.*',
+    '!**/coverage/**',
   ],
+  coverageThreshold: {
+    global: {
+      statements: 75,
+      branches: 70,
+      functions: 75,
+      lines: 75,
+    },
+  },
+  coverageReporters: ['text', 'lcov', 'html'],
+  testTimeout: 10000,
 };

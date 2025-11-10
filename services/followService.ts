@@ -3,68 +3,102 @@ import { authService } from './authService'
 import { NotificationService } from './notificationService'
 
 export class FollowService {
-  static async followUser(userId: string): Promise<void> {
+  private static activeRequests = new Map<string, Promise<{ success: boolean; error?: string }>>();
+
+  static async followUser(userId: string): Promise<{ success: boolean; error?: string }> {
+    const currentUserId = await authService.getCurrentUserId();
+
+    if (!currentUserId) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    if (currentUserId === userId) {
+      return { success: false, error: 'Cannot follow yourself' };
+    }
+
+    // Prevent duplicate requests - return existing promise if in progress
+    const requestKey = `follow-${currentUserId}-${userId}`;
+    if (this.activeRequests.has(requestKey)) {
+      return this.activeRequests.get(requestKey)!;
+    }
+
+    const requestPromise = this._executeFollow(currentUserId, userId);
+    this.activeRequests.set(requestKey, requestPromise);
+
+    requestPromise.finally(() => {
+      this.activeRequests.delete(requestKey);
+    });
+
+    return requestPromise;
+  }
+
+  private static async _executeFollow(followerId: string, followingId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const currentUserId = await authService.getCurrentUserId()
-      
-      if (!currentUserId) {
-        throw new Error('User not authenticated')
-      }
-
-      if (currentUserId === userId) {
-        throw new Error('Cannot follow yourself')
-      }
-
-      // Insert relationship
+      // Insert relationship - trigger will update counts atomically
       const { error } = await supabase
         .from('user_relationships')
         .insert({
-          follower_id: currentUserId,
-          following_id: userId
-        })
+          follower_id: followerId,
+          following_id: followingId,
+          created_at: new Date().toISOString()
+        });
 
       if (error) {
-        // Check if it's a duplicate key error
+        // Check if it's a duplicate key error (23505 = unique_violation)
         if (error.code === '23505') {
-          return
+          return { success: true }; // Already following - idempotent
         }
-        throw error
+        return { success: false, error: error.message || 'Failed to follow user' };
       }
 
       // Notification is handled by database trigger (notify_on_follow)
-      // No need to create notification here as it would be duplicate
-
-      // Update cached counts
-      await this.updateFollowerCounts(userId, 1)
-      await this.updateFollowingCounts(currentUserId, 1)
-    } catch (error) {
-      console.error('Error following user:', error)
-      throw error
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error following user:', error);
+      return { success: false, error: error.message || 'Network error. Please check your connection.' };
     }
   }
 
-  static async unfollowUser(userId: string): Promise<void> {
-    try {
-      const currentUserId = await authService.getCurrentUserId()
-      
-      if (!currentUserId) {
-        throw new Error('User not authenticated')
-      }
+  static async unfollowUser(userId: string): Promise<{ success: boolean; error?: string }> {
+    const currentUserId = await authService.getCurrentUserId();
 
+    if (!currentUserId) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Prevent duplicate requests - return existing promise if in progress
+    const requestKey = `unfollow-${currentUserId}-${userId}`;
+    if (this.activeRequests.has(requestKey)) {
+      return this.activeRequests.get(requestKey)!;
+    }
+
+    const requestPromise = this._executeUnfollow(currentUserId, userId);
+    this.activeRequests.set(requestKey, requestPromise);
+
+    requestPromise.finally(() => {
+      this.activeRequests.delete(requestKey);
+    });
+
+    return requestPromise;
+  }
+
+  private static async _executeUnfollow(followerId: string, followingId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Delete relationship - trigger will update counts atomically
       const { error } = await supabase
         .from('user_relationships')
         .delete()
-        .eq('follower_id', currentUserId)
-        .eq('following_id', userId)
+        .eq('follower_id', followerId)
+        .eq('following_id', followingId);
 
-      if (error) throw error
+      if (error) {
+        return { success: false, error: error.message || 'Failed to unfollow user' };
+      }
 
-      // Update cached counts
-      await this.updateFollowerCounts(userId, -1)
-      await this.updateFollowingCounts(currentUserId, -1)
-    } catch (error) {
-      console.error('Error unfollowing user:', error)
-      throw error
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error unfollowing user:', error);
+      return { success: false, error: error.message || 'Network error. Please check your connection.' };
     }
   }
 
@@ -174,67 +208,6 @@ export class FollowService {
     }
   }
 
-  private static async updateFollowerCounts(userId: string, increment: number): Promise<void> {
-    try {
-      const { error } = await supabase.rpc('increment', {
-        table_name: 'users',
-        column_name: 'followers_count',
-        row_id: userId,
-        increment_value: increment
-      })
-
-      if (error) {
-        // If the RPC doesn't exist, try a direct update
-        const { data: user } = await supabase
-          .from('users')
-          .select('followers_count')
-          .eq('id', userId)
-          .single()
-
-        if (user) {
-          await supabase
-            .from('users')
-            .update({ 
-              followers_count: Math.max(0, (user.followers_count || 0) + increment) 
-            })
-            .eq('id', userId)
-        }
-      }
-    } catch (error) {
-      console.error('Error updating follower count:', error)
-    }
-  }
-
-  private static async updateFollowingCounts(userId: string, increment: number): Promise<void> {
-    try {
-      const { error } = await supabase.rpc('increment', {
-        table_name: 'users',
-        column_name: 'following_count',
-        row_id: userId,
-        increment_value: increment
-      })
-
-      if (error) {
-        // If the RPC doesn't exist, try a direct update
-        const { data: user } = await supabase
-          .from('users')
-          .select('following_count')
-          .eq('id', userId)
-          .single()
-
-        if (user) {
-          await supabase
-            .from('users')
-            .update({ 
-              following_count: Math.max(0, (user.following_count || 0) + increment) 
-            })
-            .eq('id', userId)
-        }
-      }
-    } catch (error) {
-      console.error('Error updating following count:', error)
-    }
-  }
 }
 
 // Export an instance for convenience

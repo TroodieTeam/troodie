@@ -46,6 +46,7 @@ export interface UserCommunityStats {
 class CommunityService {
   private cache: Map<string, { data: any; expires: number }> = new Map();
   private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private activeJoinRequests = new Map<string, Promise<{ success: boolean; error?: string }>>();
 
   /**
    * Get all public communities and user's private communities
@@ -257,9 +258,30 @@ class CommunityService {
   }
 
   /**
-   * Join a community
+   * Join a community with request deduplication
    */
-  async joinCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string }> {
+  async joinCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string; member_count?: number }> {
+    const requestKey = `join-${userId}-${communityId}`;
+
+    // Prevent duplicate requests - return existing promise if in progress
+    if (this.activeJoinRequests.has(requestKey)) {
+      return this.activeJoinRequests.get(requestKey)!;
+    }
+
+    const requestPromise = this._executeJoin(userId, communityId);
+    this.activeJoinRequests.set(requestKey, requestPromise);
+
+    requestPromise.finally(() => {
+      this.activeJoinRequests.delete(requestKey);
+    });
+
+    return requestPromise;
+  }
+
+  /**
+   * Internal method to execute join operation
+   */
+  private async _executeJoin(userId: string, communityId: string): Promise<{ success: boolean; error?: string; member_count?: number }> {
     try {
       // Check if already a member
       const { data: existingMember } = await supabase
@@ -271,7 +293,14 @@ class CommunityService {
 
       if (existingMember) {
         if (existingMember.status === 'active') {
-          return { success: true }; // Already a member, treat as success
+          // Already a member - get current member count and return success
+          const { data: community } = await supabase
+            .from('communities')
+            .select('member_count')
+            .eq('id', communityId)
+            .single();
+
+          return { success: true, member_count: community?.member_count };
         }
         // Reactivate membership if it was declined/inactive
         const { error: updateError } = await supabase
@@ -292,11 +321,18 @@ class CommunityService {
         });
 
         if (insertError) {
-          // Handle duplicate key error specifically
+          // Handle duplicate key error specifically (23505 = unique_violation)
           if (insertError.code === '23505') {
-            return { success: true }; // Already joined, treat as success
+            // Already joined, get current count and treat as success
+            const { data: community } = await supabase
+              .from('communities')
+              .select('member_count')
+              .eq('id', communityId)
+              .single();
+
+            return { success: true, member_count: community?.member_count };
           }
-          return { success: false, error: 'Failed to join community' };
+          return { success: false, error: insertError.message || 'Failed to join community' };
         }
       }
 
@@ -304,19 +340,44 @@ class CommunityService {
       this.clearUserCache(userId);
       this.clearCommunityCache(communityId);
 
-      // Update member count
-      await this.updateMemberCount(communityId);
+      // Get updated member count (trigger should have updated it)
+      const { data: updatedCommunity } = await supabase
+        .from('communities')
+        .select('member_count')
+        .eq('id', communityId)
+        .single();
 
-      return { success: true };
+      return { success: true, member_count: updatedCommunity?.member_count };
     } catch (error: any) {
-      return { success: false, error: error.message || 'Failed to join community' };
+      return { success: false, error: error.message || 'Network error. Please check your connection.' };
     }
   }
 
   /**
-   * Leave a community
+   * Leave a community with request deduplication
    */
-  async leaveCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string }> {
+  async leaveCommunity(userId: string, communityId: string): Promise<{ success: boolean; error?: string; member_count?: number }> {
+    const requestKey = `leave-${userId}-${communityId}`;
+
+    // Prevent duplicate requests - return existing promise if in progress
+    if (this.activeJoinRequests.has(requestKey)) {
+      return this.activeJoinRequests.get(requestKey)!;
+    }
+
+    const requestPromise = this._executeLeave(userId, communityId);
+    this.activeJoinRequests.set(requestKey, requestPromise);
+
+    requestPromise.finally(() => {
+      this.activeJoinRequests.delete(requestKey);
+    });
+
+    return requestPromise;
+  }
+
+  /**
+   * Internal method to execute leave operation
+   */
+  private async _executeLeave(userId: string, communityId: string): Promise<{ success: boolean; error?: string; member_count?: number }> {
     try {
       // Check if user is owner - owners can't leave
       const { data: membership } = await supabase
@@ -327,8 +388,14 @@ class CommunityService {
         .single();
 
       if (!membership) {
-        // Not a member, treat as success
-        return { success: true };
+        // Not a member - get current count and treat as success
+        const { data: community } = await supabase
+          .from('communities')
+          .select('member_count')
+          .eq('id', communityId)
+          .single();
+
+        return { success: true, member_count: community?.member_count };
       }
 
       if (membership.role === 'owner') {
@@ -342,19 +409,23 @@ class CommunityService {
         .eq('community_id', communityId);
 
       if (error) {
-          return { success: false, error: 'Failed to leave community' };
+        return { success: false, error: error.message || 'Failed to leave community' };
       }
 
       // Clear cache
       this.clearUserCache(userId);
       this.clearCommunityCache(communityId);
 
-      // Update member count
-      await this.updateMemberCount(communityId);
+      // Get updated member count (trigger should have updated it)
+      const { data: updatedCommunity } = await supabase
+        .from('communities')
+        .select('member_count')
+        .eq('id', communityId)
+        .single();
 
-      return { success: true };
+      return { success: true, member_count: updatedCommunity?.member_count };
     } catch (error: any) {
-      return { success: false, error: error.message || 'Failed to leave community' };
+      return { success: false, error: error.message || 'Network error. Please check your connection.' };
     }
   }
 

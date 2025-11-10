@@ -24,6 +24,8 @@ export function BottomNavigation({ currentRoute }: BottomNavigationProps) {
 
   const FloatingAddButton = () => (
     <TouchableOpacity
+      // Added testID for Maestro
+      testID="add-tab-icon"
       style={styles.floatingButton}
       activeOpacity={0.8}
       onPress={() => router.push('/add')}
@@ -56,6 +58,7 @@ export function BottomNavigation({ currentRoute }: BottomNavigationProps) {
             <TouchableOpacity
               key={item.name}
               style={styles.tabItem}
+              testID={`${item.name}-tab-icon`}
               onPress={() => router.push(item.route as any)}
               activeOpacity={0.7}
             >

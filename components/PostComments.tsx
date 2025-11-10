@@ -1,14 +1,13 @@
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
-import { postEngagementService } from '@/services/postEngagementService';
 import { supabase } from '@/lib/supabase';
 import { CommentWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 interface PostCommentsProps {
   postId: string;
@@ -17,6 +16,7 @@ interface PostCommentsProps {
   showInput?: boolean;
   showComments?: boolean;
   postAuthorName?: string; // For "Replying to" text
+  bottomOffset?: number;
 }
 
 export function PostComments({ 
@@ -25,7 +25,8 @@ export function PostComments({
   onCommentDeleted, 
   showInput = true, 
   showComments = true,
-  postAuthorName 
+  postAuthorName,
+  bottomOffset = 0,
 }: PostCommentsProps) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
@@ -159,6 +160,7 @@ export function PostComments({
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         parent_comment_id: null,
+        likes_count: 0,
         user: {
           id: user.id,
           name: currentUserData?.name || currentUserData?.username || user.user_metadata?.name || user.user_metadata?.username || user.email || 'Anonymous',
@@ -290,9 +292,10 @@ export function PostComments({
 
   // If only showing input (Twitter-style fixed bottom input)
   if (showInput && !showComments) {
+    const offset = bottomOffset + insets.bottom;
     return (
       <KeyboardAvoidingView 
-        style={[styles.fixedInputContainer, { bottom: 70 + insets.bottom }]} // Dynamic bottom spacing
+        style={[styles.fixedInputContainer, { bottom: offset }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.twitterInputContainer}>

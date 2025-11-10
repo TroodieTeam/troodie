@@ -1,0 +1,52 @@
+# Nightly Test Suite
+# Purpose: Comprehensive testing including edge cases and performance
+# Run time: ~60 minutes
+# Run: maestro test e2e/suites/nightly.yaml
+
+name: Nightly Tests
+env:
+  APP_ID: com.troodie.troodie.com
+  TEST_EMAIL: nightly@troodie.test
+  TEST_PASSWORD: NightlyTest123!
+
+tags:
+  - nightly
+  - comprehensive
+  - p0
+  - p1
+  - p2
+
+flows:
+  # === All P0 Flows ===
+  - onboarding/complete-onboarding.yaml
+  - auth/signup.yaml
+  - auth/login.yaml
+  - auth/logout.yaml
+  - discovery/search-restaurants.yaml
+  - discovery/filter-restaurants.yaml
+  - discovery/city-selector.yaml
+  - discovery/save-restaurant.yaml
+  - restaurant/view-restaurant-details.yaml
+  - content/create-review.yaml
+  - content/save-to-board.yaml
+  - boards/create-and-manage-board.yaml
+  - boards/board-collaboration.yaml
+  - social/follow-user.yaml
+  - social/like-review.yaml
+  - social/comment-review.yaml
+  - notifications/notification-interactions.yaml
+  - profile/edit-profile.yaml
+  - profile/upload-avatar.yaml
+
+  # === P1 Flows (when available) ===
+  # - feed/interact-with-feed.yaml
+  # - community/join-and-participate.yaml
+  # - content/manage-posts.yaml
+  # - discovery/advanced-search.yaml
+  # - account/upgrade-to-creator.yaml
+  # - account/claim-restaurant.yaml
+
+  # === P2 Flows (when available) ===
+  # - settings/manage-settings.yaml
+  # - offline/offline-experience.yaml
+  # - performance/heavy-usage.yaml

@@ -88,8 +88,12 @@ class SaveService {
     const { userId, restaurantId, restaurantName, onBoardSelection, onSuccess, onError } = options;
     const key = `${restaurantId}-${userId}`;
 
+    console.log('[SaveService] performToggleSave called:', { userId, restaurantId, restaurantName });
+
     try {
       const currentState = await this.getSaveState(restaurantId, userId);
+      console.log('[SaveService] Current save state:', currentState);
+
       let quickSavesBoardId = currentState.quickSavesBoardId;
 
       // If no Your Saves board exists, try to create it
@@ -106,8 +110,11 @@ class SaveService {
       }
 
       const isInQuickSaves = currentState.boards.includes(quickSavesBoardId);
+      console.log('[SaveService] isInQuickSaves:', isInQuickSaves);
 
       if (isInQuickSaves) {
+        console.log('[SaveService] Removing from Quick Saves...');
+
         // Optimistic update
         this.updateSaveState(key, {
           isSaved: currentState.boards.length > 1,
@@ -117,10 +124,13 @@ class SaveService {
 
         // Remove from Your Saves
         await boardService.removeRestaurantFromBoard(quickSavesBoardId, restaurantId);
-        
+        console.log('[SaveService] Removed from Your Saves successfully');
+
         ToastService.showSuccess('Removed from Your Saves');
         onSuccess?.();
       } else {
+        console.log('[SaveService] Adding to Quick Saves...');
+
         // Optimistic update
         this.updateSaveState(key, {
           isSaved: true,
@@ -130,7 +140,8 @@ class SaveService {
 
         // Add to Your Saves
         await boardService.saveRestaurantToQuickSaves(userId, restaurantId);
-        
+        console.log('[SaveService] Added to Your Saves successfully');
+
         // Show toast with board selection action
         ToastService.showSuccess(
           'Added to Your Saves',
@@ -141,7 +152,7 @@ class SaveService {
             }
           }
         );
-        
+
         onSuccess?.();
       }
     } catch (error: any) {

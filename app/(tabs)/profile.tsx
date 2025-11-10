@@ -15,6 +15,7 @@ import { useSmoothDataFetch, useSmoothMultiDataFetch } from '@/hooks/useSmoothDa
 import { supabase } from '@/lib/supabase';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
+import { boardServiceExtended } from '@/services/boardServiceExtended';
 import { communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
@@ -112,7 +113,14 @@ export default function ProfileScreen() {
   const fetchQuickSaves = useCallback(async () => {
     if (!user?.id) return [];
     try {
-      const quickSaves = await boardService.getQuickSavesRestaurants(user.id, 50);
+      // First try to get Your Saves board
+      let quickSaves = await boardService.getQuickSavesRestaurants(user.id, 50);
+      
+      // If no Quick Saves board, get ALL saves
+      if (!quickSaves || quickSaves.length === 0) {
+        console.log('No Quick Saves board found, fetching all saves for profile');
+        quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 50);
+      }
       
       if (!quickSaves || quickSaves.length === 0) {
         return [];

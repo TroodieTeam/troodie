@@ -1,0 +1,185 @@
+appId: com.troodie.troodie.com
+---
+# Master Test Suite: Full Feature Verification
+# Tests all major features with @bypass.com account
+# Runs all tests in sequence to verify complete functionality
+
+# =================================================================
+# TEST 1: AUTHENTICATION & SAVE RESTAURANT
+# =================================================================
+- launchApp
+- tapOn: "Log in"
+
+# Sign in - enter email in text field
+- tapOn: "user@example.com"
+- inputText: "consumer2@bypass.com"
+- tapOn: "Send Code"
+- waitForAnimationToEnd: # Wait for server response/transition
+    timeout: 10000
+
+# Enter OTP code (REVERTED TO INDIVIDUAL DIGITS)
+# Dismiss paste permission dialog if it appears (from previous runs)
+- tapOn:
+    text: "Don't Allow Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Enter each digit individually
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+# Wait for auto-submit and navigation
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Should be on home screen - verify we're logged in
+- assertVisible: "Welcome to Troodie!"
+
+# Navigate to Explore tab - USING RELIABLE testID
+- tapOn: "explore-tab-icon"
+
+# Find a restaurant card and tap it
+- tapOn:
+    id: "restaurant-card-0"
+
+# Tap the bookmark/save button
+- tapOn:
+    id: "save-button"
+
+# Should see success toast
+- assertVisible: "Added to Your Saves|Saved"
+
+# Verify bookmark icon is filled/active
+- assertVisible:
+    id: "save-button-filled"
+
+# =================================================================
+# TEST 2: CREATE CUSTOM BOARD
+# =================================================================
+# Navigate to Profile/More tab - USING RELIABLE testID (assuming profile is "More")
+- tapOn: "profile-tab-icon"
+
+# Navigate to Boards or My Boards section
+- tapOn: "My Boards|Boards"
+
+# Tap create board button
+- tapOn:
+    id: "create-board-button"
+
+# Select board type - Private
+- tapOn: "Private Board|Create Private Board"
+
+# Fill in board details
+- tapOn: "Board Name|Title"
+- inputText: "Test Board Full Suite"
+- hideKeyboard
+
+- tapOn: "Description"
+- inputText: "Testing board creation in full suite"
+- hideKeyboard
+
+# Create the board
+- tapOn: "Create|Next|Continue"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Should see success message or board list
+- assertVisible: "Test Board Full Suite|Board created|Success"
+
+# =================================================================
+# TEST 3: CREATE SIMPLE POST
+# =================================================================
+# Tap Add button - USING RELIABLE testID
+- tapOn: "add-tab-icon"
+
+# Select Create Post
+- tapOn: "Create Post|New Post"
+
+# Select post type - Simple Community Post
+- tapOn: "Share to Community|Community Post"
+
+# Enter post caption
+- tapOn: "What was your experience|caption|text"
+- inputText: "Testing post creation in full suite"
+- hideKeyboard
+
+# Tap Post/Publish button
+- tapOn: "Post|Publish|Create"
+
+# Should see success message
+- assertVisible: "Posted|Success|Review posted"
+
+# =================================================================
+# TEST 4: CREATE RESTAURANT REVIEW
+# =================================================================
+# Tap Add button again - USING RELIABLE testID
+- tapOn: "add-tab-icon"
+
+# Select Create Post
+- tapOn: "Create Post|New Post"
+
+# Select Restaurant Review post type
+- tapOn: "Restaurant Review|Write a Review"
+
+# Tap to select restaurant
+- tapOn: "Choose a restaurant|Where did you go"
+
+# Search for a restaurant
+- tapOn: "Search"
+- inputText: "test restaurant"
+
+# Select first restaurant from results
+- tapOn:
+    index: 0
+
+# Rate the experience - tap "Loved it"
+- tapOn: "How was it|Rate"
+- tapOn: "Loved it|Recommended|😊"
+
+# Enter review text
+- tapOn: "What was your experience"
+- inputText: "Great experience! Full suite test."
+- hideKeyboard
+
+# Post the review
+- tapOn: "Post|Publish"
+
+# Should see success
+- assertVisible: "Review posted|Posted|Success"
+
+# =================================================================
+# TEST 5: CREATE COMMUNITY
+# =================================================================
+# Tap Add button - USING RELIABLE testID
+- tapOn: "add-tab-icon"
+
+# Select Create Community
+- tapOn: "Create Community|New Community"
+
+# Fill in community details
+- tapOn: "Community Name|Name"
+- inputText: "Test Community Full Suite"
+- hideKeyboard
+
+- tapOn: "Description"
+- inputText: "Testing community in full suite"
+- hideKeyboard
+
+# Select community type
+- tapOn: "Public|Private|Community Type"
+- tapOn: "Public"
+
+# Create the community
+- tapOn: "Create|Next|Continue"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Should see success message
+- assertVisible: "Community created|Success|Created"
+
+# All tests passed!
+- stopApp

@@ -1,20 +1,12 @@
 -- Email Authentication Configuration
 -- This migration configures settings for email OTP authentication
 
--- Update auth settings for email OTP
-UPDATE auth.config
-SET 
-  -- Set OTP expiry to 60 minutes (3600 seconds)
-  otp_exp = 3600,
-  -- Enable email confirmation for new users
-  mailer_autoconfirm = false,
-  -- Enable secure email change (requires re-authentication)
-  secure_email_change_enabled = true,
-  -- Enable OTP for email verification
-  enable_signup = true,
-  -- Set minimum password length (for future use)
-  minimum_password_length = 6
-WHERE id = 'default';
+-- Note: Auth configuration is now managed through Supabase Dashboard
+-- Go to Authentication > Settings and configure:
+-- 1. Enable email signup
+-- 2. Set OTP expiry time
+-- 3. Configure email templates
+-- 4. Set password requirements
 
 -- Ensure email templates are properly configured
 -- Note: Email templates must be configured through the Supabase Dashboard UI
