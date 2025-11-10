@@ -6,6 +6,7 @@ import { InfoModal } from '@/components/InfoModal';
 import { RestaurantCardWithSaveSkeleton } from '@/components/LoadingSkeleton';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { applyShadow, designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
@@ -27,29 +28,29 @@ import { Notification } from '@/types/notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
-  Bell,
-  Bookmark,
-  Coffee,
-  Globe,
-  Lock,
-  MessageSquare,
-  Plus,
-  Search,
-  Sparkles,
-  UserPlus,
-  Users,
-  Utensils
+    Bell,
+    Bookmark,
+    Coffee,
+    Globe,
+    Lock,
+    MessageSquare,
+    Plus,
+    Search,
+    Sparkles,
+    UserPlus,
+    Users,
+    Utensils
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 
@@ -223,8 +224,50 @@ export default function HomeScreen() {
   };
 
   const handleNotificationPress = (notification: Notification) => {
+    console.log('[Feed] Notification pressed:', notification.type, notification.related_id);
     setShowNotificationCenter(false);
-    // The notification center will handle navigation
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'board_invite':
+        if (notification.related_id) {
+          // Extract invitation_id from notification data
+          const invitationId = notification.data && typeof notification.data === 'object' && 'invitation_id' in notification.data
+            ? (notification.data as any).invitation_id
+            : undefined;
+
+          console.log('[Feed] Navigating to board:', notification.related_id, 'with invitation_id:', invitationId);
+
+          // Navigate with invitation_id as a query parameter
+          router.push({
+            pathname: `/boards/${notification.related_id}`,
+            params: invitationId ? { invitation_id: invitationId } : {}
+          });
+        } else if (notification.data && typeof notification.data === 'object' && ('board_id' in notification.data || 'boardId' in notification.data)) {
+          const boardId = (notification.data as any).board_id || (notification.data as any).boardId;
+          const invitationId = (notification.data as any).invitation_id;
+
+          console.log('[Feed] Navigating to board via data:', boardId, 'with invitation_id:', invitationId);
+
+          router.push({
+            pathname: `/boards/${boardId}`,
+            params: invitationId ? { invitation_id: invitationId } : {}
+          });
+        }
+        break;
+      case 'restaurant_recommendation':
+        if (notification.data && typeof notification.data === 'object' && 'restaurantId' in notification.data) {
+          router.push(`/restaurant/${notification.data.restaurantId}`);
+        }
+        break;
+      case 'achievement':
+        router.push('/profile?tab=achievements');
+        break;
+      // Add other notification types as needed
+      default:
+        console.log('[Feed] Unhandled notification type:', notification.type);
+        break;
+    }
   };
 
   const transformToTopRatedContent = useCallback((restaurants: any[]): TrendingContent[] => {
@@ -309,7 +352,10 @@ export default function HomeScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerTop}>
-        <Text style={styles.brandName}>{strings.app.name}</Text>
+        <View style={styles.headerLeft}>
+          <ProfileAvatar size={36} style={styles.profileAvatar} />
+          <Text style={styles.brandName}>{strings.app.name}</Text>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/explore')}>
             <Search size={24} color={designTokens.colors.textDark} />
@@ -678,6 +724,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileAvatar: {
+    marginRight: designTokens.spacing.md,
   },
   brandName: {
     ...designTokens.typography.brandHeading,

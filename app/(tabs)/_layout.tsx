@@ -1,12 +1,12 @@
 import { Tabs } from 'expo-router';
-import { Compass, Heart, Home, Plus, User } from 'lucide-react-native';
+import { Compass, Heart, Home, MoreHorizontal, Plus } from 'lucide-react-native';
 import React from 'react';
 import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
+import { compactDesign, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
-import { designTokens, compactDesign } from '@/constants/designTokens';
 import { useRouter } from 'expo-router';
 
 export default function TabLayout() {
@@ -87,13 +87,31 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="more"
+        options={{
+          title: 'More',
+          tabBarTestID: 'tab-more',
+          tabBarIcon: ({ color, focused }) => (
+            <MoreHorizontal size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarTestID: 'tab-profile',
-          tabBarIcon: ({ color, focused }) => (
-            <User size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
-          ),
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="business"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="creator"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

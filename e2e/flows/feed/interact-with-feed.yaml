@@ -1,0 +1,166 @@
+appId: com.troodie.troodie.com
+---
+# Test: Feed interactions
+# Priority: P1 (Important)
+# Tags: feed, social, engagement
+# Prerequisites: User logged in
+
+- launchApp
+
+# Ensure logged in
+- runFlow: ../helpers/auth.yaml
+
+# Navigate to Feed/Home tab
+- tapOn:
+    id: "tab-feed"
+
+# Wait for feed to load
+- assertVisible:
+    text: "Feed"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    id: "feed-list"
+    timeout: 10000
+    optional: true
+
+# Scroll through feed
+- scrollUntilVisible:
+    element:
+      id: "post-card"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+# Test: Like a post
+- tapOn:
+    id: "post-like-button-0"
+    optional: true
+
+# Verify like animation/feedback
+- assertVisible:
+    id: "post-like-active-0"
+    timeout: 2000
+    optional: true
+
+# Unlike the post
+- tapOn:
+    id: "post-like-button-0"
+    optional: true
+
+# Test: Comment on a post
+- tapOn:
+    id: "post-comment-button-0"
+    optional: true
+
+# Should open comment modal/screen
+- assertVisible:
+    text: "Comments"
+    timeout: 5000
+
+- tapOn:
+    id: "comment-input"
+
+- inputText: "Great recommendation! 🍕"
+
+- tapOn:
+    text: "Post"
+
+# Verify comment appears
+- assertVisible:
+    text: "Great recommendation"
+    timeout: 5000
+
+# Go back to feed
+- back
+
+# Test: Save a post
+- tapOn:
+    id: "post-save-button-1"
+    optional: true
+
+# Should show save confirmation
+- assertVisible:
+    text: "Saved"
+    timeout: 3000
+    optional: true
+
+# Test: Share a post
+- tapOn:
+    id: "post-share-button-1"
+    optional: true
+
+# Should open share sheet
+- assertVisible:
+    text: "Share"
+    timeout: 3000
+    optional: true
+
+# Close share sheet
+- back
+
+# Test: View user profile from post
+- tapOn:
+    id: "post-user-avatar-0"
+    optional: true
+
+# Should navigate to user profile
+- assertVisible:
+    id: "user-profile"
+    timeout: 10000
+    optional: true
+
+# Go back
+- back
+
+# Test: View restaurant from post
+- tapOn:
+    id: "post-restaurant-name-0"
+    optional: true
+
+# Should navigate to restaurant detail
+- assertVisible:
+    id: "restaurant-detail"
+    timeout: 10000
+    optional: true
+
+# Go back
+- back
+
+# Test: Feed filters
+- tapOn:
+    id: "feed-filter-button"
+    optional: true
+
+# Switch to "Following" feed
+- tapOn:
+    text: "Following"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify feed refreshed
+- assertVisible:
+    id: "feed-list"
+
+# Switch back to "All"
+- tapOn:
+    id: "feed-filter-button"
+    optional: true
+
+- tapOn:
+    text: "All"
+    optional: true
+
+# Test: Pull to refresh
+- scrollUntilVisible:
+    element:
+      id: "feed-list"
+    direction: UP
+
+- scroll:
+    direction: DOWN
+
+# Take screenshot
+- takeScreenshot: "feed-interactions-complete"

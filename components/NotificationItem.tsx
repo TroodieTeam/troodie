@@ -80,7 +80,17 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
         styles.notificationItem,
         !notification.is_read && styles.unreadNotification
       ]}
-      onPress={() => onPress(notification)}
+      onPress={() => {
+        console.log('[NotificationItem] Notification pressed, calling onPress handler');
+        console.log('[NotificationItem] onPress function:', typeof onPress);
+        console.log('[NotificationItem] Notification data:', JSON.stringify(notification, null, 2));
+        try {
+          onPress(notification);
+          console.log('[NotificationItem] onPress handler called successfully');
+        } catch (error) {
+          console.error('[NotificationItem] Error calling onPress:', error);
+        }
+      }}
       activeOpacity={0.7}
     >
       <View style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}>

@@ -1,16 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient } from '@supabase/supabase-js'
-import Constants from 'expo-constants'
 import 'react-native-url-polyfill/auto'
+import config from './config'
 
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey
+export const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
@@ -37,6 +31,9 @@ export type Database = {
           is_verified: boolean
           is_restaurant: boolean
           is_creator: boolean
+          account_type: 'consumer' | 'creator' | 'business'
+          account_status: 'active' | 'suspended' | 'pending_verification'
+          account_upgraded_at: string | null
           profile_completion: number
           default_board_id: string | null
           default_avatar_url: string | null
@@ -60,6 +57,9 @@ export type Database = {
           is_verified?: boolean
           is_restaurant?: boolean
           is_creator?: boolean
+          account_type?: 'consumer' | 'creator' | 'business'
+          account_status?: 'active' | 'suspended' | 'pending_verification'
+          account_upgraded_at?: string | null
           profile_completion?: number
           default_board_id?: string | null
           default_avatar_url?: string | null
@@ -83,6 +83,9 @@ export type Database = {
           is_verified?: boolean
           is_restaurant?: boolean
           is_creator?: boolean
+          account_type?: 'consumer' | 'creator' | 'business'
+          account_status?: 'active' | 'suspended' | 'pending_verification'
+          account_upgraded_at?: string | null
           profile_completion?: number
           default_board_id?: string | null
           default_avatar_url?: string | null
@@ -246,6 +249,183 @@ export type Database = {
           price_range?: string | null
           visit_type?: 'dine_in' | 'takeout' | 'delivery' | null
           privacy?: 'public' | 'friends' | 'private'
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      restaurant_claims: {
+        Row: {
+          id: string
+          user_id: string
+          restaurant_id: string
+          ownership_proof_type: string
+          email: string | null
+          phone: string | null
+          documents: string[] | null
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          restaurant_id: string
+          ownership_proof_type: string
+          email?: string | null
+          phone?: string | null
+          documents?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          restaurant_id?: string
+          ownership_proof_type?: string
+          email?: string | null
+          phone?: string | null
+          documents?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      creator_applications: {
+        Row: {
+          id: string
+          user_id: string
+          instagram_handle: string | null
+          tiktok_handle: string | null
+          youtube_handle: string | null
+          twitter_handle: string | null
+          follower_count: number
+          bio: string | null
+          content_samples: string[] | null
+          content_categories: string[] | null
+          preferred_cuisine_types: string[] | null
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count: number
+          bio?: string | null
+          content_samples?: string[] | null
+          content_categories?: string[] | null
+          preferred_cuisine_types?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count?: number
+          bio?: string | null
+          content_samples?: string[] | null
+          content_categories?: string[] | null
+          preferred_cuisine_types?: string[] | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          data: any | null
+          related_id: string | null
+          related_type: string | null
+          priority: number
+          is_read: boolean
+          is_actioned: boolean
+          read_at: string | null
+          expires_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          data?: any | null
+          related_id?: string | null
+          related_type?: string | null
+          priority?: number
+          is_read?: boolean
+          is_actioned?: boolean
+          read_at?: string | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          data?: any | null
+          related_id?: string | null
+          related_type?: string | null
+          priority?: number
+          is_read?: boolean
+          is_actioned?: boolean
+          read_at?: string | null
+          expires_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -904,6 +1084,286 @@ export type Database = {
           created_at?: string
         }
       }
+      restaurant_claims: {
+        Row: {
+          id: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method: 'domain_match' | 'email_code' | 'manual_review' | null
+          is_verified: boolean
+          verified_at: string | null
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          ownership_proof_type: 'business_license' | 'utility_bill' | 'lease' | 'domain_match' | 'other' | null
+          ownership_proof_url: string | null
+          business_phone: string | null
+          additional_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          is_verified?: boolean
+          verified_at?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          ownership_proof_type?: 'business_license' | 'utility_bill' | 'lease' | 'domain_match' | 'other' | null
+          ownership_proof_url?: string | null
+          business_phone?: string | null
+          additional_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          user_id?: string
+          email?: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          is_verified?: boolean
+          verified_at?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          ownership_proof_type?: 'business_license' | 'utility_bill' | 'lease' | 'domain_match' | 'other' | null
+          ownership_proof_url?: string | null
+          business_phone?: string | null
+          additional_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      creator_applications: {
+        Row: {
+          id: string
+          user_id: string
+          instagram_handle: string | null
+          tiktok_handle: string | null
+          youtube_handle: string | null
+          twitter_handle: string | null
+          follower_count: number
+          content_categories: string[] | null
+          sample_content_urls: string[] | null
+          bio: string | null
+          location: string | null
+          preferred_cuisine_types: string[] | null
+          has_business_email: boolean
+          status: 'pending' | 'approved' | 'rejected'
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_reason: string | null
+          review_notes: string | null
+          can_resubmit: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count: number
+          content_categories?: string[] | null
+          sample_content_urls?: string[] | null
+          bio?: string | null
+          location?: string | null
+          preferred_cuisine_types?: string[] | null
+          has_business_email?: boolean
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          instagram_handle?: string | null
+          tiktok_handle?: string | null
+          youtube_handle?: string | null
+          twitter_handle?: string | null
+          follower_count?: number
+          content_categories?: string[] | null
+          sample_content_urls?: string[] | null
+          bio?: string | null
+          location?: string | null
+          preferred_cuisine_types?: string[] | null
+          has_business_email?: boolean
+          status?: 'pending' | 'approved' | 'rejected'
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_reason?: string | null
+          review_notes?: string | null
+          can_resubmit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      review_logs: {
+        Row: {
+          id: string
+          entity_type: 'restaurant_claim' | 'creator_application'
+          entity_id: string
+          action: 'created' | 'viewed' | 'approved' | 'rejected' | 'noted' | 'escalated' | 'updated'
+          actor_id: string
+          actor_role: string | null
+          previous_status: string | null
+          new_status: string | null
+          notes: string | null
+          metadata: unknown | null
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          entity_type: 'restaurant_claim' | 'creator_application'
+          entity_id: string
+          action: 'created' | 'viewed' | 'approved' | 'rejected' | 'noted' | 'escalated' | 'updated'
+          actor_id: string
+          actor_role?: string | null
+          previous_status?: string | null
+          new_status?: string | null
+          notes?: string | null
+          metadata?: unknown | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          entity_type?: 'restaurant_claim' | 'creator_application'
+          entity_id?: string
+          action?: 'created' | 'viewed' | 'approved' | 'rejected' | 'noted' | 'escalated' | 'updated'
+          actor_id?: string
+          actor_role?: string | null
+          previous_status?: string | null
+          new_status?: string | null
+          notes?: string | null
+          metadata?: unknown | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+      }
+      creator_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          display_name: string | null
+          bio: string | null
+          location: string | null
+          food_specialties: string[] | null
+          specialties: string[] | null
+          social_links: unknown | null
+          verification_status: 'pending' | 'verified' | 'rejected'
+          metrics: unknown | null
+          portfolio_uploaded: boolean
+          instant_approved: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          display_name?: string | null
+          bio?: string | null
+          location?: string | null
+          food_specialties?: string[] | null
+          specialties?: string[] | null
+          social_links?: unknown | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          metrics?: unknown | null
+          portfolio_uploaded?: boolean
+          instant_approved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          display_name?: string | null
+          bio?: string | null
+          location?: string | null
+          food_specialties?: string[] | null
+          specialties?: string[] | null
+          social_links?: unknown | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          metrics?: unknown | null
+          portfolio_uploaded?: boolean
+          instant_approved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      business_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          restaurant_id: string
+          business_email: string | null
+          business_role: string | null
+          verification_method: string | null
+          verification_status: 'pending' | 'verified' | 'rejected'
+          claimed_at: string
+          management_permissions: string[] | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          restaurant_id: string
+          business_email?: string | null
+          business_role?: string | null
+          verification_method?: string | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          claimed_at?: string
+          management_permissions?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          restaurant_id?: string
+          business_email?: string | null
+          business_role?: string | null
+          verification_method?: string | null
+          verification_status?: 'pending' | 'verified' | 'rejected'
+          claimed_at?: string
+          management_permissions?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       restaurant_images: {
         Row: {
           id: string
@@ -969,8 +1429,463 @@ export type Database = {
           updated_at?: string
         }
       }
+      creator_portfolio_items: {
+        Row: {
+          id: string
+          creator_profile_id: string
+          image_url: string
+          caption: string | null
+          restaurant_name: string | null
+          display_order: number
+          is_featured: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_profile_id: string
+          image_url: string
+          caption?: string | null
+          restaurant_name?: string | null
+          display_order?: number
+          is_featured?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          creator_profile_id?: string
+          image_url?: string
+          caption?: string | null
+          restaurant_name?: string | null
+          display_order?: number
+          is_featured?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      restaurant_claims: {
+        Row: {
+          id: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method: 'domain_match' | 'email_code' | 'manual_review' | null
+          verification_code: string | null
+          code_expires_at: string | null
+          status: 'pending' | 'verified' | 'rejected' | 'expired'
+          verified_at: string | null
+          rejection_reason: string | null
+          admin_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          user_id: string
+          email: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          verification_code?: string | null
+          code_expires_at?: string | null
+          status?: 'pending' | 'verified' | 'rejected' | 'expired'
+          verified_at?: string | null
+          rejection_reason?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          user_id?: string
+          email?: string
+          verification_method?: 'domain_match' | 'email_code' | 'manual_review' | null
+          verification_code?: string | null
+          code_expires_at?: string | null
+          status?: 'pending' | 'verified' | 'rejected' | 'expired'
+          verified_at?: string | null
+          rejection_reason?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      creator_onboarding_progress: {
+        Row: {
+          id: string
+          user_id: string
+          current_step: number
+          total_steps: number
+          step_data: unknown
+          started_at: string
+          completed_at: string | null
+          abandoned_at: string | null
+          completion_source: 'app' | 'web' | 'admin'
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          current_step?: number
+          total_steps?: number
+          step_data?: unknown
+          started_at?: string
+          completed_at?: string | null
+          abandoned_at?: string | null
+          completion_source?: 'app' | 'web' | 'admin'
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          current_step?: number
+          total_steps?: number
+          step_data?: unknown
+          started_at?: string
+          completed_at?: string | null
+          abandoned_at?: string | null
+          completion_source?: 'app' | 'web' | 'admin'
+        }
+      }
+      campaign_applications: {
+        Row: {
+          id: string
+          campaign_id: string
+          creator_id: string
+          proposed_rate_cents: number | null
+          proposed_deliverables: string | null
+          cover_letter: string | null
+          status: 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+          applied_at: string
+          reviewed_at: string | null
+          reviewer_id: string | null
+        }
+        Insert: {
+          id?: string
+          campaign_id: string
+          creator_id: string
+          proposed_rate_cents?: number | null
+          proposed_deliverables?: string | null
+          cover_letter?: string | null
+          status?: 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+          applied_at?: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+        }
+      }
+      campaigns: {
+        Row: {
+          id: string
+          restaurant_id: string
+          business_id: string | null
+          title: string
+          description: string | null
+          requirements: unknown
+          deliverables: unknown
+          budget_total: number
+          payout_per_creator: number
+          max_creators: number
+          target_audience: unknown
+          location: string | null
+          categories: string[] | null
+          status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled'
+          start_date: string | null
+          end_date: string | null
+          application_deadline: string | null
+          views_count: number
+          applications_count: number
+          accepted_creators_count: number
+          created_at: string
+          updated_at: string
+          published_at: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          business_id?: string | null
+          title: string
+          description?: string | null
+          requirements?: unknown
+          deliverables?: unknown
+          budget_total?: number
+          payout_per_creator: number
+          max_creators?: number
+          target_audience?: unknown
+          location?: string | null
+          categories?: string[] | null
+          status?: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled'
+          start_date?: string | null
+          end_date?: string | null
+          application_deadline?: string | null
+          views_count?: number
+          applications_count?: number
+          accepted_creators_count?: number
+          created_at?: string
+          updated_at?: string
+          published_at?: string | null
+          completed_at?: string | null
+        }
+      }
+      creator_campaigns: {
+        Row: {
+          id: string
+          campaign_id: string
+          creator_id: string
+          creator_profile_id: string | null
+          status: 'applied' | 'accepted' | 'rejected' | 'active' | 'completed' | 'cancelled'
+          application_note: string | null
+          rejection_reason: string | null
+          deliverables_status: unknown
+          proof_urls: string[] | null
+          completion_notes: string | null
+          content_views: number
+          content_saves: number
+          content_clicks: number
+          engagement_rate: number | null
+          agreed_payout: number | null
+          actual_earnings: number | null
+          bonus_amount: number
+          applied_at: string
+          accepted_at: string | null
+          started_at: string | null
+          completed_at: string | null
+          paid_at: string | null
+        }
+        Insert: {
+          id?: string
+          campaign_id: string
+          creator_id: string
+          creator_profile_id?: string | null
+          status?: 'applied' | 'accepted' | 'rejected' | 'active' | 'completed' | 'cancelled'
+          application_note?: string | null
+          rejection_reason?: string | null
+          deliverables_status?: unknown
+          proof_urls?: string[] | null
+          completion_notes?: string | null
+          content_views?: number
+          content_saves?: number
+          content_clicks?: number
+          engagement_rate?: number | null
+          agreed_payout?: number | null
+          actual_earnings?: number | null
+          bonus_amount?: number
+          applied_at?: string
+          accepted_at?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          paid_at?: string | null
+        }
+      }
+      creator_earnings: {
+        Row: {
+          id: string
+          creator_id: string
+          campaign_id: string | null
+          creator_campaign_id: string | null
+          type: 'campaign' | 'bonus' | 'referral' | 'tip' | 'adjustment'
+          description: string | null
+          amount: number
+          status: 'pending' | 'available' | 'processing' | 'paid' | 'failed' | 'cancelled'
+          payout_id: string | null
+          payout_method: string | null
+          earned_date: string
+          available_date: string | null
+          paid_date: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          campaign_id?: string | null
+          creator_campaign_id?: string | null
+          type: 'campaign' | 'bonus' | 'referral' | 'tip' | 'adjustment'
+          description?: string | null
+          amount: number
+          status?: 'pending' | 'available' | 'processing' | 'paid' | 'failed' | 'cancelled'
+          payout_id?: string | null
+          payout_method?: string | null
+          earned_date?: string
+          available_date?: string | null
+          paid_date?: string | null
+          created_at?: string
+        }
+      }
+      creator_payouts: {
+        Row: {
+          id: string
+          creator_id: string
+          amount: number
+          currency: string
+          status: 'initiated' | 'processing' | 'completed' | 'failed' | 'cancelled'
+          provider: string
+          provider_payout_id: string | null
+          provider_response: unknown | null
+          earning_ids: string[] | null
+          requested_at: string
+          processed_at: string | null
+          completed_at: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          retry_count: number
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          amount: number
+          currency?: string
+          status?: 'initiated' | 'processing' | 'completed' | 'failed' | 'cancelled'
+          provider?: string
+          provider_payout_id?: string | null
+          provider_response?: unknown | null
+          earning_ids?: string[] | null
+          requested_at?: string
+          processed_at?: string | null
+          completed_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          retry_count?: number
+        }
+      }
+      creator_analytics: {
+        Row: {
+          id: string
+          creator_id: string
+          date: string
+          period: 'daily' | 'weekly' | 'monthly'
+          content_views: number
+          unique_viewers: number
+          content_saves: number
+          content_shares: number
+          content_clicks: number
+          engagement_rate: number | null
+          save_rate: number | null
+          click_through_rate: number | null
+          new_followers: number
+          total_followers: number
+          unfollows: number
+          campaigns_active: number
+          campaigns_completed: number
+          campaign_applications: number
+          earnings_total: number
+          earnings_pending: number
+          influence_score: number | null
+          reliability_score: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          date: string
+          period?: 'daily' | 'weekly' | 'monthly'
+          content_views?: number
+          unique_viewers?: number
+          content_saves?: number
+          content_shares?: number
+          content_clicks?: number
+          engagement_rate?: number | null
+          save_rate?: number | null
+          click_through_rate?: number | null
+          new_followers?: number
+          total_followers?: number
+          unfollows?: number
+          campaigns_active?: number
+          campaigns_completed?: number
+          campaign_applications?: number
+          earnings_total?: number
+          earnings_pending?: number
+          influence_score?: number | null
+          reliability_score?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      content_analytics: {
+        Row: {
+          id: string
+          creator_id: string
+          content_type: 'restaurant_save' | 'board' | 'portfolio_item' | 'campaign_post'
+          content_id: string
+          content_name: string | null
+          views: number
+          unique_viewers: number
+          saves: number
+          shares: number
+          clicks: number
+          avg_view_duration: number | null
+          engagement_rate: number | null
+          virality_score: number | null
+          first_view_at: string | null
+          last_view_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          content_type: 'restaurant_save' | 'board' | 'portfolio_item' | 'campaign_post'
+          content_id: string
+          content_name?: string | null
+          views?: number
+          unique_viewers?: number
+          saves?: number
+          shares?: number
+          clicks?: number
+          avg_view_duration?: number | null
+          engagement_rate?: number | null
+          virality_score?: number | null
+          first_view_at?: string | null
+          last_view_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      audience_insights: {
+        Row: {
+          id: string
+          creator_id: string
+          period_start: string
+          period_end: string
+          age_distribution: unknown
+          gender_distribution: unknown
+          location_distribution: unknown
+          top_interests: unknown
+          peak_engagement_times: unknown
+          avg_session_duration: number | null
+          follower_growth_rate: number | null
+          generated_at: string
+        }
+        Insert: {
+          id?: string
+          creator_id: string
+          period_start: string
+          period_end: string
+          age_distribution?: unknown
+          gender_distribution?: unknown
+          location_distribution?: unknown
+          top_interests?: unknown
+          peak_engagement_times?: unknown
+          avg_session_duration?: number | null
+          follower_growth_rate?: number | null
+          generated_at?: string
+        }
+      }
     }
     Functions: {
+      calculate_creator_metrics: {
+        Args: {
+          p_creator_id: string
+        }
+        Returns: {
+          total_views: number
+          total_saves: number
+          engagement_rate: number
+          active_campaigns: number
+          total_earnings: number
+          pending_earnings: number
+          available_balance: number
+        }[]
+      }
       search_users: {
         Args: {
           search_query: string
@@ -1082,6 +1997,49 @@ export type Database = {
           success: boolean
           error_message: string | null
         }[]
+      }
+      complete_creator_onboarding: {
+        Args: {
+          p_user_id: string
+          p_display_name: string
+          p_bio: string
+          p_location: string
+          p_food_specialties: string[]
+        }
+        Returns: boolean
+      }
+      verify_restaurant_claim: {
+        Args: {
+          p_restaurant_id: string
+          p_user_id: string
+          p_email: string
+          p_restaurant_website?: string | null
+        }
+        Returns: {
+          success: boolean
+          method: 'instant' | 'email_code'
+          message: string
+          code?: string
+        }
+      }
+      verify_claim_code: {
+        Args: {
+          p_restaurant_id: string
+          p_user_id: string
+          p_code: string
+        }
+        Returns: {
+          success: boolean
+          error?: string
+          message?: string
+        }
+      }
+      upgrade_user_to_business: {
+        Args: {
+          p_user_id: string
+          p_restaurant_id: string
+        }
+        Returns: void
       }
     }
   }

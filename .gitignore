@@ -32,17 +32,15 @@ yarn-error.*
 
 # local env files
 .env
+.env.development
 .env*.local
+.env*
 
 # typescript
 *.tsbuildinfo
 
 app-example
 
-# tasks
-
-# docs
-docs/
 
 # documentation files
 README.md
@@ -70,6 +68,7 @@ dev-debug.log
 *.sw?
 # OS specific
 
-# Task files
-# tasks.json
-# tasks/ 
+# Data files (large datasets)
+data/*.json
+!data/README.md
+

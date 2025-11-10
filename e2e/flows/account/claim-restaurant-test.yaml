@@ -1,0 +1,270 @@
+appId: com.troodie.troodie.com
+---
+# Test: Restaurant Claim Flow
+# Priority: P1 (Important)
+# Tags: account, business, restaurant-claim
+# Prerequisites: Test account consumer2@bypass.com with verify code 0000
+# Note: This tests the beta-gated restaurant claim flow
+
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+# Step 1: Login with test account
+- assertVisible:
+    text: "Welcome"
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "Sign In"
+    optional: true
+
+- tapOn:
+    text: "Get Started"
+    optional: true
+
+# Enter phone/email
+- tapOn:
+    id: "phone-input"
+    optional: true
+
+- tapOn:
+    id: "email-input"
+    optional: true
+
+- inputText: "consumer2@bypass.com"
+
+- tapOn:
+    text: "Continue"
+    optional: true
+
+- tapOn:
+    text: "Send Code"
+    optional: true
+
+# Wait for OTP screen
+- assertVisible:
+    text: "verification"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "code"
+    timeout: 5000
+    optional: true
+
+# Enter verification code: 0000
+- tapOn:
+    id: "otp-input-0"
+    optional: true
+
+- inputText: "0"
+
+- tapOn:
+    id: "otp-input-1"
+    optional: true
+
+- inputText: "0"
+
+- tapOn:
+    id: "otp-input-2"
+    optional: true
+
+- inputText: "0"
+
+- tapOn:
+    id: "otp-input-3"
+    optional: true
+
+- inputText: "0"
+
+# Wait for login to complete
+- waitForAnimationToEnd
+
+# Step 2: Navigate to More tab
+- tapOn:
+    id: "tab-more"
+    timeout: 10000
+
+- assertVisible:
+    text: "More"
+    timeout: 5000
+    optional: true
+
+# Step 3: Find and tap Restaurant Claim button
+- scrollUntilVisible:
+    element:
+      text: "Claim Restaurant"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "Claim Restaurant"
+
+# Should show beta access gate
+- assertVisible:
+    text: "Beta"
+    timeout: 5000
+    optional: true
+
+- assertVisible:
+    id: "beta-passcode-input"
+    timeout: 5000
+    optional: true
+
+# Step 4: Enter beta passcode 2468 (one digit at a time)
+- tapOn:
+    id: "passcode-input-0"
+    optional: true
+
+- inputText: "2"
+
+- tapOn:
+    id: "passcode-input-1"
+    optional: true
+
+- inputText: "4"
+
+- tapOn:
+    id: "passcode-input-2"
+    optional: true
+
+- inputText: "6"
+
+- tapOn:
+    id: "passcode-input-3"
+    optional: true
+
+- inputText: "8"
+
+# Wait for beta gate to dismiss
+- waitForAnimationToEnd
+
+# Should now be on restaurant claim screen
+- assertVisible:
+    text: "Claim"
+    timeout: 10000
+
+- assertVisible:
+    text: "Restaurant"
+    timeout: 5000
+
+# Step 5: Search for restaurant
+- tapOn:
+    id: "restaurant-search-input"
+    optional: true
+
+- tapOn:
+    text: "Search"
+    optional: true
+
+- inputText: "Puerta"
+
+# Wait for search results
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Puerta"
+    timeout: 15000
+    optional: true
+
+# Step 6: Select restaurant from results
+- tapOn:
+    text: "Puerta"
+    optional: true
+
+- tapOn:
+    id: "restaurant-result-0"
+    optional: true
+
+# Should proceed to contact information step
+- assertVisible:
+    text: "Contact"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Information"
+    timeout: 5000
+    optional: true
+
+# Step 7: Fill contact information
+- tapOn:
+    id: "contact-name-input"
+    optional: true
+
+- inputText: "Test Owner"
+
+- tapOn:
+    id: "contact-title-input"
+    optional: true
+
+- inputText: "General Manager"
+
+- tapOn:
+    id: "contact-phone-input"
+    optional: true
+
+- inputText: "7045551234"
+
+- tapOn:
+    id: "contact-email-input"
+    optional: true
+
+- inputText: "owner@puerta.test"
+
+# Add verification document (optional)
+- tapOn:
+    text: "Upload"
+    optional: true
+
+# Scroll to submit button if needed
+- scrollUntilVisible:
+    element:
+      text: "Submit"
+    direction: DOWN
+    optional: true
+
+# Step 8: Submit claim
+- tapOn:
+    text: "Submit Claim"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+
+# Wait for submission to complete
+- waitForAnimationToEnd
+
+# Step 9: Verify success/pending screen
+- assertVisible:
+    text: "pending"
+    timeout: 15000
+    optional: true
+
+- assertVisible:
+    text: "Claim Submitted"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "review"
+    timeout: 5000
+    optional: true
+
+# Take screenshot for verification
+- takeScreenshot: "restaurant-claim-submitted"
+
+# Optional: Verify claim appears in user's claims list
+- tapOn:
+    text: "View My Claims"
+    optional: true
+
+- assertVisible:
+    text: "Puerta"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "restaurant-claim-complete"

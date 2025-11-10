@@ -1,0 +1,61 @@
+appId: com.troodie.troodie.com
+---
+# Test 3: Create a Post
+# Tests: Creating a post with @bypass.com account
+
+- launchApp
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+
+# Sign in - enter email in text field
+- tapOn: "user@example.com"
+- inputText: "consumer2@bypass.com"
+- tapOn: "Send Code"
+- waitForAnimationToEnd
+
+# Enter OTP (6 separate digits)
+# Dismiss paste permission dialog if it appears (from previous runs)
+- tapOn:
+    text: "Don't Allow Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Enter each digit individually
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+# Wait for auto-submit and navigation
+- waitForAnimationToEnd
+- wait: 2000
+
+# Tap the Add/Create button (usually in tab bar or floating action button)
+- tapOn:
+    id: "add-button"
+- waitForAnimationToEnd
+
+# Select "Create Post" option
+- tapOn: "Create Post|New Post"
+- waitForAnimationToEnd
+
+# Select post type - Simple Community Post
+- tapOn: "Share to Community|Community Post"
+- waitForAnimationToEnd
+
+# Enter post caption
+- tapOn: "What was your experience|caption|text"
+- inputText: "Testing post creation with Maestro automation"
+- hideKeyboard
+
+# Tap Post/Publish button
+- tapOn: "Post|Publish|Create"
+- waitForAnimationToEnd
+
+# Should see success message
+- assertVisible: "Posted|Success|Review posted"
+
+# Test passed
+- stopApp

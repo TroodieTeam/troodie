@@ -1,13 +1,13 @@
+import { ProfileAvatar } from '@/components/ProfileAvatar';
+import { compactDesign, designTokens } from '@/constants/designTokens';
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Bell } from 'lucide-react-native';
-import { designTokens, compactDesign } from '@/constants/designTokens';
+import { StyleSheet, Text, View } from 'react-native';
 
 export const ActivityHeader: React.FC = () => {
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <Bell size={20} color={designTokens.colors.text} />
+        <ProfileAvatar size={36} style={styles.profileAvatar} />
         <Text style={styles.title}>Activity</Text>
       </View>
     </View>
@@ -29,6 +29,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  profileAvatar: {
+    marginRight: 8,
   },
   title: {
     ...designTokens.typography.sectionTitle,

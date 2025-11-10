@@ -1,130 +1,216 @@
-# Troodie — Master TODO (MVP Critical Fixes)
+# Troodie v1.0.2 Feedback - Task Tracking
 
-## Status Legend
-- 🔴 Not Started
-- 🟡 In Progress
-- 🟢 Done
-- ⏸️ Blocked
-- 🔄 Review
+**Cycle Start**: 2025-10-01
+**Branch**: feature/v1.0.2-feedback-session
 
 ---
 
-## Epics
+## Epics Overview
 
-| ID | Epic | Focus | Owner | Status |
-|---|---|---|---|---|
-| MVP | MVP Critical Fixes | Nine critical fixes needed by 9/3 | - | 🔴 |
-
----
-
-## Tasks Backlog
-
-### 🚨 CRITICAL MVP FIXES - Due by September 3, 2025
-
-| ID | Task | Epic | Priority | Estimate | Status | Notes |
-|---|---|---|---|---|---|---|
-| MVP.1 | Fix Index Flash on App Download (`task-mvp-1-index-flash-fix.md`) | MVP | High | 1d | 🔄 | Index screen flashes during first launch - **Needs Review** |
-| MVP.2 | Fix Non-Functional Restaurant Buttons (`task-mvp-2-restaurant-buttons-fix.md`) | MVP | Critical | 1d | 🔴 | Three buttons don't work on detail screen |
-| MVP.3 | Implement Leave Review Flow (`task-mvp-3-leave-review-flow.md`) | MVP | High | 2d | 🔴 | Core feature for user engagement |
-| MVP.4 | Clarify Share vs Review Options (`task-mvp-4-share-clarification.md`) | MVP | Medium | 0.5d | 🔄 | Confusing "What would you like to share?" - **Needs Review** |
-| MVP.5 | Fix Review Post Confirmation Flow (`task-mvp-5-review-confirmation-flow.md`) | MVP | High | 1d | 🔄 | Replace fullscreen with toast, stay on screen - **Needs Review** |
-| MVP.6 | Import SF Restaurant Data (`task-mvp-6-download-sf-restaurants.md`) | MVP | Critical | 1d | 🔴 | Download and import SF restaurants (TD to provide) |
-| MVP.7 | Fix Top Rated Spacing Issues (`task-mvp-7-top-rated-spacing-fix.md`) | MVP | High | 0.5d | 🔄 | Winston-Salem text pushes buttons off screen - **Needs Review** |
-| MVP.8 | Update Welcome Toast Logic (`task-mvp-8-welcome-toast-logic.md`) | MVP | Medium | 0.5d | 🔴 | Disappear after 3 uses or show relevant CTAs |
-| MVP.9 | Fix Discussion Post Confirmation (`task-mvp-9-discussion-post-confirmation.md`) | MVP | High | 0.5d | 🔄 | Replace fullscreen with toast for discussions - **Needs Review** |
-| MVP.10 | Streamline Add Restaurant (New) (`task-mvp-10-add-restaurant-not-in-db.md`) | MVP | Critical | 1.5d | 🔄 | Eliminate double entry for new restaurants - **Needs Review** |
-| MVP.11 | Streamline Add Restaurant (Existing) (`task-mvp-11-add-restaurant-already-exists.md`) | MVP | Critical | 1d | 🔴 | Direct save instead of "already exists" error |
+| ID | Epic | Focus | Status |
+|---|---|---|---|
+| UX | UX/UI Fixes | Critical bugs and interaction improvements | 🔴 |
+| SOCIAL | Social Features | Activity feed, likes, comments, community | 🔴 |
+| RESTAURANT | Restaurant Management | Save context, visited tracking, data import | 🔴 |
+| HOME | Smart Home Feed | Personalized recommendations and prompts | 🔴 |
+| NOTIFICATIONS | Push Notifications | Weekly check-ins, travel alerts | 🔴 |
+| BUSINESS | Restaurant Admin | Business portal enhancements | 🔴 |
+| ONBOARDING | Onboarding | Quiz and UI improvements | 🔴 |
+| DATABASE | Database | Google Places API and data quality | 🔴 |
 
 ---
 
-## Execution Order (Recommended)
+## 🔥 Critical Priority Tasks
 
-### Phase 1: Critical Database & Core Functions (Days 1-2)
-- [ ] MVP.6 - Import SF restaurants (coordinate with TD first)
-- [ ] MVP.2 - Fix restaurant detail buttons
-- [ ] MVP.10 - Streamline new restaurant addition
-- [ ] MVP.11 - Streamline existing restaurant addition
+These should be completed first as they impact core functionality and user experience.
 
-### Phase 2: User Experience Fixes (Days 3-4)
-- [ ] MVP.1 - Fix index flash issue
-- [ ] MVP.3 - Implement leave review flow
-- [ ] MVP.5 - Fix review confirmation flow
-- [ ] MVP.9 - Fix discussion confirmation flow
-
-### Phase 3: Polish & UI Fixes (Day 5)
-- [ ] MVP.7 - Fix spacing issues
-- [ ] MVP.4 - Clarify share vs review
-- [ ] MVP.8 - Update welcome toast
+| Task ID | Task | Priority | Status | Assignee |
+|---------|------|----------|--------|----------|
+| UX-2 | Fix Board Image Error | Critical | 🔄 Needs Review | Claude |
+| UX-3 | Fix Board Collaboration Invite | High | 🔄 Needs Review | Claude |
+| ONBOARDING-1 | Fix iPhone 16 UI Issues | Critical | 🔄 Needs Review | Claude |
+| SOCIAL-1 | Fix Like Counter | High | 🔄 Needs Review | Claude |
+| SOCIAL-2 | Fix Community Member Count | Medium | 🔄 Needs Review | Claude |
 
 ---
 
-## Sprint Summary
+## 📋 All Tasks by Epic
 
-**Total Estimate**: 11 days of work
-**Timeline**: Must complete by September 3 (5 days)
-**Strategy**: Parallel work required, prioritize blocking issues
+### Epic: UX/UI Fixes
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | One-Click Add Restaurant | `task-ux-1-one-click-add-restaurant.md` | High | 1 day | 🔴 |
+| 2 | Fix Board Image Error | `task-ux-2-board-image-error.md` | Critical | 0.5 day | 🔄 Needs Review |
+| 3 | Board Collaboration Invite | `task-ux-3-board-collaboration-invite.md` | High | 1 day | 🔄 Needs Review |
+| 4 | Category & Tags Scrolling | `task-ux-4-board-category-tags-scrolling.md` | Medium | 0.5 day | 🔴 |
+| 5 | Board Menu Stays Open | `task-ux-5-board-menu-stays-open.md` | Medium | 0.5 day | 🔴 |
 
-### Day-by-Day Plan
-- **Day 1**: MVP.6 (database) + MVP.2 (buttons) in parallel
-- **Day 2**: MVP.10 + MVP.11 (restaurant flows)
-- **Day 3**: MVP.1 + MVP.3 (review implementation)
-- **Day 4**: MVP.5 + MVP.9 (confirmations) + MVP.7 (spacing)
-- **Day 5**: MVP.4 + MVP.8 (final polish) + testing
+### Epic: Social Features
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Fix Like Counter | `task-social-1-fix-like-counter.md` | High | 0.5 day | 🔄 Needs Review |
+| 2 | Fix Community Member Count | `task-social-2-fix-community-member-count.md` | Medium | 0.5 day | 🔄 Needs Review |
+| 3 | Activity Feed - Saves | `task-social-3-activity-feed-saves.md` | High | 1 day | 🔴 |
+| 4 | Activity Feed - Board Creation | `task-social-4-activity-feed-board-creation.md` | High | 0.5 day | 🔴 |
 
----
+### Epic: Restaurant Management
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Save with Context | `task-restaurant-1-save-with-context.md` | High | 2 days | 🔴 |
+| 2 | Mark as Visited | `task-restaurant-2-mark-as-visited.md` | High | 2 days | 🔴 |
+| 3 | Data Import | `task-restaurant-3-data-import.md` | Medium | 3 days | 🔴 |
+| 4 | Comments vs Reviews | `task-restaurant-4-comments-vs-reviews.md` | Medium | 2 days | 🔴 |
+| 5 | Social Tab Default | `task-restaurant-5-social-tab-default.md` | Medium | 0.5 day | 🔴 |
 
-## Definition of Done Checklist
+### Epic: Smart Home Feed
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Smart Feed Prompts | `task-home-1-smart-feed-prompts.md` | High | 3 days | 🔴 |
 
-- [ ] All 11 MVP tasks completed
-- [ ] Full regression testing performed
-- [ ] Tested on iPhone (12-15) and iPad
-- [ ] No console errors or warnings
-- [ ] Performance acceptable
-- [ ] Build number incremented
-- [ ] Release notes prepared
+### Epic: Push Notifications
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Push Notification Strategy | `task-notifications-1-push-strategy.md` | High | 2 days | 🔴 |
 
----
+### Epic: Restaurant Admin
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Enhanced CTAs | `task-business-1-enhanced-ctas.md` | Medium | 1 day | 🔴 |
+| 2 | Restaurant Self-Edit | `task-business-2-restaurant-self-edit.md` | Medium | 2 days | 🔴 |
 
-## Dependencies & Blockers
+### Epic: Onboarding
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | iPhone 16 UI Fix | `task-onboarding-1-iphone-16-ui-fix.md` | Critical | 1 day | 🔄 Needs Review |
 
-- **MVP.6**: Waiting for restaurant data from TD
-- **MVP.5**: Depends on MVP.3 completion
-- **MVP.11**: Should be done after MVP.10 for consistency
-
----
-
-## Release Checklist
-
-- [ ] All critical fixes verified
-- [ ] App version/build updated
-- [ ] Store metadata current
-- [ ] Testing on all device types
-- [ ] Performance profiling complete
-- [ ] Error monitoring enabled
-- [ ] Analytics tracking verified
-
----
-
-## Implementation Notes
-
-### Completed Tasks Needing Review (8/30/2025)
-
-1. **MVP.1 - Index Flash Fix**: Coordinated splash screen hiding with both font and auth loading states
-2. **MVP.4 - Share vs Review Clarification**: Updated UI copy to "Share to Community" vs "Restaurant Review"  
-3. **MVP.5 - Review Confirmation**: Replaced full-screen confirmation with toast notifications
-4. **MVP.7 - Spacing Fix**: Added text truncation and flexible layout for long city names
-5. **MVP.9 - Discussion Confirmation**: Uses same toast system as MVP.5
-6. **MVP.10 - Add Restaurant Flow**: Automatically saves restaurants to user profile, handles duplicates gracefully
-
-### Testing Required
-- Test on various iOS devices (iPhone SE to iPad)
-- Verify toast notifications appear correctly
-- Confirm restaurant addition and saving flow
-- Check text truncation for long city names
-- Validate splash screen timing on slow devices
+### Epic: Database
+| # | Task | File | Priority | Estimate | Status |
+|---|------|------|----------|----------|--------|
+| 1 | Google Places Parameters | `task-database-1-google-places-parameters.md` | Medium | 1 day | 🔴 |
 
 ---
 
-_Last Updated: August 30, 2025_
-_Target Completion: September 3, 2025_
-_Implementation: 6 of 11 tasks completed, needs testing_
+## 📊 Progress Summary
+
+- **Total Tasks**: 19
+- **Not Started**: 14 (🔴)
+- **In Progress**: 0 (🟡)
+- **Completed**: 0 (🟢)
+- **Blocked**: 0 (⏸️)
+- **In Review**: 5 (🔄 Needs Review)
+
+**Total Estimated Time**: ~23.5 days
+
+---
+
+## 🎯 Suggested Implementation Order
+
+### Phase 1: Critical Fixes (Week 1)
+Priority: Fix blocking issues and core functionality bugs
+
+1. ✅ ONBOARDING-1: iPhone 16 UI Fix (1 day) - Critical for new users
+2. ✅ UX-2: Board Image Error (0.5 day) - Visual bug
+3. ✅ UX-3: Board Collaboration Invite (1 day) - Core social feature broken
+4. ✅ SOCIAL-1: Fix Like Counter (0.5 day) - Core engagement metric
+5. ✅ SOCIAL-2: Fix Community Member Count (0.5 day) - Quick fix
+
+**Week 1 Total**: ~3.5 days
+
+### Phase 2: High-Value UX Improvements (Week 2)
+Priority: Improve core user flows and engagement
+
+1. ✅ UX-1: One-Click Add Restaurant (1 day) - Reduce friction
+2. ✅ UX-4: Category & Tags Scrolling (0.5 day) - Remove friction
+3. ✅ UX-5: Board Menu Stays Open (0.5 day) - Polish
+4. ✅ RESTAURANT-5: Social Tab Default (0.5 day) - Better first impression
+5. ✅ SOCIAL-3: Activity Feed - Saves (1 day) - Social engagement
+
+**Week 2 Total**: ~3.5 days
+
+### Phase 3: Major Features (Week 3-4)
+Priority: Add high-impact new functionality
+
+1. ✅ RESTAURANT-1: Save with Context (2 days) - Major UX improvement
+2. ✅ RESTAURANT-2: Mark as Visited (2 days) - Critical for tracking
+3. ✅ SOCIAL-4: Activity Feed - Board Creation (0.5 day) - Follows from SOCIAL-3
+4. ✅ HOME-1: Smart Feed Prompts (3 days) - Drive engagement
+5. ✅ NOTIFICATIONS-1: Push Strategy (2 days) - Retention driver
+
+**Week 3-4 Total**: ~9.5 days
+
+### Phase 4: Business Features & Advanced (Week 5+)
+Priority: Enable business growth and advanced features
+
+1. ✅ RESTAURANT-4: Comments vs Reviews (2 days) - Lower friction content
+2. ✅ BUSINESS-1: Enhanced CTAs (1 day) - Business conversion
+3. ✅ BUSINESS-2: Restaurant Self-Edit (2 days) - Empower businesses
+4. ✅ RESTAURANT-3: Data Import (3 days) - Onboarding improvement
+5. ✅ DATABASE-1: Google Places Parameters (1 day) - Data quality
+
+**Week 5+ Total**: ~9 days
+
+---
+
+## 📝 Notes
+
+### Feedback Session Summary (10/1/2025)
+Key themes from user feedback:
+- **UX Polish**: Multiple small bugs impacting daily usage (clicks, scrolling, menus)
+- **Social Engagement**: Core social features broken (likes, counts, activity feed)
+- **Save/Visit Flow**: Need better context and tracking for saves and visits
+- **Onboarding**: iPhone 16 compatibility issues
+- **Business Tools**: Need to empower restaurant owners with self-service tools
+- **Engagement**: Replace passive feeds with active prompts and notifications
+
+### Dependencies
+- SOCIAL-4 depends on SOCIAL-3 (activity feed infrastructure)
+- Some tasks may unlock others or provide shared infrastructure
+
+### Risk Areas
+- Activity feed may need significant refactoring
+- Data import could be complex depending on external API integrations
+- Push notifications require proper infrastructure setup
+
+---
+
+---
+
+## 🆕 REACTIVE Epic - Urgent Priority (October 9, 2025)
+
+### Critical Reactive UX Issues
+Users are experiencing buggy reactive behavior across the app - buttons that don't respond, counts that are wrong, flickering states. This epic addresses all reactive/optimistic UI issues.
+
+| Task ID | Task | Priority | Estimate | Status | File |
+|---------|------|----------|----------|--------|------|
+| REACTIVE-1 | Post Like - Optimistic UI & State Sync | 🔴 Critical | 2 days | 🔴 Not Started | `task-reactive-1-post-like-optimistic-ui.md` |
+| REACTIVE-2 | Community Join/Leave - Smooth State Management | 🟠 High | 1.5 days | 🔴 Not Started | `task-reactive-2-community-join-leave.md` |
+| REACTIVE-3 | Follower/Following Count - Real-time Sync | 🟠 High | 2 days | 🔴 Not Started | `task-reactive-3-follow-count-sync.md` |
+| REACTIVE-4 | Delete Post in Community - Immediate UI Update | 🟠 High | 1 day | 🔴 Not Started | `task-reactive-4-delete-post-community.md` |
+| REACTIVE-5 | Deeper Reactive Audit - App-Wide Improvements | 🟡 Medium | 3 days | 🔴 Not Started | `task-reactive-5-deeper-reactive-audit.md` |
+
+**Total Estimate**: 9.5 days
+**Epic Owner**: -
+**Epic Status**: 🔴 Not Started
+
+### REACTIVE Epic Goals
+- 95% of reactive actions respond <100ms (perceived)
+- <2% optimistic update revert rate
+- 99.5% count accuracy (followers, likes, members)
+- Zero user reports of "laggy buttons"
+
+### Implementation Plan
+**Week 1**: REACTIVE-1 (Like), REACTIVE-3 (Follow), REACTIVE-2 (Community Join)
+**Week 2**: REACTIVE-4 (Delete Post), REACTIVE-5 (App-Wide Audit)
+
+---
+
+## 🔄 Update Log
+
+| Date | Update | By |
+|------|--------|---|
+| 2025-10-01 | Initial task breakdown from v1.0.2 feedback session | - |
+| 2025-10-09 | Added REACTIVE epic - critical reactive UX fixes | Claude |
+
+---
+
+**Last Updated**: 2025-10-09

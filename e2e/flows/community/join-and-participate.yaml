@@ -1,0 +1,200 @@
+appId: com.troodie.troodie.com
+---
+# Test: Community participation
+# Priority: P1 (Important)
+# Tags: community, social, engagement
+# Prerequisites: User logged in
+
+- launchApp
+
+# Ensure logged in
+- runFlow: ../helpers/auth.yaml
+
+# Navigate to Communities (usually in Explore or More tab)
+- tapOn:
+    id: "tab-explore"
+    optional: true
+
+- tapOn:
+    id: "tab-more"
+    optional: true
+
+# Find Communities section
+- scrollUntilVisible:
+    element:
+      text: "Communities"
+    direction: DOWN
+    timeout: 10000
+
+- tapOn:
+    text: "Communities"
+
+# Wait for communities list to load
+- assertVisible:
+    text: "Communities"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    id: "community-list"
+    timeout: 10000
+    optional: true
+
+# Browse communities
+- scrollUntilVisible:
+    element:
+      id: "community-card-0"
+    direction: DOWN
+    optional: true
+
+# Test: View community details
+- tapOn:
+    id: "community-card-0"
+    optional: true
+
+- tapOn:
+    text: "Pizza Lovers"
+    optional: true
+
+# Should show community detail
+- assertVisible:
+    id: "community-detail"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Join"
+    timeout: 5000
+    optional: true
+
+- assertVisible:
+    text: "members"
+    optional: true
+
+# Test: Join community
+- tapOn:
+    text: "Join"
+
+- tapOn:
+    id: "community-join-button"
+    optional: true
+
+# Some communities may require reason
+- tapOn:
+    id: "join-reason-input"
+    optional: true
+
+- inputText: "Love discovering new pizza places!"
+  optional: true
+
+- tapOn:
+    text: "Submit"
+    optional: true
+
+# Verify joined
+- assertVisible:
+    text: "Joined"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Member"
+    optional: true
+
+# View community feed
+- assertVisible:
+    text: "Posts"
+    optional: true
+
+# Test: Create post in community
+- tapOn:
+    id: "community-post-button"
+    optional: true
+
+- tapOn:
+    text: "Create Post"
+    optional: true
+
+# Enter post content
+- tapOn:
+    id: "post-input"
+
+- inputText: "Just discovered an amazing pizza spot on Main Street! Highly recommend the margherita 🍕"
+
+# Add restaurant tag (optional)
+- tapOn:
+    text: "Tag Restaurant"
+    optional: true
+
+- inputText: "Pizza Main"
+  optional: true
+
+- tapOn:
+    index: 0
+    optional: true
+
+# Post to community
+- tapOn:
+    text: "Post"
+
+# Verify post appears
+- assertVisible:
+    text: "Just discovered an amazing"
+    timeout: 10000
+
+# Test: Interact with community post
+- scrollUntilVisible:
+    element:
+      text: "pizza"
+    direction: DOWN
+    optional: true
+
+# Like a community post
+- tapOn:
+    id: "community-post-like-0"
+    optional: true
+
+# Comment on community post
+- tapOn:
+    id: "community-post-comment-0"
+    optional: true
+
+- tapOn:
+    id: "comment-input"
+    optional: true
+
+- inputText: "Thanks for the recommendation!"
+  optional: true
+
+- tapOn:
+    text: "Comment"
+    optional: true
+
+# Go back
+- back
+    optional: true
+
+# Test: Leave community
+- tapOn:
+    id: "community-menu-button"
+    optional: true
+
+- tapOn:
+    text: "Leave Community"
+    optional: true
+
+- tapOn:
+    text: "Leave"
+    optional: true
+
+# Verify left community
+- assertVisible:
+    text: "Join"
+    timeout: 5000
+    optional: true
+
+# Take screenshot
+- takeScreenshot: "community-participation-complete"
+
+# Go back to main screen
+- back

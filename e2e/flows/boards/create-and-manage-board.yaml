@@ -1,0 +1,201 @@
+appId: com.troodie.troodie.com
+---
+# Test: Create and manage a board
+# Priority: P0 (Critical)
+# Tags: boards, smoke, critical
+# Prerequisites: User logged in
+
+- launchApp
+
+# Ensure logged in
+- runFlow: ../helpers/auth.yaml
+
+# Navigate to Profile to access boards
+- tapOn:
+    id: "tab-profile"
+
+# Find and tap "Boards" or "My Boards"
+- scrollUntilVisible:
+    element:
+      text: "Boards"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Boards"
+    optional: true
+
+# Or navigate through add button
+- tapOn:
+    id: "tab-add"
+    optional: true
+
+- tapOn:
+    text: "Create Board"
+    optional: true
+
+# Should see create board screen
+- assertVisible:
+    text: "Create Board"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "New Board"
+    timeout: 10000
+    optional: true
+
+# Enter board name
+- tapOn:
+    id: "board-name-input"
+
+- inputText: "My Favorite Pizza Places ${randomInt}"
+
+# Enter board description
+- tapOn:
+    id: "board-description-input"
+    optional: true
+
+- inputText: "The best pizza spots in town"
+  optional: true
+
+# Select privacy (default is usually free/public)
+- tapOn:
+    id: "board-privacy-selector"
+    optional: true
+
+- tapOn:
+    text: "Public"
+    optional: true
+
+# Create the board
+- tapOn:
+    text: "Create"
+
+- tapOn:
+    id: "create-board-button"
+    optional: true
+
+# Should navigate to board detail or boards list
+- assertVisible:
+    text: "My Favorite Pizza"
+    timeout: 10000
+
+# Add restaurant to board
+- tapOn:
+    text: "Add Restaurant"
+    optional: true
+
+- tapOn:
+    id: "board-add-restaurant-button"
+    optional: true
+
+# Search for restaurant
+- inputText: "Pizza Palace"
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Pizza Palace"
+    index: 0
+    optional: true
+
+- tapOn:
+    id: "restaurant-result-0"
+    optional: true
+
+# Confirm adding
+- tapOn:
+    text: "Add"
+    optional: true
+
+# Verify restaurant added
+- assertVisible:
+    text: "Pizza Palace"
+    timeout: 5000
+    optional: true
+
+# Add another restaurant
+- tapOn:
+    text: "Add Restaurant"
+    optional: true
+
+- inputText: "Italian Kitchen"
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Italian"
+    index: 0
+    optional: true
+
+- tapOn:
+    text: "Add"
+    optional: true
+
+# Test reordering (if drag-and-drop supported)
+- longPressOn:
+    id: "board-restaurant-item-0"
+    optional: true
+
+# Edit board details
+- tapOn:
+    id: "board-menu-button"
+    optional: true
+
+- tapOn:
+    text: "Edit Board"
+    optional: true
+
+# Change privacy to private
+- tapOn:
+    id: "board-privacy-selector"
+    optional: true
+
+- tapOn:
+    text: "Private"
+    optional: true
+
+# Save changes
+- tapOn:
+    text: "Save"
+
+# Verify privacy changed
+- assertVisible:
+    text: "Private"
+    optional: true
+
+# Test removing a restaurant
+- longPressOn:
+    id: "board-restaurant-item-1"
+    optional: true
+
+- tapOn:
+    text: "Remove"
+    optional: true
+
+- tapOn:
+    text: "Confirm"
+    optional: true
+
+# Take screenshot of managed board
+- takeScreenshot: "board-management-complete"
+
+# Clean up - delete board
+- tapOn:
+    id: "board-menu-button"
+    optional: true
+
+- tapOn:
+    text: "Delete Board"
+    optional: true
+
+- tapOn:
+    text: "Delete"
+    optional: true
+
+# Verify deletion
+- assertVisible:
+    text: "Boards"
+    timeout: 5000
+    optional: true

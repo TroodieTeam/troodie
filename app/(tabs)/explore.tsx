@@ -1,8 +1,9 @@
 import { AddRestaurantModal } from '@/components/AddRestaurantModal';
+import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { ErrorState } from '@/components/ErrorState';
 import { RestaurantCardSkeleton } from '@/components/LoadingSkeleton';
 import { PostCard } from '@/components/PostCard';
-import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -12,8 +13,8 @@ import { Community, communityService } from '@/services/communityService';
 import { userService } from '@/services/userService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Calendar, Lock, MapPin, Plus, Search, SlidersHorizontal, TrendingUp, Users } from 'lucide-react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Calendar, Lock, MapPin, Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -27,7 +28,8 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  DeviceEventEmitter,
 } from 'react-native';
 
 type TabType = 'restaurants' | 'posts' | 'communities';
@@ -62,7 +64,7 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue;
 };
 
-const useTabData = <T extends any>(
+const useTabData = <T extends { id: string }>(
   loadFn: (searchQuery?: string) => Promise<T[]>,
   filterFn?: (items: T[], query: string) => T[],
   shouldRandomize: boolean = false
@@ -97,11 +99,23 @@ const useTabData = <T extends any>(
     }
   };
 
-  return { ...state, load, filter };
+  const updateItem = useCallback((id: string, updater: (item: T) => T) => {
+    setState(prev => {
+      const updateList = (list: T[]) => list.map(item => (item.id === id ? updater(item) : item));
+      return {
+        ...prev,
+        data: updateList(prev.data),
+        filtered: updateList(prev.filtered),
+      };
+    });
+  }, []);
+
+  return { ...state, load, filter, updateItem };
 };
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user, profile } = useAuth();
   const { updateNetworkProgress } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,6 +127,12 @@ export default function ExploreScreen() {
   const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
   const [userCommunities, setUserCommunities] = useState<Community[]>([]);
 
+  // Handle tab parameter from URL (e.g., when redirected after post creation)
+  useEffect(() => {
+    if (params.tab && (params.tab === 'restaurants' || params.tab === 'posts' || params.tab === 'communities')) {
+      setActiveTab(params.tab as TabType);
+    }
+  }, [params.tab]);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -135,6 +155,7 @@ export default function ExploreScreen() {
       );
     }
   );
+  const { updateItem: updatePostItem } = posts;
 
   // Communities data management
   const communities = useTabData(
@@ -275,7 +296,10 @@ export default function ExploreScreen() {
     <View style={styles.header}>
       {/* Compact Title Bar */}
       <View style={styles.titleBar}>
-        <Text style={styles.title}>Explore</Text>
+        <View style={styles.headerLeft}>
+          <ProfileAvatar size={36} style={styles.profileAvatar} />
+          <Text style={styles.title}>Explore</Text>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.iconButton}
@@ -327,6 +351,13 @@ export default function ExploreScreen() {
   ), [searchQuery, activeTab, router, searchFocused]);
 
 
+
+  const handleNavigateToPost = useCallback((postId: string) => {
+    router.push({
+      pathname: '/posts/[id]',
+      params: { id: postId },
+    });
+  }, [router]);
 
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     // Handle regular items
@@ -449,6 +480,19 @@ export default function ExploreScreen() {
     );
   }, [activeTab, router, isUserMember, handleJoinCommunity]);
 
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('post-comment-added', ({ postId }: { postId: string }) => {
+      updatePostItem(postId, (item) => ({
+        ...item,
+        comments_count: (item.comments_count || 0) + 1,
+      }));
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [updatePostItem]);
+
   const EmptyComponent = useCallback(() => {
     if (currentTab.error) {
       return (
@@ -535,7 +579,20 @@ export default function ExploreScreen() {
         removeClippedSubviews
         contentInsetAdjustmentBehavior="automatic"
       />
-      
+
+      {/* Floating Create Post Button - only show on posts tab */}
+      {activeTab === 'posts' && (
+        <TouchableOpacity
+          style={styles.createPostButton}
+          onPress={() => router.push('/add/create-post')}
+          accessibilityLabel="Create a new post"
+          accessibilityRole="button"
+        >
+          <Plus size={20} color="#FFFFFF" />
+          <Text style={styles.createPostButtonText}>Create Post</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Add Restaurant Modal */}
       <AddRestaurantModal
         visible={showAddRestaurantModal}
@@ -569,6 +626,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: compactDesign.header.paddingHorizontal,
     paddingVertical: compactDesign.header.paddingVertical,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileAvatar: {
+    marginRight: compactDesign.content.gap,
   },
   title: {
     ...designTokens.typography.sectionTitle,
@@ -678,6 +742,29 @@ const styles = StyleSheet.create({
     ...designTokens.typography.buttonText,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  createPostButton: {
+    position: 'absolute',
+    bottom: 90, // Adjusted to clear tab bar (tab bar ~65-70px + 20px margin)
+    right: 20,
+    backgroundColor: designTokens.colors.primaryOrange,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 999, // Ensure it's above other elements
+  },
+  createPostButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
   },
   // Compact Community card styles with image
   communityCard: {

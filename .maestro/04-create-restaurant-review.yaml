@@ -1,0 +1,81 @@
+appId: com.troodie.troodie.com
+---
+# Test 4: Create Restaurant Review
+# Tests: Creating a restaurant review with rating
+
+- launchApp
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+
+# Sign in - enter email in text field
+- tapOn: "user@example.com"
+- inputText: "consumer2@bypass.com"
+- tapOn: "Send Code"
+- waitForAnimationToEnd
+
+# Enter OTP (6 separate digits)
+# Dismiss paste permission dialog if it appears (from previous runs)
+- tapOn:
+    text: "Don't Allow Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Enter each digit individually
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+# Wait for auto-submit and navigation
+- waitForAnimationToEnd
+- wait: 2000
+
+# Tap Add button
+- tapOn:
+    id: "add-button"
+- waitForAnimationToEnd
+
+# Select Create Post
+- tapOn: "Create Post|New Post"
+- waitForAnimationToEnd
+
+# Select Restaurant Review post type
+- tapOn: "Restaurant Review|Write a Review"
+- waitForAnimationToEnd
+
+# Tap to select restaurant
+- tapOn: "Choose a restaurant|Where did you go"
+- waitForAnimationToEnd
+
+# Search for a restaurant
+- tapOn: "Search"
+- inputText: "test restaurant"
+- waitForAnimationToEnd
+
+# Select first restaurant from results
+- tapOn:
+    index: 0
+- waitForAnimationToEnd
+
+# Rate the experience - tap "Loved it" (green light)
+- tapOn: "How was it|Rate"
+- waitForAnimationToEnd
+- tapOn: "Loved it|Recommended|😊"
+- waitForAnimationToEnd
+
+# Enter review text
+- tapOn: "What was your experience"
+- inputText: "Great experience! Testing restaurant review with Maestro."
+- hideKeyboard
+
+# Post the review
+- tapOn: "Post|Publish"
+- waitForAnimationToEnd
+
+# Should see success
+- assertVisible: "Review posted|Posted|Success"
+
+# Test passed
+- stopApp

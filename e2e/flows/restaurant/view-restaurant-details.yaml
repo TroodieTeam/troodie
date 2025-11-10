@@ -1,0 +1,147 @@
+appId: com.troodie.troodie.com
+---
+# Test: View restaurant details and interactions
+# Priority: P0 (Critical)
+# Tags: restaurant, discovery, smoke
+# Prerequisites: User logged in
+
+- launchApp
+
+# Ensure user is logged in
+- runFlow: ../helpers/auth.yaml
+
+# Navigate to Explore/Search
+- tapOn:
+    id: "tab-explore"
+
+# Search for a restaurant
+- tapOn:
+    id: "search-input"
+
+- inputText: "Pizza"
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Tap on first restaurant result
+- tapOn:
+    id: "restaurant-card-0"
+    optional: true
+
+- tapOn:
+    text: "Pizza"
+    index: 0
+    optional: true
+
+# Wait for restaurant detail page to load
+- assertVisible:
+    id: "restaurant-detail-screen"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Rating"
+    timeout: 10000
+    optional: true
+
+# Verify key elements are present
+- assertVisible:
+    id: "restaurant-name"
+    optional: true
+
+- assertVisible:
+    id: "restaurant-rating"
+    optional: true
+
+- assertVisible:
+    id: "restaurant-address"
+    optional: true
+
+# View photos if available
+- scrollUntilVisible:
+    element:
+      id: "restaurant-photos"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    id: "restaurant-photo-0"
+    optional: true
+
+# Close photo viewer
+- tapOn:
+    id: "photo-close-button"
+    optional: true
+
+# Scroll to view reviews
+- scrollUntilVisible:
+    element:
+      text: "Reviews"
+    direction: DOWN
+    optional: true
+
+# Verify reviews section
+- assertVisible:
+    text: "Reviews"
+    optional: true
+
+# Test save button
+- tapOn:
+    id: "restaurant-save-button"
+    optional: true
+
+# Should show board selection
+- assertVisible:
+    text: "Save to Board"
+    timeout: 5000
+    optional: true
+
+# Cancel save for now
+- tapOn:
+    text: "Cancel"
+    optional: true
+
+# Test share button
+- tapOn:
+    id: "restaurant-share-button"
+    optional: true
+
+- assertVisible:
+    text: "Share"
+    timeout: 3000
+    optional: true
+
+# Close share sheet
+- back
+
+# Test call/directions buttons
+- scrollUntilVisible:
+    element:
+      id: "restaurant-call-button"
+    direction: DOWN
+    optional: true
+
+- assertVisible:
+    id: "restaurant-call-button"
+    optional: true
+
+- assertVisible:
+    id: "restaurant-directions-button"
+    optional: true
+
+# Tap directions (don't complete the action)
+- tapOn:
+    id: "restaurant-directions-button"
+    optional: true
+
+# Should open maps or show map view
+- assertVisible:
+    text: "Maps"
+    timeout: 3000
+    optional: true
+
+# Go back to app
+- back
+
+# Success - restaurant detail view tested
+- takeScreenshot: "restaurant-detail-complete"

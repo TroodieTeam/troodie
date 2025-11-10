@@ -4,6 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PostEngagementStats, CommentWithUser } from '@/types/post';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Alert } from 'react-native';
+import { useOptimisticMutation } from './useOptimisticMutation';
+import { ToastService } from '@/services/toastService';
+import { realtimeManager } from '@/services/realtimeManager';
 
 interface UsePostEngagementOptions {
   postId: string;
@@ -65,6 +68,9 @@ export function usePostEngagement({
   // Subscriptions cleanup
   const unsubscribeStats = useRef<(() => void) | null>(null);
   const unsubscribeComments = useRef<(() => void) | null>(null);
+
+  // Track last optimistic update timestamp
+  const lastOptimisticUpdate = useRef<number>(0);
   
   // Initialize from initial stats or cache
   useEffect(() => {
@@ -93,23 +99,41 @@ export function usePostEngagement({
   
   // Set up real-time subscriptions
   useEffect(() => {
-    if (!enableRealtime) return;
-    
-    // Subscribe to engagement stats
-    unsubscribeStats.current = enhancedPostEngagementService.subscribeToPostEngagement(
-      postId,
-      (stats) => {
-        setLikesCount(stats.likes_count || 0);
-        setCommentsCount(stats.comments_count || 0);
-        setSavesCount(stats.saves_count || 0);
-        setShareCount(stats.share_count || 0);
+    if (!enableRealtime || !user?.id) return;
+
+    // Subscribe to engagement stats - IMPROVED: ignore self-generated events
+    unsubscribeStats.current = realtimeManager.subscribe(
+      `post-stats-${postId}`,
+      {
+        table: 'posts',
+        event: 'UPDATE',
+        filter: `id=eq.${postId}`
+      },
+      (data: any) => {
+        // Only update if data is newer than our last optimistic update
+        const serverTimestamp = new Date(data.updated_at || Date.now()).getTime();
+        if (serverTimestamp > lastOptimisticUpdate.current) {
+          setLikesCount(data.likes_count || 0);
+          setCommentsCount(data.comments_count || 0);
+          setSavesCount(data.saves_count || 0);
+          setShareCount(data.share_count || 0);
+        }
+      },
+      {
+        ignoreUserId: user.id, // Don't override our own optimistic updates
+        minTimestamp: lastOptimisticUpdate.current
       }
     );
-    
+
     // Subscribe to comments
-    unsubscribeComments.current = enhancedPostEngagementService.subscribeToPostComments(
-      postId,
-      (comment) => {
+    unsubscribeComments.current = realtimeManager.subscribe(
+      `post-comments-${postId}`,
+      {
+        table: 'post_comments',
+        event: 'INSERT',
+        filter: `post_id=eq.${postId}`
+      },
+      (comment: any) => {
         setComments((prev) => {
           // Check if comment already exists (optimistic update)
           const exists = prev.some(c => c.id === comment.id);
@@ -117,24 +141,35 @@ export function usePostEngagement({
           return [comment, ...prev];
         });
         setCommentsCount((prev) => prev + 1);
+      },
+      {
+        ignoreUserId: user.id
       }
     );
-    
+
     return () => {
       unsubscribeStats.current?.();
       unsubscribeComments.current?.();
     };
-  }, [postId, enableRealtime]);
+  }, [postId, enableRealtime, user?.id]);
   
-  // Toggle like action
+  // IMPROVED: Toggle like action with optimistic mutation
   const toggleLike = useCallback(async () => {
     if (!user?.id) {
       Alert.alert('Sign in required', 'Please sign in to like posts');
       return;
     }
-    
-    setIsLoading(true);
-    
+
+    const previousIsLiked = isLiked;
+    const previousCount = likesCount;
+
+    // Update optimistic timestamp
+    lastOptimisticUpdate.current = Date.now();
+
+    // Optimistic update
+    setIsLiked(!previousIsLiked);
+    setLikesCount(previousIsLiked ? previousCount - 1 : previousCount + 1);
+
     try {
       await enhancedPostEngagementService.togglePostLikeOptimistic(
         postId,
@@ -151,10 +186,16 @@ export function usePostEngagement({
         }
       );
     } catch (error) {
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to toggle like:', error);
+
+      // Revert optimistic update
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousCount);
+
+      onEngagementError?.(error as Error);
+      ToastService.showError('Failed to update like');
     }
-  }, [postId, user?.id, onEngagementError]);
+  }, [postId, user?.id, isLiked, likesCount, onEngagementError]);
   
   // Toggle save action
   const toggleSave = useCallback(async (boardId?: string) => {

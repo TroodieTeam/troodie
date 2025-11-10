@@ -13,17 +13,21 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function QuizScreen() {
   const router = useRouter();
   const { state, addQuizAnswer, setPersona, setCurrentStep } = useOnboarding();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const answerScrollRef = useRef<ScrollView>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
 
   const currentQuestion = quizQuestions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / quizQuestions.length) * 100;
@@ -158,16 +162,25 @@ export default function QuizScreen() {
           <View key={question.id} style={styles.questionContainer}>
             <Text style={styles.questionNumber}>Question {index + 1}</Text>
             <Text style={styles.questionText}>{question.question}</Text>
-            
-            <View style={styles.optionsContainer}>
+
+            <ScrollView
+              ref={index === currentQuestionIndex ? answerScrollRef : undefined}
+              style={styles.optionsScrollView}
+              contentContainerStyle={[
+                styles.optionsContainer,
+                { paddingBottom: insets.bottom + 20 }
+              ]}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
               {question.options.map((option) => {
                 // Check if this option was previously selected
-                const isSelected = index === currentQuestionIndex && 
+                const isSelected = index === currentQuestionIndex &&
                   currentAnswer?.answerId === option.id;
                 const wasAnswered = state.quizAnswers.find(
                   a => a.questionId === question.id
                 )?.answerId === option.id;
-                
+
                 return (
                   <TouchableOpacity
                     key={option.id}
@@ -195,7 +208,7 @@ export default function QuizScreen() {
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         ))}
       </ScrollView>
@@ -257,6 +270,7 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     paddingHorizontal: 24,
     paddingTop: 20,
+    flex: 1,
   },
   questionNumber: {
     fontSize: 14,
@@ -265,46 +279,53 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   questionText: {
-    fontSize: 28,
+    fontSize: Platform.select({ ios: 24, android: 26 }),
     fontFamily: 'Poppins_700Bold',
     color: '#333',
-    marginBottom: 40,
-    lineHeight: 36,
+    marginBottom: 24,
+    lineHeight: 32,
+  },
+  optionsScrollView: {
+    flex: 1,
   },
   optionsContainer: {
     gap: 16,
+    flexGrow: 1,
   },
   optionButton: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     borderWidth: 2,
     borderColor: '#E5E5E5',
+    minHeight: 68,
   },
   optionContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   optionLetter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#F0F0F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 12,
+    marginTop: 2,
   },
   optionLetterText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Poppins_600SemiBold',
     color: '#333',
   },
   optionText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter_500Medium',
     color: '#333',
-    lineHeight: 22,
+    lineHeight: 21,
+    flexWrap: 'wrap',
   },
   selectedOption: {
     borderColor: '#FFAD27',

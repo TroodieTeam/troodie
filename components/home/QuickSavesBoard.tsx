@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'rea
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useAuth } from '@/contexts/AuthContext'
 import { boardService } from '@/services/boardService'
+import { boardServiceExtended } from '@/services/boardServiceExtended'
 import { restaurantService } from '@/services/restaurantService'
 import { BoardRestaurant } from '@/types/board'
 import { RestaurantInfo } from '@/types/core'
@@ -30,8 +31,14 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
       setLoading(true)
       setError(null)
 
-      // Get Your Saves restaurants
-      const quickSaves = await boardService.getQuickSavesRestaurants(user.id, 10)
+      // First try to get Your Saves restaurants
+      let quickSaves = await boardService.getQuickSavesRestaurants(user.id, 10)
+      
+      // If no Quick Saves board, get ALL saves (limited to 10 most recent)
+      if (quickSaves.length === 0) {
+        console.log('No Quick Saves board found, fetching all saves for homepage')
+        quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 10)
+      }
       
       // Load restaurant details for each save
       const savesWithRestaurants = await Promise.all(

@@ -1,0 +1,67 @@
+appId: com.troodie.troodie.com
+---
+# Test 5: Create Community
+# Tests: Creating a community with @bypass.com account
+
+- launchApp
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+
+# Sign in - enter email in text field
+- tapOn: "user@example.com"
+- inputText: "consumer2@bypass.com"
+- tapOn: "Send Code"
+- waitForAnimationToEnd
+
+# Enter OTP (6 separate digits)
+# Dismiss paste permission dialog if it appears (from previous runs)
+- tapOn:
+    text: "Don't Allow Paste"
+    optional: true
+- tapOn:
+    text: "Allow Paste"
+    optional: true
+# Enter each digit individually
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+# Wait for auto-submit and navigation
+- waitForAnimationToEnd
+- wait: 2000
+
+# Tap Add button
+- tapOn:
+    id: "add-button"
+- waitForAnimationToEnd
+
+# Select Create Community
+- tapOn: "Create Community|New Community"
+- waitForAnimationToEnd
+
+# Fill in community details
+- tapOn: "Community Name|Name"
+- inputText: "Test Community Maestro"
+- hideKeyboard
+
+- tapOn: "Description"
+- inputText: "Testing community creation with Maestro automation"
+- hideKeyboard
+
+# Select community type/visibility
+- tapOn: "Public|Private|Community Type"
+- waitForAnimationToEnd
+- tapOn: "Public"
+- waitForAnimationToEnd
+
+# Create the community
+- tapOn: "Create|Next|Continue"
+- waitForAnimationToEnd
+
+# Should see success message
+- assertVisible: "Community created|Success|Created"
+
+# Test passed
+- stopApp

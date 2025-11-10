@@ -12,6 +12,7 @@ import { useFollowState } from '@/hooks/useFollowState';
 import { personas } from '@/data/personas';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
+import { boardServiceExtended } from '@/services/boardServiceExtended';
 import { communityService } from '@/services/communityService';
 import { moderationService } from '@/services/moderationService';
 import { postService } from '@/services/postService';
@@ -275,7 +276,14 @@ function UserDetailScreenContent() {
       
       // Your saves are private - only show for own profile
       if (isOwnProfile) {
-        const saves = await boardService.getQuickSavesRestaurants(id);
+        // First try to get Quick Saves board
+        let saves = await boardService.getQuickSavesRestaurants(id);
+        
+        // If no Quick Saves board, get ALL saves from all boards
+        if (saves.length === 0) {
+          console.log('No Quick Saves board found, fetching all saves');
+          saves = await boardServiceExtended.getAllUserSaves(id, 50); // Limit to 50 most recent
+        }
         
         // Load restaurant details for each save
         const savesWithRestaurants = await Promise.all(

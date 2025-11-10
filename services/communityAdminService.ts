@@ -130,13 +130,14 @@ export class CommunityAdminService {
     }
   }
 
+  private static deletedPostsCache = new Set<string>();
+
   /**
-   * Soft delete a post
+   * Delete a post from a community
    */
   static async deletePost(
-    communityId: string,
     postId: string,
-    reason: string
+    reason?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const adminId = await getCurrentUserId()
@@ -144,61 +145,134 @@ export class CommunityAdminService {
         return { success: false, error: 'Not authenticated' }
       }
 
-      // Check permissions
-      const hasPermission = await this.checkPermission(adminId, communityId, 'delete_post')
-      if (!hasPermission) {
-        return { success: false, error: 'Insufficient permissions' }
+      // Check if already deleted (idempotency)
+      if (this.deletedPostsCache.has(postId)) {
+        return { success: true };
       }
 
       // Get post details for notification from the posts table
-      const { data: post } = await supabase
+      const { data: post, error: postError } = await supabase
         .from('posts')
-        .select('user_id, users!user_id(name)')
+        .select('id, user_id, users!user_id(name)')
         .eq('id', postId)
-        .single()
+        .maybeSingle();
 
-      // Remove the post from the community by deleting from post_communities table
-      const { error } = await supabase
+      if (postError || !post) {
+        // Post not found - treat as already deleted
+        return { success: true };
+      }
+
+      // Get community_id from post_communities junction table
+      const { data: postCommunity } = await supabase
         .from('post_communities')
-        .delete()
+        .select('community_id')
         .eq('post_id', postId)
-        .eq('community_id', communityId)
+        .maybeSingle();
 
-      if (error) throw error
+      const communityId = postCommunity?.community_id || '';
 
-      // Log admin action
-      await this.logAdminAction({
-        communityId,
+      // Verify user has permission (is post author OR community admin/moderator)
+      const hasPermission = await this.verifyDeletePermission(
         adminId,
-        actionType: 'delete_post',
-        targetId: postId,
-        targetType: 'post',
-        reason
-      })
+        postId,
+        communityId,
+        post.user_id
+      );
 
-      // Notify post author
-      if (post?.user_id && post.user_id !== adminId) {
+      if (!hasPermission) {
+        return {
+          success: false,
+          error: 'You do not have permission to delete this post'
+        };
+      }
+
+      // First, delete from post_communities (this will trigger the count update)
+      if (communityId) {
+        await supabase
+          .from('post_communities')
+          .delete()
+          .eq('post_id', postId)
+          .eq('community_id', communityId);
+      }
+
+      // Then delete the post itself (cascade will handle likes, comments, etc.)
+      const { error: deleteError } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+
+      if (deleteError) {
+        return { success: false, error: deleteError.message || 'Failed to delete post' };
+      }
+
+      // Cache deletion to prevent duplicates
+      this.deletedPostsCache.add(postId);
+      setTimeout(() => this.deletedPostsCache.delete(postId), 5000);
+
+      // Log moderation action if admin deleted (not author)
+      if (reason && post.user_id !== adminId && communityId) {
+        await this.logAdminAction({
+          communityId: communityId,
+          adminId,
+          actionType: 'delete_post',
+          targetId: postId,
+          targetType: 'post',
+          reason
+        });
+
+        // Notify post author that their post was removed
         await notificationService.createSystemNotification(
           post.user_id,
           'Post Removed from Community',
           `Your post has been removed from the community${reason ? `: ${reason}` : ''}`,
           undefined,
           undefined,
-          { communityId, relatedType: 'community' }
-        )
+          { communityId: communityId, relatedType: 'community' }
+        );
       }
 
       // Emit event for post deletion so UI can update
       eventBus.emit(EVENTS.COMMUNITY_POST_DELETED, {
         postId,
         communityId
-      })
+      });
 
-      return { success: true }
+      // Note: post_count updated automatically via DB trigger on post_communities
+      return { success: true };
     } catch (error: any) {
-      console.error('Error deleting post:', error)
-      return { success: false, error: error.message || 'Failed to delete post' }
+      console.error('Error deleting post:', error);
+      return { success: false, error: error.message || 'Network error. Please try again.' };
     }
+  }
+
+  /**
+   * Verify user has permission to delete post
+   */
+  private static async verifyDeletePermission(
+    userId: string,
+    postId: string,
+    communityId: string,
+    postAuthorId: string
+  ): Promise<boolean> {
+    // Check if user is post author
+    if (postAuthorId === userId) return true;
+
+    // Check if user is community admin/moderator/owner
+    if (communityId) {
+      const { data: membership } = await supabase
+        .from('community_members')
+        .select('role')
+        .eq('community_id', communityId)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (membership?.role && ['owner', 'admin', 'moderator'].includes(membership.role)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

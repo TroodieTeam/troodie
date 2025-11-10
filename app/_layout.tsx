@@ -1,3 +1,6 @@
+// IMPORTANT: Polyfills must be imported FIRST
+import 'react-native-url-polyfill/auto';
+
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -17,6 +20,7 @@ import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import { toastConfig } from '@/components/CustomToast';
@@ -174,14 +178,16 @@ function InnerLayout() {
   }
 
   return (
-    <AppProvider>
-      <OnboardingProvider>
-        <ThemeProvider value={DefaultTheme}>
-          <NetworkStatusBanner />
-          <Stack>
+    <SafeAreaProvider>
+      <AppProvider>
+        <OnboardingProvider>
+          <ThemeProvider value={DefaultTheme}>
+            <NetworkStatusBanner />
+            <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="add" options={{ headerShown: false }} />
+            <Stack.Screen name="boards" options={{ headerShown: false }} />
             <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
@@ -193,11 +199,12 @@ function InnerLayout() {
             <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
-          <StatusBar style="dark" />
-          <Toast config={toastConfig} />
-        </ThemeProvider>
-      </OnboardingProvider>
-    </AppProvider>
+            <StatusBar style="dark" />
+            <Toast config={toastConfig} />
+          </ThemeProvider>
+        </OnboardingProvider>
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }
 
