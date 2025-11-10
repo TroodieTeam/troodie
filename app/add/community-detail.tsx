@@ -7,6 +7,7 @@ import { Community, communityService } from '@/services/communityService';
 import { CommunityAdminService } from '@/services/communityAdminService';
 import { ToastService } from '@/services/toastService';
 import { useCommunityPermissions, getRoleDisplayName, getRoleBadgeColor } from '@/utils/communityPermissions';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCallback } from 'react';
@@ -133,6 +134,60 @@ export default function CommunityDetailScreen() {
     loadCommunityData();
   }, [communityId, user]);
 
+  const loadCommunityPosts = async () => {
+    if (!communityId) return;
+
+    try {
+      const postsData = await communityService.getCommunityPosts(communityId, 20);
+      setPosts(postsData);
+    } catch (error) {
+      console.error('Error loading community posts:', error);
+    }
+  };
+
+  // Subscribe to post-related events
+  useEffect(() => {
+    if (!communityId) return;
+
+    // Refresh posts when a new post is created in this community
+    const handlePostCreated = (data: { communityId: string }) => {
+      if (data.communityId === communityId) {
+        // Reload just the posts
+        loadCommunityPosts();
+      }
+    };
+
+    // Refresh posts when a post is deleted
+    const handlePostDeleted = (data: { postId: string, communityId?: string }) => {
+      if (data.communityId === communityId) {
+        // Remove from local state immediately
+        setPosts(prev => prev.filter(p => p.id !== data.postId));
+        // Also reload to ensure sync
+        loadCommunityPosts();
+      }
+    };
+
+    // Refresh when post engagement changes (likes, comments)
+    const handleEngagementChanged = (data: { postId: string }) => {
+      // Check if this post belongs to our community
+      const postExists = posts.some(p => p.id === data.postId);
+      if (postExists) {
+        loadCommunityPosts();
+      }
+    };
+
+    // Subscribe to events
+    const unsubscribeCreate = eventBus.on(EVENTS.COMMUNITY_POST_CREATED, handlePostCreated);
+    const unsubscribeDelete = eventBus.on(EVENTS.COMMUNITY_POST_DELETED, handlePostDeleted);
+    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
+
+    return () => {
+      unsubscribeCreate();
+      unsubscribeDelete();
+      unsubscribeEngagement();
+    };
+  }, [communityId, posts]);
+
   // Refresh posts when screen comes back into focus (e.g., after creating a post)
   useFocusEffect(
     useCallback(() => {
@@ -144,9 +199,7 @@ export default function CommunityDetailScreen() {
 
       // Reload posts when screen gains focus (e.g., returning from create post screen)
       if (communityId && !loading) {
-        communityService.getCommunityPosts(communityId, 20)
-          .then(postsData => setPosts(postsData))
-          .catch(err => console.error('Error refreshing posts on focus:', err));
+        loadCommunityPosts();
       }
     }, [communityId, loading])
   );
@@ -282,16 +335,18 @@ export default function CommunityDetailScreen() {
   
   const handleRemoveMemberConfirm = async (reason: string) => {
     if (!removeMemberModal.member) return;
-    
+
     try {
       const { success, error } = await CommunityAdminService.removeMember(
         communityId,
         removeMemberModal.member.user_id,
         reason
       );
-      
+
       if (success) {
         setMembers(members.filter(m => m.user_id !== removeMemberModal.member.user_id));
+        // Close the modal after successful removal
+        setRemoveMemberModal({ visible: false, member: null });
         Alert.alert('Success', 'Member removed successfully');
       } else {
         Alert.alert('Error', error || 'Failed to remove member');
@@ -535,16 +590,23 @@ export default function CommunityDetailScreen() {
     </View>
   );
 
-  const renderPostItem = ({ item }: { item: any }) => (
-    <View style={styles.postWrapper}>
-      <PostCard
-        post={item}
-        onPress={() => router.push(`/posts/${item.id}`)}
-        showActions={true}
-        onDelete={handlePostCardDelete}
-      />
-    </View>
-  );
+  const renderPostItem = ({ item }: { item: any }) => {
+    // Only provide onDelete for admins deleting OTHER people's posts
+    const shouldUseAdminDelete = hasPermission('delete_post') && user?.id !== item.user_id;
+    // For own posts, use PostCard delete handler
+    const isOwnPost = user?.id === item.user_id;
+
+    return (
+      <View style={styles.postWrapper}>
+        <PostCard
+          post={item}
+          onPress={() => router.push(`/posts/${item.id}`)}
+          showActions={true}
+          onDelete={shouldUseAdminDelete ? (postId) => handleDeletePost(postId) : isOwnPost ? handlePostCardDelete : undefined}
+        />
+      </View>
+    );
+  };
 
   const renderMemberItem = ({ item }: { item: any }) => (
     <TouchableOpacity 

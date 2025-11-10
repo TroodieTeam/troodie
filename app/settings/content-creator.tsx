@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Switch,
-  ScrollView,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Camera, Edit3, Award, CheckCircle } from 'lucide-react-native';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { profileService } from '@/services/profileService';
 import { ToastService } from '@/services/toastService';
-import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, Award, Camera, CheckCircle, Edit3 } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 export default function ContentCreatorSettingsScreen() {
   const router = useRouter();
@@ -155,67 +154,17 @@ export default function ContentCreatorSettingsScreen() {
 
         {/* About Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About Content Creators</Text>
           <View style={styles.card}>
             <Text style={styles.aboutText}>
-              Content creators on TROODIE are food enthusiasts, bloggers, photographers,
-              and influencers who share their culinary experiences and discoveries with
-              our community.
+              We're just getting to know our community and learning who our content creators are! 
+              Soon, we'll be rolling out new features and opportunities for creators on Troodie.
             </Text>
             <Text style={[styles.aboutText, { marginTop: 12 }]}>
-              By identifying yourself as a content creator, you help other users recognize
-              authentic voices and original content across the platform.
+              For now, letting us know you're a creator helps us understand our users better and shape what's coming next. 
+              Stay tuned—exciting things are on the way!
             </Text>
           </View>
         </View>
-
-        {/* Benefits Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Creator Benefits</Text>
-          {benefits.map((benefit, index) => (
-            <View key={index} style={styles.benefitCard}>
-              <View style={styles.benefitIcon}>
-                <benefit.icon size={20} color={designTokens.colors.primaryOrange} />
-              </View>
-              <View style={styles.benefitContent}>
-                <Text style={styles.benefitTitle}>{benefit.title}</Text>
-                <Text style={styles.benefitDescription}>{benefit.description}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Guidelines Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Creator Guidelines</Text>
-          <View style={styles.card}>
-            <Text style={styles.guidelineText}>• Share authentic, original content</Text>
-            <Text style={styles.guidelineText}>• Engage respectfully with the community</Text>
-            <Text style={styles.guidelineText}>• Provide honest reviews and recommendations</Text>
-            <Text style={styles.guidelineText}>• Help others discover great food experiences</Text>
-          </View>
-        </View>
-
-        {/* Stats Section (if creator) */}
-        {isCreator && profile && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Creator Stats</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{profile.reviews_count || 0}</Text>
-                <Text style={styles.statLabel}>Reviews</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{profile.followers_count || 0}</Text>
-                <Text style={styles.statLabel}>Followers</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{profile.saves_count || 0}</Text>
-                <Text style={styles.statLabel}>Saves</Text>
-              </View>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

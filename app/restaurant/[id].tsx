@@ -7,6 +7,7 @@ import { restaurantImageSyncService } from '@/services/restaurantImageSyncServic
 import { restaurantPhotosService } from '@/services/restaurantPhotosService';
 import { restaurantService } from '@/services/restaurantService';
 import { saveService } from '@/services/saveService';
+import ShareService from '@/services/shareService';
 import { FriendVisit, PowerUserReview, RecentActivity, socialActivityService } from '@/services/socialActivityService';
 import { ToastService } from '@/services/toastService';
 import { getErrorType } from '@/types/errors';
@@ -15,37 +16,35 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    ArrowLeft,
-    Award,
-    Bookmark,
-    Camera,
-    CheckCircle,
-    Clock,
-    ExternalLink,
-    Eye,
-    Globe,
-    MapPin,
-    MessageCircle,
-    Phone,
-    Share,
-    Star,
-    TrendingUp,
-    Users
+  ArrowLeft,
+  Award,
+  Bookmark,
+  Camera,
+  CheckCircle,
+  Clock,
+  ExternalLink,
+  Eye,
+  Globe,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Share,
+  Star,
+  TrendingUp,
+  Users
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Linking,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import ShareService from '@/services/shareService';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -722,7 +721,7 @@ export default function RestaurantDetailScreen() {
                     style={styles.socialItem}
                     onPress={() => {
                       if (friend.post?.id) {
-                        router.push(`/post/${friend.post.id}`);
+                        router.push(`/posts/${friend.post.id}`);
                       }
                     }}>
                     <View style={styles.avatarContainer}>
@@ -779,7 +778,7 @@ export default function RestaurantDetailScreen() {
                   style={[styles.socialItem, styles.powerUserItem]}
                   onPress={() => {
                     if (review.post?.id) {
-                      router.push(`/post/${review.post.id}`);
+                      router.push(`/posts/${review.post.id}`);
                     }
                   }}>
                   <View style={styles.avatarContainer}>
@@ -867,7 +866,7 @@ export default function RestaurantDetailScreen() {
                      style={styles.activityItem}
                      onPress={() => {
                        if (activity.action === 'reviewed' && activity.review?.id) {
-                         router.push(`/post/${activity.review.id}`);
+                         router.push(`/posts/${activity.review.id}`);
                        }
                      }}>
                      <Image source={{ uri: activity.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.activityAvatar} />

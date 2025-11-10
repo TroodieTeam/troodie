@@ -22,6 +22,7 @@ import { ToastService } from '@/services/toastService';
 import { MenuButton } from './common/MenuButton';
 import { moderationService } from '@/services/moderationService';
 import ShareService from '@/services/shareService';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -207,6 +208,13 @@ export function PostCard({
   };
 
   const handleDeletePost = () => {
+    // If a custom onDelete handler is provided, use it instead of the default deletion
+    if (onDelete) {
+      onDelete(post.id);
+      return;
+    }
+
+    // Default deletion behavior when no custom handler is provided
     Alert.alert(
       'Delete Post',
       'Are you sure you want to delete this post? This action cannot be undone.',
@@ -217,6 +225,14 @@ export function PostCard({
           style: 'destructive',
           onPress: async () => {
             try {
+              // First get the post's community IDs before deletion
+              const { data: postData } = await supabase
+                .from('posts')
+                .select('community_ids')
+                .eq('id', post.id)
+                .single();
+
+              // Now delete the post
               const { error } = await supabase
                 .from('posts')
                 .delete()
@@ -224,9 +240,18 @@ export function PostCard({
                 .eq('user_id', user?.id);
 
               if (error) throw error;
+
+              // Emit deletion events for each community
+              if (postData?.community_ids && postData.community_ids.length > 0) {
+                postData.community_ids.forEach((communityId: string) => {
+                  eventBus.emit(EVENTS.COMMUNITY_POST_DELETED, {
+                    postId: post.id,
+                    communityId
+                  });
+                });
+              }
+
               ToastService.showSuccess('Post deleted successfully');
-              // Trigger parent component to refresh
-              onDelete?.(post.id);
             } catch (error) {
               console.error('Error deleting post:', error);
               ToastService.showError('Failed to delete post');

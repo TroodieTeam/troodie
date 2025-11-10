@@ -62,4 +62,8 @@ export const EVENTS = {
   PROFILE_IMAGE_UPDATED: 'profile_image_updated',
   USER_BLOCKED: 'user_blocked',
   USER_UNBLOCKED: 'user_unblocked',
+  COMMUNITY_POST_CREATED: 'community_post_created',
+  COMMUNITY_POST_DELETED: 'community_post_deleted',
+  COMMUNITY_POST_UPDATED: 'community_post_updated',
+  POST_ENGAGEMENT_CHANGED: 'post_engagement_changed',
 } as const;

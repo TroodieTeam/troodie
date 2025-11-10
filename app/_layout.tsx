@@ -196,8 +196,7 @@ function InnerLayout() {
             <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
             <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
             <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
-            <Stack.Screen name="creator" options={{ headerShown: false }} />
-            <Stack.Screen name="business" options={{ headerShown: false }} />
+            <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
             <StatusBar style="dark" />
