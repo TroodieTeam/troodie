@@ -8,6 +8,10 @@ import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAccountType } from '@/hooks/useAccountType';
 import { pushNotificationService } from '@/services/pushNotificationService';
+import { profileService } from '@/services/profileService';
+import { personas } from '@/data/personas';
+import { PersonaType } from '@/types/onboarding';
+import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import {
@@ -27,7 +31,7 @@ import {
   Store,
   Target
 } from 'lucide-react-native';
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -86,6 +90,21 @@ export default function MoreScreen() {
 
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
   const [checkingNotifications, setCheckingNotifications] = React.useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Fetch user profile from users table
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.id) return;
+      try {
+        const profile = await profileService.getProfile(user.id);
+        setUserProfile(profile);
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+    fetchProfile();
+  }, [user?.id]);
 
   // Check notification permission status on mount
   React.useEffect(() => {
@@ -539,31 +558,31 @@ export default function MoreScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.profileInfo}>
-              {user.user_metadata?.avatar_url ? (
-                <Image source={{ uri: user.user_metadata.avatar_url }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>
-                    {user.user_metadata?.name?.charAt(0)?.toUpperCase() ||
-                      user.email?.charAt(0)?.toUpperCase()}
-                  </Text>
-                </View>
-              )}
+              <Image 
+                source={{ 
+                  uri: getAvatarUrlWithFallback(
+                    userProfile?.avatar_url, 
+                    userProfile?.name || userProfile?.username
+                  )
+                }} 
+                style={styles.avatar}
+                resizeMode="cover"
+              />
               <View style={styles.profileText}>
                 <Text style={styles.profileName}>
-                  {user.user_metadata?.username || user.user_metadata?.name || 'User'}
+                  {userProfile?.name || (userProfile?.username ? `@${userProfile.username}` : 'User')}
                 </Text>
-                <Text style={styles.profileEmail}>{user.email}</Text>
-                <View style={styles.accountTypeBadge}>
-                  <Text style={styles.accountTypeText}>
-                    {accountType === 'consumer' && 'Food Explorer'}
-                    {accountType === 'creator' && 'Content Creator'}
-                    {accountType === 'business' && 'Business Owner'}
-                  </Text>
-                </View>
+                {(() => {
+                  const persona = userProfile?.persona ? personas[userProfile.persona as PersonaType] : null;
+                  return persona ? (
+                    <View style={styles.personaBadge}>
+                      <Text style={styles.personaEmoji}>{persona.emoji}</Text>
+                      <Text style={styles.personaName}>{persona.name}</Text>
+                    </View>
+                  ) : null;
+                })()}
                 <TouchableOpacity style={styles.viewProfileButton}
                   onPress={() => router.push('/(tabs)/profile')}
-
                 >
                   <Text style={styles.viewProfileText}>View Profile</Text>
                   <ChevronRight size={14} color={DS.colors.primaryOrange} />
@@ -636,43 +655,31 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginRight: DS.spacing.md,
   },
-  avatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: DS.colors.primaryOrange,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: DS.spacing.md,
-  },
-  avatarText: {
-    ...DS.typography.h2,
-    color: DS.colors.textWhite,
-  },
   profileText: {
     flex: 1,
   },
   profileName: {
     ...DS.typography.h3,
     color: DS.colors.textDark,
-    marginBottom: DS.spacing.xxs,
-  },
-  profileEmail: {
-    ...DS.typography.metadata,
-    color: DS.colors.textGray,
     marginBottom: DS.spacing.xs,
   },
-  accountTypeBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: DS.colors.primaryOrange + '20',
-    paddingHorizontal: 8,
+  personaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DS.colors.backgroundGray || '#F5F5F5',
+    paddingHorizontal: DS.spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
+    alignSelf: 'flex-start',
     marginBottom: DS.spacing.sm,
+    gap: DS.spacing.xxs,
   },
-  accountTypeText: {
+  personaEmoji: {
+    fontSize: 12,
+  },
+  personaName: {
     ...DS.typography.caption,
-    color: DS.colors.primaryOrange,
+    color: DS.colors.textGray,
     fontWeight: '600',
     fontSize: 11,
   },
