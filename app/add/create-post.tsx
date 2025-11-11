@@ -270,6 +270,7 @@ export default function CreatePostScreen() {
         } else {
           router.push('/(tabs)/explore?tab=posts');
         }
+      }
 
     } catch (error) {
       Alert.alert('Error', editMode ? 'Failed to update post. Please try again.' : 'Failed to create post. Please try again.');
