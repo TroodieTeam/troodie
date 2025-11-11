@@ -35,9 +35,11 @@ CREATE INDEX IF NOT EXISTS idx_share_analytics_created_at ON share_analytics(cre
 ALTER TABLE share_analytics ENABLE ROW LEVEL SECURITY;
 
 -- Share analytics policies
+DROP POLICY IF EXISTS "Users can view share analytics" ON share_analytics;
 CREATE POLICY "Users can view share analytics" ON share_analytics
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can track shares" ON share_analytics;
 CREATE POLICY "Users can track shares" ON share_analytics
   FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
 
@@ -53,6 +55,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger for updating share count
+DROP TRIGGER IF EXISTS update_post_share_count_trigger ON share_analytics;
 CREATE TRIGGER update_post_share_count_trigger
   AFTER INSERT ON share_analytics
   FOR EACH ROW 
@@ -75,6 +78,8 @@ DECLARE
   v_likes_count INTEGER;
   v_saves_count INTEGER;
   v_comments_count INTEGER;
+  v_comment_id UUID;
+  v_comment_data JSON;
 BEGIN
   -- Handle different engagement actions
   CASE p_action
@@ -135,15 +140,32 @@ BEGIN
       );
       
     WHEN 'add_comment' THEN
-      -- Add comment
+      -- Add comment and return it
+      -- Note: Restaurant mentions will be processed by trigger if process_restaurant_mentions function exists
       INSERT INTO post_comments (post_id, user_id, content) 
-      VALUES (p_post_id, p_user_id, p_content);
+      VALUES (p_post_id, p_user_id, p_content)
+      RETURNING id INTO v_comment_id;
+      
+      -- Get the full comment data
+      SELECT json_build_object(
+        'id', pc.id,
+        'post_id', pc.post_id,
+        'user_id', pc.user_id,
+        'content', pc.content,
+        'created_at', pc.created_at,
+        'updated_at', pc.updated_at,
+        'parent_comment_id', pc.parent_comment_id,
+        'likes_count', pc.likes_count
+      ) INTO v_comment_data
+      FROM post_comments pc
+      WHERE pc.id = v_comment_id;
       
       -- Get updated count
       SELECT comments_count INTO v_comments_count FROM posts WHERE id = p_post_id;
       
       v_result := json_build_object(
         'success', true,
+        'comment', v_comment_data,
         'comments_count', v_comments_count
       );
       

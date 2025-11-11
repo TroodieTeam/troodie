@@ -314,6 +314,40 @@ export class NotificationService implements NotificationServiceInterface {
   }
 
   /**
+   * Create restaurant mention notification
+   * Called when a restaurant is mentioned in a comment
+   */
+  async createRestaurantMentionNotification(
+    restaurantOwnerId: string,
+    commenterId: string,
+    commenterName: string,
+    restaurantName: string,
+    commentPreview: string,
+    postId: string,
+    commentId: string,
+    commenterAvatar?: string
+  ): Promise<Notification> {
+    return this.createNotification({
+      userId: restaurantOwnerId,
+      type: 'restaurant_mention',
+      title: 'Restaurant Mentioned',
+      message: `${commenterName} mentioned @${restaurantName} in a comment`,
+      data: {
+        postId,
+        commentId,
+        commenterId,
+        commenterName,
+        restaurantName,
+        commentPreview,
+        commenterAvatar
+      },
+      relatedId: commentId,
+      relatedType: 'comment',
+      priority: 2 // Higher priority for restaurant mentions
+    });
+  }
+
+  /**
    * Create restaurant recommendation notification
    */
   async createRestaurantRecommendationNotification(
