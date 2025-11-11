@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { CommentWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,11 +30,13 @@ export function PostComments({
   bottomOffset = 0,
 }: PostCommentsProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [comments, setComments] = useState<CommentWithUser[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [mentionsMap, setMentionsMap] = useState<Map<string, Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>>(new Map());
 
   useEffect(() => {
     if (showComments) {
@@ -114,6 +117,44 @@ export function PostComments({
       }));
       
       setComments(formattedComments as CommentWithUser[]);
+      
+      // Load mentions for all comments
+      const commentIds = formattedComments.map(c => c.id);
+      if (commentIds.length > 0) {
+        const { data: mentionsData } = await supabase
+          .from('restaurant_mentions')
+          .select('comment_id, restaurant_id, restaurant_name')
+          .in('comment_id', commentIds);
+        
+        // Build mentions map
+        const mentions = new Map<string, Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>();
+        
+        formattedComments.forEach(comment => {
+          const commentMentions = (mentionsData || [])
+            .filter(m => m.comment_id === comment.id)
+            .map(m => {
+              // Find mention in comment text
+              const mentionText = '@' + m.restaurant_name;
+              const startIndex = comment.content.indexOf(mentionText);
+              if (startIndex !== -1) {
+                return {
+                  restaurantId: m.restaurant_id,
+                  restaurantName: m.restaurant_name,
+                  startIndex,
+                  endIndex: startIndex + mentionText.length
+                };
+              }
+              return null;
+            })
+            .filter((m): m is { restaurantId: string; restaurantName: string; startIndex: number; endIndex: number } => m !== null);
+          
+          if (commentMentions.length > 0) {
+            mentions.set(comment.id, commentMentions);
+          }
+        });
+        
+        setMentionsMap(mentions);
+      }
     } catch (error) {
       console.error('Error loading comments:', error);
     } finally {
@@ -124,39 +165,25 @@ export function PostComments({
   const handleSubmitComment = async () => {
     if (!user?.id || !newComment.trim()) return;
 
+    const commentText = newComment.trim();
+    const tempId = `temp-${Date.now()}`;
+
     try {
       setSubmitting(true);
       
-      
-      // Use the database function to handle comment adding and count updating
-      const { data, error } = await supabase.rpc('handle_post_engagement', {
-        p_action: 'add_comment',
-        p_post_id: postId,
-        p_user_id: user.id,
-        p_content: newComment.trim()
-      });
-        
-      if (error) {
-        console.error('Error submitting comment:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        return;
-      }
-      
-      
-      // Get current user data from users table for accurate display
+      // Get current user data for optimistic update
       const { data: currentUserData } = await supabase
         .from('users')
         .select('id, name, username, avatar_url, persona, is_verified')
         .eq('id', user.id)
         .single();
-      
 
-      // Add optimistic comment update - show the comment immediately with current user data
+      // Create optimistic comment
       const optimisticComment: CommentWithUser = {
-        id: `temp-${Date.now()}`, // Temporary ID
+        id: tempId,
         post_id: postId,
         user_id: user.id,
-        content: newComment.trim(),
+        content: commentText,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         parent_comment_id: null,
@@ -172,15 +199,76 @@ export function PostComments({
         replies: []
       };
       
-      // Add to comments list immediately - no background reload needed
+      // Add optimistic comment immediately
       setComments(prev => [optimisticComment, ...prev]);
-      
       setNewComment('');
-      
-      // Dismiss keyboard
       Keyboard.dismiss();
       
-      // Show success toast from top
+      // Use the database function to handle comment adding and count updating
+      const { data, error } = await supabase.rpc('handle_post_engagement', {
+        p_action: 'add_comment',
+        p_post_id: postId,
+        p_user_id: user.id,
+        p_content: commentText
+      });
+        
+      if (error) {
+        console.error('Error submitting comment:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        // Remove optimistic comment on error
+        setComments(prev => prev.filter(c => c.id !== tempId));
+        
+        Toast.show({
+          type: 'error',
+          text1: 'Failed to post comment',
+          text2: error.message || 'Please try again',
+          visibilityTime: 3000,
+          position: 'top',
+        });
+        return;
+      }
+      
+      // Get the returned comment data
+      const commentData = data?.comment;
+      if (!commentData) {
+        // Fallback: reload comments if no comment data returned
+        await loadComments();
+        Toast.show({
+          type: 'success',
+          text1: 'Comment posted!',
+          visibilityTime: 2000,
+          position: 'top',
+        });
+        onCommentAdded?.();
+        return;
+      }
+
+      // Fetch user data for the comment
+      const { data: commentUserData } = await supabase
+        .from('users')
+        .select('id, name, username, avatar_url, persona, is_verified')
+        .eq('id', commentData.user_id)
+        .single();
+
+      // Replace optimistic comment with real one
+      const realComment: CommentWithUser = {
+        ...commentData,
+        user: {
+          id: commentUserData?.id || commentData.user_id,
+          name: commentUserData?.name || commentUserData?.username || 'Unknown User',
+          username: commentUserData?.username || 'unknown',
+          avatar: commentUserData?.avatar_url || '',
+          persona: commentUserData?.persona || 'Food Explorer',
+          verified: commentUserData?.is_verified || false,
+        },
+        replies: []
+      };
+
+      // Replace optimistic comment with real one
+      setComments(prev => prev.map(c => c.id === tempId ? realComment : c));
+      
+      // Show success toast
       Toast.show({
         type: 'success',
         text1: 'Comment posted!',
@@ -189,8 +277,19 @@ export function PostComments({
       });
       
       onCommentAdded?.();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting comment:', error);
+      
+      // Remove optimistic comment on error
+      setComments(prev => prev.filter(c => c.id !== tempId));
+      
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to post comment',
+        text2: error.message || 'Please try again',
+        visibilityTime: 3000,
+        position: 'top',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -233,6 +332,66 @@ export function PostComments({
     return date.toLocaleDateString();
   };
 
+  const renderCommentText = (content: string, commentId: string) => {
+    const mentions = mentionsMap.get(commentId) || [];
+    
+    if (mentions.length === 0) {
+      return <Text style={styles.commentText}>{content}</Text>;
+    }
+    
+    // Sort mentions by start index
+    const sortedMentions = [...mentions].sort((a, b) => a.startIndex - b.startIndex);
+    
+    const parts: Array<{ text: string; isMention: boolean; restaurantId?: string }> = [];
+    let lastIndex = 0;
+    
+    sortedMentions.forEach(mention => {
+      // Add text before mention
+      if (mention.startIndex > lastIndex) {
+        parts.push({
+          text: content.substring(lastIndex, mention.startIndex),
+          isMention: false
+        });
+      }
+      
+      // Add mention
+      parts.push({
+        text: content.substring(mention.startIndex, mention.endIndex),
+        isMention: true,
+        restaurantId: mention.restaurantId
+      });
+      
+      lastIndex = mention.endIndex;
+    });
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({
+        text: content.substring(lastIndex),
+        isMention: false
+      });
+    }
+    
+    return (
+      <Text style={styles.commentText}>
+        {parts.map((part, index) => {
+          if (part.isMention && part.restaurantId) {
+            return (
+              <Text
+                key={index}
+                style={styles.mentionText}
+                onPress={() => router.push(`/restaurant/${part.restaurantId}`)}
+              >
+                {part.text}
+              </Text>
+            );
+          }
+          return <Text key={index}>{part.text}</Text>;
+        })}
+      </Text>
+    );
+  };
+
   const renderComment = ({ item }: { item: CommentWithUser }) => {
     return (
       <View style={styles.commentContainer}>
@@ -250,7 +409,7 @@ export function PostComments({
               )}
               <Text style={styles.commentTime}>• {formatTimeAgo(item.created_at)}</Text>
             </View>
-            <Text style={styles.commentText}>{item.content}</Text>
+            {renderCommentText(item.content, item.id)}
           </View>
         {item.user_id === user?.id && (
           <TouchableOpacity
@@ -528,6 +687,12 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     lineHeight: 20,
     marginTop: 2,
+  },
+  mentionText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.primaryOrange,
+    textDecorationLine: 'underline',
   },
   deleteButton: {
     paddingHorizontal: 8,
