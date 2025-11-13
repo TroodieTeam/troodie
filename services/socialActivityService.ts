@@ -71,7 +71,7 @@ export interface RecentActivity {
 export const socialActivityService = {
   async getFriendsWhoVisited(restaurantId: string, userId: string): Promise<FriendVisit[]> {
     try {
-      // First get the user's friends
+      // First get the user's friends (users that the current user follows)
       const { data: friendships, error: friendsError } = await supabase
         .from('user_relationships')
         .select('following_id')
@@ -83,7 +83,27 @@ export const socialActivityService = {
 
       const friendIds = friendships.map(f => f.following_id);
 
-      // Get friends who have posts about this restaurant
+      // Get friends who have visited this restaurant (from restaurant_visits table)
+      // This is the primary source of truth for visits
+      const { data: friendVisits, error: visitsError } = await supabase
+        .from('restaurant_visits')
+        .select(`
+          id,
+          user_id,
+          created_at,
+          post_id,
+          visit_type
+        `)
+        .eq('restaurant_id', restaurantId)
+        .eq('visit_type', 'review') // Only show visits from reviews
+        .in('user_id', friendIds)
+        .order('created_at', { ascending: false });
+
+      if (visitsError) {
+        console.error('Error fetching friend visits:', visitsError);
+      }
+
+      // Get friends who have posts about this restaurant (for additional context)
       const { data: friendPosts, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -101,10 +121,9 @@ export const socialActivityService = {
 
       if (postsError) {
         console.error('Error fetching friend posts:', postsError);
-        return [];
       }
 
-      // Get friends who have saved this restaurant
+      // Get friends who have saved this restaurant (for additional context)
       const { data: friendSaves, error: savesError } = await supabase
         .from('restaurant_saves')
         .select(`
@@ -124,8 +143,11 @@ export const socialActivityService = {
         console.error('Error fetching friend saves:', savesError);
       }
 
-      // Collect all user IDs from posts and saves
+      // Collect all user IDs from visits, posts, and saves
       const allUserIds = new Set<string>();
+      if (friendVisits) {
+        friendVisits.forEach(visit => allUserIds.add(visit.user_id));
+      }
       if (friendPosts) {
         friendPosts.forEach(post => allUserIds.add(post.user_id));
       }
@@ -144,17 +166,57 @@ export const socialActivityService = {
         return [];
       }
 
-      // Create a map of users for easy lookup
+      // Create maps for easy lookup
       const userMap = new Map(users.map(u => [u.id, u]));
+      const postMap = new Map((friendPosts || []).map((p: any) => [p.user_id, p]));
+      const saveMap = new Map((friendSaves || []).map((s: any) => [s.user_id, s]));
 
-      // Combine and format the results
+      // Combine and format the results - prioritize visits from restaurant_visits table
       const visits: FriendVisit[] = [];
+      const processedUserIds = new Set<string>();
 
-      // Add posts
+      // Process visits from restaurant_visits table (primary source of truth)
+      if (friendVisits) {
+        friendVisits.forEach((visit: any) => {
+          const user = userMap.get(visit.user_id);
+          if (user && !processedUserIds.has(visit.user_id)) {
+            // Try to find associated post if visit has post_id
+            const associatedPost = visit.post_id 
+              ? (friendPosts || []).find((p: any) => p.id === visit.post_id)
+              : postMap.get(visit.user_id);
+
+            // Try to find associated save if no post
+            const associatedSave = !associatedPost ? saveMap.get(visit.user_id) : null;
+
+            visits.push({
+              id: `visit-${visit.id}`,
+              user: user,
+              post: associatedPost ? {
+                id: associatedPost.id,
+                rating: associatedPost.rating,
+                caption: associatedPost.caption,
+                photos: associatedPost.photos || [],
+                created_at: associatedPost.created_at,
+              } : undefined,
+              save: associatedSave ? {
+                id: associatedSave.id,
+                personal_rating: associatedSave.personal_rating,
+                notes: associatedSave.notes,
+                photos: associatedSave.photos || [],
+                created_at: associatedSave.created_at,
+              } : undefined,
+              isFriend: true,
+            });
+            processedUserIds.add(visit.user_id);
+          }
+        });
+      }
+
+      // Add any friends who have posts but weren't in visits (backward compatibility)
       if (friendPosts) {
         friendPosts.forEach((post: any) => {
           const user = userMap.get(post.user_id);
-          if (user) {
+          if (user && !processedUserIds.has(post.user_id)) {
             visits.push({
               id: `post-${post.id}`,
               user: user,
@@ -167,30 +229,29 @@ export const socialActivityService = {
               },
               isFriend: true,
             });
+            processedUserIds.add(post.user_id);
           }
         });
       }
 
-      // Add saves that don't have posts
+      // Add any friends who have saves but weren't in visits or posts (backward compatibility)
       if (friendSaves) {
         friendSaves.forEach((save: any) => {
           const user = userMap.get(save.user_id);
-          if (user) {
-            const hasPost = visits.some(v => v.user.id === save.user_id);
-            if (!hasPost) {
-              visits.push({
-                id: `save-${save.id}`,
-                user: user,
-                save: {
-                  id: save.id,
-                  personal_rating: save.personal_rating,
-                  notes: save.notes,
-                  photos: save.photos || [],
-                  created_at: save.created_at,
-                },
-                isFriend: true,
-              });
-            }
+          if (user && !processedUserIds.has(save.user_id)) {
+            visits.push({
+              id: `save-${save.id}`,
+              user: user,
+              save: {
+                id: save.id,
+                personal_rating: save.personal_rating,
+                notes: save.notes,
+                photos: save.photos || [],
+                created_at: save.created_at,
+              },
+              isFriend: true,
+            });
+            processedUserIds.add(save.user_id);
           }
         });
       }

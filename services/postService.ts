@@ -13,6 +13,7 @@ import {
 import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
 import { restaurantImageSyncService } from './restaurantImageSyncService';
 import { moderationService } from './moderationService';
+import { restaurantVisitService } from './restaurantVisitService';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 
 class PostService {
@@ -216,6 +217,22 @@ class PostService {
         coverPhotoService.handleNewPostImages(data.id, postData.restaurantId);
       } catch (error) {
         // Don't fail the post creation, just handle the error silently
+      }
+    }
+
+    // Mark restaurant as visited when a restaurant review is posted
+    if (data && postData.restaurantId && postData.postType === 'restaurant') {
+      try {
+        await restaurantVisitService.markRestaurantAsVisited(
+          user.id,
+          postData.restaurantId,
+          data.id,
+          'review'
+        );
+        console.log('[PostService] Restaurant marked as visited:', postData.restaurantId);
+      } catch (error) {
+        // Don't fail the post creation if visit tracking fails
+        console.error('[PostService] Error marking restaurant as visited:', error);
       }
     }
 

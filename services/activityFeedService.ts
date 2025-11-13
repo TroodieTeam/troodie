@@ -226,6 +226,22 @@ class ActivityFeedService {
           }
         }
       )
+      // Subscribe to new restaurant visits
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'restaurant_visits',
+        },
+        async (payload) => {
+          // Only show visits from reviews in activity feed
+          if (payload.new.visit_type === 'review') {
+            const activity = await this.transformVisitToActivity(payload.new);
+            if (activity) onNewActivity(activity);
+          }
+        }
+      )
       .subscribe();
 
     this.subscriptions.set(channelName, channel);
@@ -546,6 +562,56 @@ class ActivityFeedService {
       };
     } catch (error) {
       console.error('Error transforming comment to activity:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Transform a new restaurant visit into an activity item
+   */
+  private async transformVisitToActivity(visit: any): Promise<ActivityFeedItem | null> {
+    try {
+      // Fetch user and restaurant details
+      const [userResult, restaurantResult] = await Promise.all([
+        supabase.from('users').select('name, username, avatar_url, is_verified').eq('id', visit.user_id).single(),
+        supabase.from('restaurants').select('name, cuisine_types, city, state, address').eq('id', visit.restaurant_id).single(),
+      ]);
+
+      if (userResult.error || restaurantResult.error) return null;
+
+      return {
+        activity_type: 'visit',
+        activity_id: visit.id,
+        actor_id: visit.user_id,
+        actor_name: userResult.data.name,
+        actor_username: userResult.data.username,
+        actor_avatar: userResult.data.avatar_url,
+        actor_is_verified: userResult.data.is_verified,
+        action: 'visited',
+        target_name: restaurantResult.data.name,
+        target_id: visit.restaurant_id,
+        target_type: 'restaurant',
+        rating: null,
+        content: null,
+        photos: null,
+        related_user_id: null,
+        related_user_name: null,
+        related_user_username: null,
+        related_user_avatar: null,
+        privacy: 'public',
+        created_at: visit.created_at,
+        restaurant_id: visit.restaurant_id,
+        cuisine_types: restaurantResult.data.cuisine_types,
+        restaurant_location: restaurantResult.data.city && restaurantResult.data.state 
+          ? `${restaurantResult.data.city}, ${restaurantResult.data.state}` 
+          : restaurantResult.data.address,
+        community_id: null,
+        community_name: null,
+        board_id: null,
+        board_name: null,
+      };
+    } catch (error) {
+      console.error('Error transforming visit to activity:', error);
       return null;
     }
   }
