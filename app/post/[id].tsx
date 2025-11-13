@@ -1,5 +1,6 @@
 import { ErrorState } from '@/components/ErrorState';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
+import { ImageViewer } from '@/components/ImageViewer';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +42,8 @@ export default function PostDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   
   // Engagement states
   const [isLiked, setIsLiked] = useState(false);
@@ -285,12 +288,20 @@ export default function PostDetailScreen() {
               style={styles.photoScroll}
             >
               {post.photos.map((photo, index) => (
-                <Image 
+                <TouchableOpacity
                   key={index}
-                  source={{ uri: photo }} 
-                  style={styles.photo}
-                  resizeMode="cover"
-                />
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setImageViewerIndex(index);
+                    setShowImageViewer(true);
+                  }}
+                >
+                  <Image 
+                    source={{ uri: photo }} 
+                    style={styles.photo}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
               ))}
             </ScrollView>
             {post.photos.length > 1 && (
@@ -386,6 +397,16 @@ export default function PostDetailScreen() {
           <Text style={styles.noComments}>No comments yet. Be the first to comment!</Text>
         </View>
       </ScrollView>
+      
+      {/* Image Viewer */}
+      {showImageViewer && post.photos && post.photos.length > 0 && (
+        <ImageViewer
+          visible={showImageViewer}
+          images={post.photos}
+          initialIndex={imageViewerIndex}
+          onClose={() => setShowImageViewer(false)}
+        />
+      )}
     </View>
   );
 }
