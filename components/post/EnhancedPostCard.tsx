@@ -16,6 +16,7 @@ import { usePostEngagement } from '@/hooks/usePostEngagement';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { formatDistanceToNow } from '@/utils/dateHelpers';
+import { ImageViewer } from '@/components/ImageViewer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IMAGE_HEIGHT = SCREEN_WIDTH * 0.75;
@@ -39,6 +40,8 @@ export const EnhancedPostCard = memo(({
 }: EnhancedPostCardProps) => {
   const router = useRouter();
   const [imageIndex, setImageIndex] = useState(0);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   
   const {
     isLiked,
@@ -195,7 +198,13 @@ export const EnhancedPostCard = memo(({
       
       {/* Images */}
       {post.photos && post.photos.length > 0 && (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
+        <TouchableOpacity 
+          onPress={() => {
+            setImageViewerIndex(imageIndex);
+            setShowImageViewer(true);
+          }} 
+          activeOpacity={0.95}
+        >
           <View style={styles.imageContainer}>
             <Image
               source={{ uri: post.photos[imageIndex] }}
@@ -321,6 +330,16 @@ export const EnhancedPostCard = memo(({
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
         </View>
+      )}
+      
+      {/* Image Viewer */}
+      {showImageViewer && post.photos && post.photos.length > 0 && (
+        <ImageViewer
+          visible={showImageViewer}
+          images={post.photos}
+          initialIndex={imageViewerIndex}
+          onClose={() => setShowImageViewer(false)}
+        />
       )}
     </View>
   );
