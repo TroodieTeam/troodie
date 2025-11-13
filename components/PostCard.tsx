@@ -23,6 +23,7 @@ import {
 import { MenuButton } from './common/MenuButton';
 import { ReportModal } from './modals/ReportModal';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
+import { ImageViewer } from './ImageViewer';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -55,6 +56,8 @@ export function PostCard({
   const [showReportModal, setShowReportModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   
   // Use the enhanced post engagement hook
   const {
@@ -411,37 +414,60 @@ export function PostCard({
       {(post as any).content_type !== 'external' && post.photos && post.photos.length > 0 && (
         <View style={styles.photoContainer}>
           {post.photos.length === 1 ? (
-            <Image 
-              source={{ 
-                uri: imageErrors.has(post.photos[0]) 
-                  ? DEFAULT_IMAGES.restaurant 
-                  : post.photos[0] 
-              }} 
-              style={styles.singlePhoto}
-              onError={() => {
-                setImageErrors(prev => new Set(prev).add(post.photos[0]));
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => {
+                setImageViewerIndex(0);
+                setShowImageViewer(true);
               }}
-            />
+            >
+              <Image 
+                source={{ 
+                  uri: imageErrors.has(post.photos[0]) 
+                    ? DEFAULT_IMAGES.restaurant 
+                    : post.photos[0] 
+                }} 
+                style={styles.singlePhoto}
+                onError={() => {
+                  setImageErrors(prev => new Set(prev).add(post.photos[0]));
+                }}
+              />
+            </TouchableOpacity>
           ) : (
             <View style={styles.photoGrid}>
               {post.photos.slice(0, 4).map((photo, index) => (
-                <Image 
-                  key={index} 
-                  source={{ 
-                    uri: imageErrors.has(photo) 
-                      ? DEFAULT_IMAGES.restaurant 
-                      : photo 
-                  }} 
-                  style={styles.gridPhoto}
-                  onError={() => {
-                    setImageErrors(prev => new Set(prev).add(photo));
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setImageViewerIndex(index);
+                    setShowImageViewer(true);
                   }}
-                />
+                >
+                  <Image 
+                    source={{ 
+                      uri: imageErrors.has(photo) 
+                        ? DEFAULT_IMAGES.restaurant 
+                        : photo 
+                    }} 
+                    style={styles.gridPhoto}
+                    onError={() => {
+                      setImageErrors(prev => new Set(prev).add(photo));
+                    }}
+                  />
+                </TouchableOpacity>
               ))}
               {post.photos.length > 4 && (
-                <View style={styles.photoOverlay}>
+                <TouchableOpacity
+                  style={styles.photoOverlay}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setImageViewerIndex(3);
+                    setShowImageViewer(true);
+                  }}
+                >
                   <Text style={styles.photoCount}>+{post.photos.length - 4}</Text>
-                </View>
+                </TouchableOpacity>
               )}
             </View>
           )}
@@ -592,6 +618,15 @@ export function PostCard({
         contentType="post"
         contentId={post.id}
         onSuccess={() => setShowReportModal(false)}
+      />
+    )}
+    
+    {showImageViewer && post.photos && post.photos.length > 0 && (
+      <ImageViewer
+        visible={showImageViewer}
+        images={post.photos}
+        initialIndex={imageViewerIndex}
+        onClose={() => setShowImageViewer(false)}
       />
     )}
   </>

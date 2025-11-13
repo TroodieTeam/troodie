@@ -2,6 +2,7 @@ import { BottomNavigation } from '@/components/BottomNavigation';
 import { ErrorState } from '@/components/ErrorState';
 import { PostComments } from '@/components/PostComments';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
+import { ImageViewer } from '@/components/ImageViewer';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,8 @@ export default function PostDetailScreen() {
   const [error, setError] = useState<Error | null>(null);
   const [showComments, setShowComments] = useState(true); // Show comments by default
   const scrollViewRef = useRef<ScrollView>(null);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   
   // Use the enhanced post engagement hook 
   const engagement = usePostEngagement({
@@ -323,22 +326,38 @@ export default function PostDetailScreen() {
         {(post as any).content_type !== 'external' && post.photos && post.photos.length > 0 && (
           <View style={styles.photosContainer}>
             {post.photos.length === 1 ? (
-              <Image 
-                source={{ uri: post.photos[0] }} 
-                style={styles.singlePhoto}
-                resizeMode="cover"
-                onError={() => {}}
-              />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  setImageViewerIndex(0);
+                  setShowImageViewer(true);
+                }}
+              >
+                <Image 
+                  source={{ uri: post.photos[0] }} 
+                  style={styles.singlePhoto}
+                  resizeMode="cover"
+                  onError={() => {}}
+                />
+              </TouchableOpacity>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
                 {post.photos.map((photo, index) => (
-                  <Image 
-                    key={index} 
-                    source={{ uri: photo }} 
-                    style={styles.multiPhoto}
-                    resizeMode="cover"
-                    onError={() => {}}
-                  />
+                  <TouchableOpacity
+                    key={index}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      setImageViewerIndex(index);
+                      setShowImageViewer(true);
+                    }}
+                  >
+                    <Image 
+                      source={{ uri: photo }} 
+                      style={styles.multiPhoto}
+                      resizeMode="cover"
+                      onError={() => {}}
+                    />
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
@@ -523,6 +542,16 @@ export default function PostDetailScreen() {
       
       {/* Bottom Navigation */}
       <BottomNavigation />
+      
+      {/* Image Viewer */}
+      {showImageViewer && post.photos && post.photos.length > 0 && (
+        <ImageViewer
+          visible={showImageViewer}
+          images={post.photos}
+          initialIndex={imageViewerIndex}
+          onClose={() => setShowImageViewer(false)}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
