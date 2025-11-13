@@ -46,43 +46,21 @@ class EnhancedPostEngagementService {
   async togglePostLikeOptimistic(
     postId: string, 
     userId: string,
+    currentIsLiked?: boolean,
     onOptimisticUpdate?: (isLiked: boolean, likesCount: number) => void,
     onError?: (error: Error) => void
   ): Promise<boolean> {
     const cacheKey = `${postId}_${userId}`;
-    const currentLikeState = this.cache.likes.get(cacheKey) ?? false;
-    const newLikeState = !currentLikeState;
+    // Use passed current state if available, otherwise fall back to cache
+    const currentLikeState = currentIsLiked !== undefined 
+      ? currentIsLiked 
+      : (this.cache.likes.get(cacheKey) ?? false);
     
-    // Get current stats
-    const stats = this.cache.stats.get(postId) || { likes_count: 0 };
-    const newLikesCount = newLikeState 
-      ? stats.likes_count + 1 
-      : Math.max(0, stats.likes_count - 1);
-    
-    // Optimistic update
-    this.cache.likes.set(cacheKey, newLikeState);
-    if (stats) {
-      stats.likes_count = newLikesCount;
-      this.cache.stats.set(postId, stats);
-    }
-    
-    // Notify UI immediately
-    onOptimisticUpdate?.(newLikeState, newLikesCount);
-    
-    // Create optimistic update record
-    const updateId = `${Date.now()}_${Math.random()}`;
-    const update: OptimisticUpdate<{ postId: string; userId: string }> = {
-      id: updateId,
-      action: newLikeState ? 'like' : 'unlike',
-      timestamp: Date.now(),
-      data: { postId, userId },
-      retryCount: 0
-    };
-    
-    this.optimisticUpdates.set(updateId, update);
+    // Update cache for consistency (UI update handled by hook)
+    this.cache.likes.set(cacheKey, !currentLikeState);
     
     try {
-      // Use the database function for atomic operation
+      // Call database function
       const { data, error } = await supabase.rpc('handle_post_engagement', {
         p_action: 'toggle_like',
         p_post_id: postId,
@@ -91,39 +69,27 @@ class EnhancedPostEngagementService {
       
       if (error) throw error;
       
-      // Update cache with server response
       const result = data as any;
-      this.cache.likes.set(cacheKey, result.is_liked);
-      if (stats) {
-        stats.likes_count = result.likes_count;
-        this.cache.stats.set(postId, stats);
-      }
       
-      // Remove from optimistic updates
-      this.optimisticUpdates.delete(updateId);
+      // Update cache with server response
+      this.cache.likes.set(cacheKey, result.is_liked);
+      const stats = this.cache.stats.get(postId) || { likes_count: 0 };
+      stats.likes_count = result.likes_count;
+      this.cache.stats.set(postId, stats);
+      
+      // Notify hook with server response
+      onOptimisticUpdate?.(result.is_liked, result.likes_count);
       
       return result.is_liked;
     } catch (error: any) {
       console.error('Error toggling like:', error);
       
-      // Add to retry queue
-      if (update.retryCount < this.maxRetries) {
-        update.retryCount++;
-        this.retryQueue.push(update);
-        this.processRetryQueue();
-      } else {
-        // Revert optimistic update
-        this.cache.likes.set(cacheKey, currentLikeState);
-        if (stats) {
-          stats.likes_count = currentLikeState 
-            ? stats.likes_count 
-            : Math.max(0, stats.likes_count - 1);
-          this.cache.stats.set(postId, stats);
-        }
-        
-        onError?.(error);
-        onOptimisticUpdate?.(currentLikeState, stats.likes_count);
-      }
+      // Revert cache
+      this.cache.likes.set(cacheKey, currentLikeState);
+      const stats = this.cache.stats.get(postId) || { likes_count: 0 };
+      
+      // Notify error handler
+      onError?.(error);
       
       throw error;
     }

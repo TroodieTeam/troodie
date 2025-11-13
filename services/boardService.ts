@@ -809,17 +809,12 @@ export const boardService = {
    */
   async getQuickSavesRestaurants(userId: string, limit?: number): Promise<BoardRestaurant[]> {
     try {
-      console.log(`[boardService] Getting quick saves for user: ${userId}`);
-      
       // First get the Your Saves board
       const board = await this.getUserQuickSavesBoard(userId)
       
       if (!board) {
-        console.log(`[boardService] No Your Saves board found for user: ${userId}`);
         return []
       }
-      
-      console.log(`[boardService] Found Your Saves board: ${board.id}`);
 
       let request = supabase
         .from('board_restaurants')
@@ -835,7 +830,6 @@ export const boardService = {
 
       if (error) throw error
       
-      console.log(`[boardService] Found ${data?.length || 0} quick saves`);
       return data || []
     } catch (error: any) {
       console.error('Error fetching Your Saves restaurants:', error)

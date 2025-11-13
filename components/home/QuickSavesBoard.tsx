@@ -36,7 +36,6 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
       
       // If no Quick Saves board, get ALL saves (limited to 10 most recent)
       if (quickSaves.length === 0) {
-        console.log('No Quick Saves board found, fetching all saves for homepage')
         quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 10)
       }
       

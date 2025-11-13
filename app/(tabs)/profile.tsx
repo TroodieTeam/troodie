@@ -118,7 +118,6 @@ export default function ProfileScreen() {
       
       // If no Quick Saves board, get ALL saves
       if (!quickSaves || quickSaves.length === 0) {
-        console.log('No Quick Saves board found, fetching all saves for profile');
         quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 50);
       }
       
