@@ -1,4 +1,5 @@
 import { ImageUploadServiceV2 } from './imageUploadServiceV2';
+import { VideoUploadService } from './videoUploadService';
 import * as ImagePicker from 'expo-image-picker';
 
 class PostMediaService {
@@ -24,6 +25,41 @@ class PostMediaService {
     } catch (error) {
       console.error('Error uploading photos:', error);
       throw new Error(`Failed to upload photos: ${error}`);
+    }
+  }
+
+  /**
+   * Upload videos for a post
+   * Videos are optimized during recording/picking and can be further processed server-side
+   */
+  async uploadPostVideos(videos: string[], userId: string, postId?: string): Promise<string[]> {
+    // Generate a temporary post ID if not provided
+    const postIdForUpload = postId || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    const uploadedUrls: string[] = [];
+
+    try {
+      console.log(`[PostMediaService] Starting upload of ${videos.length} video(s)`);
+
+      // Upload videos (they should already be optimized via expo-image-picker quality settings)
+      for (let i = 0; i < videos.length; i++) {
+        const video = videos[i];
+        console.log(`[PostMediaService] Uploading video ${i + 1}/${videos.length}`);
+        
+        const result = await VideoUploadService.uploadVideo(
+          video,
+          'post-photos', // Use same bucket as photos for now
+          `posts/${postIdForUpload}`
+        );
+        uploadedUrls.push(result.publicUrl);
+        
+        console.log(`[PostMediaService] Video ${i + 1} uploaded successfully`);
+      }
+
+      console.log(`[PostMediaService] All ${uploadedUrls.length} videos uploaded successfully`);
+      return uploadedUrls;
+    } catch (error) {
+      console.error('Error uploading videos:', error);
+      throw new Error(`Failed to upload videos: ${error}`);
     }
   }
 
@@ -107,6 +143,85 @@ class PostMediaService {
     } catch (error) {
       console.error('Error picking photos:', error);
       throw new Error(`Failed to pick photos: ${error}`);
+    }
+  }
+
+  /**
+   * Pick videos from device gallery with optimization
+   * Uses VideoOptimizationService for production-ready video handling
+   */
+  async pickVideos(maxVideos: number = 5): Promise<string[]> {
+    try {
+      const { VideoOptimizationService } = await import('./videoOptimizationService');
+      return await VideoOptimizationService.pickVideos(maxVideos, {
+        quality: 0.6, // 60% quality - good balance for mobile
+        maxDuration: 60, // 60 seconds max
+        enableBackendCompression: false, // Enable when Edge Function is ready
+      });
+    } catch (error) {
+      console.error('Error picking videos:', error);
+      throw new Error(`Failed to pick videos: ${error}`);
+    }
+  }
+
+  /**
+   * Pick photos or videos (mixed media)
+   */
+  async pickMedia(maxItems: number = 10): Promise<{ photos: string[]; videos: string[] }> {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        throw new Error('Permission to access camera roll is required!');
+      }
+
+      // Launch media picker for both images and videos
+      // Note: videoQuality is only available for camera recording, not for library picking
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        selectionLimit: maxItems,
+        quality: 0.8,
+      });
+
+      if (result.canceled) {
+        return { photos: [], videos: [] };
+      }
+
+      const photos: string[] = [];
+      const videos: string[] = [];
+
+      result.assets.forEach(asset => {
+        if (asset.type === 'video') {
+          videos.push(asset.uri);
+        } else {
+          photos.push(asset.uri);
+        }
+      });
+
+      return { photos, videos };
+    } catch (error) {
+      console.error('Error picking media:', error);
+      throw new Error(`Failed to pick media: ${error}`);
+    }
+  }
+
+  /**
+   * Record a video with camera with optimization
+   * Uses VideoOptimizationService for production-ready video handling
+   */
+  async recordVideo(): Promise<string | null> {
+    try {
+      const { VideoOptimizationService } = await import('./videoOptimizationService');
+      return await VideoOptimizationService.recordVideo({
+        quality: 0.6, // 60% quality - good balance for mobile
+        maxDuration: 60, // 60 seconds max
+        enableBackendCompression: false, // Enable when Edge Function is ready
+      });
+    } catch (error) {
+      console.error('Error recording video:', error);
+      throw new Error(`Failed to record video: ${error}`);
     }
   }
 

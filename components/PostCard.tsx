@@ -15,6 +15,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,6 +25,8 @@ import { MenuButton } from './common/MenuButton';
 import { ReportModal } from './modals/ReportModal';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
 import { ImageViewer } from './ImageViewer';
+import { VideoViewer } from './VideoViewer';
+import { VideoThumbnail } from './VideoThumbnail';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -58,6 +61,8 @@ export function PostCard({
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const [showVideoViewer, setShowVideoViewer] = useState(false);
+  const [videoViewerIndex, setVideoViewerIndex] = useState(0);
   
   // Use the enhanced post engagement hook
   const {
@@ -474,6 +479,54 @@ export function PostCard({
         </View>
       )}
 
+      {/* Videos - Only show for original content */}
+      {(post as any).content_type !== 'external' && (post as any).videos && (post as any).videos.length > 0 && (
+        <View style={styles.photoContainer}>
+          {(post as any).videos.length === 1 ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => {
+                setVideoViewerIndex(0);
+                setShowVideoViewer(true);
+              }}
+              style={styles.videoThumbnail}
+            >
+              <View style={styles.videoThumbnailOverlay}>
+                <Ionicons name="play-circle" size={64} color="#FFFFFF" />
+              </View>
+              <VideoThumbnail
+                videoUri={(post as any).videos[0]}
+                style={styles.singlePhoto}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {(post as any).videos.map((video: string, index: number) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setVideoViewerIndex(index);
+                    setShowVideoViewer(true);
+                  }}
+                  style={[styles.videoThumbnail, { marginRight: 8 }]}
+                >
+                  <View style={styles.videoThumbnailOverlay}>
+                    <Ionicons name="play-circle" size={48} color="#FFFFFF" />
+                  </View>
+                  <VideoThumbnail
+                    videoUri={video}
+                    style={styles.gridPhoto}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      )}
+
       {/* Restaurant Info - Only show if restaurant exists */}
       {post.restaurant && post.restaurant.id && (
         <TouchableOpacity 
@@ -621,14 +674,23 @@ export function PostCard({
       />
     )}
     
-    {showImageViewer && post.photos && post.photos.length > 0 && (
-      <ImageViewer
-        visible={showImageViewer}
-        images={post.photos}
-        initialIndex={imageViewerIndex}
-        onClose={() => setShowImageViewer(false)}
-      />
-    )}
+      {showImageViewer && post.photos && post.photos.length > 0 && (
+        <ImageViewer
+          visible={showImageViewer}
+          images={post.photos}
+          initialIndex={imageViewerIndex}
+          onClose={() => setShowImageViewer(false)}
+        />
+      )}
+
+      {showVideoViewer && (post as any).videos && (post as any).videos.length > 0 && (
+        <VideoViewer
+          visible={showVideoViewer}
+          videos={(post as any).videos}
+          initialIndex={videoViewerIndex}
+          onClose={() => setShowVideoViewer(false)}
+        />
+      )}
   </>
   );
 }
@@ -886,5 +948,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Inter_500Medium',
     color: designTokens.colors.textMedium,
+  },
+  videoThumbnail: {
+    position: 'relative',
+  },
+  videoThumbnailOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    borderRadius: designTokens.borderRadius.sm,
   },
 }); 

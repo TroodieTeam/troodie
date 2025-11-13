@@ -45,6 +45,7 @@ export interface PostEngagementStats {
 export interface PostCreationData {
   caption?: string;
   photos?: string[];
+  videos?: string[];
   restaurantId?: string; // Now optional for simple posts
   postType?: 'restaurant' | 'simple' | 'thought' | 'question' | 'announcement';
   rating?: number;
