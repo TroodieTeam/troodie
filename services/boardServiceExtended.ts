@@ -11,8 +11,6 @@ export const boardServiceExtended = {
    */
   async getAllUserSaves(userId: string, limit?: number): Promise<BoardRestaurant[]> {
     try {
-      console.log(`[boardServiceExtended] Getting all saves for user: ${userId}, limit: ${limit}`);
-      
       let query = supabase
         .from('board_restaurants')
         .select('*')
@@ -30,7 +28,6 @@ export const boardServiceExtended = {
         return [];
       }
 
-      console.log(`[boardServiceExtended] Found ${data?.length || 0} saves for user ${userId}`);
       return data || [];
     } catch (error) {
       console.error('Error in getAllUserSaves:', error);

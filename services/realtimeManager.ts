@@ -78,11 +78,6 @@ class RealtimeManager {
         // Check various user ID fields
         const eventUserId = data?.user_id || data?.added_by || data?.actor_id || data?.follower_id;
         if (eventUserId === ignoreUserId) {
-          console.debug('[RealtimeManager] Ignoring self-generated event', {
-            channel: channelName,
-            userId: ignoreUserId,
-            event: eventType
-          });
           return;
         }
       }
@@ -93,11 +88,6 @@ class RealtimeManager {
         if (eventTimestamp) {
           const eventTime = new Date(eventTimestamp).getTime();
           if (eventTime <= minTimestamp) {
-            console.debug('[RealtimeManager] Ignoring old event', {
-              channel: channelName,
-              eventTime,
-              minTimestamp
-            });
             return;
           }
         }
@@ -124,12 +114,6 @@ class RealtimeManager {
           wrappedCallback
         )
         .subscribe();
-
-      console.debug('[RealtimeManager] Subscribed to channel', {
-        channel: channelName,
-        table: config.table,
-        event: config.event
-      });
     }
 
     // Return unsubscribe function
@@ -143,10 +127,6 @@ class RealtimeManager {
           supabase.removeChannel(channel);
           this.channels.delete(channelName);
           this.subscriptions.delete(channelName);
-
-          console.debug('[RealtimeManager] Unsubscribed from channel', {
-            channel: channelName
-          });
         }
       }
     };
@@ -161,10 +141,6 @@ class RealtimeManager {
       supabase.removeChannel(channel);
       this.channels.delete(channelName);
       this.subscriptions.delete(channelName);
-
-      console.debug('[RealtimeManager] Manually unsubscribed from channel', {
-        channel: channelName
-      });
     }
   }
 
@@ -172,17 +148,12 @@ class RealtimeManager {
    * Unsubscribe from all channels (useful on logout)
    */
   unsubscribeAll() {
-    this.channels.forEach((channel, channelName) => {
+    this.channels.forEach((channel) => {
       supabase.removeChannel(channel);
-      console.debug('[RealtimeManager] Unsubscribed from channel', {
-        channel: channelName
-      });
     });
 
     this.channels.clear();
     this.subscriptions.clear();
-
-    console.debug('[RealtimeManager] Unsubscribed from all channels');
   }
 
   /**

@@ -59,11 +59,8 @@ function InnerLayout() {
   // Handle deep links
   useEffect(() => {
     const handleDeepLink = (url: string) => {
-      console.log('Handling deep link:', url);
-      
       // Parse the URL to extract the path
       const parsed = Linking.parse(url);
-      console.log('Parsed URL:', parsed);
       
       // Extract the path from the URL
       // Handle Expo dev URLs that have --/ prefix
@@ -71,8 +68,6 @@ function InnerLayout() {
       if (path.includes('--/')) {
         path = path.split('--/')[1];
       }
-      
-      console.log('Extracted path:', path);
       
       // Handle different deep link patterns
       if (path) {
