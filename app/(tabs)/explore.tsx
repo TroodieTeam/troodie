@@ -120,7 +120,7 @@ export default function ExploreScreen() {
   const { user, profile } = useAuth();
   const { updateNetworkProgress } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<TabType>('restaurants');
+  const [activeTab, setActiveTab] = useState<TabType>('posts');
   const [refreshing, setRefreshing] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
