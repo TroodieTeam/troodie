@@ -223,6 +223,42 @@ JOIN restaurants r ON p.restaurant_id::uuid = r.id
 JOIN users u2 ON p.user_id = u2.id
 WHERE p.privacy = 'public'
 
+UNION ALL
+
+-- Restaurant Visits (when user submits a review)
+SELECT 
+  'visit'::text as activity_type,
+  rv.id as activity_id,
+  rv.user_id as actor_id,
+  u.name::text as actor_name,
+  u.username::text as actor_username,
+  u.avatar_url::text as actor_avatar,
+  u.is_verified as actor_is_verified,
+  'visited'::text as action,
+  r.name::text as target_name,
+  r.id as target_id,
+  'restaurant'::text as target_type,
+  NULL::decimal as rating,
+  NULL::text as content,
+  NULL::text[] as photos,
+  NULL::uuid as related_user_id,
+  NULL::text as related_user_name,
+  NULL::text as related_user_username,
+  NULL::text as related_user_avatar,
+  'public'::text as privacy,
+  rv.created_at,
+  r.id::varchar as restaurant_id,
+  r.cuisine_types,
+  COALESCE(r.city || ', ' || r.state, r.address)::text as restaurant_location,
+  NULL::uuid as community_id,
+  NULL::text as community_name,
+  NULL::uuid as board_id,
+  NULL::text as board_name
+FROM restaurant_visits rv
+JOIN users u ON rv.user_id = u.id
+JOIN restaurants r ON rv.restaurant_id = r.id
+WHERE rv.visit_type = 'review' -- Only show visits from reviews in activity feed
+
 ORDER BY created_at DESC;
 
 -- Create indexes for performance
