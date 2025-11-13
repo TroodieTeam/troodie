@@ -5,6 +5,7 @@ interface PostFormData {
   rating: number | null;
   caption: string;
   photos: string[];
+  videos: string[];
   visitType?: 'dine_in' | 'takeout' | 'delivery';
   priceRange?: string;
   tags: string[];
@@ -32,6 +33,7 @@ const initialFormData: PostFormData = {
   rating: null,
   caption: '',
   photos: [],
+  videos: [],
   tags: [],
   contentType: 'original',
   postType: 'simple',
