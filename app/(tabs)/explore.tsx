@@ -5,19 +5,21 @@ import { RestaurantCardSkeleton } from '@/components/LoadingSkeleton';
 import { PostCard } from '@/components/PostCard';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { compactDesign, designTokens } from '@/constants/designTokens';
-import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Community, communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
-import { Community, communityService } from '@/services/communityService';
 import { userService } from '@/services/userService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Calendar, Lock, MapPin, Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  DeviceEventEmitter,
   Dimensions,
   FlatList,
   Image,
@@ -29,7 +31,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  DeviceEventEmitter,
 } from 'react-native';
 
 type TabType = 'restaurants' | 'posts' | 'communities';
@@ -351,14 +352,6 @@ export default function ExploreScreen() {
   ), [searchQuery, activeTab, router, searchFocused]);
 
 
-
-  const handleNavigateToPost = useCallback((postId: string) => {
-    router.push({
-      pathname: '/posts/[id]',
-      params: { id: postId },
-    });
-  }, [router]);
-
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     // Handle regular items
     if (activeTab === 'restaurants') {
@@ -392,7 +385,15 @@ export default function ExploreScreen() {
             pathname: '/posts/[id]',
             params: { id: item.id }
           })}
-          onLike={() => {}}
+          onLike={(postId, liked) => {
+            updatePostItem(postId, (post) => ({
+              ...post,
+              is_liked_by_user: liked,
+              likes_count: liked 
+                ? (post.likes_count || 0) + 1 
+                : Math.max((post.likes_count || 1) - 1, 0)
+            }));
+          }}
           onComment={() => {}}
           onSave={() => {}}
           onBlock={handleUserBlocked}
@@ -480,7 +481,42 @@ export default function ExploreScreen() {
     );
   }, [activeTab, router, isUserMember, handleJoinCommunity]);
 
+  // Listen for post engagement changes (likes, saves) from detail screen or other sources
   useEffect(() => {
+    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, async ({ 
+      postId, 
+      isLiked, 
+      likesCount 
+    }: { 
+      postId: string; 
+      isLiked?: boolean; 
+      likesCount?: number; 
+    }) => {
+      if (isLiked !== undefined || likesCount !== undefined) {
+        updatePostItem(postId, (item) => ({
+          ...item,
+          likes_count: likesCount !== undefined ? likesCount : item.likes_count ?? 0,
+          is_liked_by_user: isLiked !== undefined ? isLiked : item.is_liked_by_user ?? false,
+        }));
+      }
+      
+      try {
+        const freshPost = await postService.getPostById(postId);
+        if (freshPost) {
+          updatePostItem(postId, (item) => ({
+            ...item,
+            likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? item.likes_count ?? 0),
+            is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? item.is_liked_by_user ?? false),
+            comments_count: freshPost.comments_count ?? item.comments_count ?? 0,
+            saves_count: freshPost.saves_count ?? item.saves_count ?? 0,
+            is_saved_by_user: freshPost.is_saved_by_user ?? item.is_saved_by_user ?? false,
+          }));
+        }
+      } catch (error) {
+        console.error('Error refreshing post data:', error);
+      }
+    });
+
     const subscription = DeviceEventEmitter.addListener('post-comment-added', ({ postId }: { postId: string }) => {
       updatePostItem(postId, (item) => ({
         ...item,
@@ -489,6 +525,7 @@ export default function ExploreScreen() {
     });
 
     return () => {
+      unsubscribeEngagement();
       subscription.remove();
     };
   }, [updatePostItem]);

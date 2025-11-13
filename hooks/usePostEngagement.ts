@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { enhancedPostEngagementService } from '@/services/enhancedPostEngagementService';
 import { useAuth } from '@/contexts/AuthContext';
-import { PostEngagementStats, CommentWithUser } from '@/types/post';
-import { eventBus, EVENTS } from '@/utils/eventBus';
-import { Alert } from 'react-native';
-import { useOptimisticMutation } from './useOptimisticMutation';
-import { ToastService } from '@/services/toastService';
+import { enhancedPostEngagementService } from '@/services/enhancedPostEngagementService';
 import { realtimeManager } from '@/services/realtimeManager';
+import { ToastService } from '@/services/toastService';
+import { CommentWithUser, PostEngagementStats } from '@/types/post';
+import { eventBus, EVENTS } from '@/utils/eventBus';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 
 interface UsePostEngagementOptions {
   postId: string;
@@ -72,8 +71,21 @@ export function usePostEngagement({
   // Track last optimistic update timestamp
   const lastOptimisticUpdate = useRef<number>(0);
   
-  // Initialize from initial stats or cache
+  // Track last initialized postId to prevent unnecessary resets
+  const lastPostIdRef = useRef<string | null>(null);
+  const lastInitialIsLikedRef = useRef<boolean | undefined>(undefined);
+  
   useEffect(() => {
+    const isNewPost = lastPostIdRef.current !== postId;
+    const isLikedStatusChanged = lastInitialIsLikedRef.current !== initialIsLiked;
+    
+    // Only initialize if this is a new post OR if like status changed (from server refresh)
+    if (!isNewPost && !isLikedStatusChanged) return;
+    
+    lastPostIdRef.current = postId;
+    lastInitialIsLikedRef.current = initialIsLiked;
+    
+    // Always use initial stats if provided (from server)
     if (initialStats) {
       setLikesCount(initialStats.likes_count || 0);
       setCommentsCount(initialStats.comments_count || 0);
@@ -81,21 +93,35 @@ export function usePostEngagement({
       setShareCount(initialStats.share_count || 0);
     }
     
+    // Always use initialIsLiked/initialIsSaved if provided (from server) - this is the source of truth
+    if (initialIsLiked !== undefined) {
+      setIsLiked(initialIsLiked);
+    }
+    if (initialIsSaved !== undefined) {
+      setIsSaved(initialIsSaved);
+    }
+    
     if (!user?.id) return;
     
+    // Only use cache if initial values weren't provided (fallback)
     const cachedLike = enhancedPostEngagementService.getCachedLikeStatus(postId, user.id);
     const cachedSave = enhancedPostEngagementService.getCachedSaveStatus(postId, user.id);
     const cachedStats = enhancedPostEngagementService.getCachedStats(postId);
     
-    if (cachedLike !== undefined) setIsLiked(cachedLike);
-    if (cachedSave !== undefined) setIsSaved(cachedSave);
+    // Use cache only if initial values weren't provided
+    if (initialIsLiked === undefined && cachedLike !== undefined) {
+      setIsLiked(cachedLike);
+    }
+    if (initialIsSaved === undefined && cachedSave !== undefined) {
+      setIsSaved(cachedSave);
+    }
     if (cachedStats && !initialStats) {
       setLikesCount(cachedStats.likes_count || 0);
       setCommentsCount(cachedStats.comments_count || 0);
       setSavesCount(cachedStats.saves_count || 0);
       setShareCount(cachedStats.share_count || 0);
     }
-  }, [postId, user?.id, initialStats]);
+  }, [postId, user?.id, initialIsLiked, initialIsSaved, initialStats]);
   
   // Set up real-time subscriptions
   useEffect(() => {
@@ -153,7 +179,7 @@ export function usePostEngagement({
     };
   }, [postId, enableRealtime, user?.id]);
   
-  // IMPROVED: Toggle like action with optimistic mutation
+  // Toggle like action with optimistic update
   const toggleLike = useCallback(async () => {
     if (!user?.id) {
       Alert.alert('Sign in required', 'Please sign in to like posts');
@@ -162,38 +188,66 @@ export function usePostEngagement({
 
     const previousIsLiked = isLiked;
     const previousCount = likesCount;
+    const newIsLiked = !previousIsLiked;
+    const expectedCount = newIsLiked 
+      ? previousCount + 1 
+      : Math.max(previousCount - 1, 0);
 
-    // Update optimistic timestamp
+    // Update optimistic timestamp to prevent realtime from overwriting
     lastOptimisticUpdate.current = Date.now();
 
-    // Optimistic update
-    setIsLiked(!previousIsLiked);
-    setLikesCount(previousIsLiked ? previousCount - 1 : previousCount + 1);
+    setIsLiked(newIsLiked);
+    setLikesCount(expectedCount);
+
+    eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
+      postId, 
+      isLiked: newIsLiked, 
+      likesCount: expectedCount 
+    });
 
     try {
       await enhancedPostEngagementService.togglePostLikeOptimistic(
         postId,
         user.id,
-        (newIsLiked, newLikesCount) => {
-          setIsLiked(newIsLiked);
-          setLikesCount(newLikesCount);
-          // Emit engagement changed event
-          eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { postId });
+        previousIsLiked,
+        (serverIsLiked, serverLikesCount) => {
+          if (serverIsLiked !== newIsLiked) {
+            setIsLiked(serverIsLiked);
+          }
+          
+          if (serverLikesCount >= expectedCount && serverLikesCount !== expectedCount) {
+            setLikesCount(serverLikesCount);
+          }
+          
+          eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
+            postId, 
+            isLiked: serverIsLiked, 
+            likesCount: serverLikesCount >= expectedCount ? serverLikesCount : expectedCount 
+          });
         },
         (error) => {
+          setIsLiked(previousIsLiked);
+          setLikesCount(previousCount);
+          eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
+            postId, 
+            isLiked: previousIsLiked, 
+            likesCount: previousCount 
+          });
           onEngagementError?.(error);
           Alert.alert('Error', 'Failed to update like. Please try again.');
         }
       );
     } catch (error) {
-      console.error('Failed to toggle like:', error);
-
-      // Revert optimistic update
       setIsLiked(previousIsLiked);
       setLikesCount(previousCount);
-
+      eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
+        postId, 
+        isLiked: previousIsLiked, 
+        likesCount: previousCount 
+      });
       onEngagementError?.(error as Error);
       ToastService.showError('Failed to update like');
+      throw error;
     }
   }, [postId, user?.id, isLiked, likesCount, onEngagementError]);
   

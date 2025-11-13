@@ -1,28 +1,28 @@
-import { designTokens, compactDesign } from '@/constants/designTokens';
+import { compactDesign, designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePostEngagement } from '@/hooks/usePostEngagement';
-import { PostWithUser } from '@/types/post';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useCallback } from 'react';
-import {
-    Dimensions,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    Alert,
-} from 'react-native';
-import { ExternalContentPreview } from './posts/ExternalContentPreview';
-import { useRouter } from 'expo-router';
-import { ReportModal } from './modals/ReportModal';
 import { supabase } from '@/lib/supabase';
-import { ToastService } from '@/services/toastService';
-import { MenuButton } from './common/MenuButton';
 import { moderationService } from '@/services/moderationService';
 import ShareService from '@/services/shareService';
+import { ToastService } from '@/services/toastService';
+import { PostWithUser } from '@/types/post';
 import { eventBus, EVENTS } from '@/utils/eventBus';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { MenuButton } from './common/MenuButton';
+import { ReportModal } from './modals/ReportModal';
+import { ExternalContentPreview } from './posts/ExternalContentPreview';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -81,8 +81,10 @@ export function PostCard({
   });
 
   const handleLike = async () => {
+    if (isLoading) return;
+    const wasLiked = isLiked;
     await toggleLike();
-    onLike?.(post.id, isLiked);
+    onLike?.(post.id, !wasLiked);
   };
 
   const handleSave = async () => {
@@ -529,8 +531,17 @@ export function PostCard({
 
       {/* Actions */}
       {showActions && (
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleLike} disabled={isLoading}>
+        <View 
+          style={styles.actions}
+          onStartShouldSetResponder={() => true}
+          onResponderTerminationRequest={() => false}
+        >
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleLike}
+            disabled={isLoading}
+            activeOpacity={0.7}
+          >
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
               size={compactDesign.icon.medium}
@@ -539,12 +550,21 @@ export function PostCard({
             <Text style={styles.actionCount}>{likesCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleComment}
+            activeOpacity={0.7}
+          >
             <Ionicons name="chatbubble-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
             <Text style={styles.actionCount}>{commentsCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleSave} disabled={isLoading}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleSave}
+            disabled={isLoading}
+            activeOpacity={0.7}
+          >
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
               size={compactDesign.icon.medium}
@@ -553,7 +573,11 @@ export function PostCard({
             <Text style={styles.actionCount}>{savesCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleShare}
+            activeOpacity={0.7}
+          >
             <Ionicons name="share-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
             <Text style={styles.actionCount}>{shareCount}</Text>
           </TouchableOpacity>
