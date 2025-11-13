@@ -6,6 +6,7 @@ import { useAuthRequired } from '@/hooks/useAuthRequired';
 import { restaurantImageSyncService } from '@/services/restaurantImageSyncService';
 import { restaurantPhotosService } from '@/services/restaurantPhotosService';
 import { restaurantService } from '@/services/restaurantService';
+import { restaurantVisitService } from '@/services/restaurantVisitService';
 import { saveService } from '@/services/saveService';
 import ShareService from '@/services/shareService';
 import { FriendVisit, PowerUserReview, RecentActivity, socialActivityService } from '@/services/socialActivityService';
@@ -61,6 +62,7 @@ export default function RestaurantDetailScreen() {
   const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasVisited, setHasVisited] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [showBoardModal, setShowBoardModal] = useState(false);
@@ -90,8 +92,19 @@ export default function RestaurantDetailScreen() {
   useEffect(() => {
     if (id && user) {
       checkSaveStatus(id as string);
+      checkVisitStatus(id as string);
     }
   }, [id, user]);
+
+  const checkVisitStatus = async (restaurantId: string) => {
+    if (!user) return;
+    try {
+      const visited = await restaurantVisitService.hasUserVisitedRestaurant(user.id, restaurantId);
+      setHasVisited(visited);
+    } catch (error) {
+      console.error('Error checking visit status:', error);
+    }
+  };
 
   // Load social data on mount to determine initial tab
   useEffect(() => {
@@ -433,6 +446,12 @@ export default function RestaurantDetailScreen() {
             <View style={[styles.badge, styles.trendingBadge]}>
               <TrendingUp size={12} color="white" />
               <Text style={styles.badgeText}>Trending</Text>
+            </View>
+          )}
+          {hasVisited && (
+            <View style={[styles.badge, styles.visitedBadge]}>
+              <CheckCircle size={12} color="white" />
+              <Text style={styles.badgeText}>Visited</Text>
             </View>
           )}
           {/* <View style={[styles.badge, styles.socialBadge]}>
@@ -1141,6 +1160,9 @@ const styles = StyleSheet.create({
   },
   trendingBadge: {
     backgroundColor: designTokens.colors.primaryOrange,
+  },
+  visitedBadge: {
+    backgroundColor: '#10B981',
   },
   socialBadge: {
     backgroundColor: '#10B981',
