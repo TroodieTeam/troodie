@@ -352,14 +352,6 @@ export default function ExploreScreen() {
   ), [searchQuery, activeTab, router, searchFocused]);
 
 
-
-  const handleNavigateToPost = useCallback((postId: string) => {
-    router.push({
-      pathname: '/posts/[id]',
-      params: { id: postId },
-    });
-  }, [router]);
-
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     // Handle regular items
     if (activeTab === 'restaurants') {
@@ -394,8 +386,6 @@ export default function ExploreScreen() {
             params: { id: item.id }
           })}
           onLike={(postId, liked) => {
-            // Update the post in the list to reflect the like state change
-            // This ensures if user navigates away and comes back, the state is synced
             updatePostItem(postId, (post) => ({
               ...post,
               is_liked_by_user: liked,

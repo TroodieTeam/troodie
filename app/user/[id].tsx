@@ -1,15 +1,13 @@
 import { BoardCard } from '@/components/BoardCard';
-import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import FollowButton from '@/components/FollowButton';
-import { CommunityTab } from '@/components/profile/CommunityTab';
 import { ReportModal } from '@/components/modals/ReportModal';
-import ShareService, { ShareContent } from '@/services/shareService';
-import { eventBus, EVENTS } from '@/utils/eventBus';
+import { PostCard } from '@/components/PostCard';
+import { CommunityTab } from '@/components/profile/CommunityTab';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFollowState } from '@/hooks/useFollowState';
 import { personas } from '@/data/personas';
+import { useFollowState } from '@/hooks/useFollowState';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
 import { boardServiceExtended } from '@/services/boardServiceExtended';
@@ -18,46 +16,48 @@ import { moderationService } from '@/services/moderationService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
 import { restaurantService } from '@/services/restaurantService';
+import ShareService from '@/services/shareService';
 import { Board, BoardRestaurant } from '@/types/board';
 import { RestaurantInfo } from '@/types/core';
 import { PersonaType } from '@/types/onboarding';
 import { PostWithUser } from '@/types/post';
-import { getAvatarUrl, getAvatarUrlWithFallback, generateInitialsAvatar } from '@/utils/avatarUtils';
+import { generateInitialsAvatar, getAvatarUrl, getAvatarUrlWithFallback } from '@/utils/avatarUtils';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    Award,
-    Bookmark,
-    ChevronLeft,
-    Grid3X3,
-    MessageSquare,
-    MoreVertical,
-    Share2,
-    User,
-    Users,
-    Shield,
-    Flag
+  Award,
+  Bookmark,
+  ChevronLeft,
+  Flag,
+  Grid3X3,
+  MessageSquare,
+  MoreVertical,
+  Share2,
+  Shield,
+  User,
+  Users
 } from 'lucide-react-native';
-import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    Menu,
-    MenuOption,
-    MenuOptions,
-    MenuProvider,
-    MenuTrigger,
+  Menu,
+  MenuOption,
+  MenuOptions,
+  MenuProvider,
+  MenuTrigger,
 } from 'react-native-popup-menu';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type TabType = 'boards' | 'posts' | 'quicksaves' | 'communities';
 
@@ -281,7 +281,6 @@ function UserDetailScreenContent() {
         
         // If no Quick Saves board, get ALL saves from all boards
         if (saves.length === 0) {
-          console.log('No Quick Saves board found, fetching all saves');
           saves = await boardServiceExtended.getAllUserSaves(id, 50); // Limit to 50 most recent
         }
         
@@ -313,6 +312,10 @@ function UserDetailScreenContent() {
     await loadQuickSaves(true);
   }, [id, isOwnProfile]);
 
+  const updatePostItem = useCallback((postId: string, updater: (post: PostWithUser) => PostWithUser) => {
+    setPosts(prev => prev.map(post => (post.id === postId ? updater(post) : post)));
+  }, []);
+
   const loadPosts = async () => {
     if (!id) return;
     
@@ -327,6 +330,59 @@ function UserDetailScreenContent() {
       setLoadingPosts(false);
     }
   };
+
+  useEffect(() => {
+    const handleEngagementChanged = async ({ 
+      postId, 
+      isLiked, 
+      likesCount 
+    }: { 
+      postId: string; 
+      isLiked?: boolean; 
+      likesCount?: number; 
+    }) => {
+      const postExists = posts.some(p => p.id === postId);
+      if (!postExists) return;
+
+      if (isLiked !== undefined || likesCount !== undefined) {
+        setPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? {
+                ...post,
+                likes_count: likesCount !== undefined ? likesCount : post.likes_count ?? 0,
+                is_liked_by_user: isLiked !== undefined ? isLiked : post.is_liked_by_user ?? false,
+              }
+            : post
+        ));
+      }
+      
+      try {
+        const freshPost = await postService.getPostById(postId);
+        if (freshPost) {
+          setPosts(prev => prev.map(post => 
+            post.id === postId 
+              ? {
+                  ...post,
+                  likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? post.likes_count ?? 0),
+                  is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? post.is_liked_by_user ?? false),
+                  comments_count: freshPost.comments_count ?? post.comments_count ?? 0,
+                  saves_count: freshPost.saves_count ?? post.saves_count ?? 0,
+                  is_saved_by_user: freshPost.is_saved_by_user ?? post.is_saved_by_user ?? false,
+                }
+              : post
+          ));
+        }
+      } catch (error) {
+        console.error('Error refreshing post data:', error);
+      }
+    };
+
+    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
+
+    return () => {
+      unsubscribeEngagement();
+    };
+  }, [posts, updatePostItem]);
 
   const loadCommunities = async (isRefreshing = false) => {
     if (!id) return;
@@ -682,12 +738,20 @@ function UserDetailScreenContent() {
     <PostCard
       post={item}
       onPress={() => handlePostPress(item.id)}
-      onLike={() => {}}
+      onLike={(postId, liked) => {
+        updatePostItem(postId, (post) => ({
+          ...post,
+          is_liked_by_user: liked,
+          likes_count: liked 
+            ? (post.likes_count || 0) + 1 
+            : Math.max((post.likes_count || 1) - 1, 0)
+        }));
+      }}
       onComment={() => handlePostPress(item.id)}
       onSave={() => {}}
       showActions={true}
     />
-  ), [handlePostPress]);
+  ), [handlePostPress, updatePostItem]);
 
   const renderQuickSavesTab = useCallback(() => {
     if (!isOwnProfile) return null;
