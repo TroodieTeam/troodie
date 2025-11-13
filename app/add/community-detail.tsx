@@ -3,19 +3,19 @@ import { ReasonModal } from '@/components/community/ReasonModal';
 import { PostCard } from '@/components/PostCard';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { Community, communityService } from '@/services/communityService';
 import { CommunityAdminService } from '@/services/communityAdminService';
+import { Community, communityService } from '@/services/communityService';
+import { postService } from '@/services/postService';
 import { ToastService } from '@/services/toastService';
-import { useCommunityPermissions, getRoleDisplayName, getRoleBadgeColor } from '@/utils/communityPermissions';
+import { getRoleBadgeColor, getRoleDisplayName, useCommunityPermissions } from '@/utils/communityPermissions';
 import { eventBus, EVENTS } from '@/utils/eventBus';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useCallback } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Calendar,
   ChevronLeft,
   Edit,
-  Heart,
+  FileText,
   Lock,
   MapPin,
   MessageCircle,
@@ -23,10 +23,9 @@ import {
   Trash2,
   TrendingUp,
   UserMinus,
-  Users,
-  FileText
+  Users
 } from 'lucide-react-native';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -145,6 +144,10 @@ export default function CommunityDetailScreen() {
     }
   };
 
+  const updatePostItem = useCallback((postId: string, updater: (post: any) => any) => {
+    setPosts(prev => prev.map(post => (post.id === postId ? updater(post) : post)));
+  }, []);
+
   // Subscribe to post-related events
   useEffect(() => {
     if (!communityId) return;
@@ -167,12 +170,48 @@ export default function CommunityDetailScreen() {
       }
     };
 
-    // Refresh when post engagement changes (likes, comments)
-    const handleEngagementChanged = (data: { postId: string }) => {
-      // Check if this post belongs to our community
-      const postExists = posts.some(p => p.id === data.postId);
-      if (postExists) {
-        loadCommunityPosts();
+    const handleEngagementChanged = async ({ 
+      postId, 
+      isLiked, 
+      likesCount 
+    }: { 
+      postId: string; 
+      isLiked?: boolean; 
+      likesCount?: number; 
+    }) => {
+      const postExists = posts.some(p => p.id === postId);
+      if (!postExists) return;
+
+      if (isLiked !== undefined || likesCount !== undefined) {
+        setPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? {
+                ...post,
+                likes_count: likesCount !== undefined ? likesCount : post.likes_count ?? 0,
+                is_liked_by_user: isLiked !== undefined ? isLiked : post.is_liked_by_user ?? false,
+              }
+            : post
+        ));
+      }
+      
+      try {
+        const freshPost = await postService.getPostById(postId);
+        if (freshPost) {
+          setPosts(prev => prev.map(post => 
+            post.id === postId 
+              ? {
+                  ...post,
+                  likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? post.likes_count ?? 0),
+                  is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? post.is_liked_by_user ?? false),
+                  comments_count: freshPost.comments_count ?? post.comments_count ?? 0,
+                  saves_count: freshPost.saves_count ?? post.saves_count ?? 0,
+                  is_saved_by_user: freshPost.is_saved_by_user ?? post.is_saved_by_user ?? false,
+                }
+              : post
+          ));
+        }
+      } catch (error) {
+        console.error('Error refreshing post data:', error);
       }
     };
 
@@ -186,7 +225,7 @@ export default function CommunityDetailScreen() {
       unsubscribeDelete();
       unsubscribeEngagement();
     };
-  }, [communityId, posts]);
+  }, [communityId, posts, updatePostItem]);
 
   // Refresh posts when screen comes back into focus (e.g., after creating a post)
   useFocusEffect(
@@ -591,9 +630,7 @@ export default function CommunityDetailScreen() {
   );
 
   const renderPostItem = ({ item }: { item: any }) => {
-    // Only provide onDelete for admins deleting OTHER people's posts
     const shouldUseAdminDelete = hasPermission('delete_post') && user?.id !== item.user_id;
-    // For own posts, use PostCard delete handler
     const isOwnPost = user?.id === item.user_id;
 
     return (
@@ -602,6 +639,15 @@ export default function CommunityDetailScreen() {
           post={item}
           onPress={() => router.push(`/posts/${item.id}`)}
           showActions={true}
+          onLike={(postId, liked) => {
+            updatePostItem(postId, (post) => ({
+              ...post,
+              is_liked_by_user: liked,
+              likes_count: liked 
+                ? (post.likes_count || 0) + 1 
+                : Math.max((post.likes_count || 1) - 1, 0)
+            }));
+          }}
           onDelete={shouldUseAdminDelete ? (postId) => handleDeletePost(postId) : isOwnPost ? handlePostCardDelete : undefined}
         />
       </View>

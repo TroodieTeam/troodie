@@ -736,6 +736,40 @@ class CommunityService {
         }
       }
 
+      // Get current user ID for checking likes/saves
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user?.id;
+
+      // Fetch like and save status for current user if logged in
+      let likedPostIds = new Set<string>();
+      let savedPostIds = new Set<string>();
+      
+      if (currentUserId) {
+        const postIds = crossPostedData.map(item => (item.posts as any).id);
+        
+        // Check like status
+        const { data: likesData } = await supabase
+          .from('post_likes')
+          .select('post_id')
+          .eq('user_id', currentUserId)
+          .in('post_id', postIds);
+        
+        if (likesData) {
+          likedPostIds = new Set(likesData.map(like => like.post_id));
+        }
+        
+        // Check save status
+        const { data: savesData } = await supabase
+          .from('post_saves')
+          .select('post_id')
+          .eq('user_id', currentUserId)
+          .in('post_id', postIds);
+        
+        if (savesData) {
+          savedPostIds = new Set(savesData.map(save => save.post_id));
+        }
+      }
+
       // Transform the data structure
       const posts = crossPostedData?.map(item => {
         const post = item.posts as any;
@@ -756,7 +790,7 @@ class CommunityService {
           likes_count: post.likes_count,
           comments_count: post.comments_count,
           saves_count: post.saves_count,
-          shares_count: 0, // Add default shares_count
+          shares_count: 0,
           content_type: post.content_type,
           external_url: post.external_url,
           external_source: post.external_source,
@@ -765,8 +799,8 @@ class CommunityService {
           external_thumbnail: post.external_thumbnail,
           external_author: post.external_author,
           cross_posted_at: item.added_at,
-          is_liked_by_user: false, // Add default engagement states
-          is_saved_by_user: false,
+          is_liked_by_user: likedPostIds.has(post.id),
+          is_saved_by_user: savedPostIds.has(post.id),
           user: userData ? {
             id: userData.id,
             name: userData.name,
