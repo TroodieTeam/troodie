@@ -243,6 +243,10 @@ class PostService {
    * Get a single post by ID
    */
   async getPost(postId: string): Promise<PostWithUser | null> {
+    // Get current user ID for checking likes/saves
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserId = user?.id;
+    
     const { data: postData, error: postError } = await supabase
       .from('posts')
       .select('*')
@@ -282,6 +286,32 @@ class PostService {
       }
     }
 
+    // Check if current user has liked/saved this post
+    let isLiked = false;
+    let isSaved = false;
+    
+    if (currentUserId) {
+      // Check like status
+      const { data: likeData } = await supabase
+        .from('post_likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+      
+      isLiked = !!likeData;
+      
+      // Check save status
+      const { data: saveData } = await supabase
+        .from('post_saves')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+      
+      isSaved = !!saveData;
+    }
+
     // Transform to PostWithUser format
     return {
       ...postData,
@@ -294,7 +324,9 @@ class PostService {
         rating: postData.rating || 0,
         location: restaurantData.address || 'Location',
         priceRange: restaurantData.price_range || postData.price_range || '$$',
-      } : null, // Return null for simple posts without restaurant data
+      } : null,
+      is_liked_by_user: isLiked,
+      is_saved_by_user: isSaved,
     };
   }
 
@@ -352,6 +384,40 @@ class PostService {
       }
     }
 
+    // Get current user ID for checking likes/saves
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserId = user?.id;
+
+    // Fetch like and save status for current user if logged in
+    let likedPostIds = new Set<string>();
+    let savedPostIds = new Set<string>();
+    
+    if (currentUserId) {
+      const postIds = postsData.map(post => post.id);
+      
+      // Check like status
+      const { data: likesData } = await supabase
+        .from('post_likes')
+        .select('post_id')
+        .eq('user_id', currentUserId)
+        .in('post_id', postIds);
+      
+      if (likesData) {
+        likedPostIds = new Set(likesData.map(like => like.post_id));
+      }
+      
+      // Check save status
+      const { data: savesData } = await supabase
+        .from('post_saves')
+        .select('post_id')
+        .eq('user_id', currentUserId)
+        .in('post_id', postIds);
+      
+      if (savesData) {
+        savedPostIds = new Set(savesData.map(save => save.post_id));
+      }
+    }
+
     return postsData.map(post => {
       const restaurantData = restaurantsMap.get(post.restaurant_id);
       return {
@@ -365,7 +431,9 @@ class PostService {
           rating: post.rating || 0,
           location: restaurantData.address || 'Location',
           priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : null, // Return null instead of fake restaurant data
+        } : null,
+        is_liked_by_user: likedPostIds.has(post.id),
+        is_saved_by_user: savedPostIds.has(post.id),
       };
     });
   }
@@ -376,6 +444,10 @@ class PostService {
   async getExplorePosts(filters: ExploreFilters = {}): Promise<PostWithUser[]> {
     // Get blocked users list first
     const blockedUserIds = await moderationService.getBlockedUsers();
+    
+    // Get current user ID for checking likes/saves
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserId = user?.id;
     
     let query = supabase
       .from('posts')
@@ -413,6 +485,7 @@ class PostService {
     // Get unique user IDs and restaurant IDs
     const userIds = [...new Set(postsData.map(post => post.user_id))];
     const restaurantIds = [...new Set(postsData.map(post => post.restaurant_id).filter(id => id))];
+    const postIds = postsData.map(post => post.id);
     
     // Fetch user data
     const { data: usersData, error: usersError } = await supabase
@@ -421,7 +494,6 @@ class PostService {
       .in('id', userIds);
 
     if (usersError) {
-      // Handle error silently
       throw usersError;
     }
 
@@ -438,10 +510,38 @@ class PostService {
       }
     }
 
+    // Fetch like and save status for current user
+    let likedPostIds = new Set<string>();
+    let savedPostIds = new Set<string>();
+    
+    if (currentUserId && postIds.length > 0) {
+      // Get liked posts
+      const { data: likedPosts } = await supabase
+        .from('post_likes')
+        .select('post_id')
+        .eq('user_id', currentUserId)
+        .in('post_id', postIds);
+      
+      if (likedPosts) {
+        likedPostIds = new Set(likedPosts.map(l => l.post_id));
+      }
+      
+      // Get saved posts
+      const { data: savedPosts } = await supabase
+        .from('post_saves')
+        .select('post_id')
+        .eq('user_id', currentUserId)
+        .in('post_id', postIds);
+      
+      if (savedPosts) {
+        savedPostIds = new Set(savedPosts.map(s => s.post_id));
+      }
+    }
+
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
-    // Combine posts with user and restaurant data
+    // Combine posts with user and restaurant data, including like/save status
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
       const restaurantData = restaurantsMap.get(post.restaurant_id);
@@ -456,7 +556,9 @@ class PostService {
           rating: post.rating || 0,
           location: restaurantData.address || 'Location',
           priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : null, // Return null instead of fake restaurant data
+        } : null,
+        is_liked_by_user: currentUserId ? likedPostIds.has(post.id) : false,
+        is_saved_by_user: currentUserId ? savedPostIds.has(post.id) : false,
       };
     });
   }
