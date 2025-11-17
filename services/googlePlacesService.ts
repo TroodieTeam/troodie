@@ -39,6 +39,13 @@ class GooglePlacesService {
 
   constructor() {
     this.apiKey = Constants.expoConfig?.extra?.googlePlacesApiKey || '';
+    // Log masked API key for debugging (first 10 chars + last 4 chars)
+    if (this.apiKey) {
+      const masked = `${this.apiKey.substring(0, 10)}...${this.apiKey.substring(this.apiKey.length - 4)}`;
+      console.log('🔑 Google Places API Key loaded:', masked, `(length: ${this.apiKey.length})`);
+    } else {
+      console.warn('⚠️ Google Places API Key is missing or empty');
+    }
   }
 
   async autocomplete(input: string, sessionToken?: string): Promise<GooglePlaceResult[]> {
@@ -62,7 +69,10 @@ class GooglePlacesService {
       if (data.status === 'OK') {
         return data.predictions;
       } else {
-        console.error('Google Places autocomplete error:', data.status);
+        const maskedKey = this.apiKey ? `${this.apiKey.substring(0, 10)}...${this.apiKey.substring(this.apiKey.length - 4)}` : 'MISSING';
+        console.error('❌ Google Places autocomplete error:', data.status);
+        console.error('🔑 API Key used:', maskedKey);
+        console.error('📋 Full error response:', JSON.stringify(data, null, 2));
         return [];
       }
     } catch (error) {
@@ -91,7 +101,10 @@ class GooglePlacesService {
       if (data.status === 'OK') {
         return data.result;
       } else {
-        console.error('Google Places details error:', data.status);
+        const maskedKey = this.apiKey ? `${this.apiKey.substring(0, 10)}...${this.apiKey.substring(this.apiKey.length - 4)}` : 'MISSING';
+        console.error('❌ Google Places details error:', data.status);
+        console.error('🔑 API Key used:', maskedKey);
+        console.error('📋 Full error response:', JSON.stringify(data, null, 2));
         return null;
       }
     } catch (error) {

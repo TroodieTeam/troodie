@@ -183,8 +183,10 @@ function validateRestaurantInput(input) {
   if (!input.address || input.address.trim().length < 5) {
     errors.push("Address is required and must be at least 5 characters");
   }
-  if (input.placeId && !input.placeId.startsWith('ChIJ')) {
-    errors.push("Invalid Google Place ID format");
+  // Place ID validation is optional - Google Place IDs can have various formats
+  // Just ensure it's not empty if provided
+  if (input.placeId && input.placeId.trim().length === 0) {
+    errors.push("Place ID cannot be empty if provided");
   }
   return {
     isValid: errors.length === 0,
@@ -526,7 +528,28 @@ serve(async (req)=>{
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     // Check if restaurant already exists
-    const { data: existingRestaurant } = await supabase.from('restaurants').select('id, name').or(`google_place_id.eq.${placeId},and(name.ilike.%${restaurantName}%,address.ilike.%${address}%)`).single();
+    let existingRestaurant = null;
+    
+    // First check by place_id if provided
+    if (placeId) {
+      const { data } = await supabase
+        .from('restaurants')
+        .select('id, name')
+        .eq('google_place_id', placeId)
+        .maybeSingle();
+      existingRestaurant = data;
+    }
+    
+    // If not found by place_id, check by name and address
+    if (!existingRestaurant) {
+      const { data } = await supabase
+        .from('restaurants')
+        .select('id, name')
+        .ilike('name', `%${restaurantName}%`)
+        .ilike('address', `%${address}%`)
+        .maybeSingle();
+      existingRestaurant = data;
+    }
     if (existingRestaurant) {
       return new Response(JSON.stringify({
         error: 'Restaurant already exists',
