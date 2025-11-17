@@ -1,4 +1,5 @@
 import { BetaAccessGate } from '@/components/BetaAccessGate';
+import { restaurantClaimService } from '@/services/restaurantClaimService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
@@ -114,12 +115,29 @@ export default function ClaimRestaurantSimple() {
     setCurrentStep('contact');
   };
 
-  const handleSubmitClaim = async () => {
-    // Email is required by database schema
-    if (!contactInfo.email) {
-      Alert.alert('Error', 'Email is required to submit a claim');
-      return;
+  const validateInputs = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!contactInfo.email.trim()) {
+      Alert.alert('Required Field', 'Please enter your email address.');
+      return false;
     }
+    
+    if (!emailRegex.test(contactInfo.email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return false;
+    }
+
+    if (!selectedRestaurant?.name) {
+      Alert.alert('Error', 'No restaurant selected.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmitClaim = async () => {
+    if (!validateInputs()) return;
 
     if (!user) {
       Alert.alert('Error', 'You must be logged in to claim a restaurant');
@@ -127,12 +145,10 @@ export default function ClaimRestaurantSimple() {
     }
 
     setLoading(true);
-    try {
-      // Create or get restaurant
-      let restaurantId = selectedRestaurant?.id;
 
+    try {
+      let restaurantId = selectedRestaurant?.id;
       if (!restaurantId) {
-        // Create new restaurant
         const { data: newRestaurant, error: restaurantError } = await supabase
           .from('restaurants')
           .insert({
@@ -143,35 +159,29 @@ export default function ClaimRestaurantSimple() {
           .select()
           .single();
 
-        if (restaurantError) {
-          throw new Error('Failed to create restaurant');
-        }
-
+        if (restaurantError) throw new Error('Failed to create restaurant record');
         restaurantId = newRestaurant.id;
       }
-
-      // Create claim in pending state
-      const { error: claimError } = await supabase
-        .from('restaurant_claims')
-        .insert({
-          user_id: user.id,
-          restaurant_id: restaurantId,
-          status: 'pending',
-          email: contactInfo.email,
-          business_phone: contactInfo.phone,
-          ownership_proof_type: 'manual_review',
-          submitted_at: new Date().toISOString()
-        });
-
-      if (claimError) {
-        console.error('Error creating claim:', claimError);
-        throw new Error('Failed to submit claim. Please try again.');
-      }
-
+      await restaurantClaimService.submitRestaurantClaim({
+        restaurant_id: restaurantId!,
+        business_email: contactInfo.email,
+        business_phone: contactInfo.phone,
+        ownership_proof_type: 'other',
+        additional_notes: 'Claimed via mobile simplified flow' 
+      });
       setCurrentStep('pending');
+
     } catch (error: any) {
       console.error('Error in claim process:', error);
-      Alert.alert('Error', error.message || 'Failed to claim restaurant. Please try again.');
+      let displayMessage = 'Failed to submit claim. Please try again.';
+      
+      if (error.message.includes('already claimed')) {
+        displayMessage = 'This restaurant has already been claimed.';
+      } else if (error.message.includes('pending claim')) {
+        displayMessage = 'You already have a pending claim for this restaurant.';
+      }
+
+      Alert.alert('Submission Failed', displayMessage);
     } finally {
       setLoading(false);
     }
