@@ -72,3 +72,4 @@ dev-debug.log
 data/*.json
 !data/README.md
 
+.env.development
