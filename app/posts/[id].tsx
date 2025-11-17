@@ -1,8 +1,8 @@
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ErrorState } from '@/components/ErrorState';
+import { ImageViewer } from '@/components/ImageViewer';
 import { PostComments } from '@/components/PostComments';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
-import { ImageViewer } from '@/components/ImageViewer';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
