@@ -43,8 +43,7 @@ class GooglePlacesService {
 
   async autocomplete(input: string, sessionToken?: string): Promise<GooglePlaceResult[]> {
     if (!this.apiKey) {
-      console.error('Google Places API key not configured');
-      return [];
+      throw new Error('Google Places API key not configured');
     }
 
     const params = new URLSearchParams({
@@ -58,23 +57,33 @@ class GooglePlacesService {
     try {
       const response = await fetch(`${this.baseUrl}/autocomplete/json?${params}`);
       const data = await response.json();
+      console.log('response data', data); 
 
       if (data.status === 'OK') {
         return data.predictions;
-      } else {
-        console.error('Google Places autocomplete error:', data.status);
+      } else if (data.status === 'ZERO_RESULTS') {
+        // No results found is not an error - return empty array
         return [];
+      } else {
+        // Throw error for API issues like REQUEST_DENIED, INVALID_REQUEST, etc.
+        const errorMessage = `Google Places API error: ${data.status}${data.error_message ? ` - ${data.error_message}` : ''}`;
+        console.error('Google Places autocomplete error:', errorMessage);
+        throw new Error(errorMessage);
       }
-    } catch (error) {
-      console.error('Error fetching autocomplete results:', error);
-      return [];
+    } catch (error: any) {
+      // Re-throw errors so the caller can handle them
+      if (error.message?.includes('Google Places API') || error.message?.includes('API key')) {
+        throw error;
+      }
+      const errorMessage = `Error fetching autocomplete results: ${error.message}`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
     }
   }
 
   async getPlaceDetails(placeId: string, sessionToken?: string): Promise<GooglePlaceDetails | null> {
     if (!this.apiKey) {
-      console.error('Google Places API key not configured');
-      return null;
+      throw new Error('Google Places API key not configured');
     }
 
     const params = new URLSearchParams({
@@ -90,13 +99,23 @@ class GooglePlacesService {
 
       if (data.status === 'OK') {
         return data.result;
-      } else {
-        console.error('Google Places details error:', data.status);
+      } else if (data.status === 'NOT_FOUND') {
+        // Place not found
         return null;
+      } else {
+        // Throw error for API issues
+        const errorMessage = `Google Places details error: ${data.status}${data.error_message ? ` - ${data.error_message}` : ''}`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
       }
-    } catch (error) {
-      console.error('Error fetching place details:', error);
-      return null;
+    } catch (error: any) {
+      // Re-throw errors so the caller can handle them
+      if (error.message?.includes('Google Places') || error.message?.includes('API key')) {
+        throw error;
+      }
+      const errorMessage = `Error fetching place details: ${error.message}`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
     }
   }
 

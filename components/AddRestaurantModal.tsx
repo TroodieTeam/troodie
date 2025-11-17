@@ -7,20 +7,20 @@ import { saveService } from '@/services/saveService';
 import { ToastService } from '@/services/toastService';
 import { debounce } from 'lodash';
 import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-
 interface AddRestaurantModalProps {
   visible: boolean;
   onClose: () => void;
@@ -39,8 +39,8 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
   const [submissionMessage, setSubmissionMessage] = useState('');
   const sessionToken = useRef<string>(`${Date.now()}`);
 
-  const searchPlaces = useCallback(
-    debounce(async (query: string) => {
+  const searchPlaces = useMemo(
+    () => debounce(async (query: string) => {
       if (!query || query.length < 3) {
         setSearchResults([]);
         return;
@@ -50,7 +50,22 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
       try {
         const results = await googlePlacesService.autocomplete(query, sessionToken.current);
         setSearchResults(results);
-      } catch (error) {
+      } catch (error: any) {
+        console.error('Error during place search:', error.message);
+        
+        if (error.message?.includes('REQUEST_DENIED')) {
+          Alert.alert(
+            'API Error',
+            'Google Places API is not authorized. Please check your API key configuration.'
+          );
+        } else if (error.message?.includes('API key not configured')) {
+          Alert.alert(
+            'Configuration Error',
+            'Google Places API key is not configured. Please contact support.'
+          );
+        } else {
+          Alert.alert('Error', 'Failed to search for places. Please try again.');
+        }
       } finally {
         setIsSearching(false);
       }
@@ -67,10 +82,16 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
     setSelectedPlace(place);
     setSearchResults([]);
     
-    // Fetch place details
-    const details = await googlePlacesService.getPlaceDetails(place.place_id, sessionToken.current);
-    if (details) {
-      setPlaceDetails(details);
+    try {
+      // Fetch place details
+      const details = await googlePlacesService.getPlaceDetails(place.place_id, sessionToken.current);
+      if (details) {
+        setPlaceDetails(details);
+      }
+    } catch (error: any) {
+      console.error('Error fetching place details:', error);
+      Alert.alert('Error', 'Failed to fetch place details. Please try again.');
+      setSelectedPlace(null);
     }
   };
 
@@ -83,7 +104,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
         .eq('google_place_id', details.place_id)
         .single();
 
-      if (restaurant) {
+      if (restaurant) {``
         // Get current user for saving to profile
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -578,7 +599,8 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    // borderRadius: 12,
+    borderRadius: designTokens.borderRadius.sm,
     backgroundColor: '#F0F0F0',
     alignItems: 'center',
   },
@@ -588,7 +610,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1,
-    height: compactDesign.button.height,
+    // height: compactDesign.button.height,
     borderRadius: designTokens.borderRadius.sm,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
