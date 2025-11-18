@@ -8,8 +8,10 @@ import { Lock, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
+  ScrollView,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -27,7 +29,8 @@ interface BetaAccessGateProps {
   message?: string;
 }
 
-const BETA_PASSCODE = '2468';
+// updated passcode
+const BETA_PASSCODE = 'TROODIE2025';
 
 export function BetaAccessGate({
   visible,
@@ -37,55 +40,38 @@ export function BetaAccessGate({
   description,
   message = 'This feature is currently in beta. Please reach out to team@troodieapp.com to be onboarded.'
 }: BetaAccessGateProps) {
-  const [passcode, setPasscode] = useState(['', '', '', '']);
+  const [passcode, setPasscode] = useState('');
   const [error, setError] = useState('');
-  const inputRefs = React.useRef<Array<TextInput | null>>([]);
 
-  const handleDigitChange = (index: number, value: string) => {
-    // Only allow numeric input
-    if (value && !/^\d$/.test(value)) return;
-
-    const newPasscode = [...passcode];
-    newPasscode[index] = value;
-    setPasscode(newPasscode);
+  const handlePasscodeChange = (text: string) => {
+    // auto upper case for better UX
+    const value = text.toUpperCase();
+    setPasscode(value);
     setError('');
-
-    // Auto-focus next input
-    if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
+    if(value === BETA_PASSCODE) {
+      onSuccess();
+      setPasscode('');
     }
+    else if(value.length >= BETA_PASSCODE.length){
+      setError("Incorrect passcode. Please try again.");
+    }
+  }
 
-    // Check if all digits are entered
-    if (index === 3 && value) {
-      const enteredCode = newPasscode.join('');
-      if (enteredCode === BETA_PASSCODE) {
-        onSuccess();
-        resetForm();
-      } else {
-        setError('Incorrect passcode. Please try again.');
-        // Clear passcode after error
-        setTimeout(() => {
-          setPasscode(['', '', '', '']);
-          setError('');
-          inputRefs.current[0]?.focus();
-        }, 1500);
+  const handleContactSupport = async() => {
+    const url = 'mailto:team@troodieapp.com?subject=Request Beta Access Code';
+    try{
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
       }
+    } catch (error) {
+      console.error('Error opening email client:', error);
     }
-  };
-
-  const handleKeyPress = (index: number, key: string) => {
-    if (key === 'Backspace' && !passcode[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const resetForm = () => {
-    setPasscode(['', '', '', '']);
-    setError('');
-  };
+  }
 
   const handleClose = () => {
-    resetForm();
+    setPasscode('');
+    setError('');
     onClose();
   };
 
@@ -115,7 +101,11 @@ export function BetaAccessGate({
           </View>
 
           {/* Content */}
-          <View style={styles.content}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.iconContainer}>
               <Lock size={48} color={DS.colors.primaryOrange} />
             </View>
@@ -128,44 +118,41 @@ export function BetaAccessGate({
 
             <View style={styles.divider} />
 
-            <Text style={styles.instructionText}>Enter Passcode</Text>
+            <Text style={styles.instructionText}>Enter Beta Passcode</Text>
 
-            {/* Passcode Inputs */}
-            <View style={styles.passcodeContainer}>
-              {passcode.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => { inputRefs.current[index] = ref; }}
-                  style={[
-                    styles.passcodeInput,
-                    error && styles.passcodeInputError
-                  ]}
-                  value={digit}
-                  onChangeText={(value) => handleDigitChange(index, value)}
-                  onKeyPress={({ nativeEvent: { key } }) => handleKeyPress(index, key)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  selectTextOnFocus
-                  autoFocus={index === 0}
-                  secureTextEntry
-                />
-              ))}
-            </View>
+            <TextInput
+              style={[
+                styles.mainInput,
+                error ? styles.inputError : null
+              ]}
+              value={passcode}
+              onChangeText={handlePasscodeChange}
+              placeholder="Enter code (e.g. TROODIE2025)"
+              placeholderTextColor={DS.colors.textGray + '80'}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              returnKeyType="done"
+            />
 
-            {error ? (
+           {error ? (
               <Text style={styles.errorText}>{error}</Text>
-            ) : null}
-
-            {/* Contact Information */}
+            ) : (
+              <Text style={styles.helperText}>
+                Passcode is {BETA_PASSCODE.length} characters long
+              </Text>
+            )}
             <View style={styles.contactSection}>
               <Text style={styles.contactTitle}>Need Access?</Text>
-              <Text style={styles.contactText}>
-                Contact{' '}
-                <Text style={styles.emailText}>team@troodieapp.com</Text>
-                {' '}for your passcode
-              </Text>
+              <TouchableOpacity onPress={handleContactSupport}>
+                <Text style={styles.contactText}>
+                  Contact{' '}
+                  <Text style={styles.emailText}>team@troodieapp.com</Text>
+                  {' '}for your passcode
+                </Text>
+              </TouchableOpacity>
             </View>
-          </View>
+            <View style={{ height: 40 }} />
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
@@ -201,6 +188,12 @@ const styles = StyleSheet.create({
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: DS.spacing.xl,
+    paddingTop: DS.spacing.xxl,
+    alignItems: 'center',
   },
   content: {
     flex: 1,
@@ -251,6 +244,24 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: DS.spacing.md,
   },
+  mainInput: {
+    width: '100%',
+    height: 56,
+    backgroundColor: DS.colors.background,
+    borderWidth: 1,
+    borderColor: DS.colors.borderLight,
+    borderRadius: DS.borderRadius.md,
+    paddingHorizontal: DS.spacing.lg,
+    fontSize: 18,
+    fontWeight: '600',
+    color: DS.colors.textDark,
+    textAlign: 'center',
+    marginBottom: DS.spacing.sm,
+  },
+  inputError: {
+    borderColor: DS.colors.error,
+    backgroundColor: DS.colors.error + '10',
+  },
   passcodeContainer: {
     flexDirection: 'row',
     gap: DS.spacing.md,
@@ -295,5 +306,12 @@ const styles = StyleSheet.create({
   emailText: {
     color: DS.colors.primaryOrange,
     fontWeight: '600',
+  },
+  helperText: {
+    ...DS.typography.caption,
+    color: DS.colors.textGray,
+    marginTop: DS.spacing.xs,
+    textAlign: 'center',
+    opacity: 0.8,
   },
 });
