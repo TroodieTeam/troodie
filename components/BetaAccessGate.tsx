@@ -52,10 +52,19 @@ export function BetaAccessGate({
       onSuccess();
       setPasscode('');
     }
+    if (value === BETA_PASSCODE){
+      onSuccess();
+      setPasscode('');
+    }
     else if(value.length >= BETA_PASSCODE.length){
       setError("Incorrect passcode. Please try again.");
     }
   }
+  const handleSubmit = () => {
+    if (passcode !== BETA_PASSCODE) {
+      setError('Incorrect passcode. Please try again.');
+    }
+  };
 
   const handleContactSupport = async() => {
     const url = 'mailto:team@troodieapp.com?subject=Request Beta Access Code';
@@ -132,6 +141,7 @@ export function BetaAccessGate({
               autoCapitalize="characters"
               autoCorrect={false}
               returnKeyType="done"
+              onSubmitEditing={handleSubmit}
             />
 
            {error ? (
