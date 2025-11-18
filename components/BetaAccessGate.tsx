@@ -52,10 +52,6 @@ export function BetaAccessGate({
       onSuccess();
       setPasscode('');
     }
-    if (value === BETA_PASSCODE){
-      onSuccess();
-      setPasscode('');
-    }
     else if(value.length >= BETA_PASSCODE.length){
       setError("Incorrect passcode. Please try again.");
     }
