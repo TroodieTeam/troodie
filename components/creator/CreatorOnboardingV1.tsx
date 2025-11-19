@@ -3,30 +3,30 @@
  * Simplified 2-step flow focusing on portfolio and terms
  */
 
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Image,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft,
   Camera,
-  X,
-  Check
+  Check,
+  X
 } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CreatorOnboardingV1Props {
   onComplete: () => void;
@@ -49,6 +49,7 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
   const [portfolioImages, setPortfolioImages] = useState<PortfolioImage[]>([]);
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
+
 
   const totalSteps = 2;
 
@@ -253,14 +254,11 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
               <Text style={styles.bold}>2️⃣ Restaurants pay</Text> for your exposure
             </Text>
             <Text style={[styles.stepText, styles.mt2]}>
-              <Text style={styles.bold}>3️⃣ Earn</Text> $25–100 per campaign
-            </Text>
-            <Text style={[styles.stepText, styles.mt2]}>
-              <Text style={styles.bold}>4️⃣ Get paid</Text> instantly via Stripe
-            </Text>
+              <Text style={styles.bold}>3️⃣ Earn</Text> based on audience & engagement
+            </Text>      
           </View>
 
-          <View style={styles.card}>
+          {/* <View style={styles.card}>
             <Text style={styles.cardLabel}>Success Stories</Text>
             <View style={styles.testimonialBox}>
               <Text style={styles.testimonialText}>
@@ -268,7 +266,7 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
               </Text>
               <Text style={styles.testimonialAuthor}>— Sarah, CLT</Text>
             </View>
-          </View>
+          </View> */}
         </View>
 
         <View style={styles.buttonContainer}>
@@ -292,7 +290,7 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
         <View style={styles.content}>
           <View style={styles.centerContent}>
             <Text style={styles.title}>Showcase Your Best Content</Text>
-            <Text style={styles.subtitle}>Upload 3–5 photos of your food content:</Text>
+            <Text style={styles.subtitle}>Upload 3-5 photos of your food content:</Text>
           </View>
 
           {portfolioImages.length < 5 && (
