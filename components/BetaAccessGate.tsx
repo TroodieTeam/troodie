@@ -52,13 +52,10 @@ export function BetaAccessGate({
       onSuccess();
       setPasscode('');
     }
-    else if(value.length >= BETA_PASSCODE.length){
-      setError("Incorrect passcode. Please try again.");
-    }
   }
   const handleSubmit = () => {
     if (passcode !== BETA_PASSCODE) {
-      setError('Incorrect passcode. Please try again.');
+      setError('This code is either invalid or expired');
     }
   };
 
@@ -144,7 +141,7 @@ export function BetaAccessGate({
               <Text style={styles.errorText}>{error}</Text>
             ) : (
               <Text style={styles.helperText}>
-                Passcode is {BETA_PASSCODE.length} characters long
+                Enter your invite code
               </Text>
             )}
             <View style={styles.contactSection}>
