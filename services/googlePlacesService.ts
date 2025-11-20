@@ -43,8 +43,9 @@ class GooglePlacesService {
 
   async autocomplete(input: string, sessionToken?: string): Promise<GooglePlaceResult[]> {
     if (!this.apiKey) {
-      console.error('Google Places API key not configured');
-      return [];
+      const error = 'Google Places API key not configured';
+      console.error(error);
+      throw new Error(error);
     }
 
     const params = new URLSearchParams({
@@ -57,24 +58,42 @@ class GooglePlacesService {
 
     try {
       const response = await fetch(`${this.baseUrl}/autocomplete/json?${params}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
 
       if (data.status === 'OK') {
-        return data.predictions;
-      } else {
-        console.error('Google Places autocomplete error:', data.status);
+        return data.predictions || [];
+      } else if (data.status === 'ZERO_RESULTS') {
         return [];
+      } else if (data.status === 'REQUEST_DENIED') {
+        console.error(data.error_message);
+        throw new Error('Google Places API request denied. Check your API key and quota.');
+      } else if (data.status === 'INVALID_REQUEST') {
+        console.error(data.error_message);
+        throw new Error('Invalid request to Google Places API');
+      } else if (data.status === 'OVER_QUERY_LIMIT') {
+        console.error(data.error_message);
+        throw new Error('Google Places API quota exceeded');
+      } else {
+        console.error(data.error_message);
+        throw new Error(`Google Places API error: ${data.status}`);
       }
     } catch (error) {
-      console.error('Error fetching autocomplete results:', error);
-      return [];
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching autocomplete results';
+      console.error('Error in autocomplete:', errorMessage);
+      throw new Error(errorMessage);
     }
   }
 
   async getPlaceDetails(placeId: string, sessionToken?: string): Promise<GooglePlaceDetails | null> {
     if (!this.apiKey) {
-      console.error('Google Places API key not configured');
-      return null;
+      const error = 'Google Places API key not configured';
+      console.error(error);
+      throw new Error(error);
     }
 
     const params = new URLSearchParams({
@@ -86,17 +105,33 @@ class GooglePlacesService {
 
     try {
       const response = await fetch(`${this.baseUrl}/details/json?${params}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
 
       if (data.status === 'OK') {
+        if (!data.result) {
+          throw new Error('No place details returned from API');
+        }
         return data.result;
+      } else if (data.status === 'NOT_FOUND') {
+        throw new Error('Place not found');
+      } else if (data.status === 'REQUEST_DENIED') {
+        throw new Error('Google Places API request denied. Check your API key and quota.');
+      } else if (data.status === 'INVALID_REQUEST') {
+        throw new Error('Invalid request to Google Places API');
+      } else if (data.status === 'OVER_QUERY_LIMIT') {
+        throw new Error('Google Places API quota exceeded');
       } else {
-        console.error('Google Places details error:', data.status);
-        return null;
+        throw new Error(`Google Places API error: ${data.status}`);
       }
     } catch (error) {
-      console.error('Error fetching place details:', error);
-      return null;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching place details';
+      console.error('Error fetching place details:', errorMessage);
+      throw new Error(errorMessage);
     }
   }
 

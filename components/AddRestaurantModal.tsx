@@ -10,6 +10,7 @@ import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -50,8 +51,11 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
       try {
         const results = await googlePlacesService.autocomplete(query, sessionToken.current);
         setSearchResults(results);
-      } catch (error) {
-      } finally {
+      } 
+      catch (error: any) {
+        Alert.alert('Error', error.message);       
+      } 
+      finally {
         setIsSearching(false);
       }
     }, 300),
