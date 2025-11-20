@@ -9,16 +9,16 @@ import { debounce } from 'lodash';
 import { AlertCircle, CheckCircle, MapPin, Search, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface AddRestaurantModalProps {
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: designTokens.borderRadius.sm,
     backgroundColor: '#F0F0F0',
     alignItems: 'center',
   },
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1,
-    height: compactDesign.button.height,
+    // height: compactDesign.button.height,
     borderRadius: designTokens.borderRadius.sm,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
