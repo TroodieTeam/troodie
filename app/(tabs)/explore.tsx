@@ -410,7 +410,7 @@ export default function ExploreScreen() {
       : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800';
 
     return (
-      <TouchableOpacity
+     <TouchableOpacity
         style={styles.communityCard}
         onPress={() => router.push({
           pathname: '/add/community-detail',
@@ -418,47 +418,42 @@ export default function ExploreScreen() {
         })}
         activeOpacity={0.7}
       >
-        <View style={styles.communityCardInner}>
-          {/* Community Image */}
-          <Image source={{ uri: coverImage }} style={styles.communityImageCompact} />
+        <Image source={{ uri: coverImage }} style={styles.communityImageCompact} />
 
-          {/* Badges on image */}
-          {community.type === 'private' && (
-            <View style={styles.privateBadgeCompact}>
-              <Lock size={10} color="#FFFFFF" />
-              <Text style={styles.privateBadgeTextCompact}>Private</Text>
+        <View style={styles.communityInfo}>
+          <View style={styles.communityTopRow}>
+             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+               {/* Lock Icon replaces the big "Private" badge for compact view */}
+               {community.type === 'private' && (
+                  <Lock 
+                    size={12} 
+                    color={designTokens.colors.textMedium} 
+                    style={{ marginRight: 4 }} 
+                  />
+               )}
+              <Text style={styles.communityName} numberOfLines={1}>
+                {community.name}
+              </Text>
             </View>
-          )}
-
-          {community.is_event_based && (
-            <View style={styles.eventBadgeCompact}>
-              <Calendar size={10} color="#FFFFFF" />
+            
+            <View style={styles.communityStats}>
+              <Users size={12} color={designTokens.colors.textLight} />
+              <Text style={styles.communityMetaCompact}>
+                {community.member_count.toLocaleString()}
+              </Text>
             </View>
-          )}
+          </View>
 
-          {/* Community Info */}
-          <View style={styles.communityInfo}>
-            <Text style={styles.communityName} numberOfLines={1}>
-              {community.name}
-            </Text>
-            <Text style={styles.communityDescription} numberOfLines={2}>
-              {community.description || `Discover ${community.location}'s best food spots`}
-            </Text>
-            <View style={styles.communityMetaRow}>
-              <View style={styles.communityStats}>
-                <Users size={12} color={designTokens.colors.textLight} />
-                <Text style={styles.communityMetaCompact}>
-                  {community.member_count.toLocaleString()}
-                </Text>
-                <Text style={styles.communityDivider}>•</Text>
-                <MapPin size={12} color={designTokens.colors.textLight} />
-                <Text style={styles.communityMetaCompact}>
-                  {community.location}
-                </Text>
-              </View>
+          {/* Bottom Row: Location + Join Button */}
+          <View style={styles.communityBottomRow}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.communityDescription} numberOfLines={1}>
+                 {community.location} • {community.description || 'Social Group'}
+              </Text>
+            </View>
 
-              {/* Join/Member Button */}
-              {isMember ? (
+             {/* Join Button / Badge */}
+             {isMember ? (
                 <View style={styles.memberBadgeCompact}>
                   <Text style={styles.memberBadgeTextCompact}>Joined</Text>
                 </View>
@@ -474,7 +469,6 @@ export default function ExploreScreen() {
                   <Text style={styles.joinButtonTextCompact}>Join</Text>
                 </TouchableOpacity>
               ) : null}
-            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -805,19 +799,14 @@ const styles = StyleSheet.create({
   },
   // Compact Community card styles with image
   communityCard: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: designTokens.borderRadius.md,
-    marginBottom: 10,
+    borderRadius: designTokens.borderRadius.sm,
+    marginBottom: 8,
     marginHorizontal: compactDesign.content.padding,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
   },
   communityCardInner: {
     flexDirection: 'row',
@@ -825,21 +814,33 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   communityImageCompact: {
-    width: 100,
-    height: '100%',
+    width: 64,
+    height: 64,
     backgroundColor: '#F5F5F5',
   },
   communityInfo: {
     flex: 1,
-    padding: 12,
+    padding: 8,
+    justifyContent: 'center',
+  },
+  communityTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  communityBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   communityName: {
-    fontSize: 15,
-    fontWeight: '600',
+   fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textDark,
-    letterSpacing: -0.2,
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
+    lineHeight: 18,
   },
   communityDescription: {
     fontSize: 13,
@@ -897,8 +898,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   joinButtonCompact: {
-    height: 28,
-    paddingHorizontal: 14,
+    height: 24,
+    paddingHorizontal: 10,
     borderRadius: 6,
     backgroundColor: designTokens.colors.primaryOrange,
     alignItems: 'center',
