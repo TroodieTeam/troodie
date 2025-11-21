@@ -1,8 +1,8 @@
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ErrorState } from '@/components/ErrorState';
+import { ImageViewer } from '@/components/ImageViewer';
 import { PostComments } from '@/components/PostComments';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
-import { ImageViewer } from '@/components/ImageViewer';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import { usePostEngagement } from '@/hooks/usePostEngagement';
 import { postService } from '@/services/postService';
 import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
+import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Bookmark, ChevronRight, Heart, MessageCircle, Share } from 'lucide-react-native';
@@ -81,6 +82,82 @@ export default function PostDetailScreen() {
       loadPost();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !post) return;
+
+    const handleEngagementChanged = async ({
+      postId,
+      isLiked,
+      likesCount
+    }: {
+      postId: string;
+      isLiked?: boolean;
+      likesCount?: number;
+    }) => {
+      if (postId !== id) return;
+
+      if (isLiked !== undefined || likesCount !== undefined) {
+        setPost(prev => {
+          if (!prev) return null;
+          
+          const updatedPost = {
+            ...prev,
+            likes_count: likesCount !== undefined ? likesCount : prev.likes_count ?? 0,
+            is_liked_by_user: isLiked !== undefined ? isLiked : prev.is_liked_by_user ?? false,
+          };
+
+          if (refreshStats) {
+            refreshStats({
+              likes_count: updatedPost.likes_count,
+              comments_count: updatedPost.comments_count ?? 0,
+              saves_count: updatedPost.saves_count ?? 0,
+              share_count: updatedPost.share_count ?? 0,
+            });
+          }
+
+          return updatedPost;
+        });
+      }
+
+      try {
+        const freshPost = await postService.getPostById(postId);
+        if (freshPost) {
+          setPost(prev => {
+            if (!prev) return null;
+
+            const updatedPost = {
+              ...prev,
+              likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? prev.likes_count ?? 0),
+              is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? prev.is_liked_by_user ?? false),
+              comments_count: freshPost.comments_count ?? prev.comments_count ?? 0,
+              saves_count: freshPost.saves_count ?? prev.saves_count ?? 0,
+              is_saved_by_user: freshPost.is_saved_by_user ?? prev.is_saved_by_user ?? false,
+            };
+
+            if (refreshStats) {
+              refreshStats({
+                likes_count: updatedPost.likes_count,
+                comments_count: updatedPost.comments_count,
+                saves_count: updatedPost.saves_count,
+                share_count: updatedPost.share_count,
+              });
+            }
+
+            return updatedPost;
+          });
+        }
+      } catch (error) {
+        console.error('Error refreshing post data:', error);
+      }
+    };
+
+    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
+
+    return () => {
+      unsubscribeEngagement();
+    };
+  }, [id, post, refreshStats]);
 
 
   const loadPost = async () => {

@@ -183,6 +183,7 @@ function InnerLayout() {
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="add" options={{ headerShown: false }} />
             <Stack.Screen name="boards" options={{ headerShown: false }} />
+            <Stack.Screen name="business" options={{ headerShown: false }} />
             <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
