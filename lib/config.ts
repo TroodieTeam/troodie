@@ -5,6 +5,9 @@ interface Config {
   supabaseAnonKey: string;
   googlePlacesApiKey: string;
   buildProfile: string;
+  cloudinaryCloudName: string;
+  cloudinaryApiKey: string;
+  cloudinaryApiSecret: string;
 }
 
 const config: Config = {
@@ -12,6 +15,9 @@ const config: Config = {
   supabaseAnonKey: Constants.expoConfig?.extra?.supabaseAnonKey || '',
   googlePlacesApiKey: Constants.expoConfig?.extra?.googlePlacesApiKey || '',
   buildProfile: Constants.expoConfig?.extra?.buildProfile || 'development',
+  cloudinaryCloudName: Constants.expoConfig?.extra?.cloudinaryCloudName || process.env.CLOUDINARY_CLOUD_NAME || '',
+  cloudinaryApiKey: Constants.expoConfig?.extra?.cloudinaryApiKey || process.env.CLOUDINARY_API_KEY || '',
+  cloudinaryApiSecret: Constants.expoConfig?.extra?.cloudinaryApiSecret || process.env.CLOUDINARY_API_SECRET || '',
 };
 
 // Validate that required variables are present

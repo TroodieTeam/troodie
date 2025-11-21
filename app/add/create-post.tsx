@@ -1,6 +1,7 @@
 import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { CommunitySelector } from '@/components/CommunitySelector';
 import { LinkInputModal } from '@/components/modals/LinkInputModal';
+import { VideoUploadProgress } from '@/components/VideoUploadProgress';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useApp } from '@/contexts/AppContext';
@@ -61,6 +62,22 @@ export default function CreatePostScreen() {
   const [loading, setLoading] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [activeAttachment, setActiveAttachment] = useState<AttachmentType | null>(null);
+  
+  // Video upload progress state
+  const [videoUploadProgress, setVideoUploadProgress] = useState<{
+    isVisible: boolean;
+    currentVideo: number;
+    totalVideos: number;
+    progress: number;
+    status: 'uploading' | 'optimizing' | 'processing' | 'complete';
+    fileName?: string;
+  }>({
+    isVisible: false,
+    currentVideo: 0,
+    totalVideos: 0,
+    progress: 0,
+    status: 'uploading',
+  });
   
   // External content state
   const [externalMetadata, setExternalMetadata] = useState<Partial<ExternalContent> | null>(null);
@@ -210,7 +227,44 @@ export default function CreatePostScreen() {
 
       let uploadedVideos: string[] = [];
       if (formData.videos.length > 0) {
-        uploadedVideos = await postMediaService.uploadPostVideos(formData.videos, user.id);
+        // Show upload progress modal immediately
+        setVideoUploadProgress({
+          isVisible: true,
+          currentVideo: 1,
+          totalVideos: formData.videos.length,
+          progress: 0,
+          status: 'uploading',
+        });
+        
+        // Force a small delay to ensure modal renders
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        uploadedVideos = await postMediaService.uploadPostVideos(
+          formData.videos,
+          user.id,
+          undefined,
+          (videoIndex, progress) => {
+            // Update progress state
+            setVideoUploadProgress((prev) => ({
+              ...prev,
+              currentVideo: videoIndex + 1,
+              progress: Math.max(0, Math.min(100, progress)),
+              status: progress < 10 ? 'uploading' : progress < 90 ? 'optimizing' : 'processing',
+            }));
+          }
+        );
+
+        // Show completion state briefly
+        setVideoUploadProgress((prev) => ({
+          ...prev,
+          progress: 100,
+          status: 'complete',
+        }));
+
+        // Auto-dismiss after 1 second
+        setTimeout(() => {
+          setVideoUploadProgress((prev) => ({ ...prev, isVisible: false }));
+        }, 1000);
       }
 
       const postData: PostCreationData = {
@@ -1077,11 +1131,16 @@ export default function CreatePostScreen() {
   );
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <SafeAreaView style={styles.safeArea}>
+    <>
+      <VideoUploadProgress
+        state={videoUploadProgress}
+        onDismiss={() => setVideoUploadProgress((prev) => ({ ...prev, isVisible: false }))}
+      />
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <SafeAreaView style={styles.safeArea}>
         {renderHeader()}
         
         <ScrollView 
@@ -1169,7 +1228,8 @@ export default function CreatePostScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </>
   );
 }
 

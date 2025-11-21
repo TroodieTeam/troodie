@@ -30,32 +30,78 @@ class PostMediaService {
 
   /**
    * Upload videos for a post
-   * Videos are optimized during recording/picking and can be further processed server-side
+   * Videos are optimized during recording/picking and can be further processed via Cloudinary
    */
-  async uploadPostVideos(videos: string[], userId: string, postId?: string): Promise<string[]> {
+  async uploadPostVideos(
+    videos: string[],
+    userId: string,
+    postId?: string,
+    onProgress?: (videoIndex: number, progress: number) => void
+  ): Promise<string[]> {
     // Generate a temporary post ID if not provided
     const postIdForUpload = postId || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
     const uploadedUrls: string[] = [];
 
     try {
-      console.log(`[PostMediaService] Starting upload of ${videos.length} video(s)`);
 
-      // Upload videos (they should already be optimized via expo-image-picker quality settings)
+      const { CloudinaryVideoService } = await import('./cloudinaryVideoService');
+      const { VideoUploadService } = await import('./videoUploadService');
+
       for (let i = 0; i < videos.length; i++) {
         const video = videos[i];
-        console.log(`[PostMediaService] Uploading video ${i + 1}/${videos.length}`);
+
+        // Check if video is already a Cloudinary URL (from previous optimization)
+        const isCloudinaryUrl = video.startsWith('https://res.cloudinary.com') || video.startsWith('https://cloudinary.com');
         
-        const result = await VideoUploadService.uploadVideo(
-          video,
-          'post-photos', // Use same bucket as photos for now
-          `posts/${postIdForUpload}`
-        );
-        uploadedUrls.push(result.publicUrl);
-        
-        console.log(`[PostMediaService] Video ${i + 1} uploaded successfully`);
+        // Check if video should use Cloudinary (only for local files)
+        const useCloudinary = !isCloudinaryUrl && await CloudinaryVideoService.shouldUseCloudinary(video);
+
+        if (useCloudinary) {
+          // Use Cloudinary for optimization
+          
+          // Report initial progress
+          if (onProgress) {
+            onProgress(i, 0);
+          }
+          
+          const result = await CloudinaryVideoService.uploadAndOptimize(
+            video,
+            (progress) => {
+              if (onProgress) {
+                onProgress(i, progress.progress);
+              }
+            }
+          );
+          // Cloudinary returns the optimized URL directly - use it as-is
+          uploadedUrls.push(result.url);
+        } else if (isCloudinaryUrl) {
+          // Video is already a Cloudinary URL - use it directly
+          uploadedUrls.push(video);
+        } else {
+          // Use regular Supabase upload for small videos
+          
+          // Simulate progress for Supabase uploads (since VideoUploadService doesn't support progress yet)
+          if (onProgress) {
+            // Simulate progress: 0% -> 50% -> 100%
+            onProgress(i, 0);
+            setTimeout(() => onProgress(i, 50), 100);
+          }
+          
+          const result = await VideoUploadService.uploadVideo(
+            video,
+            'post-photos',
+            `posts/${postIdForUpload}`
+          );
+          
+          if (onProgress) {
+            onProgress(i, 100);
+          }
+          
+          uploadedUrls.push(result.publicUrl);
+        }
+
       }
 
-      console.log(`[PostMediaService] All ${uploadedUrls.length} videos uploaded successfully`);
       return uploadedUrls;
     } catch (error) {
       console.error('Error uploading videos:', error);
@@ -155,8 +201,8 @@ class PostMediaService {
       const { VideoOptimizationService } = await import('./videoOptimizationService');
       return await VideoOptimizationService.pickVideos(maxVideos, {
         quality: 0.6, // 60% quality - good balance for mobile
-        maxDuration: 60, // 60 seconds max
-        enableBackendCompression: false, // Enable when Edge Function is ready
+        maxDuration: 300, // 300 seconds (5 minutes) max
+        enableBackendCompression: true, // Cloudinary is now enabled
       });
     } catch (error) {
       console.error('Error picking videos:', error);
@@ -216,8 +262,8 @@ class PostMediaService {
       const { VideoOptimizationService } = await import('./videoOptimizationService');
       return await VideoOptimizationService.recordVideo({
         quality: 0.6, // 60% quality - good balance for mobile
-        maxDuration: 60, // 60 seconds max
-        enableBackendCompression: false, // Enable when Edge Function is ready
+        maxDuration: 300, // 300 seconds (5 minutes) max
+        enableBackendCompression: true, // Cloudinary is now enabled
       });
     } catch (error) {
       console.error('Error recording video:', error);

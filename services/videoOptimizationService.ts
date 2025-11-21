@@ -34,8 +34,8 @@ export class VideoOptimizationService {
    */
   private static readonly DEFAULT_OPTIONS: Required<VideoOptimizationOptions> = {
     quality: 0.6, // 60% quality - good balance
-    maxDuration: 60, // 60 seconds max
-    enableBackendCompression: false, // Disabled by default, enable when Edge Function is ready
+    maxDuration: 300, // 300 seconds (5 minutes) max
+    enableBackendCompression: true, // Enabled - Cloudinary is now integrated
   };
 
   /**
@@ -82,7 +82,6 @@ export class VideoOptimizationService {
         const needsOptimization = await this.shouldOptimize(videoUri, 10 * 1024 * 1024); // 10MB threshold
         
         if (needsOptimization) {
-          console.log(`[VideoOptimization] Video exceeds size limit, will use backend compression: ${videoUri}`);
           videosToOptimize.push(videoUri);
         } else {
           optimizedUris.push(videoUri);
@@ -155,85 +154,21 @@ export class VideoOptimizationService {
   }
 
   /**
-   * Process videos with backend compression (Supabase Edge Function)
-   * This provides better compression than client-side but requires Edge Function setup
-   * 
-   * For production, consider using:
-   * - Cloudinary (automatic video optimization)
-   * - Mux (video processing and streaming)
-   * - Supabase Edge Function with FFmpeg (complex setup)
+   * Process videos with backend compression (Cloudinary)
+   * Uses Cloudinary for automatic video optimization
    */
   private static async processVideosWithBackend(videoUris: string[]): Promise<string[]> {
     try {
-      console.log('[VideoOptimization] Processing videos with backend compression...');
       
-      // First, upload videos to Supabase Storage (temp or final location)
-      const uploadedUrls: string[] = [];
-      const { supabase } = await import('@/lib/supabase');
+      const { CloudinaryVideoService } = await import('./cloudinaryVideoService');
       
-      for (const videoUri of videoUris) {
-        try {
-          // Upload to a temp location for processing
-          const fileName = `temp/${Date.now()}-${Math.random().toString(36).substring(7)}.mp4`;
-          
-          // Read file as base64
-          const { FileSystem } = await import('expo-file-system');
-          const base64 = await FileSystem.readAsStringAsync(videoUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          
-          // Convert to ArrayBuffer
-          const { decode } = await import('base64-arraybuffer');
-          const arrayBuffer = decode(base64);
-          
-          // Upload to Supabase Storage
-          const { data, error } = await supabase.storage
-            .from('post-photos')
-            .upload(fileName, arrayBuffer, {
-              contentType: 'video/mp4',
-              cacheControl: '3600',
-            });
-          
-          if (error) {
-            console.error('[VideoOptimization] Upload error:', error);
-            uploadedUrls.push(videoUri); // Fallback to original
-            continue;
-          }
-          
-          // Get public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('post-photos')
-            .getPublicUrl(fileName);
-          
-          uploadedUrls.push(publicUrl);
-        } catch (error) {
-          console.error('[VideoOptimization] Error uploading for compression:', error);
-          uploadedUrls.push(videoUri); // Fallback to original
-        }
-      }
-
-      // Call Edge Function to compress videos
-      const { data, error } = await supabase.functions.invoke('compress-video', {
-        body: { 
-          videoUrls: uploadedUrls,
-          options: {
-            maxBitrate: 2000000, // 2 Mbps
-            maxResolution: { width: 1080, height: 1920 },
-          },
-        },
-      });
-
-      if (error) {
-        console.error('[VideoOptimization] Backend compression error:', error);
-        console.warn('[VideoOptimization] Falling back to original videos. Consider enabling Cloudinary/Mux.');
-        // Fallback to original videos
-        return videoUris;
-      }
-
-      return data?.compressedUrls || uploadedUrls || videoUris;
+      // Upload and optimize all videos
+      const results = await CloudinaryVideoService.uploadAndOptimizeMultiple(videoUris);
+      
+      // Return optimized URLs
+      return results.map(result => result.url);
     } catch (error) {
-      console.error('[VideoOptimization] Error in backend processing:', error);
-      console.warn('[VideoOptimization] Falling back to original videos');
+      // Cloudinary error - falling back to original videos
       // Fallback to original videos
       return videoUris;
     }
@@ -248,7 +183,7 @@ export class VideoOptimizationService {
       // Check if it's a local file (file://) or remote URL (http://)
       if (videoUri.startsWith('file://')) {
         // Use FileSystem for local files
-        const { FileSystem } = await import('expo-file-system');
+        const FileSystem = await import('expo-file-system/legacy');
         const fileInfo = await FileSystem.getInfoAsync(videoUri);
         if (fileInfo.exists && 'size' in fileInfo) {
           return fileInfo.size;
@@ -266,7 +201,6 @@ export class VideoOptimizationService {
       }
       return 0;
     } catch (error) {
-      console.error('[VideoOptimization] Error getting video size:', error);
       return 0;
     }
   }
@@ -298,6 +232,69 @@ export class VideoOptimizationService {
     if (targetBitrate < 3000000) return 0.6; // Medium quality (recommended)
     if (targetBitrate < 5000000) return 0.7; // High quality
     return 0.8; // Very high quality
+  }
+
+  /**
+   * Calculate optimal quality based on video duration
+   * Longer videos need more aggressive compression
+   */
+  static calculateOptimalQuality(durationSeconds: number): number {
+    if (durationSeconds <= 30) {
+      return 0.7; // 70% quality for short videos
+    } else if (durationSeconds <= 60) {
+      return 0.6; // 60% quality for 1-minute videos
+    } else if (durationSeconds <= 120) {
+      return 0.5; // 50% quality for 2-minute videos
+    } else if (durationSeconds <= 300) {
+      return 0.4; // 40% quality for 5-minute videos (aggressive compression)
+    }
+    return 0.3; // 30% quality for very long videos
+  }
+
+  /**
+   * Get video metadata (duration, resolution, file size)
+   * 
+   * Note: Duration and resolution extraction requires native video processing.
+   * For now, we return file size and estimate duration based on typical bitrates.
+   * Full metadata extraction can be added later using a native module or backend processing.
+   */
+  static async getVideoMetadata(videoUri: string): Promise<{
+    duration: number;
+    width: number;
+    height: number;
+    fileSize: number;
+    bitrate?: number;
+  }> {
+    try {
+      // Get file size
+      const fileSize = await this.getVideoFileSize(videoUri);
+      
+      // Estimate duration based on typical mobile video bitrates
+      // Average mobile video: ~2-3 Mbps
+      // This is a rough estimate - actual duration should be extracted client-side
+      // or via backend processing
+      const estimatedBitrate = 2500000; // 2.5 Mbps average
+      const estimatedDuration = fileSize > 0 ? (fileSize * 8) / estimatedBitrate : 0;
+      
+      // For now, return estimated values
+      // TODO: Implement proper metadata extraction using:
+      // - Client-side: expo-video player (in component context)
+      // - Backend: Cloudinary API can provide metadata after upload
+      return {
+        duration: estimatedDuration,
+        width: 1080, // Assume standard mobile resolution
+        height: 1920,
+        fileSize,
+        bitrate: estimatedBitrate,
+      };
+    } catch (error) {
+      return {
+        duration: 0,
+        width: 0,
+        height: 0,
+        fileSize: 0,
+      };
+    }
   }
 }
 
