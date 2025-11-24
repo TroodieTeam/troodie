@@ -15,7 +15,7 @@ import { getErrorType } from '@/types/errors';
 import { PostWithUser } from '@/types/post';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Calendar, Lock, MapPin, Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
+import { Lock, Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
