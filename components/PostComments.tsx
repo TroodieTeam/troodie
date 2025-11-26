@@ -222,164 +222,7 @@ export function PostComments({
     }
   };
 
-  // const handleSubmitComment = async () => {
-  //   if (!user?.id || !newComment.trim()) return;
 
-  //   const commentText = newComment.trim();
-  //   const tempId = `temp-${Date.now()}`;
-
-  //   try {
-  //     setSubmitting(true);
-
-  //     // Get current user data for optimistic update
-  //     const { data: currentUserData } = await supabase
-  //       .from("users")
-  //       .select("id, name, username, avatar_url, persona, is_verified")
-  //       .eq("id", user.id)
-  //       .single();
-
-  //     // Create optimistic comment
-  //     const optimisticComment: CommentWithUser = {
-  //       id: tempId,
-  //       post_id: postId,
-  //       user_id: user.id,
-  //       content: commentText,
-  //       created_at: new Date().toISOString(),
-  //       updated_at: new Date().toISOString(),
-  //       parent_comment_id: null,
-  //       likes_count: 0,
-  //       user: {
-  //         id: user.id,
-  //         name:
-  //           currentUserData?.name ||
-  //           currentUserData?.username ||
-  //           user.user_metadata?.name ||
-  //           user.user_metadata?.username ||
-  //           user.email ||
-  //           "Anonymous",
-  //         username:
-  //           currentUserData?.username || user.user_metadata?.username || "user",
-  //         avatar:
-  //           currentUserData?.avatar_url || user.user_metadata?.avatar_url || "",
-  //         persona:
-  //           currentUserData?.persona ||
-  //           user.user_metadata?.persona ||
-  //           "Food Explorer",
-  //         verified:
-  //           currentUserData?.is_verified ||
-  //           user.user_metadata?.is_verified ||
-  //           false,
-  //       },
-  //       replies: [],
-  //     };
-
-  //     console.log({
-  //       optimisticComment,
-  //       comments: comments.length,
-  //       userFromAuth: user?.id,
-  //       currentUserData,
-  //       commentText,
-  //     });
-  //     // Add optimistic comment immediately
-  //     setComments((prev) => [optimisticComment, ...prev]);
-  //     setNewComment("");
-  //     Keyboard.dismiss();
-
-  //     // Use the database function to handle comment adding and count updating
-  //     // const { data, error } = await supabase.rpc("handle_post_engagement", {
-  //     //   p_action: "add_comment",
-  //     //   p_post_id: postId,
-  //     //   p_user_id: user.id,
-  //     //   p_content: commentText,
-  //     // });
-
-  //     // if (error) {
-  //     //   console.error("Error submitting comment:", error);
-  //     //   console.error("Error details:", JSON.stringify(error, null, 2));
-
-  //     //   // Remove optimistic comment on error
-  //     //   setComments((prev) => prev.filter((c) => c.id !== tempId));
-
-  //     //   Toast.show({
-  //     //     type: "error",
-  //     //     text1: "Failed to post comment",
-  //     //     text2: error.message || "Please try again",
-  //     //     visibilityTime: 3000,
-  //     //     position: "top",
-  //     //   });
-  //     //   return;
-  //     // }
-
-  //     // // Get the returned comment data
-  //     // const commentData = data?.comment;
-  //     // if (!commentData) {
-  //     //   // Fallback: reload comments if no comment data returned
-  //     //   await loadComments();
-  //     //   Toast.show({
-  //     //     type: "success",
-  //     //     text1: "Comment posted!",
-  //     //     visibilityTime: 2000,
-  //     //     position: "top",
-  //     //   });
-  //     //   onCommentAdded?.();
-  //     //   return;
-  //     // }
-
-  //     // Fetch user data for the comment
-  //     // const { data: commentUserData } = await supabase
-  //     //   .from("users")
-  //     //   .select("id, name, username, avatar_url, persona, is_verified")
-  //     //   .eq("id", commentData.user_id)
-  //     //   .single();
-
-  //     // Replace optimistic comment with real one
-  //     // const realComment: CommentWithUser = {
-  //     //   ...commentData,
-  //     //   user: {
-  //     //     id: commentUserData?.id || commentData.user_id,
-  //     //     name:
-  //     //       commentUserData?.name ||
-  //     //       commentUserData?.username ||
-  //     //       "Unknown User",
-  //     //     username: commentUserData?.username || "unknown",
-  //     //     avatar: commentUserData?.avatar_url || "",
-  //     //     persona: commentUserData?.persona || "Food Explorer",
-  //     //     verified: commentUserData?.is_verified || false,
-  //     //   },
-  //     //   replies: [],
-  //     // };
-
-  //     // Replace optimistic comment with real one
-  //     // setComments((prev) =>
-  //     //   prev.map((c) => (c.id === tempId ? realComment : c))
-  //     // );
-
-  //     // Show success toast
-  //     Toast.show({
-  //       type: "success",
-  //       text1: "Comment posted!",
-  //       visibilityTime: 2000,
-  //       position: "top",
-  //     });
-
-  //     onCommentAdded?.();
-  //   } catch (error: any) {
-  //     console.error("Error submitting comment:", error);
-
-  //     // Remove optimistic comment on error
-  //     // setComments((prev) => prev.filter((c) => c.id !== tempId));
-
-  //     Toast.show({
-  //       type: "error",
-  //       text1: "Failed to post comment",
-  //       text2: error.message || "Please try again",
-  //       visibilityTime: 3000,
-  //       position: "top",
-  //     });
-  //   } finally {
-  //     setSubmitting(false);
-  //   }
-  // };
 
   const handleSubmitComment = async () => {
     if (!user?.id || !newComment.trim()) return;
@@ -744,7 +587,7 @@ export function PostComments({
               style={[
                 styles.twitterSubmitButton,
                 (!newComment.trim() || submitting) &&
-                  styles.submitButtonDisabled,
+                styles.submitButtonDisabled,
               ]}
               onPress={handleSubmitComment}
               disabled={!newComment.trim() || submitting}
@@ -856,7 +699,7 @@ export function PostComments({
               style={[
                 styles.submitButton,
                 (!newComment.trim() || submitting) &&
-                  styles.submitButtonDisabled,
+                styles.submitButtonDisabled,
               ]}
               onPress={handleSubmitComment}
               disabled={!newComment.trim() || submitting}
