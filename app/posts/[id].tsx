@@ -1,20 +1,27 @@
-import { BottomNavigation } from '@/components/BottomNavigation';
-import { ErrorState } from '@/components/ErrorState';
-import { ImageViewer } from '@/components/ImageViewer';
-import { PostComments } from '@/components/PostComments';
-import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
-import { designTokens } from '@/constants/designTokens';
-import { DEFAULT_IMAGES } from '@/constants/images';
-import { useAuth } from '@/contexts/AuthContext';
-import { usePostEngagement } from '@/hooks/usePostEngagement';
-import { postService } from '@/services/postService';
-import { getErrorType } from '@/types/errors';
-import { PostWithUser } from '@/types/post';
-import { eventBus, EVENTS } from '@/utils/eventBus';
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Bookmark, ChevronRight, Heart, MessageCircle, Share } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { BottomNavigation } from "@/components/BottomNavigation";
+import { ErrorState } from "@/components/ErrorState";
+import { ImageViewer } from "@/components/ImageViewer";
+import { PostComments } from "@/components/PostComments";
+import { ExternalContentPreview } from "@/components/posts/ExternalContentPreview";
+import { designTokens } from "@/constants/designTokens";
+import { DEFAULT_IMAGES } from "@/constants/images";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePostEngagement } from "@/hooks/usePostEngagement";
+import { postService } from "@/services/postService";
+import { getErrorType } from "@/types/errors";
+import { PostWithUser } from "@/types/post";
+import { eventBus, EVENTS } from "@/utils/eventBus";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  ArrowLeft,
+  Bookmark,
+  ChevronRight,
+  Heart,
+  MessageCircle,
+  Share,
+} from "lucide-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   DeviceEventEmitter,
@@ -28,10 +35,10 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BOTTOM_NAV_HEIGHT = 84;
 const COMMENT_INPUT_HEIGHT = 140;
 
@@ -47,23 +54,34 @@ export default function PostDetailScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
-  
-  // Use the enhanced post engagement hook 
+  const [comments, setComments] = useState<any[]>([]); // Shared comments state
+
+  // Use the enhanced post engagement hook
   const engagement = usePostEngagement({
-    postId: id || '',
-    initialStats: post ? {
-      likes_count: post.likes_count || 0,
-      comments_count: post.comments_count || 0,
-      saves_count: post.saves_count || 0,
-      share_count: post.share_count || 0,
-    } : undefined,
+    postId: id || "",
+    initialStats: post
+      ? {
+          likes_count: post.likes_count || 0,
+          comments_count: post.comments_count || 0,
+          saves_count: post.saves_count || 0,
+          share_count: post.share_count || 0,
+        }
+      : undefined,
     initialIsLiked: post?.is_liked_by_user || false,
     initialIsSaved: post?.is_saved_by_user || false,
     enableRealtime: !!post, // Only enable realtime when post is loaded
   });
-  
-  const { isLiked, isSaved, likesCount, savesCount, commentsCount, shareCount, refreshStats } = engagement;
-  
+
+  const {
+    isLiked,
+    isSaved,
+    likesCount,
+    savesCount,
+    commentsCount,
+    shareCount,
+    refreshStats,
+  } = engagement;
+
   // Update engagement stats when post data changes
   useEffect(() => {
     if (post && refreshStats) {
@@ -75,7 +93,13 @@ export default function PostDetailScreen() {
         share_count: post.share_count || 0,
       });
     }
-  }, [post?.comments_count, post?.likes_count, post?.saves_count, post?.share_count, refreshStats]);
+  }, [
+    post?.comments_count,
+    post?.likes_count,
+    post?.saves_count,
+    post?.share_count,
+    refreshStats,
+  ]);
 
   useEffect(() => {
     if (id) {
@@ -89,7 +113,7 @@ export default function PostDetailScreen() {
     const handleEngagementChanged = async ({
       postId,
       isLiked,
-      likesCount
+      likesCount,
     }: {
       postId: string;
       isLiked?: boolean;
@@ -98,13 +122,15 @@ export default function PostDetailScreen() {
       if (postId !== id) return;
 
       if (isLiked !== undefined || likesCount !== undefined) {
-        setPost(prev => {
+        setPost((prev) => {
           if (!prev) return null;
-          
+
           const updatedPost = {
             ...prev,
-            likes_count: likesCount !== undefined ? likesCount : prev.likes_count ?? 0,
-            is_liked_by_user: isLiked !== undefined ? isLiked : prev.is_liked_by_user ?? false,
+            likes_count:
+              likesCount !== undefined ? likesCount : prev.likes_count ?? 0,
+            is_liked_by_user:
+              isLiked !== undefined ? isLiked : prev.is_liked_by_user ?? false,
           };
 
           if (refreshStats) {
@@ -123,16 +149,26 @@ export default function PostDetailScreen() {
       try {
         const freshPost = await postService.getPostById(postId);
         if (freshPost) {
-          setPost(prev => {
+          setPost((prev) => {
             if (!prev) return null;
 
             const updatedPost = {
               ...prev,
-              likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? prev.likes_count ?? 0),
-              is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? prev.is_liked_by_user ?? false),
-              comments_count: freshPost.comments_count ?? prev.comments_count ?? 0,
+              likes_count:
+                likesCount !== undefined
+                  ? likesCount
+                  : freshPost.likes_count ?? prev.likes_count ?? 0,
+              is_liked_by_user:
+                isLiked !== undefined
+                  ? isLiked
+                  : freshPost.is_liked_by_user ??
+                    prev.is_liked_by_user ??
+                    false,
+              comments_count:
+                freshPost.comments_count ?? prev.comments_count ?? 0,
               saves_count: freshPost.saves_count ?? prev.saves_count ?? 0,
-              is_saved_by_user: freshPost.is_saved_by_user ?? prev.is_saved_by_user ?? false,
+              is_saved_by_user:
+                freshPost.is_saved_by_user ?? prev.is_saved_by_user ?? false,
             };
 
             if (refreshStats) {
@@ -148,17 +184,19 @@ export default function PostDetailScreen() {
           });
         }
       } catch (error) {
-        console.error('Error refreshing post data:', error);
+        console.error("Error refreshing post data:", error);
       }
     };
 
-    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
+    const unsubscribeEngagement = eventBus.on(
+      EVENTS.POST_ENGAGEMENT_CHANGED,
+      handleEngagementChanged
+    );
 
     return () => {
       unsubscribeEngagement();
     };
   }, [id, post, refreshStats]);
-
 
   const loadPost = async () => {
     try {
@@ -180,8 +218,8 @@ export default function PostDetailScreen() {
   const handleUserPress = useCallback(() => {
     if (post?.user?.id) {
       router.push({
-        pathname: '/user/[id]',
-        params: { id: post.user.id }
+        pathname: "/user/[id]",
+        params: { id: post.user.id },
       });
     }
   }, [post, router]);
@@ -189,8 +227,8 @@ export default function PostDetailScreen() {
   const handleRestaurantPress = useCallback(() => {
     if (post?.restaurant?.id) {
       router.push({
-        pathname: '/restaurant/[id]',
-        params: { id: post.restaurant.id }
+        pathname: "/restaurant/[id]",
+        params: { id: post.restaurant.id },
       });
     }
   }, [post, router]);
@@ -204,29 +242,29 @@ export default function PostDetailScreen() {
     if (!engagement) return;
     await engagement.toggleSave();
   };
-  
+
   const handleShare = async () => {
     if (!engagement || !post) return;
-    
+
     // Show share options
     const options = [
-      { text: 'Share', onPress: () => sharePost() },
-      { text: 'Copy Link', onPress: () => copyLink() },
-      { text: 'Cancel', style: 'cancel' as const }
+      { text: "Share", onPress: () => sharePost() },
+      { text: "Copy Link", onPress: () => copyLink() },
+      { text: "Cancel", style: "cancel" as const },
     ];
-    
-    const { Alert } = require('react-native');
-    Alert.alert('Share Post', 'How would you like to share?', options);
+
+    const { Alert } = require("react-native");
+    Alert.alert("Share Post", "How would you like to share?", options);
   };
-  
+
   const sharePost = async () => {
     if (!engagement || !post) return;
     await engagement.sharePost(
-      post.caption || 'Check out this post',
-      post.restaurant?.name || 'Restaurant'
+      post.caption || "Check out this post",
+      post.restaurant?.name || "Restaurant"
     );
   };
-  
+
   const copyLink = async () => {
     if (!engagement) return;
     await engagement.copyLink();
@@ -237,60 +275,62 @@ export default function PostDetailScreen() {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 60) return "just now";
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 2592000)
+      return `${Math.floor(diffInSeconds / 86400)}d ago`;
     return date.toLocaleDateString();
   };
 
   const getTrafficLightColor = (rating: number | null) => {
-    if (!rating || rating === 0) return '#DDD';
-    
+    if (!rating || rating === 0) return "#DDD";
+
     // Handle both 3-point traffic light system and 5-point star system
     if (rating <= 3) {
       // Traffic light system: 1=Red, 2=Yellow, 3=Green
       const trafficColors = {
-        1: '#FF4444', // Red - Poor
-        2: '#FFAA44', // Yellow - Average 
-        3: '#00AA00', // Green - Excellent
+        1: "#FF4444", // Red - Poor
+        2: "#FFAA44", // Yellow - Average
+        3: "#00AA00", // Green - Excellent
       };
-      return trafficColors[rating as keyof typeof trafficColors] || '#DDD';
+      return trafficColors[rating as keyof typeof trafficColors] || "#DDD";
     } else {
       // 5-star system: 1-5 stars
       const starColors = {
-        1: '#FF4444', // Red
-        2: '#FF7744', // Orange-Red
-        3: '#FFAA44', // Orange
-        4: '#44AA44', // Light Green
-        5: '#00AA00', // Green
+        1: "#FF4444", // Red
+        2: "#FF7744", // Orange-Red
+        3: "#FFAA44", // Orange
+        4: "#44AA44", // Light Green
+        5: "#00AA00", // Green
       };
-      return starColors[rating as keyof typeof starColors] || '#DDD';
+      return starColors[rating as keyof typeof starColors] || "#DDD";
     }
   };
 
   const getTrafficLightLabel = (rating: number | null) => {
-    if (!rating || rating === 0) return 'No rating';
-    
+    if (!rating || rating === 0) return "No rating";
+
     // Handle both 3-point traffic light system and 5-point star system
     if (rating <= 3) {
       // Traffic light system: 1=Red, 2=Yellow, 3=Green
       const trafficLabels = {
-        1: 'Poor',
-        2: 'Average',
-        3: 'Excellent'
+        1: "Poor",
+        2: "Average",
+        3: "Excellent",
       };
-      return trafficLabels[rating as keyof typeof trafficLabels] || 'No rating';
+      return trafficLabels[rating as keyof typeof trafficLabels] || "No rating";
     } else {
       // 5-star system: 1-5 stars
       const starLabels = {
-        1: 'Poor',
-        2: 'Fair', 
-        3: 'Good',
-        4: 'Great',
-        5: 'Excellent'
+        1: "Poor",
+        2: "Fair",
+        3: "Good",
+        4: "Great",
+        5: "Excellent",
       };
-      return starLabels[rating as keyof typeof starLabels] || 'No rating';
+      return starLabels[rating as keyof typeof starLabels] || "No rating";
     }
   };
 
@@ -299,7 +339,10 @@ export default function PostDetailScreen() {
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+          <ActivityIndicator
+            size="large"
+            color={designTokens.colors.primaryOrange}
+          />
           <Text style={styles.loadingText}>Loading post...</Text>
         </View>
       </View>
@@ -314,8 +357,8 @@ export default function PostDetailScreen() {
           <ArrowLeft size={24} color={designTokens.colors.textDark} />
         </TouchableOpacity>
         <ErrorState
-          error={error || new Error('Post not found')}
-          errorType={getErrorType(error || new Error('Post not found'))}
+          error={error || new Error("Post not found")}
+          errorType={getErrorType(error || new Error("Post not found"))}
           onRetry={loadPost}
           retrying={false}
         />
@@ -324,12 +367,12 @@ export default function PostDetailScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
       {/* Floating Back Button */}
       <TouchableOpacity onPress={handleBack} style={styles.backButtonFixed}>
         <ArrowLeft size={24} color={designTokens.colors.textDark} />
@@ -342,145 +385,178 @@ export default function PostDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* User Header - Clickable */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.userHeader}
           onPress={handleUserPress}
           activeOpacity={0.6}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Image 
-            source={{ uri: post.user.avatar || DEFAULT_IMAGES.avatar }} 
-            style={styles.avatar} 
+          <Image
+            source={{ uri: post.user.avatar || DEFAULT_IMAGES.avatar }}
+            style={styles.avatar}
           />
           <View style={styles.userInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.userName}>{post.user.name || post.user.username}</Text>
+              <Text style={styles.userName}>
+                {post.user.name || post.user.username}
+              </Text>
               {post.user.verified && (
-                <Ionicons name="checkmark-circle" size={16} color={designTokens.colors.primaryOrange} />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={designTokens.colors.primaryOrange}
+                />
               )}
             </View>
-            <Text style={styles.userPersona}>{post.user.persona || 'Food Explorer'}</Text>
-            <Text style={styles.timestamp}>{formatTimeAgo(post.created_at)}</Text>
+            <Text style={styles.userPersona}>
+              {post.user.persona || "Food Explorer"}
+            </Text>
+            <Text style={styles.timestamp}>
+              {formatTimeAgo(post.created_at)}
+            </Text>
           </View>
         </TouchableOpacity>
-
         {/* External Content Badge */}
-        {(post as any).content_type === 'external' && (
+        {(post as any).content_type === "external" && (
           <View style={styles.externalBadge}>
             <Ionicons name="link" size={14} color="#666" />
             <Text style={styles.externalText}>External Content</Text>
           </View>
         )}
-
         {/* Simple Post Badge */}
-        {(post as any).post_type === 'simple' && !post.restaurant && (
+        {(post as any).post_type === "simple" && !post.restaurant && (
           <View style={styles.simplePostBadge}>
-            <Ionicons name="chatbubble-ellipses-outline" size={14} color={designTokens.colors.textMedium} />
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={14}
+              color={designTokens.colors.textMedium}
+            />
             <Text style={styles.simplePostText}>Discussion</Text>
           </View>
         )}
-
         {/* Caption */}
-        {post.caption && (
-          <Text style={styles.caption}>{post.caption}</Text>
-        )}
-
+        {post.caption && <Text style={styles.caption}>{post.caption}</Text>}
         {/* External Content */}
-        {(post as any).content_type === 'external' && (post as any).external_url && (
-          <View style={styles.externalContent}>
-            <ExternalContentPreview
-              source={(post as any).external_source}
-              url={(post as any).external_url}
-              title={(post as any).external_title}
-              description={(post as any).external_description}
-              thumbnail={(post as any).external_thumbnail}
-              author={(post as any).external_author}
-            />
-          </View>
-        )}
-
+        {(post as any).content_type === "external" &&
+          (post as any).external_url && (
+            <View style={styles.externalContent}>
+              <ExternalContentPreview
+                source={(post as any).external_source}
+                url={(post as any).external_url}
+                title={(post as any).external_title}
+                description={(post as any).external_description}
+                thumbnail={(post as any).external_thumbnail}
+                author={(post as any).external_author}
+              />
+            </View>
+          )}
         {/* Photos */}
-        {(post as any).content_type !== 'external' && post.photos && post.photos.length > 0 && (
-          <View style={styles.photosContainer}>
-            {post.photos.length === 1 ? (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => {
-                  setImageViewerIndex(0);
-                  setShowImageViewer(true);
-                }}
-              >
-                <Image 
-                  source={{ uri: post.photos[0] }} 
-                  style={styles.singlePhoto}
-                  resizeMode="cover"
-                  onError={() => {}}
-                />
-              </TouchableOpacity>
-            ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
-                {post.photos.map((photo, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    activeOpacity={0.9}
-                    onPress={() => {
-                      setImageViewerIndex(index);
-                      setShowImageViewer(true);
-                    }}
-                  >
-                    <Image 
-                      source={{ uri: photo }} 
-                      style={styles.multiPhoto}
-                      resizeMode="cover"
-                      onError={() => {}}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        )}
-
+        {(post as any).content_type !== "external" &&
+          post.photos &&
+          post.photos.length > 0 && (
+            <View style={styles.photosContainer}>
+              {post.photos.length === 1 ? (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setImageViewerIndex(0);
+                    setShowImageViewer(true);
+                  }}
+                >
+                  <Image
+                    source={{ uri: post.photos[0] }}
+                    style={styles.singlePhoto}
+                    resizeMode="cover"
+                    onError={() => {}}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.photoScroll}
+                >
+                  {post.photos.map((photo, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setImageViewerIndex(index);
+                        setShowImageViewer(true);
+                      }}
+                    >
+                      <Image
+                        source={{ uri: photo }}
+                        style={styles.multiPhoto}
+                        resizeMode="cover"
+                        onError={() => {}}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          )}
         {/* Restaurant Card - Only show if restaurant exists */}
         {post.restaurant && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.restaurantCard}
             onPress={handleRestaurantPress}
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Image source={{ uri: post.restaurant.image || DEFAULT_IMAGES.restaurant }} style={styles.restaurantImage} />
+            <Image
+              source={{
+                uri: post.restaurant.image || DEFAULT_IMAGES.restaurant,
+              }}
+              style={styles.restaurantImage}
+            />
             <View style={styles.restaurantInfo}>
               <Text style={styles.restaurantName}>{post.restaurant.name}</Text>
-              <Text style={styles.restaurantLocation}>{post.restaurant.location}</Text>
+              <Text style={styles.restaurantLocation}>
+                {post.restaurant.location}
+              </Text>
               <View style={styles.restaurantMeta}>
-                <Text style={styles.restaurantCuisine}>{post.restaurant.cuisine}</Text>
-                <Text style={styles.priceRange}>{post.restaurant.priceRange}</Text>
+                <Text style={styles.restaurantCuisine}>
+                  {post.restaurant.cuisine}
+                </Text>
+                <Text style={styles.priceRange}>
+                  {post.restaurant.priceRange}
+                </Text>
               </View>
             </View>
             <ChevronRight size={20} color={designTokens.colors.textMedium} />
           </TouchableOpacity>
         )}
-
         {/* Rating & Visit Info - Only show if any relevant data exists */}
         {(post.rating || post.visit_type || post.price_range) && (
           <View style={styles.visitCard}>
             {post.rating && (
               <View style={styles.ratingSection}>
                 <View style={styles.trafficLight}>
-                  <View style={[styles.trafficDot, { backgroundColor: getTrafficLightColor(post.rating) }]} />
-                  <Text style={styles.ratingLabel}>{getTrafficLightLabel(post.rating)}</Text>
+                  <View
+                    style={[
+                      styles.trafficDot,
+                      { backgroundColor: getTrafficLightColor(post.rating) },
+                    ]}
+                  />
+                  <Text style={styles.ratingLabel}>
+                    {getTrafficLightLabel(post.rating)}
+                  </Text>
                 </View>
               </View>
             )}
-            
+
             <View style={styles.visitDetails}>
               {post.visit_type && (
                 <View style={styles.visitBadge}>
                   <Ionicons name="restaurant" size={14} color="#666" />
                   <Text style={styles.visitText}>
-                    {post.visit_type === 'dine_in' ? 'Dine In' : 
-                     post.visit_type === 'takeout' ? 'Takeout' : 'Delivery'}
+                    {post.visit_type === "dine_in"
+                      ? "Dine In"
+                      : post.visit_type === "takeout"
+                      ? "Takeout"
+                      : "Delivery"}
                   </Text>
                 </View>
               )}
@@ -493,31 +569,33 @@ export default function PostDetailScreen() {
             </View>
           </View>
         )}
-
         {/* Actions */}
         <View style={styles.actions}>
           <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-            <Heart 
-              size={24} 
-              color={isLiked ? '#FF4444' : '#666'} 
-              fill={isLiked ? '#FF4444' : 'transparent'}
+            <Heart
+              size={24}
+              color={isLiked ? "#FF4444" : "#666"}
+              fill={isLiked ? "#FF4444" : "transparent"}
             />
             <Text style={styles.actionCount}>{likesCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={() => {
-            // Scroll to comments section
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-          }}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              // Scroll to comments section
+              scrollViewRef.current?.scrollToEnd({ animated: true });
+            }}
+          >
             <MessageCircle size={24} color="#666" />
             <Text style={styles.actionCount}>{commentsCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
-            <Bookmark 
-              size={24} 
-              color={isSaved ? designTokens.colors.primaryOrange : '#666'} 
-              fill={isSaved ? designTokens.colors.primaryOrange : 'transparent'}
+            <Bookmark
+              size={24}
+              color={isSaved ? designTokens.colors.primaryOrange : "#666"}
+              fill={isSaved ? designTokens.colors.primaryOrange : "transparent"}
             />
             <Text style={styles.actionCount}>{savesCount}</Text>
           </TouchableOpacity>
@@ -527,16 +605,17 @@ export default function PostDetailScreen() {
             <Text style={styles.actionCount}>{shareCount}</Text>
           </TouchableOpacity>
         </View>
-
         {/* Comments Section - Just the comments list, no input here */}
         {post && commentsCount > 0 && (
           <View style={styles.commentsSection}>
             <View style={styles.commentsSeparator}>
               <Text style={styles.commentsTitle}>Comments</Text>
             </View>
-            <PostComments 
+            <PostComments
               postId={post.id}
               showInput={false} // Don't show input in the comments component
+              comments={comments} // Pass shared comments from parent
+              onCommentsChange={setComments} // Update parent state when comments change
               onCommentAdded={() => {
                 // Just update the comment count without reloading the entire screen
                 if (refreshStats && post) {
@@ -547,10 +626,15 @@ export default function PostDetailScreen() {
                     share_count: post.share_count || 0,
                   });
                   // Update the local post state too
-                  setPost(prev => prev ? {
-                    ...prev,
-                    comments_count: (prev.comments_count || 0) + 1
-                  } : null);
+                  setPost((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+
+                          comments_count: (prev.comments_count || 0) + 1,
+                        }
+                      : null
+                  );
                 }
               }}
               onCommentDeleted={() => {
@@ -563,27 +647,35 @@ export default function PostDetailScreen() {
                     share_count: post.share_count || 0,
                   });
                   // Update the local post state too
-                  setPost(prev => prev ? {
-                    ...prev,
-                    comments_count: Math.max((prev.comments_count || 1) - 1, 0)
-                  } : null);
+                  setPost((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          comments_count: Math.max(
+                            (prev.comments_count || 1) - 1,
+                            0
+                          ),
+                        }
+                      : null
+                  );
                 }
               }}
             />
           </View>
-        )}
-
+        )}{" "}
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
       {/* Twitter-style Fixed Comment Input at Bottom */}
       {post && (
-        <PostComments 
+        <PostComments
           postId={post.id}
           showInput={true} // Only show input
           showComments={false} // Don't show comments list
           postAuthorName={post.user?.username || post.user?.name} // For "Replying to" text
           bottomOffset={BOTTOM_NAV_HEIGHT}
+          comments={comments} // Pass shared comments from parent
+          onCommentsChange={setComments} // Update parent state when comments change
           onCommentAdded={() => {
             // Update comment count (toast is handled in PostComments component)
             if (refreshStats && post) {
@@ -593,12 +685,16 @@ export default function PostDetailScreen() {
                 saves_count: post.saves_count || 0,
                 share_count: post.share_count || 0,
               });
-              setPost(prev => prev ? {
-                ...prev,
-                comments_count: (prev.comments_count || 0) + 1
-              } : null);
+              setPost((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      comments_count: (prev.comments_count || 0) + 1,
+                    }
+                  : null
+              );
             }
-            DeviceEventEmitter.emit('post-comment-added', { postId: post.id });
+            DeviceEventEmitter.emit("post-comment-added", { postId: post.id });
           }}
           onCommentDeleted={() => {
             if (refreshStats && post) {
@@ -608,18 +704,25 @@ export default function PostDetailScreen() {
                 saves_count: post.saves_count || 0,
                 share_count: post.share_count || 0,
               });
-              setPost(prev => prev ? {
-                ...prev,
-                comments_count: Math.max((prev.comments_count || 1) - 1, 0)
-              } : null);
+              setPost((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      comments_count: Math.max(
+                        (prev.comments_count || 1) - 1,
+                        0
+                      ),
+                    }
+                  : null
+              );
             }
           }}
         />
       )}
-      
+
       {/* Bottom Navigation */}
       <BottomNavigation />
-      
+
       {/* Image Viewer */}
       {showImageViewer && post.photos && post.photos.length > 0 && (
         <ImageViewer
@@ -636,20 +739,20 @@ export default function PostDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   backButtonFixed: {
-    position: 'absolute',
+    position: "absolute",
     top: 50,
     left: 20,
     zIndex: 10,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    backgroundColor: "rgba(255,255,255,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -664,22 +767,22 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     fontSize: 16,
     color: designTokens.colors.textMedium,
     marginTop: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   userHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     paddingTop: 40,
     paddingBottom: 16,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
   },
   avatar: {
     width: 50,
@@ -691,52 +794,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   userName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: designTokens.colors.textDark,
-    fontFamily: 'Inter_600SemiBold',
-    textDecorationLine: 'underline',
+    fontFamily: "Inter_600SemiBold",
+    textDecorationLine: "underline",
   },
   userPersona: {
     fontSize: 14,
     color: designTokens.colors.textMedium,
     marginTop: 2,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   timestamp: {
     fontSize: 12,
     color: designTokens.colors.textMedium,
     marginTop: 4,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   externalBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     marginHorizontal: 20,
     marginBottom: 16,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     gap: 6,
   },
   externalText: {
     fontSize: 12,
-    color: '#666',
-    fontFamily: 'Inter_500Medium',
+    color: "#666",
+    fontFamily: "Inter_500Medium",
   },
   simplePostBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: '#F0F8FF',
-    alignSelf: 'flex-start',
+    backgroundColor: "#F0F8FF",
+    alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -745,7 +848,7 @@ const styles = StyleSheet.create({
   },
   simplePostText: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: "Inter_500Medium",
     color: designTokens.colors.textMedium,
   },
   caption: {
@@ -754,7 +857,7 @@ const styles = StyleSheet.create({
     color: designTokens.colors.textDark,
     paddingHorizontal: 20,
     marginBottom: 20,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   externalContent: {
     marginHorizontal: 20,
@@ -766,7 +869,7 @@ const styles = StyleSheet.create({
   singlePhoto: {
     width: SCREEN_WIDTH,
     height: 300,
-    resizeMode: 'cover',
+    resizeMode: "cover",
   },
   photoScroll: {
     paddingLeft: 20,
@@ -776,16 +879,16 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 12,
     marginRight: 12,
-    resizeMode: 'cover',
+    resizeMode: "cover",
   },
   restaurantCard: {
-    flexDirection: 'row',
-    backgroundColor: '#F8F9FA',
+    flexDirection: "row",
+    backgroundColor: "#F8F9FA",
     marginHorizontal: 20,
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: designTokens.colors.borderLight,
   },
@@ -800,34 +903,34 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: designTokens.colors.textDark,
     marginBottom: 4,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
   },
   restaurantLocation: {
     fontSize: 14,
     color: designTokens.colors.textMedium,
     marginBottom: 6,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   restaurantMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   restaurantCuisine: {
     fontSize: 12,
     color: designTokens.colors.primaryOrange,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: "Inter_500Medium",
   },
   priceRange: {
     fontSize: 12,
     color: designTokens.colors.textMedium,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: "Inter_500Medium",
   },
   visitCard: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     marginHorizontal: 20,
     padding: 16,
     borderRadius: 12,
@@ -837,8 +940,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   trafficLight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   trafficDot: {
@@ -848,18 +951,18 @@ const styles = StyleSheet.create({
   },
   ratingLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: designTokens.colors.textDark,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
   },
   visitDetails: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   visitBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -867,43 +970,43 @@ const styles = StyleSheet.create({
   },
   visitText: {
     fontSize: 12,
-    color: '#666',
-    fontFamily: 'Inter_500Medium',
+    color: "#666",
+    fontFamily: "Inter_500Medium",
   },
   actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     paddingHorizontal: 20,
     paddingVertical: 20,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    backgroundColor: '#FAFAFA',
+    borderTopColor: "#F0F0F0",
+    backgroundColor: "#FAFAFA",
   },
   actionButton: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 6,
   },
   actionCount: {
     fontSize: 12,
-    color: '#666',
-    fontFamily: 'Inter_500Medium',
+    color: "#666",
+    fontFamily: "Inter_500Medium",
   },
   commentsSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: "#E5E5E5",
     marginTop: 20,
   },
   commentsSeparator: {
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   commentsTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    fontFamily: 'Inter_600SemiBold',
+    fontWeight: "600",
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
   },
   closeButton: {
     paddingHorizontal: 8,
@@ -912,9 +1015,9 @@ const styles = StyleSheet.create({
   closeButtonText: {
     fontSize: 14,
     color: designTokens.colors.primaryOrange,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   bottomSpacer: {
     height: BOTTOM_NAV_HEIGHT + COMMENT_INPUT_HEIGHT,
   },
-}); 
+});
