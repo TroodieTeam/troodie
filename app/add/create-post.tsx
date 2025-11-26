@@ -1,6 +1,7 @@
 import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { CommunitySelector } from '@/components/CommunitySelector';
 import { LinkInputModal } from '@/components/modals/LinkInputModal';
+import { VideoUploadProgress } from '@/components/VideoUploadProgress';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useApp } from '@/contexts/AppContext';
@@ -61,6 +62,22 @@ export default function CreatePostScreen() {
   const [loading, setLoading] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [activeAttachment, setActiveAttachment] = useState<AttachmentType | null>(null);
+  
+  // Video upload progress state
+  const [videoUploadProgress, setVideoUploadProgress] = useState<{
+    isVisible: boolean;
+    currentVideo: number;
+    totalVideos: number;
+    progress: number;
+    status: 'uploading' | 'optimizing' | 'processing' | 'complete';
+    fileName?: string;
+  }>({
+    isVisible: false,
+    currentVideo: 0,
+    totalVideos: 0,
+    progress: 0,
+    status: 'uploading',
+  });
   
   // External content state
   const [externalMetadata, setExternalMetadata] = useState<Partial<ExternalContent> | null>(null);
@@ -208,9 +225,52 @@ export default function CreatePostScreen() {
         uploadedPhotos = await postMediaService.uploadPostPhotos(formData.photos, user.id);
       }
 
+      let uploadedVideos: string[] = [];
+      if (formData.videos.length > 0) {
+        // Show upload progress modal immediately
+        setVideoUploadProgress({
+          isVisible: true,
+          currentVideo: 1,
+          totalVideos: formData.videos.length,
+          progress: 0,
+          status: 'uploading',
+        });
+        
+        // Force a small delay to ensure modal renders
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        uploadedVideos = await postMediaService.uploadPostVideos(
+          formData.videos,
+          user.id,
+          undefined,
+          (videoIndex, progress) => {
+            // Update progress state
+            setVideoUploadProgress((prev) => ({
+              ...prev,
+              currentVideo: videoIndex + 1,
+              progress: Math.max(0, Math.min(100, progress)),
+              status: progress < 10 ? 'uploading' : progress < 90 ? 'optimizing' : 'processing',
+            }));
+          }
+        );
+
+        // Show completion state briefly
+        setVideoUploadProgress((prev) => ({
+          ...prev,
+          progress: 100,
+          status: 'complete',
+        }));
+
+        // Auto-dismiss after 1 second
+        setTimeout(() => {
+          setVideoUploadProgress((prev) => ({ ...prev, isVisible: false }));
+        }, 1000);
+      }
+
       const postData: PostCreationData = {
         caption: formData.caption,
         photos: uploadedPhotos,
+        videos: uploadedVideos,
         restaurantId: selectedRestaurant ? selectedRestaurant.id.toString() : undefined,
         postType: formData.postType || 'simple',
         rating: formData.rating && formData.rating > 0 ? formData.rating : undefined,
@@ -294,6 +354,28 @@ export default function CreatePostScreen() {
         updateFormField('photos', [...formData.photos, ...selectedPhotos]);
       }
     } catch (error) {
+    }
+  };
+
+  const handleVideoSelection = async () => {
+    try {
+      const selectedVideos = await postMediaService.pickVideos(5 - formData.videos.length);
+      if (selectedVideos.length > 0) {
+        updateFormField('videos', [...formData.videos, ...selectedVideos]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to select videos');
+    }
+  };
+
+  const handleRecordVideo = async () => {
+    try {
+      const recordedVideo = await postMediaService.recordVideo();
+      if (recordedVideo) {
+        updateFormField('videos', [...formData.videos, recordedVideo]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to record video');
     }
   };
 
@@ -519,6 +601,44 @@ export default function CreatePostScreen() {
             <Ionicons name="chevron-forward" size={16} color="#999" />
           </TouchableOpacity>
 
+          {/* Videos */}
+          <TouchableOpacity 
+            style={styles.selectionRow}
+            onPress={handleVideoSelection}
+          >
+            <Ionicons 
+              name="videocam" 
+              size={20} 
+              color={formData.videos.length > 0 ? designTokens.colors.primaryOrange : '#999'} 
+            />
+            <View style={styles.selectionContent}>
+              <Text style={styles.selectionLabel}>Add videos</Text>
+              <Text style={styles.selectionValue}>
+                {formData.videos.length > 0 ? `🎥 ${formData.videos.length} video${formData.videos.length > 1 ? 's' : ''} added` : 'Share your food moments in motion!'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#999" />
+          </TouchableOpacity>
+          
+          {/* Record Video */}
+          {formData.videos.length < 5 && (
+            <TouchableOpacity 
+              style={styles.selectionRow}
+              onPress={handleRecordVideo}
+            >
+              <Ionicons 
+                name="camera" 
+                size={20} 
+                color="#999" 
+              />
+              <View style={styles.selectionContent}>
+                <Text style={styles.selectionLabel}>Record video</Text>
+                <Text style={styles.selectionValue}>Capture a video right now</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#999" />
+            </TouchableOpacity>
+          )}
+
           {/* More options - only for restaurant posts */}
           {formData.postType === 'restaurant' && (
             <TouchableOpacity 
@@ -610,6 +730,42 @@ export default function CreatePostScreen() {
                     onPress={() => {
                       const newPhotos = formData.photos.filter((_, i) => i !== index);
                       updateFormField('photos', newPhotos);
+                    }}
+                  >
+                    <Ionicons name="close" size={14} color="white" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {formData.videos.length > 0 && (
+          <View style={styles.previewSection}>
+            <Text style={[styles.sectionTitle, styles.sectionTitlePadding]}>🎥 Your Videos</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.photosPreview}
+              contentContainerStyle={styles.photosPreviewContent}
+            >
+              {formData.videos.map((video, index) => (
+                <View 
+                  key={`video-${index}`} 
+                  style={[
+                    styles.photoPreview,
+                    index === formData.videos.length - 1 && styles.photoPreviewLast
+                  ]}
+                >
+                  <View style={styles.videoPreviewContainer}>
+                    <Ionicons name="play-circle" size={40} color="white" style={styles.videoPlayIcon} />
+                    <Text style={styles.videoPreviewLabel}>Video {index + 1}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removePreview}
+                    onPress={() => {
+                      const newVideos = formData.videos.filter((_, i) => i !== index);
+                      updateFormField('videos', newVideos);
                     }}
                   >
                     <Ionicons name="close" size={14} color="white" />
@@ -975,11 +1131,16 @@ export default function CreatePostScreen() {
   );
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <SafeAreaView style={styles.safeArea}>
+    <>
+      <VideoUploadProgress
+        state={videoUploadProgress}
+        onDismiss={() => setVideoUploadProgress((prev) => ({ ...prev, isVisible: false }))}
+      />
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <SafeAreaView style={styles.safeArea}>
         {renderHeader()}
         
         <ScrollView 
@@ -1067,7 +1228,8 @@ export default function CreatePostScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -1894,6 +2056,24 @@ const styles = StyleSheet.create({
   },
   removeLinkPreview: {
     padding: designTokens.spacing.sm,
+  },
+
+  // Video preview styles
+  videoPreviewContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayIcon: {
+    marginBottom: 4,
+  },
+  videoPreviewLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter_500Medium',
+    color: 'white',
   },
 
   // Bottom spacing
