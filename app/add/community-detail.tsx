@@ -7,6 +7,7 @@ import { CommunityAdminService } from '@/services/communityAdminService';
 import { Community, communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { ToastService } from '@/services/toastService';
+import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import { getRoleBadgeColor, getRoleDisplayName, useCommunityPermissions } from '@/utils/communityPermissions';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 import * as Haptics from 'expo-haptics';
@@ -654,19 +655,26 @@ export default function CommunityDetailScreen() {
     );
   };
 
-  const renderMemberItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.memberItem}
-      onPress={() => {
-        if (item.user_id) {
-          router.push(`/user/${item.user_id}`);
-        }
-      }}
-    >
-      <Image 
-        source={{ uri: item.user?.avatar_url || item.user?.profile_image_url || 'https://i.pravatar.cc/100' }} 
-        style={styles.memberAvatar} 
-      />
+  const renderMemberItem = ({ item }: { item: any }) => {
+    const userName = item.user?.name || item.user?.username || 'User';
+    const avatarUrl = getAvatarUrlWithFallback(
+      item.user?.avatar_url,
+      userName
+    );
+    
+    return (
+      <TouchableOpacity 
+        style={styles.memberItem}
+        onPress={() => {
+          if (item.user_id) {
+            router.push(`/user/${item.user_id}`);
+          }
+        }}
+      >
+        <Image 
+          source={{ uri: avatarUrl }} 
+          style={styles.memberAvatar} 
+        />
       <View style={styles.memberInfo}>
         <View style={styles.memberNameRow}>
           <Text style={styles.memberName}>
@@ -696,7 +704,8 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
       )}
     </TouchableOpacity>
-  );
+    );
+  };
 
   const renderAboutTab = () => (
     <View style={styles.aboutContainer}>
