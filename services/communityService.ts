@@ -461,7 +461,7 @@ class CommunityService {
         location: formData.location,
         type: formData.type,
         admin_id: userId,
-        member_count: 1,
+        member_count: 0,
         activity_level: 0,
         is_active: true,
         currency: 'USD',
