@@ -61,11 +61,11 @@ export default function PostDetailScreen() {
     postId: id || "",
     initialStats: post
       ? {
-          likes_count: post.likes_count || 0,
-          comments_count: post.comments_count || 0,
-          saves_count: post.saves_count || 0,
-          share_count: post.share_count || 0,
-        }
+        likes_count: post.likes_count || 0,
+        comments_count: post.comments_count || 0,
+        saves_count: post.saves_count || 0,
+        share_count: post.share_count || 0,
+      }
       : undefined,
     initialIsLiked: post?.is_liked_by_user || false,
     initialIsSaved: post?.is_saved_by_user || false,
@@ -162,8 +162,8 @@ export default function PostDetailScreen() {
                 isLiked !== undefined
                   ? isLiked
                   : freshPost.is_liked_by_user ??
-                    prev.is_liked_by_user ??
-                    false,
+                  prev.is_liked_by_user ??
+                  false,
               comments_count:
                 freshPost.comments_count ?? prev.comments_count ?? 0,
               saves_count: freshPost.saves_count ?? prev.saves_count ?? 0,
@@ -467,7 +467,7 @@ export default function PostDetailScreen() {
                     source={{ uri: post.photos[0] }}
                     style={styles.singlePhoto}
                     resizeMode="cover"
-                    onError={() => {}}
+                    onError={() => { }}
                   />
                 </TouchableOpacity>
               ) : (
@@ -489,7 +489,7 @@ export default function PostDetailScreen() {
                         source={{ uri: photo }}
                         style={styles.multiPhoto}
                         resizeMode="cover"
-                        onError={() => {}}
+                        onError={() => { }}
                       />
                     </TouchableOpacity>
                   ))}
@@ -555,8 +555,8 @@ export default function PostDetailScreen() {
                     {post.visit_type === "dine_in"
                       ? "Dine In"
                       : post.visit_type === "takeout"
-                      ? "Takeout"
-                      : "Delivery"}
+                        ? "Takeout"
+                        : "Delivery"}
                   </Text>
                 </View>
               )}
@@ -629,10 +629,10 @@ export default function PostDetailScreen() {
                   setPost((prev) =>
                     prev
                       ? {
-                          ...prev,
+                        ...prev,
 
-                          comments_count: (prev.comments_count || 0) + 1,
-                        }
+                        comments_count: (prev.comments_count || 0) + 1,
+                      }
                       : null
                   );
                 }
@@ -650,19 +650,19 @@ export default function PostDetailScreen() {
                   setPost((prev) =>
                     prev
                       ? {
-                          ...prev,
-                          comments_count: Math.max(
-                            (prev.comments_count || 1) - 1,
-                            0
-                          ),
-                        }
+                        ...prev,
+                        comments_count: Math.max(
+                          (prev.comments_count || 1) - 1,
+                          0
+                        ),
+                      }
                       : null
                   );
                 }
               }}
             />
           </View>
-        )}{" "}
+        )}
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -688,9 +688,9 @@ export default function PostDetailScreen() {
               setPost((prev) =>
                 prev
                   ? {
-                      ...prev,
-                      comments_count: (prev.comments_count || 0) + 1,
-                    }
+                    ...prev,
+                    comments_count: (prev.comments_count || 0) + 1,
+                  }
                   : null
               );
             }
@@ -707,12 +707,12 @@ export default function PostDetailScreen() {
               setPost((prev) =>
                 prev
                   ? {
-                      ...prev,
-                      comments_count: Math.max(
-                        (prev.comments_count || 1) - 1,
-                        0
-                      ),
-                    }
+                    ...prev,
+                    comments_count: Math.max(
+                      (prev.comments_count || 1) - 1,
+                      0
+                    ),
+                  }
                   : null
               );
             }
