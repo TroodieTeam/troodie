@@ -3,9 +3,20 @@
 -- Purpose: Implement account type system for Creator Marketplace
 
 -- Add account type fields to users table
-ALTER TABLE users ADD COLUMN account_type VARCHAR(20) DEFAULT 'consumer' CHECK (account_type IN ('consumer', 'creator', 'business'));
-ALTER TABLE users ADD COLUMN account_status VARCHAR(30) DEFAULT 'active' CHECK (account_status IN ('active', 'suspended', 'pending_verification'));
-ALTER TABLE users ADD COLUMN account_upgraded_at TIMESTAMP;
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'account_type') THEN
+    ALTER TABLE users ADD COLUMN account_type VARCHAR(20) DEFAULT 'consumer' CHECK (account_type IN ('consumer', 'creator', 'business'));
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'account_status') THEN
+    ALTER TABLE users ADD COLUMN account_status VARCHAR(30) DEFAULT 'active' CHECK (account_status IN ('active', 'suspended', 'pending_verification'));
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'account_upgraded_at') THEN
+    ALTER TABLE users ADD COLUMN account_upgraded_at TIMESTAMP;
+  END IF;
+END $$;
 
 -- Create creator_profiles table
 CREATE TABLE IF NOT EXISTS creator_profiles (
@@ -33,13 +44,36 @@ CREATE TABLE IF NOT EXISTS business_profiles (
 );
 
 -- Add indexes for performance
-CREATE INDEX idx_users_account_type ON users(account_type);
-CREATE INDEX idx_users_account_status ON users(account_status);
-CREATE INDEX idx_creator_profiles_user_id ON creator_profiles(user_id);
-CREATE INDEX idx_creator_profiles_verification ON creator_profiles(verification_status);
-CREATE INDEX idx_business_profiles_user_id ON business_profiles(user_id);
-CREATE INDEX idx_business_profiles_restaurant ON business_profiles(restaurant_id);
-CREATE INDEX idx_business_profiles_verification ON business_profiles(verification_status);
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_account_type') THEN
+    CREATE INDEX idx_users_account_type ON users(account_type);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_account_status') THEN
+    CREATE INDEX idx_users_account_status ON users(account_status);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_creator_profiles_user_id') THEN
+    CREATE INDEX idx_creator_profiles_user_id ON creator_profiles(user_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_creator_profiles_verification') THEN
+    CREATE INDEX idx_creator_profiles_verification ON creator_profiles(verification_status);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_business_profiles_user_id') THEN
+    CREATE INDEX idx_business_profiles_user_id ON business_profiles(user_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_business_profiles_restaurant') THEN
+    CREATE INDEX idx_business_profiles_restaurant ON business_profiles(restaurant_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_business_profiles_verification') THEN
+    CREATE INDEX idx_business_profiles_verification ON business_profiles(verification_status);
+  END IF;
+END $$;
 
 -- Create function to upgrade user account type
 CREATE OR REPLACE FUNCTION upgrade_user_account(
@@ -194,27 +228,47 @@ ALTER TABLE creator_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Creator profiles policies
-CREATE POLICY "Users can view their own creator profile" ON creator_profiles
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own creator profile" ON creator_profiles
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own creator profile" ON creator_profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Public can view verified creator profiles" ON creator_profiles
-  FOR SELECT USING (verification_status = 'verified');
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Users can view their own creator profile') THEN
+    CREATE POLICY "Users can view their own creator profile" ON creator_profiles
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Users can update their own creator profile') THEN
+    CREATE POLICY "Users can update their own creator profile" ON creator_profiles
+      FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Users can insert their own creator profile') THEN
+    CREATE POLICY "Users can insert their own creator profile" ON creator_profiles
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Public can view verified creator profiles') THEN
+    CREATE POLICY "Public can view verified creator profiles" ON creator_profiles
+      FOR SELECT USING (verification_status = 'verified');
+  END IF;
+END $$;
 
 -- Business profiles policies  
-CREATE POLICY "Users can view their own business profile" ON business_profiles
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own business profile" ON business_profiles
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own business profile" ON business_profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'business_profiles' AND policyname = 'Users can view their own business profile') THEN
+    CREATE POLICY "Users can view their own business profile" ON business_profiles
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'business_profiles' AND policyname = 'Users can update their own business profile') THEN
+    CREATE POLICY "Users can update their own business profile" ON business_profiles
+      FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'business_profiles' AND policyname = 'Users can insert their own business profile') THEN
+    CREATE POLICY "Users can insert their own business profile" ON business_profiles
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- Set default account type for existing users
 UPDATE users 
@@ -244,11 +298,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_creator_profiles_updated_at ON creator_profiles;
 CREATE TRIGGER update_creator_profiles_updated_at
   BEFORE UPDATE ON creator_profiles
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_business_profiles_updated_at ON business_profiles;
 CREATE TRIGGER update_business_profiles_updated_at
   BEFORE UPDATE ON business_profiles
   FOR EACH ROW

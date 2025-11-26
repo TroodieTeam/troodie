@@ -95,6 +95,7 @@ class PostService {
       post_type: postData.postType || 'simple', // Add post_type field
       caption: postData.caption,
       photos: postData.photos,
+      videos: postData.videos,
       rating: postData.rating,
       visit_date: postData.visitDate?.toISOString().split('T')[0],
       price_range: postData.priceRange,

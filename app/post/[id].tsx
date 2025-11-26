@@ -1,6 +1,8 @@
 import { ErrorState } from '@/components/ErrorState';
 import { ExternalContentPreview } from '@/components/posts/ExternalContentPreview';
 import { ImageViewer } from '@/components/ImageViewer';
+import { VideoViewer } from '@/components/VideoViewer';
+import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +46,8 @@ export default function PostDetailScreen() {
   const [retrying, setRetrying] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const [showVideoViewer, setShowVideoViewer] = useState(false);
+  const [videoViewerIndex, setVideoViewerIndex] = useState(0);
   
   // Engagement states
   const [isLiked, setIsLiked] = useState(false);
@@ -314,6 +318,46 @@ export default function PostDetailScreen() {
           </View>
         )}
 
+        {/* Videos */}
+        {(post as any).content_type !== 'external' && (post as any).videos && (post as any).videos.length > 0 && (
+          <View style={styles.photoContainer}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.photoScroll}
+            >
+              {(post as any).videos.map((video: string, index: number) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setVideoViewerIndex(index);
+                    setShowVideoViewer(true);
+                  }}
+                  style={styles.videoThumbnail}
+                >
+                  <View style={styles.videoThumbnailOverlay}>
+                    <Ionicons name="play-circle" size={64} color="#FFFFFF" />
+                  </View>
+                  <VideoThumbnail
+                    videoUri={video}
+                    style={styles.photo}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {(post as any).videos.length > 1 && (
+              <View style={styles.photoIndicator}>
+                <Text style={styles.photoIndicatorText}>
+                  {`${1}/${(post as any).videos.length}`}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Restaurant Info - Only show if restaurant exists */}
         {post.restaurant && (
           <TouchableOpacity 
@@ -405,6 +449,16 @@ export default function PostDetailScreen() {
           images={post.photos}
           initialIndex={imageViewerIndex}
           onClose={() => setShowImageViewer(false)}
+        />
+      )}
+
+      {/* Video Viewer */}
+      {showVideoViewer && (post as any).videos && (post as any).videos.length > 0 && (
+        <VideoViewer
+          visible={showVideoViewer}
+          videos={(post as any).videos}
+          initialIndex={videoViewerIndex}
+          onClose={() => setShowVideoViewer(false)}
         />
       )}
     </View>
@@ -519,6 +573,20 @@ const styles = StyleSheet.create({
   photoIndicatorText: {
     ...designTokens.typography.smallText,
     color: designTokens.colors.white,
+  },
+  videoThumbnail: {
+    position: 'relative',
+  },
+  videoThumbnailOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
   },
   restaurantInfo: {
     flexDirection: 'row',
