@@ -158,6 +158,15 @@ export default function CommunityDetailScreen() {
       if (data.communityId === communityId) {
         // Reload just the posts
         loadCommunityPosts();
+
+       // we could also optimistically add the post if we had its data
+       setCommunity(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            post_count: (prev.post_count || 0) + 1
+          };
+        });
       }
     };
 
