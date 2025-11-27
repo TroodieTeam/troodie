@@ -154,10 +154,19 @@ export default function CommunityDetailScreen() {
     if (!communityId) return;
 
     // Refresh posts when a new post is created in this community
-    const handlePostCreated = (data: { communityId: string }) => {
+    const handlePostCreated = async (data: { communityId: string }) => {
       if (data.communityId === communityId) {
         // Reload just the posts
-        loadCommunityPosts();
+       await loadCommunityPosts();
+
+       // we could also optimistically add the post if we had its data
+       setCommunity(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            post_count: (prev.post_count || 0) + 1
+          };
+        });
       }
     };
 
