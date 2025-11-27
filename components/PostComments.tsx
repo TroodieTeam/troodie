@@ -379,29 +379,23 @@ export function PostComments({
   const handleDeleteComment = async (commentId: string) => {
     try {
       // Optimistic update - remove from UI immediately
-
-      console.log({
-        comments: comments.length,
-        commentId,
-      });
-
-      setComments((prev) => prev.filter((comment) => comment.id !== commentId));
+      setComments(prev => prev.filter(comment => comment.id !== commentId));
       onCommentDeleted?.();
 
       // Delete from database
-      // const { error } = await supabase
-      //   .from("post_comments")
-      //   .delete()
-      //   .eq("id", commentId);
+      const { error } = await supabase
+        .from('post_comments')
+        .delete()
+        .eq('id', commentId);
 
-      // if (error) {
-      //   console.error("Error deleting comment:", error);
-      //   // On error, reload comments to restore state
-      //   loadComments();
-      //   return;
-      // }
+      if (error) {
+        console.error('Error deleting comment:', error);
+        // On error, reload comments to restore state
+        loadComments();
+        return;
+      }
     } catch (error) {
-      console.error("Error deleting comment:", error);
+      console.error('Error deleting comment:', error);
       // On error, reload comments to restore state
       loadComments();
     }
