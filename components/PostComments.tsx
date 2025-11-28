@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  DeviceEventEmitter,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -392,8 +393,20 @@ export function PostComments({
         console.error('Error deleting comment:', error);
         // On error, reload comments to restore state
         loadComments();
+        Toast.show({
+          type: "error",
+          text1: "Failed to delete comment",
+          position: "top",
+        });
         return;
       }
+      DeviceEventEmitter.emit('post-comment-deleted', { postId });
+      Toast.show({
+        type: "success",
+        text1: "Comment deleted",
+        visibilityTime: 2000,
+        position: "top",
+      });
     } catch (error) {
       console.error('Error deleting comment:', error);
       // On error, reload comments to restore state
