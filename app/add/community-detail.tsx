@@ -57,7 +57,7 @@ export default function CommunityDetailScreen() {
   const params = useLocalSearchParams();
   const { user } = useAuth();
   const communityId = params.communityId as string;
-  
+
   const [community, setCommunity] = useState<Community | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
@@ -71,15 +71,15 @@ export default function CommunityDetailScreen() {
   const skipNextFocusRefresh = useRef(false);
 
   // Admin modals
-  const [removeMemberModal, setRemoveMemberModal] = useState<{ visible: boolean; member: any }>({ 
-    visible: false, 
-    member: null 
+  const [removeMemberModal, setRemoveMemberModal] = useState<{ visible: boolean; member: any }>({
+    visible: false,
+    member: null
   });
-  const [deletePostModal, setDeletePostModal] = useState<{ visible: boolean; postId: string }>({ 
-    visible: false, 
-    postId: '' 
+  const [deletePostModal, setDeletePostModal] = useState<{ visible: boolean; postId: string }>({
+    visible: false,
+    postId: ''
   });
-  
+
   // Use permissions hook
   const { role, hasPermission } = useCommunityPermissions(communityId, user?.id);
 
@@ -93,7 +93,7 @@ export default function CommunityDetailScreen() {
 
     try {
       setRefreshing(true);
-      
+
       // Get community with membership info if user is logged in
       let communityData;
       if (user) {
@@ -105,22 +105,22 @@ export default function CommunityDetailScreen() {
       } else {
         communityData = await communityService.getCommunity(communityId);
       }
-      
+
       if (!communityData) {
         Alert.alert('Error', 'Community not found');
         router.back();
         return;
       }
       setCommunity(communityData);
-      
+
       // Get community members
       const membersData = await communityService.getCommunityMembers(communityId);
       setMembers(membersData);
-      
+
       // Load community posts (including cross-posted content)
       const postsData = await communityService.getCommunityPosts(communityId, 20);
       setPosts(postsData);
-      
+
     } catch (error) {
       console.error('Error fetching community data:', error);
       Alert.alert('Error', 'Failed to load community details');
@@ -140,6 +140,7 @@ export default function CommunityDetailScreen() {
     try {
       const postsData = await communityService.getCommunityPosts(communityId, 20);
       setPosts(postsData);
+
     } catch (error) {
       console.error('Error loading community posts:', error);
     }
@@ -159,8 +160,8 @@ export default function CommunityDetailScreen() {
         // Reload just the posts
         loadCommunityPosts();
 
-       // we could also optimistically add the post if we had its data
-       setCommunity(prev => {
+        // we could also optimistically add the post if we had its data
+        setCommunity(prev => {
           if (!prev) return prev;
           return {
             ...prev,
@@ -180,43 +181,43 @@ export default function CommunityDetailScreen() {
       }
     };
 
-    const handleEngagementChanged = async ({ 
-      postId, 
-      isLiked, 
-      likesCount 
-    }: { 
-      postId: string; 
-      isLiked?: boolean; 
-      likesCount?: number; 
+    const handleEngagementChanged = async ({
+      postId,
+      isLiked,
+      likesCount
+    }: {
+      postId: string;
+      isLiked?: boolean;
+      likesCount?: number;
     }) => {
       const postExists = posts.some(p => p.id === postId);
       if (!postExists) return;
 
       if (isLiked !== undefined || likesCount !== undefined) {
-        setPosts(prev => prev.map(post => 
-          post.id === postId 
+        setPosts(prev => prev.map(post =>
+          post.id === postId
             ? {
-                ...post,
-                likes_count: likesCount !== undefined ? likesCount : post.likes_count ?? 0,
-                is_liked_by_user: isLiked !== undefined ? isLiked : post.is_liked_by_user ?? false,
-              }
+              ...post,
+              likes_count: likesCount !== undefined ? likesCount : post.likes_count ?? 0,
+              is_liked_by_user: isLiked !== undefined ? isLiked : post.is_liked_by_user ?? false,
+            }
             : post
         ));
       }
-      
+
       try {
         const freshPost = await postService.getPostById(postId);
         if (freshPost) {
-          setPosts(prev => prev.map(post => 
-            post.id === postId 
+          setPosts(prev => prev.map(post =>
+            post.id === postId
               ? {
-                  ...post,
-                  likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? post.likes_count ?? 0),
-                  is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? post.is_liked_by_user ?? false),
-                  comments_count: freshPost.comments_count ?? post.comments_count ?? 0,
-                  saves_count: freshPost.saves_count ?? post.saves_count ?? 0,
-                  is_saved_by_user: freshPost.is_saved_by_user ?? post.is_saved_by_user ?? false,
-                }
+                ...post,
+                likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? post.likes_count ?? 0),
+                is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? post.is_liked_by_user ?? false),
+                comments_count: freshPost.comments_count ?? post.comments_count ?? 0,
+                saves_count: freshPost.saves_count ?? post.saves_count ?? 0,
+                is_saved_by_user: freshPost.is_saved_by_user ?? post.is_saved_by_user ?? false,
+              }
               : post
           ));
         }
@@ -225,15 +226,20 @@ export default function CommunityDetailScreen() {
       }
     };
 
+    // Refresh posts when a comment is added
+    const handleCommentAdded = (data: { postId: string }) => loadCommunityPosts();
+
     // Subscribe to events
     const unsubscribeCreate = eventBus.on(EVENTS.COMMUNITY_POST_CREATED, handlePostCreated);
     const unsubscribeDelete = eventBus.on(EVENTS.COMMUNITY_POST_DELETED, handlePostDeleted);
     const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
+    const unsubscribeCommentAdded = eventBus.on(EVENTS.POST_COMMENT_ADDED, handleCommentAdded);
 
     return () => {
       unsubscribeCreate();
       unsubscribeDelete();
       unsubscribeEngagement();
+      unsubscribeCommentAdded();
     };
   }, [communityId, posts, updatePostItem]);
 
@@ -347,8 +353,8 @@ export default function CommunityDetailScreen() {
       'Are you sure you want to delete this community? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -367,7 +373,7 @@ export default function CommunityDetailScreen() {
       ]
     );
   };
-  
+
   const handleViewAuditLogs = () => {
     router.push({
       pathname: '/add/community-audit-logs',
@@ -378,10 +384,10 @@ export default function CommunityDetailScreen() {
   const handleRemoveMember = (memberId: string) => {
     const member = members.find(m => m.user_id === memberId);
     if (!member) return;
-    
+
     setRemoveMemberModal({ visible: true, member });
   };
-  
+
   const handleRemoveMemberConfirm = async (reason: string) => {
     if (!removeMemberModal.member) return;
 
@@ -476,7 +482,7 @@ export default function CommunityDetailScreen() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -544,11 +550,11 @@ export default function CommunityDetailScreen() {
 
   const renderCommunityHeader = () => (
     <View style={styles.communityHeader}>
-      <Image 
-        source={{ uri: community.cover_image_url || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800' }} 
-        style={styles.coverImage} 
+      <Image
+        source={{ uri: community.cover_image_url || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800' }}
+        style={styles.coverImage}
       />
-      
+
       <View style={styles.communityInfo}>
         <View style={styles.titleRow}>
           <Text style={styles.communityName}>{community.name}</Text>
@@ -565,13 +571,13 @@ export default function CommunityDetailScreen() {
             )}
           </View>
         </View>
-        
+
         {community.description && (
           <Text style={styles.description} numberOfLines={2}>
             {community.description}
           </Text>
         )}
-        
+
         <View style={styles.stats}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{community.member_count}</Text>
@@ -592,7 +598,7 @@ export default function CommunityDetailScreen() {
             </>
           )}
         </View>
-        
+
         {(!hasPermission('update_settings') || role === 'member') && (
           <TouchableOpacity
             style={[
@@ -653,8 +659,8 @@ export default function CommunityDetailScreen() {
             updatePostItem(postId, (post) => ({
               ...post,
               is_liked_by_user: liked,
-              likes_count: liked 
-                ? (post.likes_count || 0) + 1 
+              likes_count: liked
+                ? (post.likes_count || 0) + 1
                 : Math.max((post.likes_count || 1) - 1, 0)
             }));
           }}
@@ -670,9 +676,9 @@ export default function CommunityDetailScreen() {
       item.user?.avatar_url,
       userName
     );
-    
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.memberItem}
         onPress={() => {
           if (item.user_id) {
@@ -680,39 +686,39 @@ export default function CommunityDetailScreen() {
           }
         }}
       >
-        <Image 
-          source={{ uri: avatarUrl }} 
-          style={styles.memberAvatar} 
+        <Image
+          source={{ uri: avatarUrl }}
+          style={styles.memberAvatar}
         />
-      <View style={styles.memberInfo}>
-        <View style={styles.memberNameRow}>
-          <Text style={styles.memberName}>
-            {item.user?.name || item.user?.username || 'User'}
+        <View style={styles.memberInfo}>
+          <View style={styles.memberNameRow}>
+            <Text style={styles.memberName}>
+              {item.user?.name || item.user?.username || 'User'}
+            </Text>
+            {item.role !== 'member' && (
+              <View style={[
+                styles.roleBadge,
+                { backgroundColor: getRoleBadgeColor(item.role) }
+              ]}>
+                <Text style={styles.roleBadgeText}>
+                  {getRoleDisplayName(item.role)}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.memberBio} numberOfLines={1}>
+            {item.user?.username ? `@${item.user.username}` : ''} {item.user?.bio || `Joined ${formatDate(item.joined_at)}`}
           </Text>
-          {item.role !== 'member' && (
-            <View style={[
-              styles.roleBadge,
-              { backgroundColor: getRoleBadgeColor(item.role) }
-            ]}>
-              <Text style={styles.roleBadgeText}>
-                {getRoleDisplayName(item.role)}
-              </Text>
-            </View>
-          )}
         </View>
-        <Text style={styles.memberBio} numberOfLines={1}>
-          {item.user?.username ? `@${item.user.username}` : ''} {item.user?.bio || `Joined ${formatDate(item.joined_at)}`}
-        </Text>
-      </View>
-      {hasPermission('remove_member') && item.user_id !== user?.id && item.role !== 'owner' && (
-        <TouchableOpacity 
-          style={styles.removeMember}
-          onPress={() => handleRemoveMember(item.user_id)}
-        >
-          <UserMinus size={16} color={theme.colors.error} />
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+        {hasPermission('remove_member') && item.user_id !== user?.id && item.role !== 'owner' && (
+          <TouchableOpacity
+            style={styles.removeMember}
+            onPress={() => handleRemoveMember(item.user_id)}
+          >
+            <UserMinus size={16} color={theme.colors.error} />
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -722,7 +728,7 @@ export default function CommunityDetailScreen() {
         <Text style={styles.aboutTitle}>Description</Text>
         <Text style={styles.aboutText}>{community.description || 'No description provided.'}</Text>
       </View>
-      
+
       {community.location && (
         <View style={styles.aboutSection}>
           <Text style={styles.aboutTitle}>Location</Text>
@@ -732,14 +738,14 @@ export default function CommunityDetailScreen() {
           </View>
         </View>
       )}
-      
+
       {community.category && (
         <View style={styles.aboutSection}>
           <Text style={styles.aboutTitle}>Category</Text>
           <Text style={styles.aboutText}>{community.category}</Text>
         </View>
       )}
-      
+
       <View style={styles.aboutSection}>
         <Text style={styles.aboutTitle}>Community Stats</Text>
         <View style={styles.aboutStats}>
@@ -762,10 +768,10 @@ export default function CommunityDetailScreen() {
     <MenuProvider>
       <SafeAreaView style={styles.container}>
         {renderHeader()}
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl 
+            <RefreshControl
               refreshing={refreshing}
               onRefresh={loadCommunityData}
               tintColor={theme.colors.primary}
@@ -774,7 +780,7 @@ export default function CommunityDetailScreen() {
         >
           {renderCommunityHeader()}
           {renderTabs()}
-          
+
           {activeTab === 'feed' && (
             <FlatList
               data={posts}
@@ -791,7 +797,7 @@ export default function CommunityDetailScreen() {
               }
             />
           )}
-          
+
           {activeTab === 'members' && (
             <FlatList
               data={members}
@@ -808,17 +814,17 @@ export default function CommunityDetailScreen() {
               }
             />
           )}
-          
+
           {activeTab === 'about' && renderAboutTab()}
         </ScrollView>
-        
+
         {isMember && activeTab === 'feed' && community && (
-          <CreatePostButton 
+          <CreatePostButton
             communityId={communityId}
             communityName={community.name}
           />
         )}
-        
+
         {/* Reason Modals */}
         <ReasonModal
           visible={removeMemberModal.visible}
@@ -829,7 +835,7 @@ export default function CommunityDetailScreen() {
           submitText="Remove Member"
           requireReason={true}
         />
-        
+
         <ReasonModal
           visible={deletePostModal.visible}
           onClose={() => setDeletePostModal({ visible: false, postId: '' })}

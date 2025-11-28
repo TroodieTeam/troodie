@@ -3,6 +3,7 @@ import { DEFAULT_IMAGES } from "@/constants/images";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { CommentWithUser } from "@/types/post";
+import { eventBus, EVENTS } from "@/utils/eventBus";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -17,7 +18,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -317,6 +318,8 @@ export function PostComments({
           visibilityTime: 2000,
           position: "top",
         });
+
+        eventBus.emit(EVENTS.POST_COMMENT_ADDED);
         onCommentAdded?.();
         return;
       }
@@ -359,8 +362,9 @@ export function PostComments({
       });
 
       onCommentAdded?.();
+
+      eventBus.emit(EVENTS.POST_COMMENT_ADDED);
     } catch (error: any) {
-      console.error("Error submitting comment:", error);
 
       // Remove optimistic comment on error
       setComments((prev) => prev.filter((c) => c.id !== tempId));
@@ -401,6 +405,7 @@ export function PostComments({
         return;
       }
       DeviceEventEmitter.emit('post-comment-deleted', { postId });
+      eventBus.emit(EVENTS.POST_COMMENT_ADDED);
       Toast.show({
         type: "success",
         text1: "Comment deleted",

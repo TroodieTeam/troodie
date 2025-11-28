@@ -7,9 +7,9 @@ class EventBus {
     if (!this.events.has(event)) {
       this.events.set(event, new Set());
     }
-    
+
     this.events.get(event)!.add(callback);
-    
+
     // Return unsubscribe function
     return () => {
       const callbacks = this.events.get(event);
@@ -66,4 +66,5 @@ export const EVENTS = {
   COMMUNITY_POST_DELETED: 'community_post_deleted',
   COMMUNITY_POST_UPDATED: 'community_post_updated',
   POST_ENGAGEMENT_CHANGED: 'post_engagement_changed',
+  POST_COMMENT_ADDED: 'post_comment_added',
 } as const;
