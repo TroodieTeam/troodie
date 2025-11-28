@@ -135,6 +135,16 @@ export default function ExploreScreen() {
     }
   }, [params.tab]);
 
+  useEffect(() => {
+    const unsubscribe = eventBus.on('post-created', () => {
+      posts.load(); 
+    });
+    return () => {
+     unsubscribe();
+    };
+  }, []);
+
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   // Restaurant data management with server-side search
@@ -517,10 +527,19 @@ export default function ExploreScreen() {
         comments_count: (item.comments_count || 0) + 1,
       }));
     });
+    const deleteSubscription = DeviceEventEmitter.addListener('post-comment-deleted', (event) => {
+      const postId = event?.postId || event;
+      if (!postId) return;
+      updatePostItem(postId, (item) => ({
+        ...item,
+        comments_count: Math.max((item.comments_count || 1) - 1, 0),
+      }));
+    });
 
     return () => {
       unsubscribeEngagement();
       subscription.remove();
+      deleteSubscription.remove();
     };
   }, [updatePostItem]);
 

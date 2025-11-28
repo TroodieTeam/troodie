@@ -309,6 +309,7 @@ export default function CreatePostScreen() {
 
         // Update network progress
         await updateNetworkProgress('post');
+        eventBus.emit('post-created');
 
         // Show success toast instead of full-screen confirmation
         ToastService.success(

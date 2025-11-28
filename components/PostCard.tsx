@@ -635,7 +635,7 @@ export function PostCard({
             activeOpacity={0.7}
           >
             <Ionicons name="chatbubble-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
-            <Text style={styles.actionCount}>{commentsCount}</Text>
+            <Text style={styles.actionCount}>{post.comments_count || 0}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
