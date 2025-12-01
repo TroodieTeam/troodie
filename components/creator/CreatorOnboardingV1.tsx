@@ -1,16 +1,28 @@
 /**
  * CREATOR ONBOARDING V1 - Following v1_component_reference.html styling
  * Simplified 2-step flow focusing on portfolio and terms
+ *
+ * UPDATED: Now uses atomic creator upgrade and cloud image uploads
+ * Tasks: CM-1 (Race Condition Fix), CM-2 (Portfolio Image Upload)
  */
 
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import {
+  uploadAllPortfolioImages,
+  UploadProgress,
+  getFailedUploads,
+} from '@/services/portfolioImageService';
+import {
+  upgradeToCreator,
+  addPortfolioItems,
+} from '@/services/creatorUpgradeService';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft,
   Camera,
   Check,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -27,6 +39,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { UploadProgressIndicator } from './UploadProgressIndicator';
 
 interface CreatorOnboardingV1Props {
   onComplete: () => void;
@@ -44,12 +57,13 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
   onComplete,
   onCancel,
 }) => {
-  const { user, refreshAccountInfo, upgradeAccount } = useAuth();
+  const { user, profile, refreshAccountInfo } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [portfolioImages, setPortfolioImages] = useState<PortfolioImage[]>([]);
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
 
   const totalSteps = 2;
 
@@ -78,12 +92,12 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
 
     if (!result.canceled) {
       const newImages = result.assets.map(asset => ({
-        id: `${Date.now()}-${Math.random()}`,
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         uri: asset.uri,
         caption: '',
         selected: true,
       }));
-      
+
       setPortfolioImages([...portfolioImages, ...newImages].slice(0, 5));
     }
   };
@@ -109,7 +123,7 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
       Alert.alert('Error', 'User session not found. Please sign in again.');
       return;
     }
-    
+
     const selectedImages = portfolioImages.filter(img => img.selected);
     if (selectedImages.length < 3) {
       Alert.alert('Select More Content', 'Please select at least 3 photos to showcase your work.');
@@ -117,115 +131,114 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
     }
 
     setLoading(true);
+    setIsUploading(true);
+
     try {
-      // Try to use the upgradeAccount function if available
-      if (upgradeAccount) {
-        const upgradeResult = await upgradeAccount('creator', {
-          display_name: user.name || user.username || 'Creator',
-          bio: bio || 'Food lover and content creator',
-          location: 'Charlotte',
-          food_specialties: ['General'],
-          specialties: ['General'],
-        });
-        
-        if (!upgradeResult.success) {
-          throw new Error(upgradeResult.error || 'Failed to upgrade account');
-        }
-      } else {
-        // Fallback: Update user to creator type directly
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            account_type: 'creator',
-            is_creator: true,
-            account_upgraded_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
+      // STEP 1: Upload images to cloud storage FIRST
+      // This ensures we have cloud URLs before creating the profile
+      const uploadedImages = await uploadAllPortfolioImages(
+        user.id,
+        selectedImages.map(img => ({
+          id: img.id,
+          uri: img.uri,
+          caption: img.caption,
+        })),
+        setUploadProgress
+      );
 
-        if (updateError) {
-          console.error('Update error:', updateError);
-          throw updateError;
-        }
+      // Check for upload failures
+      const failedUploads = getFailedUploads(uploadProgress);
+      if (failedUploads.length > 0) {
+        setIsUploading(false);
+        Alert.alert(
+          'Upload Error',
+          `${failedUploads.length} image(s) failed to upload. Please try again.`,
+          [
+            { text: 'Retry', onPress: () => completeOnboarding() },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+        return;
       }
 
-      // Create or update creator profile
-      const { data: existingProfile } = await supabase
-        .from('creator_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      // Filter out nulls (failed uploads)
+      const successfulUploads = uploadedImages.filter(
+        (img): img is NonNullable<typeof img> => img !== null
+      );
 
-      if (!existingProfile) {
-        // Create new creator profile
-        const { error: profileError } = await supabase
-          .from('creator_profiles')
-          .insert({
-            user_id: user.id,
-            display_name: user.name || user.username || 'Creator',
-            bio: bio || 'Food lover and content creator',
-            location: 'Charlotte',
-            food_specialties: ['General'],
-            specialties: ['General'],
-            verification_status: 'verified',
-            instant_approved: true,
-            portfolio_uploaded: true,
-          });
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw profileError;
-        }
+      if (successfulUploads.length < 3) {
+        setIsUploading(false);
+        Alert.alert(
+          'Upload Error',
+          'Not enough images uploaded successfully. Please try again.',
+          [{ text: 'OK' }]
+        );
+        return;
       }
 
-      // Get the creator profile ID
-      const { data: creatorProfile } = await supabase
-        .from('creator_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      setIsUploading(false);
 
-      if (creatorProfile) {
-        // Save portfolio items (without actual upload for now)
-        for (let i = 0; i < selectedImages.length; i++) {
-          const image = selectedImages[i];
-          await supabase.from('creator_portfolio_items').insert({
-            creator_profile_id: creatorProfile.id,
-            image_url: image.uri, // In production, upload to storage first
-            caption: image.caption || '',
-            display_order: i,
-            is_featured: i === 0,
-          });
-        }
+      // STEP 2: Atomic creator upgrade
+      // This uses the database function that upgrades user AND creates profile
+      // in a single transaction. If profile creation fails, user remains consumer.
+      const upgradeResult = await upgradeToCreator(user.id, {
+        displayName: profile?.name || profile?.username || 'Creator',
+        bio: bio || 'Food lover and content creator',
+        location: 'Charlotte',
+        specialties: ['General'],
+      });
+
+      if (!upgradeResult.success || !upgradeResult.profileId) {
+        throw new Error(upgradeResult.error || 'Failed to upgrade account');
       }
 
-      // Refresh user data first, before showing alert
+      // STEP 3: Add portfolio items with cloud URLs
+      const portfolioResult = await addPortfolioItems(
+        upgradeResult.profileId,
+        successfulUploads.map((img, index) => ({
+          imageUrl: img.url,
+          caption: img.caption,
+          displayOrder: index,
+          isFeatured: index === 0,
+        }))
+      );
+
+      if (!portfolioResult.success) {
+        // Portfolio failed but user is already upgraded
+        // This is non-critical, log and continue
+        console.warn('Portfolio items failed to save:', portfolioResult.error);
+      }
+
+      // STEP 4: Refresh user data
       if (refreshAccountInfo) {
         await refreshAccountInfo();
       }
-      
+
       // Show success alert and then complete
-      // Don't navigate away until user dismisses the alert
       Alert.alert(
-        'Welcome Creator! 🎉',
+        'Welcome Creator!',
         'You can now apply to restaurant campaigns and start earning.',
-        [{ 
-          text: 'Get Started', 
+        [{
+          text: 'Get Started',
           onPress: () => {
-            // Only call onComplete after user dismisses alert
             onComplete();
           }
         }],
-        { cancelable: false } // Prevent dismissing by tapping outside
+        { cancelable: false }
       );
     } catch (error: any) {
       console.error('Error completing onboarding:', error);
       Alert.alert(
         'Setup Failed',
         error.message || 'Failed to complete onboarding. Please try again.',
-        [{ text: 'OK' }]
+        [
+          { text: 'Retry', onPress: () => completeOnboarding() },
+          { text: 'Cancel', style: 'cancel' }
+        ]
       );
     } finally {
       setLoading(false);
+      setIsUploading(false);
     }
   };
 
@@ -234,13 +247,13 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
       <View style={styles.content}>
         <View style={styles.centerContent}>
           <Text style={styles.title}>Become a Troodie Creator</Text>
-          
+
           <View style={styles.illustrationBox}>
             <Text style={styles.illustrationText}>💰 → 📱 → 🍽️</Text>
           </View>
-          
+
           <Text style={styles.description}>
-            Your saves are already helping others discover great restaurants. 
+            Your saves are already helping others discover great restaurants.
             Now get paid for your recommendations!
           </Text>
         </View>
@@ -248,25 +261,15 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
         <View style={styles.gridContainer}>
           <View style={styles.card}>
             <Text style={styles.stepText}>
-              <Text style={styles.bold}>1️⃣ Share</Text> what you already save
+              <Text style={styles.bold}>1. Share</Text> what you already save
             </Text>
             <Text style={[styles.stepText, styles.mt2]}>
-              <Text style={styles.bold}>2️⃣ Restaurants pay</Text> for your exposure
+              <Text style={styles.bold}>2. Restaurants pay</Text> for your exposure
             </Text>
             <Text style={[styles.stepText, styles.mt2]}>
-              <Text style={styles.bold}>3️⃣ Earn</Text> based on audience & engagement
-            </Text>      
+              <Text style={styles.bold}>3. Earn</Text> based on audience & engagement
+            </Text>
           </View>
-
-          {/* <View style={styles.card}>
-            <Text style={styles.cardLabel}>Success Stories</Text>
-            <View style={styles.testimonialBox}>
-              <Text style={styles.testimonialText}>
-                "I earn $400/month sharing places I already love!"
-              </Text>
-              <Text style={styles.testimonialAuthor}>— Sarah, CLT</Text>
-            </View>
-          </View> */}
         </View>
 
         <View style={styles.buttonContainer}>
@@ -282,8 +285,8 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
   );
 
   const renderContentShowcase = () => (
-    <KeyboardAvoidingView 
-      style={styles.flex} 
+    <KeyboardAvoidingView
+      style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -293,7 +296,13 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
             <Text style={styles.subtitle}>Upload 3-5 photos of your food content:</Text>
           </View>
 
-          {portfolioImages.length < 5 && (
+          {/* Show upload progress when uploading */}
+          {isUploading && uploadProgress.length > 0 && (
+            <UploadProgressIndicator progress={uploadProgress} />
+          )}
+
+          {/* Image picker - hidden during upload */}
+          {!isUploading && portfolioImages.length < 5 && (
             <TouchableOpacity style={styles.uploadButton} onPress={pickImages}>
               <Camera size={20} color="#FFAD27" />
               <Text style={styles.uploadButtonText}>
@@ -302,70 +311,79 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
             </TouchableOpacity>
           )}
 
-          <View style={styles.imagesGrid}>
-            {portfolioImages.map((image) => (
-              <TouchableOpacity
-                key={image.id}
-                style={[styles.imageItem, image.selected && styles.imageItemSelected]}
-                onPress={() => toggleImageSelection(image.id)}
-              >
-                <Image source={{ uri: image.uri }} style={styles.imageThumb} />
-                
-                {image.selected && (
-                  <View style={styles.imageCheckbox}>
-                    <Check size={14} color="#171717" />
-                  </View>
-                )}
-                
+          {/* Image grid - hidden during upload */}
+          {!isUploading && (
+            <View style={styles.imagesGrid}>
+              {portfolioImages.map((image) => (
                 <TouchableOpacity
-                  style={styles.imageRemove}
-                  onPress={() => removeImage(image.id)}
+                  key={image.id}
+                  style={[styles.imageItem, image.selected && styles.imageItemSelected]}
+                  onPress={() => toggleImageSelection(image.id)}
                 >
-                  <X size={16} color="#FFF" />
+                  <Image source={{ uri: image.uri }} style={styles.imageThumb} />
+
+                  {image.selected && (
+                    <View style={styles.imageCheckbox}>
+                      <Check size={14} color="#171717" />
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.imageRemove}
+                    onPress={() => removeImage(image.id)}
+                  >
+                    <X size={16} color="#FFF" />
+                  </TouchableOpacity>
+
+                  <TextInput
+                    style={styles.imageCaptionInput}
+                    placeholder="Add caption..."
+                    placeholderTextColor="#737373"
+                    value={image.caption}
+                    onChangeText={(text) => updateImageCaption(image.id, text)}
+                    maxLength={100}
+                  />
                 </TouchableOpacity>
-                
-                <TextInput
-                  style={styles.imageCaptionInput}
-                  placeholder="Add caption..."
-                  placeholderTextColor="#737373"
-                  value={image.caption}
-                  onChangeText={(text) => updateImageCaption(image.id, text)}
-                  maxLength={100}
-                />
+              ))}
+            </View>
+          )}
+
+          {/* Bio section - hidden during upload */}
+          {!isUploading && (
+            <View style={styles.bioSection}>
+              <Text style={styles.bioLabel}>Add a creator bio (optional)</Text>
+              <TextInput
+                style={styles.bioInput}
+                placeholder="Charlotte foodie who loves finding hidden gems..."
+                placeholderTextColor="#737373"
+                value={bio}
+                onChangeText={setBio}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+              />
+            </View>
+          )}
+
+          {/* Submit button */}
+          {!isUploading && (
+            <View style={styles.buttonContainerEnd}>
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  (loading || portfolioImages.filter(img => img.selected).length < 3) && styles.disabledButton,
+                ]}
+                onPress={completeOnboarding}
+                disabled={loading || portfolioImages.filter(img => img.selected).length < 3}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#171717" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Complete Setup</Text>
+                )}
               </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.bioSection}>
-            <Text style={styles.bioLabel}>Add a creator bio (optional)</Text>
-            <TextInput
-              style={styles.bioInput}
-              placeholder="Charlotte foodie who loves finding hidden gems..."
-              placeholderTextColor="#737373"
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              numberOfLines={3}
-              maxLength={200}
-            />
-          </View>
-
-          <View style={styles.buttonContainerEnd}>
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                (loading || portfolioImages.filter(img => img.selected).length < 3) && styles.disabledButton,
-              ]}
-              onPress={completeOnboarding}
-              disabled={loading || portfolioImages.filter(img => img.selected).length < 3}
-            >
-              {loading ? (
-                <ActivityIndicator color="#171717" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Complete Setup</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -376,8 +394,12 @@ export const CreatorOnboardingV1: React.FC<CreatorOnboardingV1Props> = ({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <ArrowLeft size={20} color="#171717" />
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+            disabled={isUploading}
+          >
+            <ArrowLeft size={20} color={isUploading ? '#A3A3A3' : '#171717'} />
           </TouchableOpacity>
           {currentStep > 0 && (
             <Text style={styles.stepIndicator}>Step {currentStep} of {totalSteps}</Text>

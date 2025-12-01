@@ -5,9 +5,9 @@
  * Uses client-side optimization (expo-image-picker quality) and optional backend processing.
  */
 
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '@/lib/supabase';
-import config from '@/lib/config';
+import { CloudinaryVideoService } from './cloudinaryVideoService';
 
 export interface VideoOptimizationOptions {
   /**
@@ -159,9 +159,6 @@ export class VideoOptimizationService {
    */
   private static async processVideosWithBackend(videoUris: string[]): Promise<string[]> {
     try {
-      
-      const { CloudinaryVideoService } = await import('./cloudinaryVideoService');
-      
       // Upload and optimize all videos
       const results = await CloudinaryVideoService.uploadAndOptimizeMultiple(videoUris);
       
@@ -183,7 +180,6 @@ export class VideoOptimizationService {
       // Check if it's a local file (file://) or remote URL (http://)
       if (videoUri.startsWith('file://')) {
         // Use FileSystem for local files
-        const FileSystem = await import('expo-file-system/legacy');
         const fileInfo = await FileSystem.getInfoAsync(videoUri);
         if (fileInfo.exists && 'size' in fileInfo) {
           return fileInfo.size;
