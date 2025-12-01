@@ -589,12 +589,18 @@ class PostService {
    * Delete a post
    */
   async deletePost(postId: string): Promise<void> {
-    // First get the post's community_ids before deletion
-    const { data: postData } = await supabase
-      .from('posts')
-      .select('community_ids')
-      .eq('id', postId)
-      .single();
+    // First get the post's community_ids from post_communities junction table before deletion
+    const { data: postCommunities, error: fetchError } = await supabase
+      .from('post_communities')
+      .select('community_id')
+      .eq('post_id', postId);
+
+    if (fetchError) {
+      // Don't throw - continue with deletion even if we can't fetch communities
+      // The post might not be in any communities
+    }
+
+    const communityIds = postCommunities?.map(pc => pc.community_id) || [];
 
     const { error } = await supabase
       .from('posts')
@@ -606,8 +612,8 @@ class PostService {
     }
 
     // Emit deletion event for each community the post was in
-    if (postData?.community_ids && postData.community_ids.length > 0) {
-      postData.community_ids.forEach((communityId: string) => {
+    if (communityIds.length > 0) {
+      communityIds.forEach((communityId: string) => {
         eventBus.emit(EVENTS.COMMUNITY_POST_DELETED, {
           postId,
           communityId
