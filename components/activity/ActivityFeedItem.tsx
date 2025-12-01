@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { GooglePhoto } from '../GooglePhoto';
 
 interface ActivityFeedItemProps {
   activity: ActivityFeedItem;
@@ -247,11 +248,22 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
 
     // Show photos if available
     if (activity.photos && activity.photos.length > 0) {
-      const photoUrl = activity.photos[0];
+      const photoData = activity.photos[0];
+      if (!photoData) return null; 
+
+      // Logic to handle both Objects and Strings
+      let reference = photoData;
+      if (typeof photoData === 'object' && (photoData as any).photo_reference) {
+         reference = (photoData as any).photo_reference;
+      }
+      else if (typeof photoData === 'string' && photoData.includes('photoreference=')) {
+        const match = photoData.match(/photoreference=([^&]+)/);
+        if (match) reference = match[1];
+      }
       return (
         <TouchableOpacity onPress={handleTargetPress}>
-          <Image
-            source={{ uri: photoUrl || DEFAULT_IMAGES.restaurant }}
+          <GooglePhoto
+            photoReference={reference}
             style={styles.thumbnail}
           />
         </TouchableOpacity>
