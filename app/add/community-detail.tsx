@@ -175,6 +175,16 @@ export default function CommunityDetailScreen() {
       if (data.communityId === communityId) {
         // Remove from local state immediately
         setPosts(prev => prev.filter(p => p.id !== data.postId));
+        
+        // Optimistically decrement post count
+        setCommunity(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            post_count: Math.max(0, (prev.post_count || 0) - 1)
+          };
+        });
+        
         // Also reload to ensure sync
         loadCommunityPosts();
       }
@@ -412,19 +422,18 @@ export default function CommunityDetailScreen() {
   // Handle delete from PostCard (when user deletes their own post via PostCard menu)
   const handlePostCardDelete = async (postId: string) => {
     try {
-      // Refresh posts list after PostCard delete completes
+      // Delete the post (this will emit EVENTS.COMMUNITY_POST_DELETED which updates the count)
+      await postService.deletePost(postId);
+      
+      // Refresh posts list after deletion completes
       const postsData = await communityService.getCommunityPosts(communityId, 20);
       setPosts(postsData);
 
-      // Update post count
-      if (community) {
-        setCommunity({
-          ...community,
-          post_count: Math.max(0, (community.post_count || 0) - 1)
-        });
-      }
-    } catch (error) {
-      console.error('Error refreshing after delete:', error);
+      // Note: post_count is updated optimistically by the event handler
+      // (EVENTS.COMMUNITY_POST_DELETED) when postService.deletePost emits the event
+    } catch (error: any) {
+      console.error('Error deleting post:', error);
+      ToastService.showError('Failed to delete post');
     }
   };
 
@@ -453,19 +462,14 @@ export default function CommunityDetailScreen() {
         const postsData = await communityService.getCommunityPosts(communityId, 20);
         setPosts(postsData);
 
-        // Update post count
-        if (community) {
-          setCommunity({
-            ...community,
-            post_count: Math.max(0, (community.post_count || 0) - 1)
-          });
-        }
+        // Note: post_count is updated optimistically by the event handler
+        // (EVENTS.COMMUNITY_POST_DELETED) when CommunityAdminService.deletePost emits the event
 
         ToastService.showSuccess('Post deleted');
       } else {
         throw new Error(error || 'Failed to delete post');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting post:', error);
       ToastService.showError('Failed to delete post. Please try again.');
     }
@@ -558,7 +562,7 @@ export default function CommunityDetailScreen() {
                 <Lock size={12} color={theme.colors.text.tertiary} />
               </View>
             )}
-            {community.is_event_based && (
+            {(community as any).is_event_based && (
               <View style={styles.badge}>
                 <Calendar size={12} color={theme.colors.text.tertiary} />
               </View>

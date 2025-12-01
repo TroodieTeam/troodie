@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { notificationService } from './notificationService'
-import { getCurrentUserId } from './authService'
+import { authService } from './authService'
 import { eventBus, EVENTS } from '@/utils/eventBus'
 
 export type AdminAction = 'remove_member' | 'delete_post' | 'delete_message' | 'update_role' | 'view_audit_logs'
@@ -53,7 +53,7 @@ export class CommunityAdminService {
     reason?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const adminId = await getCurrentUserId()
+      const adminId = await authService.getCurrentUserId()
       if (!adminId) {
         return { success: false, error: 'Not authenticated' }
       }
@@ -140,7 +140,8 @@ export class CommunityAdminService {
     reason?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const adminId = await getCurrentUserId()
+      const adminId = await authService.getCurrentUserId()
+      
       if (!adminId) {
         return { success: false, error: 'Not authenticated' }
       }
@@ -287,7 +288,7 @@ export class CommunityAdminService {
     }
   ): Promise<any[]> {
     try {
-      const adminId = await getCurrentUserId()
+      const adminId = await authService.getCurrentUserId()
       if (!adminId) return []
 
       // Check if user can view audit logs
@@ -336,7 +337,7 @@ export class CommunityAdminService {
     reason?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const adminId = await getCurrentUserId()
+      const adminId = await authService.getCurrentUserId()
       if (!adminId) {
         return { success: false, error: 'Not authenticated' }
       }
