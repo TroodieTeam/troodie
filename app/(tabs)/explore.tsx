@@ -255,7 +255,7 @@ export default function ExploreScreen() {
   // Reload and re-randomize restaurants when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Only reload restaurants if we're on the restaurants tab and have already loaded once
+      // Reload restaurants if we're on the restaurants tab and have already loaded once
       if (activeTab === 'restaurants' && hasInitiallyLoaded) {
         const performReRandomization = async () => {
           setIsReRandomizing(true);
@@ -266,6 +266,10 @@ export default function ExploreScreen() {
           }, 300);
         };
         performReRandomization();
+      }
+      // Always refresh posts when posts tab becomes visible to reflect deletions/creations
+      else if (activeTab === 'posts') {
+        posts.load();
       }
     }, [activeTab, hasInitiallyLoaded])
   );
@@ -405,7 +409,7 @@ export default function ExploreScreen() {
     // Render compact community card with image
     const community = item as Community;
     const isMember = isUserMember(community.id);
-    const coverImage = community.is_event_based
+    const coverImage = (community as any).is_event_based
       ? 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'
       : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800';
 
