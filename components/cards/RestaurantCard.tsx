@@ -4,6 +4,7 @@ import { RestaurantInfo } from '@/types/core';
 import { Star } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { GooglePhoto } from '../GooglePhoto';
 
 interface RestaurantCardProps {
   restaurant: RestaurantInfo;
@@ -26,8 +27,8 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false, sh
       activeOpacity={0.7}
       testID={testID}
     >
-      <Image 
-        source={{ uri: restaurant.image || DEFAULT_IMAGES.restaurant }} 
+      <GooglePhoto 
+        photoReference={restaurant.image || DEFAULT_IMAGES.restaurant} 
         style={styles.image} 
       />
       <View style={styles.content}>

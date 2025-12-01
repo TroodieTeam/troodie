@@ -46,6 +46,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { GooglePhoto } from '@/components/GooglePhoto';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -415,10 +416,10 @@ export default function RestaurantDetailScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerImage}>
-      <Image
-        source={{ uri: restaurantService.getRestaurantImage(restaurant) }}
-        style={styles.image}
-      />
+      <GooglePhoto 
+    photoReference={restaurantService.getRestaurantImage(restaurant)} 
+    style={styles.image} 
+    resizeMode="cover"/>
       <LinearGradient
         colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.2)']}
         style={styles.gradient}
