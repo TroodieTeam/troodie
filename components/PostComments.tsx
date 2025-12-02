@@ -20,6 +20,14 @@ interface PostCommentsProps {
   bottomOffset?: number;
 }
 
+interface RestaurantSuggestion {
+  id: string;
+  name: string;
+  address: string | null;
+  cover_photo_url: string | null;
+  owner_id: string | null;
+}
+
 export function PostComments({ 
   postId, 
   onCommentAdded, 
@@ -38,9 +46,9 @@ export function PostComments({
   const [submitting, setSubmitting] = useState(false);
   const [mentionsMap, setMentionsMap] = useState<Map<string, Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>>(new Map());
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<RestaurantSuggestion[]>([]);
   const [inputHeight, setInputHeight] = useState(0);
-  const [tempMentions, setTempMentions] = useState<any[]>([]);
+  const [tempMentions, setTempMentions] = useState<RestaurantSuggestion[]>([]);
   
   
   const handleCommentChange = async (text: string) => {
@@ -66,7 +74,7 @@ export function PostComments({
       setShowSuggestions(false);
     }
   };
-  const handleSelectMention = (restaurant: any) => {
+  const handleSelectMention = (restaurant: RestaurantSuggestion) => {
     const newText = newComment.replace(/@(\w*)$/, `@${restaurant.name} `);
     
     setNewComment(newText);
@@ -273,9 +281,9 @@ export function PostComments({
         const validMentions = tempMentions.filter(m => 
           commentText.includes(`@${m.name}`)
         );
-        const uniqueMentions = Array.from(new Set(validMentions.map(m => m.id)))
-          .map(id => validMentions.find(m => m.id === id));
-
+        const uniqueMentions = validMentions.filter((m, index, self) => 
+          index === self.findIndex((t) => t.id === m.id)
+        );
         if (uniqueMentions.length > 0) {
           const mentionRows = uniqueMentions.map(m => ({
             comment_id: commentData.id,
