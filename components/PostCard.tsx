@@ -22,11 +22,11 @@ import {
   View,
 } from 'react-native';
 import { MenuButton } from './common/MenuButton';
+import { ImageViewer } from './ImageViewer';
 import { ReportModal } from './modals/ReportModal';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
-import { ImageViewer } from './ImageViewer';
-import { VideoViewer } from './VideoViewer';
 import { VideoThumbnail } from './VideoThumbnail';
+import { VideoViewer } from './VideoViewer';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -635,7 +635,7 @@ export function PostCard({
             activeOpacity={0.7}
           >
             <Ionicons name="chatbubble-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
-            <Text style={styles.actionCount}>{post.comments_count || 0}</Text>
+            <Text style={styles.actionCount}>{commentsCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 

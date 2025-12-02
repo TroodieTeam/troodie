@@ -67,4 +67,5 @@ export const EVENTS = {
   COMMUNITY_POST_UPDATED: 'community_post_updated',
   POST_ENGAGEMENT_CHANGED: 'post_engagement_changed',
   POST_COMMENT_ADDED: 'post_comment_added',
+  POST_COMMENT_DELETED: 'post_comment_deleted',
 } as const;
