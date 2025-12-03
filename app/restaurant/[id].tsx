@@ -303,18 +303,27 @@ export default function RestaurantDetailScreen() {
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setIsFavorited(!isFavorited);
-
-        // TODO: Implement actual favorite service call
-        // await favoriteService.toggleFavorite(user.id, restaurant.id);
-
         ToastService.showSuccess(isFavorited ? 'Removed from favorites' : 'Added to favorites');
       } catch (error) {
         console.error('Error toggling favorite:', error);
-        // Revert state on error
-        setIsFavorited(isFavorited);
         ToastService.showError('Failed to update favorite');
       }
     }, 'favorite restaurants');
+  };
+
+  const handleMarkVisited = async () => {
+    requireAuth(async () => {
+      if (!user || !restaurant?.id) return;
+
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setHasVisited(!hasVisited);
+        ToastService.showSuccess(hasVisited ? 'Visit removed' : 'Marked as visited!');
+      } catch (error) {
+        console.error('Error toggling visit status:', error);
+        ToastService.showError('Failed to update visit status');
+      }
+    }, 'mark restaurants as visited');
   };
 
   const checkSaveStatus = async (restaurantId: string) => {
@@ -480,7 +489,7 @@ export default function RestaurantDetailScreen() {
           {hasVisited && (
             <View style={[styles.badge, styles.visitedBadge]}>
               <CheckCircle size={12} color="white" />
-              <Text style={styles.badgeText}>Visited</Text>
+              <Text style={[styles.badgeText, { color: 'white' }]}>Visited</Text>
             </View>
           )}
           {/* <View style={[styles.badge, styles.socialBadge]}>
@@ -526,6 +535,21 @@ export default function RestaurantDetailScreen() {
         ) : (
           <Text style={styles.actionButtonText}>Save</Text>
         )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.actionButton, hasVisited && styles.visitedButton]}
+        onPress={handleMarkVisited}
+        testID="visit-button"
+      >
+        <CheckCircle
+          size={18}
+          color={hasVisited ? 'white' : designTokens.colors.textDark}
+          fill={hasVisited ? '#10B981' : 'transparent'}
+        />
+        <Text style={[styles.actionButtonText, hasVisited && styles.visitedButtonText]}>
+          {hasVisited ? 'Visited' : 'Mark Visited'}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.actionButton} onPress={handleCreatePost}>
@@ -1782,5 +1806,12 @@ const styles = StyleSheet.create({
   },
   greenBadge: {
     backgroundColor: '#D1FAE5',
+  },
+  visitedButton: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  visitedButtonText: {
+    color: 'white',
   },
 });
