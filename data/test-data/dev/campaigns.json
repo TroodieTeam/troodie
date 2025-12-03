@@ -1,0 +1,22 @@
+{
+  "description": "Test campaigns for development environment",
+  "last_updated": "2025-01-22",
+  "campaigns": [
+    {
+      "id": null,
+      "name": "Test Campaign 1",
+      "restaurant_id": null,
+      "created_by": "business1@troodieapp.com",
+      "status": "active",
+      "purpose": "Test campaign application and deliverable submission flows",
+      "requirements": [
+        "Created by business1@troodieapp.com",
+        "Linked to Restaurant 2 (claimed restaurant)",
+        "Status: active (accepting applications)",
+        "Has clear deliverables requirements"
+      ],
+      "query_to_find_id": "SELECT c.id, c.title, c.restaurant_id, r.name as restaurant_name, u.email as created_by FROM campaigns c JOIN restaurants r ON c.restaurant_id = r.id JOIN business_profiles bp ON bp.restaurant_id = r.id JOIN users u ON bp.user_id = u.id WHERE u.email = 'business1@troodieapp.com' ORDER BY c.created_at DESC LIMIT 1;"
+    }
+  ]
+}
+

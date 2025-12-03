@@ -1,0 +1,20 @@
+{
+  "description": "Test posts for development environment",
+  "last_updated": "2025-01-22",
+  "posts": [
+    {
+      "id": null,
+      "author_id": "90ace8c5-b26d-434a-bbe9-a9babbec5bad",
+      "author_email": "creator1@troodieapp.com",
+      "purpose": "Test creator profile sample posts display (CM-9)",
+      "requirements": [
+        "Created by creator1@troodieapp.com",
+        "Has images",
+        "Has likes/comments for engagement metrics",
+        "Mentions Restaurant 2 (for analytics testing)"
+      ],
+      "query_to_find_id": "SELECT p.id, p.author_id, u.email, p.likes_count, p.comments_count FROM posts p JOIN users u ON p.author_id = u.id WHERE u.email = 'creator1@troodieapp.com' AND p.images IS NOT NULL AND array_length(p.images, 1) > 0 ORDER BY p.likes_count DESC LIMIT 3;"
+    }
+  ]
+}
+
