@@ -18,7 +18,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  Award,
   Bookmark,
   Camera,
   CheckCircle,
@@ -26,6 +25,7 @@ import {
   ExternalLink,
   Eye,
   Globe,
+  Heart,
   MapPin,
   MessageCircle,
   Phone,
@@ -62,6 +62,7 @@ export default function RestaurantDetailScreen() {
   const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const [hasVisited, setHasVisited] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -70,14 +71,14 @@ export default function RestaurantDetailScreen() {
     weeklyVisits: Math.floor(Math.random() * 200) + 50,
     totalVisits: Math.floor(Math.random() * 2000) + 500
   });
-  
+
   // Social data states
   const [friendsWhoVisited, setFriendsWhoVisited] = useState<FriendVisit[]>([]);
   const [powerUsersAndCritics, setPowerUsersAndCritics] = useState<PowerUserReview[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [socialDataLoading, setSocialDataLoading] = useState(false);
   const [socialDataError, setSocialDataError] = useState<Error | null>(null);
-  
+
   // Photo gallery states
   const [restaurantPhotos, setRestaurantPhotos] = useState<any[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
@@ -141,7 +142,7 @@ export default function RestaurantDetailScreen() {
       const data = await restaurantService.getRestaurantDetails(restaurantId);
       if (data) {
         setRestaurant(data);
-        
+
         // If no cover photo, check if we can update it from existing photos
         if (!data.cover_photo_url) {
           const photos = await restaurantPhotosService.getRestaurantPhotos(restaurantId, user?.id);
@@ -173,7 +174,7 @@ export default function RestaurantDetailScreen() {
 
   const loadSocialData = async (restaurantId: string) => {
     if (!user) return;
-    
+
     try {
       setSocialDataLoading(true);
       setSocialDataError(null);
@@ -212,16 +213,16 @@ export default function RestaurantDetailScreen() {
   const loadPhotos = async (restaurantId: string) => {
     try {
       setPhotosLoading(true);
-      
+
       // First, sync any posts that might not have been properly synced
       const syncedCount = await restaurantImageSyncService.syncAllRestaurantPosts(restaurantId);
       if (syncedCount > 0) {
       }
-      
+
       // Then load the photos
       const photos = await restaurantPhotosService.getCachedRestaurantPhotos(restaurantId, user?.id);
       setRestaurantPhotos(photos);
-      
+
       // Subscribe to real-time updates
       const unsubscribe = restaurantPhotosService.subscribeToPhotoUpdates(
         restaurantId,
@@ -232,7 +233,7 @@ export default function RestaurantDetailScreen() {
           setRestaurantPhotos(prev => prev.filter(p => p.id !== deletedPhotoId));
         }
       );
-      
+
       return () => {
         unsubscribe();
       };
@@ -295,12 +296,33 @@ export default function RestaurantDetailScreen() {
     }
   };
 
+  const handleFavorite = async () => {
+    requireAuth(async () => {
+      if (!user || !restaurant?.id) return;
+
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsFavorited(!isFavorited);
+
+        // TODO: Implement actual favorite service call
+        // await favoriteService.toggleFavorite(user.id, restaurant.id);
+
+        ToastService.showSuccess(isFavorited ? 'Removed from favorites' : 'Added to favorites');
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
+        // Revert state on error
+        setIsFavorited(isFavorited);
+        ToastService.showError('Failed to update favorite');
+      }
+    }, 'favorite restaurants');
+  };
+
   const checkSaveStatus = async (restaurantId: string) => {
     if (!user) return;
-    
+
     try {
       const saveState = await saveService.getSaveState(restaurantId, user.id);
-      setIsSaved(saveState.isSaved && saveState.quickSavesBoardId ? 
+      setIsSaved(saveState.isSaved && saveState.quickSavesBoardId ?
         saveState.boards.includes(saveState.quickSavesBoardId) : false);
     } catch (error) {
       console.error('Error checking save status:', error);
@@ -325,15 +347,15 @@ export default function RestaurantDetailScreen() {
             // Update local state
             setIsSaved(!isSaved);
           },
-        onError: (error) => {
-          console.error('Save error:', error);
-          // Refresh save status to sync with server
-          checkSaveStatus(restaurant.id);
-        }
-      });
-    } finally {
-      setIsSaving(false);
-    }
+          onError: (error) => {
+            console.error('Save error:', error);
+            // Refresh save status to sync with server
+            checkSaveStatus(restaurant.id);
+          }
+        });
+      } finally {
+        setIsSaving(false);
+      }
     }, 'save restaurants');
   }, [user, restaurant, isSaved, requireAuth]);
 
@@ -349,22 +371,22 @@ export default function RestaurantDetailScreen() {
       if (restaurant) {
         router.push({
           pathname: '/add/create-post',
-          params: { 
+          params: {
             selectedRestaurant: JSON.stringify(restaurant)
-        }
-      });
+          }
+        });
       }
     }, 'create posts');
   };
 
   const handleUpdateCoverPhoto = async () => {
     if (!restaurant?.id || updatingCover) return;
-    
+
     setUpdatingCover(true);
     try {
       const backgroundTaskManager = BackgroundTaskManager.getInstance();
       const result = await backgroundTaskManager.updateRestaurantCover(restaurant.id, true);
-      
+
       if (result.success) {
         // Reload restaurant to show new cover
         await loadRestaurant(restaurant.id);
@@ -423,13 +445,20 @@ export default function RestaurantDetailScreen() {
         colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.2)']}
         style={styles.gradient}
       />
-      
+
       {/* Header Actions */}
       <View style={styles.headerActions}>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
           <ArrowLeft size={20} color="white" />
         </TouchableOpacity>
         <View style={styles.rightActions}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleFavorite}>
+            <Heart
+              size={20}
+              color={isFavorited ? designTokens.colors.primaryOrange : "white"}
+              fill={isFavorited ? designTokens.colors.primaryOrange : "transparent"}
+            />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
             <Share size={20} color="white" />
           </TouchableOpacity>
@@ -459,12 +488,12 @@ export default function RestaurantDetailScreen() {
             <Text style={styles.badgeText}>{socialStats.weeklyVisits} this week</Text>
           </View> */}
         </View>
-        
+
         <Text style={styles.restaurantName}>{restaurant.name}</Text>
-        
+
         <View style={styles.restaurantMeta}>
           <View style={styles.rating}>
-                            <Star size={14} color={designTokens.colors.primaryOrange} />
+            <Star size={14} color={designTokens.colors.primaryOrange} />
             <Text style={styles.ratingText}>{restaurant.google_rating || restaurant.troodie_rating || '4.5'}</Text>
             <Text style={styles.reviewCount}>({restaurant.google_reviews_count || 0})</Text>
           </View>
@@ -479,7 +508,7 @@ export default function RestaurantDetailScreen() {
 
   const renderActionButtons = () => (
     <View style={styles.actionButtons}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.saveButtonContainer}
         onPress={handleSave}
         onLongPress={handleLongPress}
@@ -487,8 +516,8 @@ export default function RestaurantDetailScreen() {
         disabled={isSaving}
         testID="save-button"
       >
-        <Bookmark 
-          size={20} 
+        <Bookmark
+          size={20}
           color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textDark}
           fill={isSaved ? designTokens.colors.primaryOrange : 'transparent'}
         />
@@ -498,7 +527,7 @@ export default function RestaurantDetailScreen() {
           <Text style={styles.actionButtonText}>Save</Text>
         )}
       </TouchableOpacity>
-      
+
       <TouchableOpacity style={styles.actionButton} onPress={handleCreatePost}>
         <MessageCircle size={18} color={designTokens.colors.textDark} />
         <Text style={styles.actionButtonText}>Write Review</Text>
@@ -515,7 +544,7 @@ export default function RestaurantDetailScreen() {
 
     // Default hours if not available
     const defaultHours = { open: '11:00', close: '22:00' };
-    
+
     // Get today's hours
     let todayHours = defaultHours;
     if (restaurant?.hours && typeof restaurant.hours === 'object') {
@@ -559,7 +588,7 @@ export default function RestaurantDetailScreen() {
     const formattedDays = days.map(day => {
       const dayHours = hours[day];
       if (!dayHours) return null;
-      
+
       if (typeof dayHours === 'string') {
         return `${day.charAt(0).toUpperCase() + day.slice(1)}: ${dayHours}`;
       } else if (dayHours.open && dayHours.close) {
@@ -573,7 +602,7 @@ export default function RestaurantDetailScreen() {
 
   const renderHoursInfo = () => {
     const status = getOperatingStatus();
-    
+
     return (
       <>
         <Text style={styles.infoTitle}>
@@ -583,8 +612,8 @@ export default function RestaurantDetailScreen() {
           {formatHours(restaurant?.hours)}
         </Text>
         <Text style={[styles.openStatus, { color: status.isOpen ? '#10B981' : '#EF4444' }]}>
-          {status.isOpen 
-            ? `Closes at ${status.closeTime}` 
+          {status.isOpen
+            ? `Closes at ${status.closeTime}`
             : `Opens ${status.currentDay} at ${status.todayHours.open}`
           }
         </Text>
@@ -618,7 +647,7 @@ export default function RestaurantDetailScreen() {
         </View>
       );
     }
-    
+
     return (
       <View style={styles.tabContent}>
         {restaurantPhotos.length > 0 ? (
@@ -629,7 +658,7 @@ export default function RestaurantDetailScreen() {
               </Text>
               {/* Add update cover photo button for restaurant owners/admins */}
               {restaurant && (restaurant.owner_id === user?.id || user?.is_admin) && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.updateCoverButton}
                   onPress={handleUpdateCoverPhoto}
                   disabled={updatingCover}
@@ -651,9 +680,9 @@ export default function RestaurantDetailScreen() {
                   <Image source={{ uri: photo.image_url }} style={styles.photo} />
                   {photo.user && (
                     <View style={styles.photoAttribution}>
-                      <Image 
-                        source={{ uri: photo.user.avatar_url || 'https://i.pravatar.cc/150' }} 
-                        style={styles.photoUserAvatar} 
+                      <Image
+                        source={{ uri: photo.user.avatar_url || 'https://i.pravatar.cc/150' }}
+                        style={styles.photoUserAvatar}
                       />
                       <Text style={styles.photoUserName} numberOfLines={1}>
                         {photo.user.name || photo.user.username || 'Anonymous'}
@@ -674,7 +703,7 @@ export default function RestaurantDetailScreen() {
             <Camera size={48} color={designTokens.colors.textLight} />
             <Text style={styles.emptyPhotosText}>No photos available yet</Text>
             <Text style={styles.emptyPhotosSubtext}>Share your experience to add photos!</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addPhotoButton}
               onPress={handleCreatePost}
             >
@@ -848,97 +877,97 @@ export default function RestaurantDetailScreen() {
 
           {recentActivity.length > 0 ? (
             <View style={styles.activityList}>
-                             {recentActivity.map((activity) => {
-                 const getTrafficLightColor = (rating: number | null) => {
-                   if (!rating) return '#DDD';
-                   // Check if it's a traffic light system (1-3) or star system (1-5)
-                   if (rating <= 3) {
-                     // Traffic light system colors: 1=Red, 2=Yellow, 3=Green
-                     const trafficColors = { 1: '#FF4444', 2: '#FFAA44', 3: '#00AA00' };
-                     return trafficColors[rating as keyof typeof trafficColors] || '#DDD';
-                   } else {
-                     // 5-star system colors
-                     const starColors = { 1: '#FF4444', 2: '#FF7744', 3: '#FFAA44', 4: '#44AA44', 5: '#00AA00' };
-                     return starColors[rating as keyof typeof starColors] || '#DDD';
-                   }
-                 };
+              {recentActivity.map((activity) => {
+                const getTrafficLightColor = (rating: number | null) => {
+                  if (!rating) return '#DDD';
+                  // Check if it's a traffic light system (1-3) or star system (1-5)
+                  if (rating <= 3) {
+                    // Traffic light system colors: 1=Red, 2=Yellow, 3=Green
+                    const trafficColors = { 1: '#FF4444', 2: '#FFAA44', 3: '#00AA00' };
+                    return trafficColors[rating as keyof typeof trafficColors] || '#DDD';
+                  } else {
+                    // 5-star system colors
+                    const starColors = { 1: '#FF4444', 2: '#FF7744', 3: '#FFAA44', 4: '#44AA44', 5: '#00AA00' };
+                    return starColors[rating as keyof typeof starColors] || '#DDD';
+                  }
+                };
 
-                 const getTrafficLightLabel = (rating: number | null) => {
-                   if (!rating) return '';
-                   // Check if it's a traffic light system (1-3) or star system (1-5)
-                   if (rating <= 3) {
-                     // Traffic light system mapping
-                     const trafficLabels = { 1: 'Poor', 2: 'Average', 3: 'Excellent' };
-                     return trafficLabels[rating as keyof typeof trafficLabels] || '';
-                   } else {
-                     // 5-star system mapping
-                     const starLabels = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Great', 5: 'Excellent' };
-                     return starLabels[rating as keyof typeof starLabels] || '';
-                   }
-                 };
+                const getTrafficLightLabel = (rating: number | null) => {
+                  if (!rating) return '';
+                  // Check if it's a traffic light system (1-3) or star system (1-5)
+                  if (rating <= 3) {
+                    // Traffic light system mapping
+                    const trafficLabels = { 1: 'Poor', 2: 'Average', 3: 'Excellent' };
+                    return trafficLabels[rating as keyof typeof trafficLabels] || '';
+                  } else {
+                    // 5-star system mapping
+                    const starLabels = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Great', 5: 'Excellent' };
+                    return starLabels[rating as keyof typeof starLabels] || '';
+                  }
+                };
 
-                                 
 
-                                 return (
-                   <TouchableOpacity
-                     key={activity.id}
-                     style={styles.activityItem}
-                     onPress={() => {
-                       if (activity.action === 'reviewed' && activity.review?.id) {
-                         router.push(`/posts/${activity.review.id}`);
-                       }
-                     }}>
-                     <Image source={{ uri: activity.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.activityAvatar} />
-                     <View style={styles.activityContent}>
-                       <View style={styles.activityMainRow}>
-                         <View style={styles.activityTextContainer}>
-                           <Text style={styles.activityText}>
-                             <Text style={styles.activityUser}>
-                               {activity.user.name || activity.user.username || 'Someone'}
-                             </Text>{' '}
-                             {activity.action === 'reviewed' ? 'reviewed' : 
+
+                return (
+                  <TouchableOpacity
+                    key={activity.id}
+                    style={styles.activityItem}
+                    onPress={() => {
+                      if (activity.action === 'reviewed' && activity.review?.id) {
+                        router.push(`/posts/${activity.review.id}`);
+                      }
+                    }}>
+                    <Image source={{ uri: activity.user.avatar_url || 'https://i.pravatar.cc/150' }} style={styles.activityAvatar} />
+                    <View style={styles.activityContent}>
+                      <View style={styles.activityMainRow}>
+                        <View style={styles.activityTextContainer}>
+                          <Text style={styles.activityText}>
+                            <Text style={styles.activityUser}>
+                              {activity.user.name || activity.user.username || 'Someone'}
+                            </Text>{' '}
+                            {activity.action === 'reviewed' ? 'reviewed' :
                               activity.action === 'saved' ? 'saved' :
-                              activity.action === 'checked_in' ? 'checked in' :
-                              activity.action === 'liked' ? 'liked' : 'visited'}
-                           </Text>
-                           
-                           {/* Show review content if it's a review */}
-                           {activity.action === 'reviewed' && activity.review && (
-                             <View style={styles.reviewContent}>
-                               {activity.review.caption && (
-                                 <Text style={styles.reviewText} numberOfLines={2}>
-                                   "{activity.review.caption}"
-                                 </Text>
-                               )}
-                               {activity.review.photos && activity.review.photos.length > 0 && (
-                                 <View style={styles.reviewPhotos}>
-                                   {activity.review.photos.slice(0, 3).map((photo, index) => (
-                                     <Image key={index} source={{ uri: photo }} style={styles.reviewPhoto} />
-                                   ))}
-                                   {activity.review.photos.length > 3 && (
-                                     <View style={styles.photoCount}>
-                                       <Text style={styles.photoCountText}>+{activity.review.photos.length - 3}</Text>
-                                     </View>
-                                   )}
-                                 </View>
-                               )}
-                             </View>
-                           )}
-                           
-                           <Text style={styles.activityTime}>{socialActivityService.formatTimeAgo(activity.created_at)}</Text>
-                         </View>
-                         
-                         {/* Traffic Light Rating */}
-                         {activity.action === 'reviewed' && activity.review?.rating && activity.review.rating > 0 && (
-                           <View style={styles.activityRating}>
-                             <View style={[styles.activityTrafficDot, { backgroundColor: getTrafficLightColor(activity.review.rating) }]} />
-                             <Text style={styles.activityRatingLabel}>{getTrafficLightLabel(activity.review.rating)}</Text>
-                           </View>
-                         )}
-                       </View>
-                     </View>
-                   </TouchableOpacity>
-                 );
+                                activity.action === 'checked_in' ? 'checked in' :
+                                  activity.action === 'liked' ? 'liked' : 'visited'}
+                          </Text>
+
+                          {/* Show review content if it's a review */}
+                          {activity.action === 'reviewed' && activity.review && (
+                            <View style={styles.reviewContent}>
+                              {activity.review.caption && (
+                                <Text style={styles.reviewText} numberOfLines={2}>
+                                  "{activity.review.caption}"
+                                </Text>
+                              )}
+                              {activity.review.photos && activity.review.photos.length > 0 && (
+                                <View style={styles.reviewPhotos}>
+                                  {activity.review.photos.slice(0, 3).map((photo, index) => (
+                                    <Image key={index} source={{ uri: photo }} style={styles.reviewPhoto} />
+                                  ))}
+                                  {activity.review.photos.length > 3 && (
+                                    <View style={styles.photoCount}>
+                                      <Text style={styles.photoCountText}>+{activity.review.photos.length - 3}</Text>
+                                    </View>
+                                  )}
+                                </View>
+                              )}
+                            </View>
+                          )}
+
+                          <Text style={styles.activityTime}>{socialActivityService.formatTimeAgo(activity.created_at)}</Text>
+                        </View>
+
+                        {/* Traffic Light Rating */}
+                        {activity.action === 'reviewed' && activity.review?.rating && activity.review.rating > 0 && (
+                          <View style={styles.activityRating}>
+                            <View style={[styles.activityTrafficDot, { backgroundColor: getTrafficLightColor(activity.review.rating) }]} />
+                            <Text style={styles.activityRatingLabel}>{getTrafficLightLabel(activity.review.rating)}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
               })}
             </View>
           ) : (
@@ -953,7 +982,7 @@ export default function RestaurantDetailScreen() {
     <View style={styles.tabContent}>
       <View style={styles.infoCard}>
         <Text style={styles.sectionTitle}>Restaurant Information</Text>
-        
+
         {/* Address */}
         <TouchableOpacity style={styles.infoRow} onPress={handleDirections}>
           <MapPin size={18} color={designTokens.colors.textLight} />
