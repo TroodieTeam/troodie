@@ -55,25 +55,25 @@ SplashScreen.preventAutoHideAsync();
 // Inner layout component that has access to auth context
 function InnerLayout() {
   const router = useRouter();
-  
+
   // Handle deep links
   useEffect(() => {
     const handleDeepLink = (url: string) => {
       // Parse the URL to extract the path
       const parsed = Linking.parse(url);
-      
+
       // Extract the path from the URL
       // Handle Expo dev URLs that have --/ prefix
       let path = parsed.path || '';
       if (path.includes('--/')) {
         path = path.split('--/')[1];
       }
-      
+
       // Handle different deep link patterns
       if (path) {
         // Remove leading slash if present
         const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-        
+
         // Add a small delay to ensure navigation is ready
         setTimeout(() => {
           // Check for different route patterns
@@ -97,7 +97,7 @@ function InnerLayout() {
         }, 100);
       }
     };
-    
+
     // Get the initial URL if the app was launched from a deep link
     const getInitialURL = async () => {
       const url = await Linking.getInitialURL();
@@ -107,15 +107,15 @@ function InnerLayout() {
         setTimeout(() => handleDeepLink(url), 500);
       }
     };
-    
+
     getInitialURL();
-    
+
     // Subscribe to incoming links
     const subscription = Linking.addEventListener('url', ({ url }) => {
       console.log('App received URL:', url);
       handleDeepLink(url);
     });
-    
+
     return () => {
       subscription.remove();
     };
@@ -135,7 +135,7 @@ function InnerLayout() {
 
   // Get auth loading state
   const { loading: authLoading } = useAuth();
-  
+
   // Coordinate splash screen hiding with both font and auth loading
   const onLayoutRootView = useCallback(async () => {
     if ((fontsLoaded || fontError) && !authLoading) {
@@ -166,7 +166,7 @@ function InnerLayout() {
     // Return a View instead of null to prevent flash
     return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
   }
-  
+
   if (authLoading) {
     // Keep showing splash while auth loads
     return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
@@ -179,22 +179,23 @@ function InnerLayout() {
           <ThemeProvider value={DefaultTheme}>
             <NetworkStatusBanner />
             <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="add" options={{ headerShown: false }} />
-            <Stack.Screen name="boards" options={{ headerShown: false }} />
-            <Stack.Screen name="business" options={{ headerShown: false }} />
-            <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="find-friends" options={{ headerShown: false }} />
-            <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
-            <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
-            <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
-            <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              <Stack.Screen name="add" options={{ headerShown: false }} />
+              <Stack.Screen name="boards" options={{ headerShown: false }} />
+              <Stack.Screen name="business" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="find-friends" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
+              <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
+              <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
+              <Stack.Screen name="quick-saves" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
             <StatusBar style="dark" />
             <Toast config={toastConfig} />
           </ThemeProvider>

@@ -14,21 +14,23 @@ interface RestaurantCardProps {
   };
   compact?: boolean;
   showRating?: boolean;
+  isFavorited?: boolean;
+  isVisited?: boolean;
   testID?: string;
 }
 
-export function RestaurantCard({ restaurant, onPress, stats, compact = false, showRating = false, testID }: RestaurantCardProps) {
+export function RestaurantCard({ restaurant, onPress, stats, compact = false, showRating = false, isFavorited = false, isVisited = false, testID }: RestaurantCardProps) {
   // Always use compact horizontal layout for better space efficiency
   return (
-    <TouchableOpacity 
-      style={styles.container} 
+    <TouchableOpacity
+      style={styles.container}
       onPress={onPress}
       activeOpacity={0.7}
       testID={testID}
     >
-      <Image 
-        source={{ uri: restaurant.image || DEFAULT_IMAGES.restaurant }} 
-        style={styles.image} 
+      <Image
+        source={{ uri: restaurant.image || DEFAULT_IMAGES.restaurant }}
+        style={styles.image}
       />
       <View style={styles.content}>
         <View style={styles.topRow}>
@@ -40,7 +42,7 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false, sh
             <Text style={styles.ratingText}>{restaurant.rating}</Text>
           </View>
         </View>
-        
+
         <View style={styles.bottomRow}>
           <Text style={styles.cuisine} numberOfLines={1}>
             {restaurant.cuisine} • {restaurant.priceRange}
@@ -50,6 +52,15 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false, sh
             {restaurant.location}
           </Text>
         </View>
+
+        {/* Favorite and Visited Status */}
+        {/* {(isFavorited || isVisited) && ( */}
+        <View style={styles.statusRow}>
+          {!isFavorited && <Text style={styles.favoriteText}>Favorited</Text>}
+          {!isFavorited && !isVisited && <Text style={styles.dot}>•</Text>}
+          {!isVisited && <Text style={styles.visitedText}>Visited</Text>}
+        </View>
+        {/* )} */}
 
         {stats && (stats.saves || stats.visits) && (
           <View style={styles.statsRow}>
@@ -127,6 +138,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: designTokens.colors.textLight,
     marginHorizontal: 4,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  favoriteText: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: designTokens.colors.primaryOrange,
+  },
+  visitedText: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: '#10B981',
   },
   statsRow: {
     flexDirection: 'row',
