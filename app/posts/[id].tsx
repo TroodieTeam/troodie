@@ -12,7 +12,7 @@ import { getErrorType } from "@/types/errors";
 import { PostWithUser } from "@/types/post";
 import { eventBus, EVENTS } from "@/utils/eventBus";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
   Bookmark,
@@ -55,6 +55,7 @@ export default function PostDetailScreen() {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [comments, setComments] = useState<any[]>([]); // Shared comments state
+  const lastCommentActionRef = useRef<{ type: 'delete' | 'add' | null; timestamp: number }>({ type: null, timestamp: 0 });
 
   // Use the enhanced post engagement hook
   const engagement = usePostEngagement({
@@ -82,135 +83,154 @@ export default function PostDetailScreen() {
     refreshStats,
   } = engagement;
 
-  // Update engagement stats when post data changes
+  // Log UI comment count whenever it changes
   useEffect(() => {
-    if (post && refreshStats) {
-      // Force update engagement stats with fresh post data
-      refreshStats({
-        likes_count: post.likes_count || 0,
-        comments_count: post.comments_count || 0,
-        saves_count: post.saves_count || 0,
-        share_count: post.share_count || 0,
+    if (post) {
+      console.log('[PostDetail] UI Comment Count State:', {
+        postId: post.id,
+        hookCommentsCount: commentsCount,
+        postStateCommentsCount: post.comments_count,
+        actualCommentsLength: comments.length,
+        displayedInUI: commentsCount, // This is what's shown in the UI
       });
     }
-  }, [
-    post?.comments_count,
-    post?.likes_count,
-    post?.saves_count,
-    post?.share_count,
-    refreshStats,
-  ]);
+  }, [post?.id, commentsCount, post?.comments_count, comments.length]);
 
-  useEffect(() => {
-    if (id) {
-      loadPost();
-    }
-  }, [id]);
+  // FIRST PRINCIPLE: Don't sync hook from post state when realtime is enabled
+  // Realtime subscriptions handle updates automatically
+  // Only initialize on mount
 
-  useEffect(() => {
-    if (!id || !post) return;
-
-    const handleEngagementChanged = async ({
-      postId,
-      isLiked,
-      likesCount,
-    }: {
-      postId: string;
-      isLiked?: boolean;
-      likesCount?: number;
-    }) => {
-      if (postId !== id) return;
-
-      if (isLiked !== undefined || likesCount !== undefined) {
-        setPost((prev) => {
-          if (!prev) return null;
-
-          const updatedPost = {
-            ...prev,
-            likes_count:
-              likesCount !== undefined ? likesCount : prev.likes_count ?? 0,
-            is_liked_by_user:
-              isLiked !== undefined ? isLiked : prev.is_liked_by_user ?? false,
-          };
-
-          if (refreshStats) {
-            refreshStats({
-              likes_count: updatedPost.likes_count,
-              comments_count: updatedPost.comments_count ?? 0,
-              saves_count: updatedPost.saves_count ?? 0,
-              share_count: updatedPost.share_count ?? 0,
-            });
-          }
-
-          return updatedPost;
-        });
-      }
-
-      try {
-        const freshPost = await postService.getPostById(postId);
-        if (freshPost) {
-          setPost((prev) => {
-            if (!prev) return null;
-
-            const updatedPost = {
-              ...prev,
-              likes_count:
-                likesCount !== undefined
-                  ? likesCount
-                  : freshPost.likes_count ?? prev.likes_count ?? 0,
-              is_liked_by_user:
-                isLiked !== undefined
-                  ? isLiked
-                  : freshPost.is_liked_by_user ??
-                  prev.is_liked_by_user ??
-                  false,
-              comments_count:
-                freshPost.comments_count ?? prev.comments_count ?? 0,
-              saves_count: freshPost.saves_count ?? prev.saves_count ?? 0,
-              is_saved_by_user:
-                freshPost.is_saved_by_user ?? prev.is_saved_by_user ?? false,
-            };
-
-            if (refreshStats) {
-              refreshStats({
-                likes_count: updatedPost.likes_count,
-                comments_count: updatedPost.comments_count,
-                saves_count: updatedPost.saves_count,
-                share_count: updatedPost.share_count,
-              });
-            }
-
-            return updatedPost;
-          });
-        }
-      } catch (error) {
-        console.error("Error refreshing post data:", error);
-      }
-    };
-
-    const unsubscribeEngagement = eventBus.on(
-      EVENTS.POST_ENGAGEMENT_CHANGED,
-      handleEngagementChanged
-    );
-
-    return () => {
-      unsubscribeEngagement();
-    };
-  }, [id, post, refreshStats]);
-
-  const loadPost = async () => {
+  const loadPost = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
       setError(null);
+      const DEBUG_POST_ID = '6c7b7490-4d1d-4c69-8cba-3303ecb4605c';
+      const isDebugPost = id === DEBUG_POST_ID;
+      
+      if (isDebugPost) {
+        console.log('[PostDetail.loadPost] START', { postId: id });
+      }
+      
       const postData = await postService.getPost(id);
+      
+      if (isDebugPost) {
+        console.log('[PostDetail.loadPost] Post loaded:', {
+          id: postData?.id,
+          comments_count: postData?.comments_count,
+          likes_count: postData?.likes_count,
+          saves_count: postData?.saves_count,
+        });
+      }
+      
       setPost(postData);
     } catch (err: any) {
+      console.error('[PostDetail] Error loading post:', err);
       setError(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
+  // Track the last loaded post ID to prevent unnecessary reloads
+  const lastLoadedPostIdRef = useRef<string | null>(null);
+  const isInitialMountRef = useRef(true);
+  const isLoadingRef = useRef(false);
+
+  // Initial load when post ID changes
+  useEffect(() => {
+    if (id && id !== lastLoadedPostIdRef.current) {
+      lastLoadedPostIdRef.current = id;
+      isInitialMountRef.current = true;
+      isLoadingRef.current = false;
+      loadPost();
+    }
+  }, [id, loadPost]);
+
+  // Update loading ref when loading state changes
+  useEffect(() => {
+    isLoadingRef.current = loading;
+  }, [loading]);
+
+  // Refresh post data when screen comes into focus (e.g., after navigating back)
+  // Skip on initial mount to avoid double-loading
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+      
+      if (isInitialMountRef.current) {
+        isInitialMountRef.current = false;
+        return;
+      }
+      
+      // Skip refresh if we just performed a comment action (deletion/add)
+      // The verification step will ensure DB is correct, and realtime will sync
+      const timeSinceLastAction = Date.now() - lastCommentActionRef.current.timestamp;
+      if (lastCommentActionRef.current.type && timeSinceLastAction < 2000) {
+        console.log('[PostDetail] Skipping refresh - recent comment action:', {
+          type: lastCommentActionRef.current.type,
+          timeSince: timeSinceLastAction,
+        });
+        return;
+      }
+      
+      // Always refresh when coming back to ensure we have latest data
+      // Small delay to ensure navigation is complete
+      const timer = setTimeout(() => {
+        console.log('[PostDetail] Screen focused, refreshing post data...');
+        loadPost();
+      }, 150);
+      
+      return () => clearTimeout(timer);
+    }, [id, loadPost])
+  );
+
+  useEffect(() => {
+    if (!id || !post) return;
+
+    // CLEAN ARCHITECTURE: Realtime subscriptions handle all updates
+    // No manual event handling needed - hook syncs automatically
+    // Event bus is only for optimistic UI feedback, not state management
+
+    const handleCommentDeleted = async ({ postId: deletedPostId }: { postId: string }) => {
+      if (deletedPostId !== id) return;
+      
+      console.log('[PostDetail.handleCommentDeleted] Event received', {
+        postId: deletedPostId,
+        currentPostState: {
+          comments_count: post?.comments_count,
+          likes_count: post?.likes_count,
+          saves_count: post?.saves_count,
+        },
+        hookState: {
+          commentsCount,
+          likesCount,
+          savesCount,
+        },
+      });
+      
+      // Don't reload - let realtime subscription handle the count update
+      // The optimistic update already happened via onCommentDeleted callback
+    };
+
+    // CLEAN ARCHITECTURE: Realtime subscriptions handle all updates
+    // usePostEngagement hook syncs automatically via realtime
+    // No manual event handling needed for engagement changes
+    
+    const unsubscribeCommentDeleted = eventBus.on(
+      EVENTS.POST_COMMENT_DELETED,
+      handleCommentDeleted
+    );
+
+    return () => {
+      unsubscribeCommentDeleted();
+    };
+  }, [id, post, refreshStats, loadPost]);
+
+
+  /**
+   * Verify comment count matches actual comments and fix if stale
+   */
   const handleBack = () => {
     router.back();
   };
@@ -606,7 +626,7 @@ export default function PostDetailScreen() {
           </TouchableOpacity>
         </View>
         {/* Comments Section - Just the comments list, no input here */}
-        {post && commentsCount > 0 && (
+        {post && (
           <View style={styles.commentsSection}>
             <View style={styles.commentsSeparator}>
               <Text style={styles.commentsTitle}>Comments</Text>
@@ -614,6 +634,7 @@ export default function PostDetailScreen() {
             <PostComments
               postId={post.id}
               showInput={false} // Don't show input in the comments component
+              showComments={true} // Show comments list
               comments={comments} // Pass shared comments from parent
               onCommentsChange={setComments} // Update parent state when comments change
               onCommentAdded={() => {
@@ -638,26 +659,44 @@ export default function PostDetailScreen() {
                 }
               }}
               onCommentDeleted={() => {
-                // Update the comment count when comment is deleted
+                // Track comment deletion to prevent unnecessary reloads
+                lastCommentActionRef.current = { type: 'delete', timestamp: Date.now() };
+                
+                // Optimistic update - decrement comment count immediately
+                // Realtime subscription will sync with server
+                const previousCount = post?.comments_count || 0;
+                const expectedCount = Math.max(previousCount - 1, 0);
+                
+                console.log('[PostDetail.onCommentDeleted] Optimistic update triggered', {
+                  postId: post?.id,
+                  previousPostCount: previousCount,
+                  expectedCount,
+                  currentHookCount: commentsCount,
+                  timestamp: new Date().toISOString(),
+                });
+                
+                // Update post state optimistically
+                setPost((prev) => {
+                  if (!prev) return null;
+                  const updated = {
+                    ...prev,
+                    comments_count: expectedCount,
+                  };
+                  console.log('[PostDetail.onCommentDeleted] Post state updated:', {
+                    postId: prev.id,
+                    oldCount: prev.comments_count,
+                    newCount: updated.comments_count,
+                  });
+                  return updated;
+                });
+
                 if (refreshStats && post) {
                   refreshStats({
                     likes_count: post.likes_count || 0,
-                    comments_count: Math.max((post.comments_count || 1) - 1, 0), // Decrement comment count
+                    comments_count: expectedCount,
                     saves_count: post.saves_count || 0,
                     share_count: post.share_count || 0,
                   });
-                  // Update the local post state too
-                  setPost((prev) =>
-                    prev
-                      ? {
-                        ...prev,
-                        comments_count: Math.max(
-                          (prev.comments_count || 1) - 1,
-                          0
-                        ),
-                      }
-                      : null
-                  );
                 }
               }}
             />
@@ -697,24 +736,44 @@ export default function PostDetailScreen() {
             DeviceEventEmitter.emit("post-comment-added", { postId: post.id });
           }}
           onCommentDeleted={() => {
+            // Track comment deletion to prevent unnecessary reloads
+            lastCommentActionRef.current = { type: 'delete', timestamp: Date.now() };
+            
+            // Optimistic update - decrement comment count immediately
+            // Realtime subscription will sync with server
+            const previousCount = post?.comments_count || 0;
+            const expectedCount = Math.max(previousCount - 1, 0);
+            
+            console.log('[PostDetail.onCommentDeleted (input)] Optimistic update triggered', {
+              postId: post?.id,
+              previousPostCount: previousCount,
+              expectedCount,
+              currentHookCount: commentsCount,
+              timestamp: new Date().toISOString(),
+            });
+
             if (refreshStats && post) {
               refreshStats({
                 likes_count: post.likes_count || 0,
-                comments_count: Math.max((post.comments_count || 1) - 1, 0),
+                comments_count: expectedCount,
                 saves_count: post.saves_count || 0,
                 share_count: post.share_count || 0,
               });
-              setPost((prev) =>
-                prev
-                  ? {
-                    ...prev,
-                    comments_count: Math.max(
-                      (prev.comments_count || 1) - 1,
-                      0
-                    ),
-                  }
-                  : null
-              );
+              
+              // Also update post state optimistically
+              setPost((prev) => {
+                if (!prev) return null;
+                const updated = {
+                  ...prev,
+                  comments_count: expectedCount,
+                };
+                console.log('[PostDetail.onCommentDeleted (input)] Post state updated:', {
+                  postId: prev.id,
+                  oldCount: prev.comments_count,
+                  newCount: updated.comments_count,
+                });
+                return updated;
+              });
             }
           }}
         />

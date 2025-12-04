@@ -236,20 +236,23 @@ export default function CommunityDetailScreen() {
       }
     };
 
-    // Refresh posts when a comment is added
+    // Refresh posts when a comment is added or deleted
     const handleCommentAdded = (data: { postId: string }) => loadCommunityPosts();
+    const handleCommentDeleted = (data: { postId: string }) => loadCommunityPosts();
 
     // Subscribe to events
     const unsubscribeCreate = eventBus.on(EVENTS.COMMUNITY_POST_CREATED, handlePostCreated);
     const unsubscribeDelete = eventBus.on(EVENTS.COMMUNITY_POST_DELETED, handlePostDeleted);
     const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
     const unsubscribeCommentAdded = eventBus.on(EVENTS.POST_COMMENT_ADDED, handleCommentAdded);
+    const unsubscribeCommentDeleted = eventBus.on(EVENTS.POST_COMMENT_DELETED, handleCommentDeleted);
 
     return () => {
       unsubscribeCreate();
       unsubscribeDelete();
       unsubscribeEngagement();
       unsubscribeCommentAdded();
+      unsubscribeCommentDeleted();
     };
   }, [communityId, posts, updatePostItem]);
 
