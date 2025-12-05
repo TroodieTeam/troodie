@@ -6,6 +6,9 @@
 -- Date: 2025-02-05
 -- ============================================================================
 
+-- Drop existing function first since we're changing the return type
+DROP FUNCTION IF EXISTS get_creators(text,integer,numeric,text[],integer,integer);
+
 CREATE OR REPLACE FUNCTION get_creators(
   p_city TEXT DEFAULT NULL,
   p_min_followers INTEGER DEFAULT NULL,
