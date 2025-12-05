@@ -8,9 +8,9 @@ import { restaurantService } from '@/services/restaurantService'
 import { restaurantVisitService } from '@/services/restaurantVisitService'
 import { BoardRestaurant } from '@/types/board'
 import { RestaurantInfo } from '@/types/core'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { ArrowLeft, FileText, Link } from 'lucide-react-native'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -34,10 +34,16 @@ export default function QuickSavesScreen() {
   const { user } = useAuth()
   const router = useRouter()
 
-  useEffect(() => {
-    loadQuickSaves()
-    loadUserStatus()
-  }, [user?.id])
+  // Reload data every time the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('now I will run')
+      if (user?.id) {
+        loadQuickSaves()
+        loadUserStatus()
+      }
+    }, [user?.id])
+  )
 
   const loadQuickSaves = async () => {
     if (!user?.id) return

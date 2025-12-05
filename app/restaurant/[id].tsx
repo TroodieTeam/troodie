@@ -310,40 +310,23 @@ export default function RestaurantDetailScreen() {
 
   const handleFavorite = async () => {
     requireAuth(async () => {
-      if (!user || !restaurant?.id) {
-        console.log('[handleFavorite] Blocked:', { hasUser: !!user, hasRestaurant: !!restaurant?.id });
-        return;
-      }
+      if (!user || !restaurant?.id) return;
 
-      console.log('[handleFavorite] Starting optimistic favorite toggle for restaurant:', restaurant.id, 'user:', user.id, 'currentState:', isFavorited);
-
-      // Store the previous state for rollback
       const previousState = isFavorited;
       const newState = !isFavorited;
 
       try {
-        // Optimistic update - update UI immediately
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setIsFavorited(newState);
-        console.log('[handleFavorite] Optimistically set to:', newState);
 
-        // Call backend service
         const success = await restaurantFavoriteService.toggleFavorite(user.id, restaurant.id);
-        console.log('[handleFavorite] Service call result:', success);
 
-        if (success) {
-          console.log('[handleFavorite] Success confirmed! State:', newState);
-          // No toast needed - visual feedback is enough
-        } else {
-          // Revert on failure
-          console.log('[handleFavorite] Service returned false, reverting to:', previousState);
+        if (!success) {
           setIsFavorited(previousState);
           ToastService.showError('Failed to update favorite');
         }
       } catch (error) {
-        // Revert on error
-        console.error('[handleFavorite] Error toggling favorite:', error);
-        console.log('[handleFavorite] Reverting to previous state:', previousState);
+        console.error('Error toggling favorite:', error);
         setIsFavorited(previousState);
         ToastService.showError('Failed to update favorite');
       }
