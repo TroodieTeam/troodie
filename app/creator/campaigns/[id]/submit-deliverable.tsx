@@ -3,37 +3,63 @@
  *
  * Allows creators to submit deliverables for a campaign.
  * Features:
- * - Display campaign requirements
+ * - Display campaign requirements and expected deliverables
+ * - Progress tracking for multiple deliverables
  * - URL validation (Instagram/TikTok/YouTube)
  * - Screenshot upload (optional)
  * - Caption and notes
- * - Submission confirmation
+ * - Support for multiple deliverables submission
  * - Real-time validation feedback
+ *
+ * ER-008: Multiple Deliverables Support
+ * =====================================
+ * Now supports submitting multiple deliverables per campaign with:
+ * - Progress tracking (X of Y submitted)
+ * - Required deliverables display
+ * - Individual deliverable status tracking
+ * - Batch or individual submission
  */
 
-import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import {
-  View,
+  getRequiredDeliverables,
+  getSubmissionProgress,
+  submitMultipleDeliverables,
+  validateSocialMediaUrl
+} from '@/services/deliverableSubmissionService';
+import { ImageUploadServiceV2 } from '@/services/imageUploadServiceV2';
+import type { DeliverablePlatform } from '@/types/deliverableRequirements';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Image
+  View
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/contexts/AuthContext';
-import {
-  submitDeliverable,
-  validateSocialMediaUrl,
-  type SubmitDeliverableParams
-} from '@/services/deliverableSubmissionService';
-import { imageUploadService } from '@/services/imageUploadServiceV2';
-import * as ImagePicker from 'expo-image-picker';
-import type { DeliverablePlatform } from '@/types/deliverableRequirements';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface DeliverableFormData {
+  url: string;
+  platform: DeliverablePlatform | null;
+  screenshotUri: string | null;
+  caption: string;
+  notes: string;
+  isValidating: boolean;
+  urlError: string | null;
+  urlWarning: string | null;
+}
 
 // ============================================================================
 // COMPONENT
@@ -43,42 +69,50 @@ export default function SubmitDeliverableScreen() {
   const { id: campaignId } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
 
-  // Form state
-  const [postUrl, setPostUrl] = useState('');
-  const [screenshotUri, setScreenshotUri] = useState<string | null>(null);
-  const [caption, setCaption] = useState('');
-  const [notes, setNotes] = useState('');
-  const [detectedPlatform, setDetectedPlatform] = useState<DeliverablePlatform | null>(null);
+  // Campaign and application data
+  const [campaignApplicationId, setCampaignApplicationId] = useState<string | null>(null);
+  const [requiredDeliverables, setRequiredDeliverables] = useState<any[]>([]);
+  const [progress, setProgress] = useState<{
+    submitted: number;
+    required: number;
+    percentage: number;
+    complete: boolean;
+    deliverables: Array<{
+      index: number;
+      status: string;
+      submitted_at?: string;
+      platform?: DeliverablePlatform;
+    }>;
+  } | null>(null);
+
+  // Form state - support multiple deliverables
+  const [deliverables, setDeliverables] = useState<DeliverableFormData[]>([
+    { url: '', platform: null, screenshotUri: null, caption: '', notes: '', isValidating: false, urlError: null, urlWarning: null }
+  ]);
 
   // UI state
-  const [isValidating, setIsValidating] = useState(false);
-  const [urlError, setUrlError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingScreenshot, setIsUploadingScreenshot] = useState(false);
+  const [isUploadingScreenshot, setIsUploadingScreenshot] = useState<number | null>(null);
 
-  // Validation effect
+  // Load campaign application and required deliverables
   useEffect(() => {
-    if (postUrl.trim().length > 0) {
-      const timer = setTimeout(() => {
-        setIsValidating(true);
-        const validation = validateSocialMediaUrl(postUrl);
-        setIsValidating(false);
-
-        if (!validation.valid) {
-          setUrlError(validation.error || 'Invalid URL');
-          setDetectedPlatform(null);
-        } else {
-          setUrlError(null);
-          setDetectedPlatform(validation.platform || null);
-        }
-      }, 500);
-
-      return () => clearTimeout(timer);
-    } else {
-      setUrlError(null);
-      setDetectedPlatform(null);
+    if (user?.id && campaignId) {
+      loadCampaignData();
     }
-  }, [postUrl]);
+  }, [user?.id, campaignId]);
+
+  // Validate URLs when they change
+  useEffect(() => {
+    deliverables.forEach((deliverable, index) => {
+      if (deliverable.url.trim().length > 10) {
+        const timer = setTimeout(() => {
+          validateDeliverableUrl(index);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    });
+  }, [deliverables.map(d => d.url).join(',')]);
 
   // Request permission for image picker
   useEffect(() => {
@@ -90,17 +124,132 @@ export default function SubmitDeliverableScreen() {
     })();
   }, []);
 
-  const pickScreenshot = async () => {
+  const loadCampaignData = async () => {
+    if (!user?.id || !campaignId) return;
+
+    try {
+      setLoading(true);
+
+      // Get creator profile ID
+      const { data: creatorProfile } = await supabase
+        .from('creator_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!creatorProfile) {
+        Alert.alert('Error', 'Creator profile not found');
+        router.back();
+        return;
+      }
+
+      // Get campaign application
+      const { data: application } = await supabase
+        .from('campaign_applications')
+        .select('id')
+        .eq('campaign_id', campaignId)
+        .eq('creator_id', creatorProfile.id)
+        .eq('status', 'accepted')
+        .single();
+
+      if (!application) {
+        Alert.alert('Error', 'Campaign application not found or not accepted');
+        router.back();
+        return;
+      }
+
+      setCampaignApplicationId(application.id);
+
+      // Load required deliverables
+      const { data: required, error: reqError } = await getRequiredDeliverables(campaignId);
+      if (reqError) {
+        console.error('Error loading required deliverables:', reqError);
+        // Continue without required deliverables - will default to single deliverable
+        setRequiredDeliverables([]);
+      } else if (required && required.deliverables && required.deliverables.length > 0) {
+        console.log('Loaded required deliverables:', required.deliverables.length);
+        setRequiredDeliverables(required.deliverables);
+      } else {
+        // No required deliverables found - set empty array
+        console.log('No required deliverables found for campaign');
+        setRequiredDeliverables([]);
+      }
+
+      // Load progress
+      const { data: progressData, error: progError } = await getSubmissionProgress(
+        application.id,
+        campaignId
+      );
+      if (progError) {
+        console.error('Error loading progress:', progError);
+      } else if (progressData) {
+        setProgress(progressData);
+      }
+    } catch (error) {
+      console.error('Error loading campaign data:', error);
+      Alert.alert('Error', 'Failed to load campaign data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateDeliverableUrl = (index: number) => {
+    const deliverable = deliverables[index];
+    if (!deliverable.url.trim()) {
+      updateDeliverable(index, {
+        isValidating: false,
+        urlError: null,
+        urlWarning: null,
+        platform: null
+      });
+      return;
+    }
+
+    updateDeliverable(index, { isValidating: true });
+    
+    setTimeout(() => {
+      const validation = validateSocialMediaUrl(deliverable.url);
+      updateDeliverable(index, {
+        isValidating: false,
+        urlError: validation.error || null,
+        urlWarning: validation.warning || null,
+        platform: validation.platform || null
+      });
+    }, 500);
+  };
+
+  const updateDeliverable = (index: number, updates: Partial<DeliverableFormData>) => {
+    const updated = [...deliverables];
+    updated[index] = { ...updated[index], ...updates };
+    setDeliverables(updated);
+  };
+
+  const addDeliverable = () => {
+    setDeliverables([
+      ...deliverables,
+      { url: '', platform: null, screenshotUri: null, caption: '', notes: '', isValidating: false, urlError: null, urlWarning: null }
+    ]);
+  };
+
+  const removeDeliverable = (index: number) => {
+    if (deliverables.length > 1) {
+      setDeliverables(deliverables.filter((_, i) => i !== index));
+    } else {
+      Alert.alert('Cannot Remove', 'You must have at least one deliverable');
+    }
+  };
+
+  const pickScreenshot = async (index: number) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
-        aspect: [9, 16] // Vertical aspect ratio for social media
+        aspect: [9, 16]
       });
 
       if (!result.canceled && result.assets[0]) {
-        setScreenshotUri(result.assets[0].uri);
+        updateDeliverable(index, { screenshotUri: result.assets[0].uri });
       }
     } catch (error) {
       console.error('Error picking screenshot:', error);
@@ -108,88 +257,131 @@ export default function SubmitDeliverableScreen() {
     }
   };
 
-  const removeScreenshot = () => {
-    setScreenshotUri(null);
-  };
-
   const handleSubmit = async () => {
-    // Validation
-    if (!postUrl.trim()) {
-      Alert.alert('Missing URL', 'Please enter the URL of your post');
+    if (!user?.id || !campaignId || !campaignApplicationId) {
+      Alert.alert('Error', 'Missing required information');
       return;
     }
 
-    if (urlError) {
-      Alert.alert('Invalid URL', urlError);
-      return;
-    }
+    // Validate all deliverables
+    const validDeliverables = deliverables.filter((d, index) => {
+      if (!d.url.trim()) {
+        Alert.alert('Missing URL', `Please enter a URL for deliverable ${index + 1}`);
+        return false;
+      }
+      if (d.urlError) {
+        Alert.alert('Invalid URL', `Deliverable ${index + 1}: ${d.urlError}`);
+        return false;
+      }
+      if (!d.platform) {
+        Alert.alert('Invalid URL', `Could not detect platform for deliverable ${index + 1}`);
+        return false;
+      }
+      return true;
+    });
 
-    if (!detectedPlatform) {
-      Alert.alert('Invalid URL', 'Could not detect social media platform from URL');
-      return;
-    }
-
-    if (!user?.id || !campaignId) {
-      Alert.alert('Error', 'Missing user or campaign information');
+    if (validDeliverables.length === 0) {
+      Alert.alert('Error', 'Please add at least one valid deliverable');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Upload screenshot if provided
-      let screenshotUrl: string | undefined;
-      if (screenshotUri) {
-        setIsUploadingScreenshot(true);
-        const uploadResult = await imageUploadService.uploadImage(screenshotUri, 'deliverable-screenshots');
-        setIsUploadingScreenshot(false);
-
-        if (uploadResult.error) {
-          throw new Error('Failed to upload screenshot');
-        }
-        screenshotUrl = uploadResult.data;
-      }
-
-      // Submit deliverable
-      const params: SubmitDeliverableParams = {
-        creator_campaign_id: campaignId, // TODO: Get actual creator_campaign_id
-        campaign_id: campaignId,
-        creator_id: user.id,
-        deliverable_index: 1, // TODO: Calculate based on existing deliverables
-        platform: detectedPlatform,
-        post_url: postUrl.trim(),
-        screenshot_url: screenshotUrl,
-        caption: caption.trim() || undefined,
-        notes_to_restaurant: notes.trim() || undefined
-      };
-
-      const { data, error } = await submitDeliverable(params);
-
-      if (error) {
-        throw error;
-      }
-
-      // Success!
-      Alert.alert(
-        'Deliverable Submitted!',
-        'Your deliverable has been submitted for review. You\'ll receive a notification when it\'s reviewed.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
+      // Upload screenshots first
+      const deliverablesWithScreenshots = await Promise.all(
+        validDeliverables.map(async (deliverable, index) => {
+          let screenshotUrl: string | undefined;
+          
+          if (deliverable.screenshotUri) {
+            setIsUploadingScreenshot(index);
+            try {
+              const uploadResult = await ImageUploadServiceV2.uploadImage(
+                deliverable.screenshotUri,
+                'deliverable-screenshots',
+                `screenshots/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`
+              );
+              
+              screenshotUrl = uploadResult.publicUrl;
+            } catch (error) {
+              console.error('Error uploading screenshot:', error);
+              // Continue without screenshot
+            } finally {
+              setIsUploadingScreenshot(null);
+            }
           }
-        ]
+
+          return {
+            campaign_application_id: campaignApplicationId!,
+            campaign_id: campaignId,
+            creator_id: user.id,
+            platform: deliverable.platform!,
+            post_url: deliverable.url.trim(),
+            screenshot_url: screenshotUrl,
+            caption: deliverable.caption.trim() || undefined,
+            notes_to_restaurant: deliverable.notes.trim() || undefined
+          };
+        })
       );
+
+      // Submit all deliverables
+      const { data, errors } = await submitMultipleDeliverables(deliverablesWithScreenshots);
+
+      if (errors.length > 0) {
+        Alert.alert(
+          'Partial Success',
+          `${data?.length || 0} deliverable(s) submitted successfully. ${errors.length} failed.`
+        );
+      } else {
+        Alert.alert(
+          'Success!',
+          `All ${data?.length || 0} deliverable(s) submitted successfully.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => router.back()
+            }
+          ]
+        );
+      }
     } catch (error) {
-      console.error('Error submitting deliverable:', error);
-      Alert.alert('Submission Failed', 'Failed to submit deliverable. Please try again.');
+      console.error('Error submitting deliverables:', error);
+      Alert.alert('Submission Failed', 'Failed to submit deliverables. Please try again.');
     } finally {
       setIsSubmitting(false);
-      setIsUploadingScreenshot(false);
+      setIsUploadingScreenshot(null);
     }
   };
 
-  const canSubmit = postUrl.trim().length > 0 && !urlError && !isSubmitting && detectedPlatform;
+  const canSubmit = deliverables.some(d => 
+    d.url.trim().length > 0 && !d.urlError && d.platform
+  ) && !isSubmitting;
+
+  // Calculate progress display values
+  const submittedCount = progress?.submitted || 0;
+  const requiredCount = progress?.required || requiredDeliverables.length || 0;
+  const progressPercentage = progress?.percentage !== undefined 
+    ? progress.percentage 
+    : (requiredCount > 0 ? Math.round((submittedCount / requiredCount) * 100) : 0);
+  // Show progress section if we have progress data OR if we have required deliverables
+  const showProgressSection = (progress !== null) || (requiredDeliverables.length > 0);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="close" size={28} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Submit Deliverable</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFAD27" />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -198,174 +390,231 @@ export default function SubmitDeliverableScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="close" size={28} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Submit Deliverable</Text>
+        <Text style={styles.headerTitle}>Submit Deliverables</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Campaign Requirements Card */}
-        <View style={styles.requirementsCard}>
-          <View style={styles.requirementsHeader}>
-            <Ionicons name="list-circle" size={24} color="#FFAD27" />
-            <Text style={styles.requirementsTitle}>Campaign Requirements</Text>
-          </View>
-          <View style={styles.requirementsList}>
-            <RequirementItem text="Create a 15-45 second vertical video" />
-            <RequirementItem text="Feature the restaurant and atmosphere" />
-            <RequirementItem text="Tag @TroodieApp in your post" />
-            <RequirementItem text="Use hashtag #TroodieCreatorMarketplace" />
-            <RequirementItem text="Include CTA about Troodie" />
-          </View>
-        </View>
-
-        {/* Post URL Input */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Post URL *</Text>
-          <Text style={styles.sectionDescription}>
-            Paste the link to your Instagram, TikTok, or YouTube post
-          </Text>
-          <View style={styles.urlInputContainer}>
-            <TextInput
-              style={[styles.urlInput, urlError && styles.urlInputError]}
-              placeholder="https://instagram.com/p/..."
-              value={postUrl}
-              onChangeText={setPostUrl}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              placeholderTextColor="#9CA3AF"
-            />
-            {isValidating && (
-              <ActivityIndicator size="small" color="#FFAD27" style={styles.urlValidationIcon} />
-            )}
-            {!isValidating && detectedPlatform && (
-              <Ionicons
-                name="checkmark-circle"
-                size={24}
-                color="#10B981"
-                style={styles.urlValidationIcon}
-              />
-            )}
-            {!isValidating && urlError && (
-              <Ionicons
-                name="close-circle"
-                size={24}
-                color="#EF4444"
-                style={styles.urlValidationIcon}
-              />
-            )}
-          </View>
-
-          {/* Platform Detection */}
-          {detectedPlatform && !urlError && (
-            <View style={styles.platformBadge}>
-              <Ionicons
-                name={getPlatformIcon(detectedPlatform)}
-                size={16}
-                color="#FFAD27"
-              />
-              <Text style={styles.platformBadgeText}>
-                {getPlatformLabel(detectedPlatform)} detected
+        {/* Progress Section - Always show if we have required deliverables or progress data */}
+        {showProgressSection && requiredCount > 0 && (
+          <View style={styles.progressSection}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressTitle}>Deliverable Progress</Text>
+              <Text style={styles.progressText}>
+                {submittedCount} of {requiredCount} submitted ({progressPercentage}%)
               </Text>
             </View>
-          )}
-
-          {/* URL Error */}
-          {urlError && (
-            <View style={styles.errorMessage}>
-              <Ionicons name="alert-circle" size={16} color="#EF4444" />
-              <Text style={styles.errorText}>{urlError}</Text>
+            <View style={styles.progressBar}>
+              <View 
+                style={[styles.progressFill, { width: `${progressPercentage}%` }]} 
+              />
             </View>
-          )}
+            {progress?.complete && (
+              <Text style={styles.completeText}>✓ All deliverables submitted</Text>
+            )}
+          </View>
+        )}
 
-          {/* URL Help Text */}
-          {!urlError && !detectedPlatform && postUrl.length === 0 && (
-            <View style={styles.helpBox}>
-              <Text style={styles.helpText}>
-                💡 Supported platforms: Instagram (posts, reels, stories), TikTok, YouTube
-              </Text>
+        {/* Required Deliverables List */}
+        {requiredDeliverables.length > 0 && (
+          <View style={styles.requiredSection}>
+            <Text style={styles.sectionTitle}>Expected Deliverables</Text>
+            {requiredDeliverables.map((req, index) => {
+              const deliverableProgress = progress?.deliverables.find(d => d.index === req.index);
+              // Only show as submitted if status is NOT 'pending' (meaning it's been actually submitted)
+              const isSubmitted = deliverableProgress && deliverableProgress.status !== 'pending';
+              return (
+                <View key={index} style={styles.requiredItem}>
+                  <Ionicons
+                    name={isSubmitted ? "checkmark-circle" : "ellipse-outline"}
+                    size={20}
+                    color={isSubmitted ? "#10B981" : "#9CA3AF"}
+                  />
+                  <View style={styles.requiredItemContent}>
+                    <Text style={styles.requiredItemTitle}>
+                      Deliverable {req.index}: {req.platform || 'Social Media Post'}
+                    </Text>
+                    {req.description && (
+                      <Text style={styles.requiredItemDesc}>{req.description}</Text>
+                    )}
+                    {isSubmitted && deliverableProgress && (
+                      <Text style={styles.requiredItemStatus}>
+                        Status: {deliverableProgress.status === 'pending_review' ? 'Pending Review' : 
+                                 deliverableProgress.status === 'approved' || deliverableProgress.status === 'auto_approved' ? 'Approved' :
+                                 deliverableProgress.status === 'rejected' ? 'Rejected' :
+                                 deliverableProgress.status === 'needs_revision' || deliverableProgress.status === 'revision_requested' ? 'Needs Revision' :
+                                 deliverableProgress.status}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Deliverables Forms */}
+        {deliverables.map((deliverable, index) => (
+          <View key={index} style={styles.deliverableForm}>
+            <View style={styles.deliverableHeader}>
+              <Text style={styles.deliverableNumber}>Deliverable {index + 1}</Text>
+              {deliverables.length > 1 && (
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeDeliverable(index)}
+                >
+                  <Ionicons name="close-circle" size={24} color="#EF4444" />
+                </TouchableOpacity>
+              )}
             </View>
-          )}
-        </View>
 
-        {/* Screenshot Upload (Optional) */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Screenshot (Optional)</Text>
-            <View style={styles.optionalBadge}>
-              <Text style={styles.optionalBadgeText}>Optional</Text>
+            {/* Post URL Input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Post URL *</Text>
+              <View style={styles.urlInputContainer}>
+                <TextInput
+                  style={[styles.urlInput, deliverable.urlError && styles.urlInputError]}
+                  placeholder="https://instagram.com/p/..."
+                  value={deliverable.url}
+                  onChangeText={(text) => updateDeliverable(index, { url: text })}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  placeholderTextColor="#9CA3AF"
+                />
+                {deliverable.isValidating && (
+                  <ActivityIndicator size="small" color="#FFAD27" style={styles.urlValidationIcon} />
+                )}
+                {!deliverable.isValidating && deliverable.platform && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={24}
+                    color="#10B981"
+                    style={styles.urlValidationIcon}
+                  />
+                )}
+                {!deliverable.isValidating && deliverable.urlError && (
+                  <Ionicons
+                    name="close-circle"
+                    size={24}
+                    color="#EF4444"
+                    style={styles.urlValidationIcon}
+                  />
+                )}
+              </View>
+
+              {/* Platform Detection */}
+              {deliverable.platform && !deliverable.urlError && (
+                <View style={styles.platformBadge}>
+                  <Ionicons
+                    name={getPlatformIcon(deliverable.platform)}
+                    size={16}
+                    color="#FFAD27"
+                  />
+                  <Text style={styles.platformBadgeText}>
+                    {getPlatformLabel(deliverable.platform)} detected
+                  </Text>
+                </View>
+              )}
+
+              {/* URL Error */}
+              {deliverable.urlError && (
+                <View style={styles.errorMessage}>
+                  <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                  <Text style={styles.errorText}>{deliverable.urlError}</Text>
+                </View>
+              )}
+
+              {/* URL Warning */}
+              {deliverable.urlWarning && !deliverable.urlError && (
+                <View style={styles.warningMessage}>
+                  <Ionicons name="warning" size={16} color="#F59E0B" />
+                  <Text style={styles.warningText}>{deliverable.urlWarning}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Screenshot Upload */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Screenshot (Optional)</Text>
+                <View style={styles.optionalBadge}>
+                  <Text style={styles.optionalBadgeText}>Optional</Text>
+                </View>
+              </View>
+              {deliverable.screenshotUri ? (
+                <View style={styles.screenshotPreview}>
+                  <Image source={{ uri: deliverable.screenshotUri }} style={styles.screenshotImage} />
+                  <TouchableOpacity
+                    style={styles.removeScreenshotButton}
+                    onPress={() => updateDeliverable(index, { screenshotUri: null })}
+                  >
+                    <Ionicons name="close-circle" size={28} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => pickScreenshot(index)}
+                  disabled={isUploadingScreenshot === index}
+                >
+                  {isUploadingScreenshot === index ? (
+                    <ActivityIndicator size="small" color="#6B7280" />
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={32} color="#6B7280" />
+                      <Text style={styles.uploadButtonText}>Tap to Upload Screenshot</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Caption */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Caption (Optional)</Text>
+                <View style={styles.optionalBadge}>
+                  <Text style={styles.optionalBadgeText}>Optional</Text>
+                </View>
+              </View>
+              <TextInput
+                style={styles.textArea}
+                placeholder="Paste your post caption here..."
+                value={deliverable.caption}
+                onChangeText={(text) => updateDeliverable(index, { caption: text })}
+                multiline
+                numberOfLines={4}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Notes */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Notes (Optional)</Text>
+                <View style={styles.optionalBadge}>
+                  <Text style={styles.optionalBadgeText}>Optional</Text>
+                </View>
+              </View>
+              <TextInput
+                style={styles.textArea}
+                placeholder="Any additional information..."
+                value={deliverable.notes}
+                onChangeText={(text) => updateDeliverable(index, { notes: text })}
+                multiline
+                numberOfLines={4}
+                placeholderTextColor="#9CA3AF"
+              />
             </View>
           </View>
-          <Text style={styles.sectionDescription}>
-            Upload a screenshot of your post for verification
-          </Text>
+        ))}
 
-          {screenshotUri ? (
-            <View style={styles.screenshotPreview}>
-              <Image source={{ uri: screenshotUri }} style={styles.screenshotImage} />
-              <TouchableOpacity style={styles.removeScreenshotButton} onPress={removeScreenshot}>
-                <Ionicons name="close-circle" size={28} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity style={styles.uploadButton} onPress={pickScreenshot}>
-              <Ionicons name="cloud-upload-outline" size={32} color="#6B7280" />
-              <Text style={styles.uploadButtonText}>Tap to Upload Screenshot</Text>
-              <Text style={styles.uploadButtonSubtext}>Helps restaurant verify your post</Text>
-            </TouchableOpacity>
-          )}
-
-          {isUploadingScreenshot && (
-            <View style={styles.uploadingIndicator}>
-              <ActivityIndicator size="small" color="#FFAD27" />
-              <Text style={styles.uploadingText}>Uploading screenshot...</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Caption (Optional) */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Caption (Optional)</Text>
-            <View style={styles.optionalBadge}>
-              <Text style={styles.optionalBadgeText}>Optional</Text>
-            </View>
-          </View>
-          <Text style={styles.sectionDescription}>
-            Copy your post caption for reference
-          </Text>
-          <TextInput
-            style={[styles.textArea]}
-            placeholder="Paste your post caption here..."
-            value={caption}
-            onChangeText={setCaption}
-            multiline
-            numberOfLines={4}
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
-
-        {/* Notes to Restaurant (Optional) */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Notes to Restaurant (Optional)</Text>
-            <View style={styles.optionalBadge}>
-              <Text style={styles.optionalBadgeText}>Optional</Text>
-            </View>
-          </View>
-          <Text style={styles.sectionDescription}>
-            Any additional information you'd like to share
-          </Text>
-          <TextInput
-            style={[styles.textArea]}
-            placeholder="e.g., Posted during peak dinner hours, received great engagement..."
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={4}
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
+        {/* Add Another Deliverable Button */}
+        <TouchableOpacity style={styles.addButton} onPress={addDeliverable}>
+          <Ionicons name="add-circle-outline" size={24} color="#FFAD27" />
+          <Text style={styles.addButtonText}>Add Another Deliverable</Text>
+        </TouchableOpacity>
 
         {/* Info Box */}
         <View style={styles.infoBox}>
@@ -373,7 +622,7 @@ export default function SubmitDeliverableScreen() {
           <View style={styles.infoBoxContent}>
             <Text style={styles.infoBoxTitle}>What happens next?</Text>
             <Text style={styles.infoBoxText}>
-              The restaurant will review your deliverable within 72 hours. If not reviewed, it will be
+              The restaurant will review your deliverables within 72 hours. If not reviewed, they will be
               automatically approved and payment will be processed.
             </Text>
           </View>
@@ -383,7 +632,7 @@ export default function SubmitDeliverableScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Submit Button (Fixed Bottom) */}
+      {/* Submit Button */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
@@ -394,25 +643,14 @@ export default function SubmitDeliverableScreen() {
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
-              <Text style={styles.submitButtonText}>Submit for Review</Text>
+              <Text style={styles.submitButtonText}>
+                Submit {deliverables.length} Deliverable{deliverables.length !== 1 ? 's' : ''}
+              </Text>
               <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
             </>
           )}
         </TouchableOpacity>
       </View>
-    </View>
-  );
-}
-
-// ============================================================================
-// SUB-COMPONENTS
-// ============================================================================
-
-function RequirementItem({ text }: { text: string }) {
-  return (
-    <View style={styles.requirementItem}>
-      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-      <Text style={styles.requirementText}>{text}</Text>
     </View>
   );
 }
@@ -489,12 +727,57 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
   content: {
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 20
   },
-  requirementsCard: {
+  progressSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB'
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  progressTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937'
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#6B7280'
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 4
+  },
+  completeText: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '600'
+  },
+  requiredSection: {
     backgroundColor: '#FFFAF2',
     borderRadius: 12,
     borderWidth: 2,
@@ -502,42 +785,68 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 24
   },
-  requirementsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  requirementsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginLeft: 8
-  },
-  requirementsList: {
-    gap: 8
-  },
-  requirementItem: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  requirementText: {
-    fontSize: 14,
-    color: '#1F2937',
-    marginLeft: 8,
-    flex: 1
-  },
-  section: {
-    marginBottom: 24
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
-  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
+    marginBottom: 12
+  },
+  requiredItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12
+  },
+  requiredItemContent: {
+    flex: 1,
+    marginLeft: 12
+  },
+  requiredItemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4
+  },
+  requiredItemDesc: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 4
+  },
+  requiredItemStatus: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '500'
+  },
+  deliverableForm: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB'
+  },
+  deliverableHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  deliverableNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937'
+  },
+  removeButton: {
+    padding: 4
+  },
+  section: {
+    marginBottom: 20
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4
   },
   sectionDescription: {
@@ -605,18 +914,24 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginLeft: 6
   },
-  helpBox: {
-    backgroundColor: '#F0F9FF',
+  warningMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
     padding: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
     marginTop: 8
   },
-  helpText: {
+  warningText: {
     fontSize: 13,
-    color: '#0369A1'
+    color: '#92400E',
+    marginLeft: 6,
+    flex: 1
   },
   uploadButton: {
-    height: 160,
+    height: 120,
     borderWidth: 2,
     borderColor: '#E5E7EB',
     borderStyle: 'dashed',
@@ -626,20 +941,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF'
   },
   uploadButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1F2937',
     marginTop: 8
   },
-  uploadButtonSubtext: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4
-  },
   screenshotPreview: {
     position: 'relative',
     aspectRatio: 9 / 16,
-    maxHeight: 400,
+    maxHeight: 300,
     borderRadius: 12,
     overflow: 'hidden'
   },
@@ -654,17 +964,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 14
   },
-  uploadingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12
-  },
-  uploadingText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginLeft: 8
-  },
   textArea: {
     minHeight: 100,
     borderWidth: 1,
@@ -676,13 +975,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     textAlignVertical: 'top'
   },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#FFAD27',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    backgroundColor: '#FFFAF2',
+    marginBottom: 24
+  },
+  addButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFAD27',
+    marginLeft: 8
+  },
   infoBox: {
     flexDirection: 'row',
     backgroundColor: '#EFF6FF',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#BFDBFE'
+    borderColor: '#BFDBFE',
+    marginBottom: 24
   },
   infoBoxContent: {
     flex: 1,
