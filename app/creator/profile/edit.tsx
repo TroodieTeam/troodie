@@ -9,6 +9,7 @@
  * - Open to Collabs toggle
  */
 
+import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatorProfile } from '@/hooks/useCreatorProfileId';
@@ -16,7 +17,12 @@ import { supabase } from '@/lib/supabase';
 import {
     updateCreatorProfile
 } from '@/services/creatorDiscoveryService';
-import { uploadPortfolioImage } from '@/services/portfolioImageService';
+import { addPortfolioItems } from '@/services/creatorUpgradeService';
+import {
+  uploadAllPortfolioImages,
+  UploadProgress,
+  PortfolioImage as PortfolioImageType,
+} from '@/services/portfolioImageService';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Check, Lightbulb, Play, Plus, X } from 'lucide-react-native';
@@ -49,8 +55,15 @@ export default function EditCreatorProfileScreen() {
   const [hasChanges, setHasChanges] = useState(false);
   
   // CM-15: Portfolio management
-  const [portfolioItems, setPortfolioItems] = useState<Array<{ id: string; media_url: string; media_type: string }>>([]);
+  const [portfolioItems, setPortfolioItems] = useState<Array<{ 
+    id: string; 
+    image_url?: string; 
+    video_url?: string; 
+    media_type: string;
+    thumbnail_url?: string;
+  }>>([]);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
 
   useEffect(() => {
     if (creatorProfile) {
@@ -75,7 +88,7 @@ export default function EditCreatorProfileScreen() {
       console.log('[EditCreatorProfileScreen] Loading portfolio items for profile:', creatorProfile.id);
       const { data, error } = await supabase
         .from('creator_portfolio_items')
-        .select('id, image_url, video_url, media_type, display_order')
+        .select('id, image_url, video_url, media_type, thumbnail_url, display_order')
         .eq('creator_profile_id', creatorProfile.id)
         .order('display_order');
       
@@ -88,8 +101,10 @@ export default function EditCreatorProfileScreen() {
       if (data) {
         setPortfolioItems(data.map(item => ({
           id: item.id,
-          media_url: item.image_url || item.video_url || '',
+          image_url: item.image_url || undefined,
+          video_url: item.video_url || undefined,
           media_type: item.media_type || 'image',
+          thumbnail_url: item.thumbnail_url || undefined,
         })));
         console.log('[EditCreatorProfileScreen] Portfolio items set:', data.length);
       }
@@ -98,7 +113,7 @@ export default function EditCreatorProfileScreen() {
     }
   };
 
-  // CM-15: Add portfolio item
+  // CM-15: Add portfolio item (matches onboarding flow)
   const handleAddPortfolioItem = async () => {
     if (!creatorProfile?.id || !user?.id) return;
     
@@ -110,54 +125,75 @@ export default function EditCreatorProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
+        mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow both images and videos
+        allowsMultipleSelection: true,
+        selectionLimit: 10 - portfolioItems.length, // Max 10 items total
         quality: 0.8,
       });
 
-      if (result.canceled || !result.assets[0]) return;
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
 
       setUploadingPortfolio(true);
-      const imageId = `portfolio-${Date.now()}`;
       
-      // Upload to storage
-      const uploadResult = await uploadPortfolioImage(
+      // Convert to PortfolioImage format (same as onboarding)
+      const newMedia: PortfolioImageType[] = result.assets.map(asset => ({
+        id: `portfolio-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        uri: asset.uri,
+        caption: '',
+        mediaType: asset.type === 'video' ? 'video' as const : 'image' as const,
+        duration: asset.duration ?? undefined,
+      }));
+
+      // Upload all media (same flow as onboarding)
+      const uploadedMedia = await uploadAllPortfolioImages(
         user.id,
-        result.assets[0].uri,
-        imageId
+        newMedia,
+        setUploadProgress
       );
 
-      if (!uploadResult.success || !uploadResult.url) {
-        throw new Error(uploadResult.error || 'Upload failed');
+      // Filter successful uploads
+      const successfulUploads = uploadedMedia.filter(
+        (media): media is NonNullable<typeof media> => 
+          media !== null && 
+          media !== undefined && 
+          media.url !== undefined && 
+          media.url !== null &&
+          media.url.length > 0
+      );
+
+      if (successfulUploads.length === 0) {
+        throw new Error('No items uploaded successfully');
       }
 
-      // Add to database
-      const { data, error } = await supabase
-        .from('creator_portfolio_items')
-        .insert({
-          creator_profile_id: creatorProfile.id,
-          media_url: uploadResult.url,
-          media_type: 'image',
-          display_order: portfolioItems.length,
-        })
-        .select()
-        .single();
+      // Add to database using same RPC function as onboarding
+      const portfolioResult = await addPortfolioItems(
+        creatorProfile.id,
+        successfulUploads.map((media, index) => ({
+          imageUrl: media.mediaType === 'image' ? media.url : undefined,
+          videoUrl: media.mediaType === 'video' ? media.url : undefined,
+          thumbnailUrl: media.thumbnailUrl,
+          mediaType: media.mediaType || 'image',
+          caption: media.caption,
+          displayOrder: portfolioItems.length + index,
+          isFeatured: false,
+        }))
+      );
 
-      if (error) throw error;
-
-      if (data) {
-        setPortfolioItems([...portfolioItems, {
-          id: data.id,
-          media_url: data.media_url || data.video_url || '',
-          media_type: data.media_type || 'image',
-        }]);
-        setHasChanges(true);
+      if (!portfolioResult.success) {
+        throw new Error(portfolioResult.error || 'Failed to save portfolio items');
       }
+
+      // Reload portfolio items
+      await loadPortfolioItems();
+      setHasChanges(true);
+      
+      Alert.alert('Success', `Added ${successfulUploads.length} item(s) to your portfolio.`);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to upload image');
+      console.error('[EditCreatorProfileScreen] Error adding portfolio item:', error);
+      Alert.alert('Error', error.message || 'Failed to add portfolio item.');
     } finally {
       setUploadingPortfolio(false);
+      setUploadProgress([]);
     }
   };
 
@@ -739,28 +775,43 @@ export default function EditCreatorProfileScreen() {
         <View style={{ marginBottom: 24 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text }}>Portfolio</Text>
-            <Text style={{ fontSize: 13, color: DS.colors.textLight }}>{portfolioItems.length}/10 images</Text>
+            <Text style={{ fontSize: 13, color: DS.colors.textLight }}>{portfolioItems.length}/10 items</Text>
           </View>
           <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 12 }}>
             Showcase your best food content to attract restaurants
           </Text>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {portfolioItems.map((item) => (
-              <View key={item.id} style={{ width: '31%', aspectRatio: 1, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
-                <Image source={{ uri: item.media_url }} style={{ width: '100%', height: '100%' }} />
-                {item.media_type === 'video' && (
-                  <View style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    borderRadius: 12,
-                    padding: 4,
-                  }}>
-                    <Play size={16} color="white" />
-                  </View>
-                )}
+            {portfolioItems.map((item) => {
+              const mediaUrl = item.media_type === 'video' 
+                ? (item.video_url || item.thumbnail_url || item.image_url)
+                : (item.image_url || item.thumbnail_url);
+              
+              return (
+                <View key={item.id} style={{ width: '31%', aspectRatio: 1, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
+                  {item.media_type === 'video' && item.video_url ? (
+                    <VideoThumbnail
+                      videoUri={item.video_url}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="cover"
+                    />
+                  ) : mediaUrl ? (
+                    <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%' }} />
+                  ) : (
+                    <View style={{ width: '100%', height: '100%', backgroundColor: DS.colors.border }} />
+                  )}
+                  {item.media_type === 'video' && (
+                    <View style={{
+                      position: 'absolute',
+                      top: 4,
+                      left: 4,
+                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      borderRadius: 12,
+                      padding: 4,
+                    }}>
+                      <Play size={16} color="white" />
+                    </View>
+                  )}
                 <TouchableOpacity
                   style={{
                     position: 'absolute',
