@@ -1,17 +1,17 @@
+import { AuthGate } from '@/components/AuthGate';
 import { BoardCard } from '@/components/BoardCard';
 import { PostCard } from '@/components/PostCard';
 import { RestaurantCard } from '@/components/cards/RestaurantCard';
+import { MenuButton } from '@/components/common/MenuButton';
 import { EditProfileModal } from '@/components/modals/EditProfileModal';
 import SettingsModal from '@/components/modals/SettingsModal';
 import { CommunityTab } from '@/components/profile/CommunityTab';
-import { MenuButton } from '@/components/common/MenuButton';
-import { AuthGate } from '@/components/AuthGate';
-import { designTokens, compactDesign } from '@/constants/designTokens';
+import { compactDesign, designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
-import { useSmoothDataFetch, useSmoothMultiDataFetch } from '@/hooks/useSmoothDataFetch';
+import { useSmoothDataFetch } from '@/hooks/useSmoothDataFetch';
 import { supabase } from '@/lib/supabase';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
@@ -19,7 +19,9 @@ import { boardServiceExtended } from '@/services/boardServiceExtended';
 import { communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
+import { restaurantFavoriteService } from '@/services/restaurantFavoriteService';
 import { restaurantService } from '@/services/restaurantService';
+import { restaurantVisitService } from '@/services/restaurantVisitService';
 import ShareService from '@/services/shareService';
 import { ToastService } from '@/services/toastService';
 import { Board, BoardRestaurant } from '@/types/board';
@@ -36,12 +38,10 @@ import {
   MessageSquare,
   PenLine,
   Plus,
-  Settings,
   Share2,
-  User,
   Users
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -115,25 +115,25 @@ export default function ProfileScreen() {
     try {
       // First try to get Your Saves board
       let quickSaves = await boardService.getQuickSavesRestaurants(user.id, 50);
-      
+
       // If no Quick Saves board, get ALL saves
       if (!quickSaves || quickSaves.length === 0) {
         quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 50);
       }
-      
+
       if (!quickSaves || quickSaves.length === 0) {
         return [];
       }
-      
+
       // Batch fetch restaurant details for better performance
       const restaurantIds = quickSaves.map(save => save.restaurant_id);
       const uniqueRestaurantIds = [...new Set(restaurantIds)];
-      
+
       // Fetch all restaurants in parallel with error handling for individual failures
       const restaurants = await Promise.allSettled(
         uniqueRestaurantIds.map(id => restaurantService.getRestaurantById(id))
       );
-      
+
       // Create a map for quick lookup, only including successful fetches
       const restaurantMap = new Map();
       restaurants.forEach((result, index) => {
@@ -141,13 +141,13 @@ export default function ProfileScreen() {
           restaurantMap.set(uniqueRestaurantIds[index], result.value);
         }
       });
-      
+
       // Map restaurants to saves
       const savesWithRestaurants = quickSaves.map(save => ({
         ...save,
         restaurant: restaurantMap.get(save.restaurant_id) || undefined
       }));
-      
+
       return savesWithRestaurants.filter(save => save.restaurant);
     } catch (error) {
       console.error('Error fetching your saves:', error);
@@ -175,88 +175,115 @@ export default function ProfileScreen() {
     }
   }, [user?.id]);
 
+  const fetchUserStatus = useCallback(async () => {
+    if (!user?.id) return { favorites: new Set<string>(), visited: new Set<string>() };
+    try {
+      const [favs, visits] = await Promise.all([
+        restaurantFavoriteService.getUserFavorites(user.id),
+        restaurantVisitService.getUserVisitedRestaurants(user.id)
+      ]);
+      return { favorites: new Set(favs), visited: new Set(visits) };
+    } catch (error) {
+      console.error('Error fetching user status:', error);
+      return { favorites: new Set<string>(), visited: new Set<string>() };
+    }
+  }, [user?.id]);
+
   // Use smooth data fetching
   const { data: profile, loading: loadingProfile } = useSmoothDataFetch(
-    fetchProfile, 
-    [user?.id], 
+    fetchProfile,
+    [user?.id],
     { minLoadingTime: 300, fetchOnFocus: true }
   );
 
   const { data: achievements } = useSmoothDataFetch(
-    fetchAchievements, 
-    [user?.id], 
+    fetchAchievements,
+    [user?.id],
     { minLoadingTime: 300, fetchOnFocus: true }
   );
 
-  const { 
-    data: boards, 
+  const {
+    data: boards,
     loading: loadingBoards,
-    refresh: refreshBoards 
+    refresh: refreshBoards
   } = useSmoothDataFetch(
-    fetchBoards, 
-    [user?.id], 
-    { 
-      minLoadingTime: 300, 
+    fetchBoards,
+    [user?.id],
+    {
+      minLoadingTime: 300,
       fetchOnFocus: true,
-      cacheDuration: 60000 
+      cacheDuration: 60000
     }
   );
 
-  const { 
-    data: posts, 
+  const {
+    data: posts,
     loading: loadingPosts,
-    refresh: refreshPosts 
+    refresh: refreshPosts
   } = useSmoothDataFetch(
-    fetchPosts, 
-    [user?.id], 
-    { 
-      minLoadingTime: 300, 
+    fetchPosts,
+    [user?.id],
+    {
+      minLoadingTime: 300,
       fetchOnFocus: true,
-      cacheDuration: 60000 
+      cacheDuration: 60000
     }
   );
 
-  const { 
-    data: quickSaves, 
+  const {
+    data: quickSaves,
     loading: loadingQuickSaves,
     refreshing: refreshingQuickSaves,
-    refresh: refreshQuickSaves 
+    refresh: refreshQuickSaves
   } = useSmoothDataFetch(
-    fetchQuickSaves, 
-    [user?.id], 
-    { 
-      minLoadingTime: 300, 
+    fetchQuickSaves,
+    [user?.id],
+    {
+      minLoadingTime: 300,
       fetchOnFocus: true,
-      cacheDuration: 30000 
+      cacheDuration: 30000
     }
   );
 
-  const { 
-    data: communities, 
+  const {
+    data: communities,
     loading: loadingCommunities,
     refreshing: refreshingCommunities,
-    refresh: refreshCommunities 
+    refresh: refreshCommunities
   } = useSmoothDataFetch(
-    fetchCommunities, 
-    [user?.id], 
-    { 
-      minLoadingTime: 300, 
+    fetchCommunities,
+    [user?.id],
+    {
+      minLoadingTime: 300,
       fetchOnFocus: true,
-      cacheDuration: 60000 
+      cacheDuration: 60000
     }
   );
 
-  const { 
-    data: communityStats, 
+  const {
+    data: communityStats,
     loading: loadingCommunityStats,
-    refresh: refreshCommunityStats 
+    refresh: refreshCommunityStats
   } = useSmoothDataFetch(
-    fetchCommunityStats, 
-    [user?.id], 
-    { 
-      minLoadingTime: 300, 
+    fetchCommunityStats,
+    [user?.id],
+    {
+      minLoadingTime: 300,
       fetchOnFocus: true,
-      cacheDuration: 60000 
+      cacheDuration: 60000
+    }
+  );
+
+  const {
+    data: userStatus,
+    loading: loadingUserStatus
+  } = useSmoothDataFetch(
+    fetchUserStatus,
+    [user?.id],
+    {
+      minLoadingTime: 300,
+      fetchOnFocus: true,
+      cacheDuration: 30000
     }
   );
 
@@ -267,9 +294,10 @@ export default function ProfileScreen() {
   const safeQuickSaves = quickSaves || [];
   const safeCommunities = communities || { joined: [], created: [] };
   const safeCommunityStats = communityStats || { joined_count: 0, created_count: 0, admin_count: 0, moderator_count: 0 };
+  const safeUserStatus = userStatus || { favorites: new Set<string>(), visited: new Set<string>() };
 
-  const persona = profile?.persona ? personas[profile.persona as PersonaType] : 
-                 (onboardingState.persona ? personas[onboardingState.persona] : null);
+  const persona = profile?.persona ? personas[profile.persona as PersonaType] :
+    (onboardingState.persona ? personas[onboardingState.persona] : null);
 
   // Subscribe to real-time updates for following/followers count
   useEffect(() => {
@@ -329,7 +357,7 @@ export default function ProfileScreen() {
 
   const handleShareProfile = async () => {
     if (!profile) return;
-    
+
     try {
       const result = await ShareService.share({
         type: 'profile',
@@ -338,7 +366,7 @@ export default function ProfileScreen() {
         title: profile.name || profile.username || 'Troodie User',
         description: profile.bio || `Follow for great restaurant recommendations!`
       });
-      
+
       if (result.success) {
         ToastService.showSuccess('Profile shared successfully');
       }
@@ -401,14 +429,14 @@ export default function ProfileScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity 
-        style={styles.headerButton} 
+      <TouchableOpacity
+        style={styles.headerButton}
         onPress={() => router.push('/find-friends')}
       >
         <Users size={24} color={designTokens.colors.textDark} />
       </TouchableOpacity>
       <View style={styles.headerSpacer} />
-      <MenuButton 
+      <MenuButton
         onPress={() => setShowSettingsModal(true)}
         iconName="settings-outline"
         size={24}
@@ -421,8 +449,8 @@ export default function ProfileScreen() {
     <View style={styles.profileInfo}>
       <View style={styles.profileHeader}>
         <TouchableOpacity style={styles.avatarContainer} onPress={() => setShowEditModal(true)}>
-          <Image 
-            source={{ uri: getAvatarUrlWithFallback(userData.avatar) }} 
+          <Image
+            source={{ uri: getAvatarUrlWithFallback(userData.avatar) }}
             style={styles.avatar}
             resizeMode="cover"
           />
@@ -440,7 +468,7 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
-          
+
           {userData.bio ? (
             <Text style={styles.bio} numberOfLines={2}>{userData.bio}</Text>
           ) : (
@@ -522,7 +550,7 @@ export default function ProfileScreen() {
             Boards ({safeBoards.length})
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
           onPress={() => setActiveTab('posts')}
@@ -558,12 +586,14 @@ export default function ProfileScreen() {
           data={safeQuickSaves}
           renderItem={({ item }: { item: BoardRestaurant & { restaurant?: RestaurantInfo } }) => {
             if (!item.restaurant) return null;
-            
+
             return (
               <View style={styles.quickSaveItem}>
-                <RestaurantCard 
-                  restaurant={item.restaurant} 
+                <RestaurantCard
+                  restaurant={item.restaurant}
                   onPress={() => router.push(`/restaurant/${item.restaurant_id}`)}
+                  isFavorited={safeUserStatus.favorites.has(item.restaurant_id)}
+                  isVisited={safeUserStatus.visited.has(item.restaurant_id)}
                 />
               </View>
             );
@@ -588,7 +618,7 @@ export default function ProfileScreen() {
           <Text style={styles.emptyDescription}>
             Tap the save button on any restaurant to add it here
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.emptyCTA}
             onPress={() => router.push('/explore')}
           >
@@ -609,9 +639,9 @@ export default function ProfileScreen() {
         <FlatList
           data={safeBoards}
           renderItem={({ item }: { item: Board }) => (
-            <BoardCard 
-              key={item.id} 
-              board={item} 
+            <BoardCard
+              key={item.id}
+              board={item}
               onPress={() => router.push(`/boards/${item.id}`)}
             />
           )}
@@ -619,8 +649,8 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.boardsList}
           ListFooterComponent={() => (
-            <TouchableOpacity 
-              style={styles.addBoardButton} 
+            <TouchableOpacity
+              style={styles.addBoardButton}
               onPress={() => router.push('/add/create-board')}
             >
               <Plus size={20} color={designTokens.colors.primaryOrange} />
@@ -637,7 +667,7 @@ export default function ProfileScreen() {
           <Text style={styles.emptyDescription}>
             Organize your saved restaurants into collections
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.emptyCTA}
             onPress={() => router.push('/add/create-board')}
           >
@@ -672,7 +702,7 @@ export default function ProfileScreen() {
             <Text style={styles.emptyDescription}>
               Post about your restaurant visits and build your foodie reputation
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.emptyCTA}
               onPress={() => router.push('/add/create-post')}
             >
@@ -689,7 +719,7 @@ export default function ProfileScreen() {
         <FlatList
           data={safePosts}
           renderItem={({ item }: { item: PostWithUser }) => {
-            
+
             return (
               <PostCard
                 post={item}
@@ -719,7 +749,7 @@ export default function ProfileScreen() {
   // Show AuthGate for non-authenticated users
   if (!isAuthenticated) {
     return (
-      <AuthGate 
+      <AuthGate
         screenName="your profile"
         customTitle="Create Your Food Journey"
         customMessage="Build your personal food profile, save your favorite restaurants, share reviews, and connect with fellow food enthusiasts."
@@ -743,45 +773,45 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-        {/* Header and Profile Info - Fixed Content */}
-        <View style={styles.fixedContent}>
-          {renderHeader()}
-          {renderProfileInfo()}
-          {renderTabs()}
-        </View>
+      {/* Header and Profile Info - Fixed Content */}
+      <View style={styles.fixedContent}>
+        {renderHeader()}
+        {renderProfileInfo()}
+        {renderTabs()}
+      </View>
 
-        {/* Tab Content - Scrollable */}
-        <View style={styles.tabContentContainer}>
-          {activeTab === 'quicksaves' && renderQuickSavesTab()}
-          {activeTab === 'boards' && renderBoardsTab()}
-          {activeTab === 'posts' && renderPostsTab()}
-          {activeTab === 'communities' && (
-            <CommunityTab
-              userId={user?.id || ''}
-              communities={safeCommunities}
-              stats={safeCommunityStats}
-              loading={loadingCommunities}
-              refreshing={refreshingCommunities}
-              onRefresh={() => {
-                refreshCommunities();
-                refreshCommunityStats();
-              }}
-            />
-          )}
-        </View>
+      {/* Tab Content - Scrollable */}
+      <View style={styles.tabContentContainer}>
+        {activeTab === 'quicksaves' && renderQuickSavesTab()}
+        {activeTab === 'boards' && renderBoardsTab()}
+        {activeTab === 'posts' && renderPostsTab()}
+        {activeTab === 'communities' && (
+          <CommunityTab
+            userId={user?.id || ''}
+            communities={safeCommunities}
+            stats={safeCommunityStats}
+            loading={loadingCommunities}
+            refreshing={refreshingCommunities}
+            onRefresh={() => {
+              refreshCommunities();
+              refreshCommunityStats();
+            }}
+          />
+        )}
+      </View>
 
-        <SettingsModal 
-          visible={showSettingsModal} 
-          onClose={() => setShowSettingsModal(false)} 
-        />
-        
-        <EditProfileModal
-          visible={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          onSave={handleProfileSave}
-          currentProfile={profile}
-        />
-      </SafeAreaView>
+      <SettingsModal
+        visible={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
+
+      <EditProfileModal
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleProfileSave}
+        currentProfile={profile}
+      />
+    </SafeAreaView>
   );
 }
 
