@@ -437,7 +437,13 @@ export default function EditCreatorProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+      <ScrollView 
+        style={{ flex: 1 }} 
+        contentContainerStyle={{ 
+          padding: 16,
+          paddingBottom: hasChanges ? 100 : 16, // Extra padding when floating button is visible
+        }}
+      >
         {/* CM-15: Profile Completeness Indicator */}
         {(() => {
           const { percentage, missingItems } = calculateCompleteness();
@@ -957,6 +963,53 @@ export default function EditCreatorProfileScreen() {
         initialIndex={viewerInitialIndex}
         onClose={() => setVideoViewerVisible(false)}
       />
+
+      {/* Floating Save Button - More prominent when there are changes */}
+      {hasChanges && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: DS.colors.backgroundWhite,
+            borderTopWidth: 1,
+            borderTopColor: DS.colors.border,
+            padding: 16,
+            paddingBottom: 32,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving}
+            style={{
+              backgroundColor: DS.colors.primary,
+              paddingVertical: 16,
+              borderRadius: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: DS.colors.primary,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 6,
+            }}
+          >
+            <Text style={{ 
+              color: 'white', 
+              fontWeight: '700',
+              fontSize: 16,
+            }}>
+              {saving ? 'Saving Changes...' : 'Save Changes'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
