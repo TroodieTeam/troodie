@@ -6,10 +6,10 @@
 import { DS } from '@/components/design-system/tokens';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAccountType } from '@/hooks/useAccountType';
-import { pushNotificationService } from '@/services/pushNotificationService';
-import { profileService } from '@/services/profileService';
 import { personas } from '@/data/personas';
+import { useAccountType } from '@/hooks/useAccountType';
+import { profileService } from '@/services/profileService';
+import { pushNotificationService } from '@/services/pushNotificationService';
 import { PersonaType } from '@/types/onboarding';
 import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import Constants from 'expo-constants';
@@ -29,9 +29,10 @@ import {
   Settings,
   Star,
   Store,
-  Target
+  Target,
+  TrendingUp
 } from 'lucide-react-native';
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -269,6 +270,14 @@ export default function MoreScreen() {
   // Creator Tools Section
   const creatorItems: MenuItem[] = isCreator ? [
     {
+      id: 'creator-profile',
+      title: 'Creator Profile',
+      subtitle: 'Edit your profile and availability',
+      icon: Settings,
+      iconColor: '#6366F1',
+      action: () => router.push('/creator/profile/edit'),
+    },
+    {
       id: 'explore-campaigns',
       title: 'Explore Campaigns',
       subtitle: 'Discover new brand collaborations',
@@ -309,13 +318,29 @@ export default function MoreScreen() {
       // badgeCount: newApplications,
     },
     {
-      id: 'business-analytics',
-      title: 'Analytics',
-      subtitle: 'Restaurant performance insights',
+      id: 'discover-creators',
+      title: 'Discover Creators',
+      subtitle: 'Browse and find creators for campaigns',
+      icon: Compass,
+      iconColor: '#6366F1',
+      action: () => router.push('/business/creators/browse'),
+    },
+    {
+      id: 'campaign-analytics',
+      title: 'Campaign Analytics',
+      subtitle: 'Track campaign performance & ROI',
       icon: BarChart3,
       iconColor: '#059669',
       action: () => router.push('/business/analytics'),
     },
+    ...(businessProfile?.restaurant_id ? [{
+      id: 'restaurant-analytics',
+      title: 'Restaurant Analytics',
+      subtitle: 'Saves, mentions & engagement metrics',
+      icon: TrendingUp,
+      iconColor: '#F59E0B',
+      action: () => router.push(`/restaurant/${businessProfile.restaurant_id}/analytics`),
+    }] : []),
     {
       id: 'restaurant-settings',
       title: 'Restaurant Settings',
@@ -666,7 +691,7 @@ const styles = StyleSheet.create({
   personaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: DS.colors.backgroundGray || '#F5F5F5',
+    backgroundColor: '#F5F5F5',
     paddingHorizontal: DS.spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
