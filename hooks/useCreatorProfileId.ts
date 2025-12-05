@@ -128,11 +128,13 @@ export interface CreatorProfile {
   display_name: string;
   bio?: string;
   location?: string;
-  food_specialties?: string[];
+  specialties?: string[];
+  availability_status?: 'available' | 'busy' | 'not_accepting';
+  open_to_collabs?: boolean;
   verification_status?: string;
   portfolio_uploaded?: boolean;
-  followers_count?: number;
-  content_count?: number;
+  total_followers?: number;
+  troodie_engagement_rate?: number;
 }
 
 interface UseCreatorProfileResult {
@@ -152,17 +154,29 @@ export function useCreatorProfile(): UseCreatorProfileResult {
       setLoading(true);
       setError(null);
 
+      console.log('[useCreatorProfile] Starting profile fetch');
+
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
+      console.log('[useCreatorProfile] Auth user:', {
+        hasUser: !!user,
+        userId: user?.id,
+        email: user?.email,
+        accountType: user?.user_metadata?.account_type,
+        userError: userError?.message || null,
+      });
+
       if (userError || !user) {
+        console.error('[useCreatorProfile] Not authenticated:', userError?.message);
         setError('Not authenticated');
         setProfile(null);
         return;
       }
 
+      console.log('[useCreatorProfile] Querying creator_profiles for user_id:', user.id);
       const { data, error: profileError } = await supabase
         .from('creator_profiles')
         .select(
@@ -172,34 +186,56 @@ export function useCreatorProfile(): UseCreatorProfileResult {
           display_name,
           bio,
           location,
-          food_specialties,
+          specialties,
+          availability_status,
+          open_to_collabs,
           verification_status,
           portfolio_uploaded,
-          followers_count,
-          content_count
+          total_followers,
+          troodie_engagement_rate
         `
         )
         .eq('user_id', user.id)
         .single();
 
+      console.log('[useCreatorProfile] Query result:', {
+        hasData: !!data,
+        profileId: data?.id,
+        displayName: data?.display_name,
+        error: profileError?.message || profileError?.code || null,
+        errorCode: profileError?.code,
+      });
+
       if (profileError) {
         if (profileError.code === 'PGRST116') {
+          console.warn('[useCreatorProfile] No creator_profiles record found for user:', user.id);
+          console.log('[useCreatorProfile] User account_type:', user.user_metadata?.account_type);
           setError('Creator profile not found');
         } else {
+          console.error('[useCreatorProfile] Profile query error:', profileError);
           setError(profileError.message);
         }
         setProfile(null);
         return;
       }
 
+      console.log('[useCreatorProfile] Profile loaded successfully:', {
+        id: data.id,
+        displayName: data.display_name,
+      });
       setProfile(data);
       setError(null);
     } catch (err: any) {
-      console.error('[useCreatorProfile] Error:', err);
+      console.error('[useCreatorProfile] Unexpected error:', {
+        message: err?.message,
+        stack: err?.stack,
+        error: err,
+      });
       setError(err.message || 'Failed to fetch creator profile');
       setProfile(null);
     } finally {
       setLoading(false);
+      console.log('[useCreatorProfile] Fetch complete');
     }
   };
 
