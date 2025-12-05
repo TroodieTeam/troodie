@@ -141,6 +141,13 @@ export async function getCreators(
 }
 
 function transformCreator(row: any): CreatorProfile {
+  console.log('[transformCreator] Transforming creator:', {
+    id: row.id,
+    display_name: row.display_name,
+    availability_status: row.availability_status,
+    hasAvailabilityStatus: 'availability_status' in row,
+  });
+  
   return {
     id: row.id,
     userId: row.user_id,
