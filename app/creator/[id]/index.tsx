@@ -4,11 +4,14 @@
  * Displays comprehensive creator profile including:
  * - Bio and location
  * - Social metrics (followers, engagement rate)
- * - Sample posts
+ * - Portfolio items
  * - Availability status
  * - Specialties
  */
 
+import { ImageViewer } from '@/components/ImageViewer';
+import { VideoThumbnail } from '@/components/VideoThumbnail';
+import { VideoViewer } from '@/components/VideoViewer';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { CreatorProfile, formatFollowers, getCreatorProfile } from '@/services/creatorDiscoveryService';
@@ -32,6 +35,11 @@ export default function CreatorProfileScreen() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Viewer state
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [videoViewerVisible, setVideoViewerVisible] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -337,53 +345,73 @@ export default function CreatorProfileScreen() {
           )}
         </View>
 
-        {/* CM-14: Portfolio Section */}
-        {profile.portfolioItems && profile.portfolioItems.length > 0 && (
-          <View style={{ padding: 16, backgroundColor: DS.colors.backgroundWhite, marginTop: 8 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>
-              Portfolio
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {profile.portfolioItems.map((item) => (
-                <TouchableOpacity key={item.id} style={{ width: '31%', aspectRatio: 1, position: 'relative' }}>
-                  <Image source={{ uri: item.mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
-                  {item.mediaType === 'video' && (
-                    <View style={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      backgroundColor: 'rgba(0,0,0,0.5)',
-                      borderRadius: 12,
-                      padding: 4,
-                    }}>
-                      <Play size={16} color="white" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Sample Posts - CM-14: Empty state */}
+        {/* Portfolio Section */}
         <View style={{ padding: 16, backgroundColor: DS.colors.backgroundWhite, marginTop: 8 }}>
           <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>
-            Sample Posts
+            Portfolio
           </Text>
-          {profile.samplePosts && profile.samplePosts.length > 0 ? (
+          {profile.portfolioItems && profile.portfolioItems.length > 0 ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {profile.samplePosts.map((post) => (
-                <TouchableOpacity
-                  key={post.postId}
-                  onPress={() => router.push(`/post/${post.postId}`)}
-                  style={{ width: '31%', aspectRatio: 1 }}
-                >
-                  <Image source={{ uri: post.imageUrl }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
-                </TouchableOpacity>
-              ))}
+              {profile.portfolioItems.map((item, index) => {
+                const mediaUrl = item.mediaType === 'video' 
+                  ? (item.mediaUrl || item.thumbnailUrl)
+                  : item.mediaUrl;
+                
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={{ width: '31%', aspectRatio: 1, position: 'relative' }}
+                    onPress={() => {
+                      if (item.mediaType === 'video' && item.mediaUrl) {
+                        // Open video viewer
+                        const videoUrls = profile.portfolioItems!
+                          .filter(i => i.mediaType === 'video' && i.mediaUrl)
+                          .map(i => i.mediaUrl!);
+                        const videoIndex = videoUrls.findIndex(url => url === item.mediaUrl);
+                        setViewerInitialIndex(Math.max(0, videoIndex));
+                        setVideoViewerVisible(true);
+                      } else if (mediaUrl) {
+                        // Open image viewer
+                        const imageUrls = profile.portfolioItems!
+                          .filter(i => i.mediaType === 'image' && i.mediaUrl)
+                          .map(i => i.mediaUrl!)
+                          .filter(Boolean);
+                        const imageIndex = imageUrls.findIndex(url => url === mediaUrl);
+                        setViewerInitialIndex(Math.max(0, imageIndex));
+                        setImageViewerVisible(true);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    {item.mediaType === 'video' && item.mediaUrl ? (
+                      <VideoThumbnail
+                        videoUri={item.mediaUrl}
+                        style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                        resizeMode="cover"
+                      />
+                    ) : mediaUrl ? (
+                      <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
+                    ) : (
+                      <View style={{ width: '100%', height: '100%', backgroundColor: DS.colors.border, borderRadius: 8 }} />
+                    )}
+                    {item.mediaType === 'video' && (
+                      <View style={{
+                        position: 'absolute',
+                        top: 4,
+                        left: 4,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        borderRadius: 12,
+                        padding: 4,
+                      }}>
+                        <Play size={16} color="white" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           ) : (
-            <Text style={{ fontSize: 14, color: DS.colors.textLight, fontStyle: 'italic' }}>No posts yet</Text>
+            <Text style={{ fontSize: 14, color: DS.colors.textLight, fontStyle: 'italic' }}>No portfolio items yet</Text>
           )}
         </View>
 
@@ -412,6 +440,28 @@ export default function CreatorProfileScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Image Viewer */}
+      <ImageViewer
+        visible={imageViewerVisible}
+        images={profile.portfolioItems
+          ?.filter(item => item.mediaType === 'image' && item.mediaUrl)
+          .map(item => item.mediaUrl!)
+          .filter(Boolean) as string[] || []}
+        initialIndex={viewerInitialIndex}
+        onClose={() => setImageViewerVisible(false)}
+      />
+
+      {/* Video Viewer */}
+      <VideoViewer
+        visible={videoViewerVisible}
+        videos={profile.portfolioItems
+          ?.filter(item => item.mediaType === 'video' && item.mediaUrl)
+          .map(item => item.mediaUrl!)
+          .filter(Boolean) as string[] || []}
+        initialIndex={viewerInitialIndex}
+        onClose={() => setVideoViewerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
