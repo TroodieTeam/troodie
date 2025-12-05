@@ -364,11 +364,84 @@ export async function getCreatorProfile(
       avgRating, // CM-14
       portfolioItems: portfolioItems?.map((item: any) => {
         // Handle both base schema (image_url only) and extended schema (with video_url)
+        const videoUrl = item.video_url || '';
+        const imageUrl = item.image_url || '';
+        
+        // Detect media type intelligently:
+        // 1. If video_url exists, it's definitely a video
+        // 2. If media_type is explicitly set, use it
+        // 3. Otherwise, detect from URL structure
+        let detectedMediaType: 'image' | 'video' = 'image';
+        let finalMediaUrl = videoUrl || imageUrl;
+        
+        if (videoUrl) {
+          detectedMediaType = 'video';
+          finalMediaUrl = videoUrl;
+        } else if (item.media_type) {
+          detectedMediaType = item.media_type as 'image' | 'video';
+          finalMediaUrl = imageUrl;
+        } else {
+          // Detect from URL structure
+          const url = imageUrl.toLowerCase();
+          const isCloudinaryVideo = url.includes('/video/upload/');
+          
+          if (
+            isCloudinaryVideo || // Cloudinary video path
+            url.includes('.mp4') ||
+            url.includes('.mov') ||
+            url.includes('.avi') ||
+            url.includes('.webm') ||
+            url.includes('.mkv') ||
+            (url.includes('video') && !url.includes('thumbnail'))
+          ) {
+            detectedMediaType = 'video';
+            
+            // For Cloudinary videos, extract the base video URL
+            // Cloudinary video URLs with .jpg extension are thumbnails
+            // We need to get the actual video URL by removing transformations and changing extension
+            if (isCloudinaryVideo) {
+              try {
+                // Cloudinary URL structure: .../video/upload/{transformations}/v{version}/{public_id}.{ext}
+                // To get base video: .../video/upload/v{version}/{public_id}.mp4
+                const urlObj = new URL(imageUrl);
+                const pathParts = urlObj.pathname.split('/');
+                const uploadIndex = pathParts.findIndex(p => p === 'upload');
+                
+                if (uploadIndex >= 0) {
+                  // Find version and filename (they come after transformations)
+                  // Look for pattern: v{numbers}/{filename}.{ext}
+                  const versionIndex = pathParts.findIndex((p, i) => 
+                    i > uploadIndex && /^v\d+$/.test(p)
+                  );
+                  
+                  if (versionIndex >= 0 && versionIndex < pathParts.length - 1) {
+                    // Reconstruct: /video/upload/v{version}/{filename}.mp4
+                    const version = pathParts[versionIndex];
+                    const fileName = pathParts[versionIndex + 1].replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                    const basePath = pathParts.slice(0, uploadIndex + 1).join('/');
+                    finalMediaUrl = `${urlObj.origin}${basePath}/${version}/${fileName}`;
+                  } else {
+                    // Fallback: simple replacement
+                    finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                  }
+                } else {
+                  // Fallback: simple replacement
+                  finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                }
+              } catch (e) {
+                // If URL parsing fails, try simple replacement
+                console.warn('[getCreatorProfile] Failed to parse Cloudinary video URL:', e);
+                finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+              }
+            }
+          }
+        }
+        
         const mapped = {
           id: item.id,
-          mediaUrl: item.video_url || item.image_url || '',
-          mediaType: item.media_type || 'image',
-          thumbnailUrl: item.thumbnail_url || undefined,
+          mediaUrl: finalMediaUrl,
+          mediaType: detectedMediaType,
+          thumbnailUrl: item.thumbnail_url || (detectedMediaType === 'video' && imageUrl && !videoUrl ? imageUrl : undefined),
         };
         console.log('[getCreatorProfile] Mapping portfolio item:', {
           original: { 

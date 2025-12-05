@@ -129,12 +129,70 @@ export default function BrowseCreators() {
                 mediaType: 'image' as const,
               }));
             } else if (!videoError && videoPortfolio) {
-              portfolioItems = (videoPortfolio || []).map((item: any) => ({
-                id: item.id,
-                mediaUrl: item.video_url || item.image_url || '',
-                mediaType: (item.media_type || 'image') as 'image' | 'video',
-                thumbnailUrl: item.thumbnail_url || undefined,
-              }));
+              portfolioItems = (videoPortfolio || []).map((item: any) => {
+                const videoUrl = item.video_url || '';
+                const imageUrl = item.image_url || '';
+                
+                // Detect media type intelligently (same logic as getCreatorProfile)
+                let detectedMediaType: 'image' | 'video' = 'image';
+                let finalMediaUrl = videoUrl || imageUrl;
+                
+                if (videoUrl) {
+                  detectedMediaType = 'video';
+                  finalMediaUrl = videoUrl;
+                } else if (item.media_type) {
+                  detectedMediaType = item.media_type as 'image' | 'video';
+                } else {
+                  // Detect from URL structure
+                  const url = imageUrl.toLowerCase();
+                  const isCloudinaryVideo = url.includes('/video/upload/');
+                  
+                  if (
+                    isCloudinaryVideo ||
+                    url.includes('.mp4') ||
+                    url.includes('.mov') ||
+                    url.includes('.avi') ||
+                    url.includes('.webm') ||
+                    url.includes('.mkv') ||
+                    (url.includes('video') && !url.includes('thumbnail'))
+                  ) {
+                    detectedMediaType = 'video';
+                    
+                    // Extract proper video URL from Cloudinary
+                    if (isCloudinaryVideo) {
+                      try {
+                        const urlObj = new URL(imageUrl);
+                        const pathParts = urlObj.pathname.split('/');
+                        const uploadIndex = pathParts.findIndex(p => p === 'upload');
+                        
+                        if (uploadIndex >= 0) {
+                          const versionIndex = pathParts.findIndex((p, i) => 
+                            i > uploadIndex && /^v\d+$/.test(p)
+                          );
+                          
+                          if (versionIndex >= 0 && versionIndex < pathParts.length - 1) {
+                            const version = pathParts[versionIndex];
+                            const fileName = pathParts[versionIndex + 1].replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                            const basePath = pathParts.slice(0, uploadIndex + 1).join('/');
+                            finalMediaUrl = `${urlObj.origin}${basePath}/${version}/${fileName}`;
+                          } else {
+                            finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                          }
+                        }
+                      } catch (e) {
+                        finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                      }
+                    }
+                  }
+                }
+                
+                return {
+                  id: item.id,
+                  mediaUrl: finalMediaUrl,
+                  mediaType: detectedMediaType,
+                  thumbnailUrl: item.thumbnail_url || (detectedMediaType === 'video' && imageUrl && !videoUrl ? imageUrl : undefined),
+                };
+              });
             }
           } catch (err) {
             console.error('[BrowseCreators] Error loading portfolio:', err);
