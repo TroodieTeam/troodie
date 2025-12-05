@@ -3,6 +3,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthRequired } from '@/hooks/useAuthRequired';
+import { restaurantFavoriteService } from '@/services/restaurantFavoriteService';
 import { restaurantImageSyncService } from '@/services/restaurantImageSyncService';
 import { restaurantPhotosService } from '@/services/restaurantPhotosService';
 import { restaurantService } from '@/services/restaurantService';
@@ -94,6 +95,7 @@ export default function RestaurantDetailScreen() {
     if (id && user) {
       checkSaveStatus(id as string);
       checkVisitStatus(id as string);
+      checkFavoriteStatus(id as string);
     }
   }, [id, user]);
 
@@ -104,6 +106,16 @@ export default function RestaurantDetailScreen() {
       setHasVisited(visited);
     } catch (error) {
       console.error('Error checking visit status:', error);
+    }
+  };
+
+  const checkFavoriteStatus = async (restaurantId: string) => {
+    if (!user) return;
+    try {
+      const favorited = await restaurantFavoriteService.isFavorited(user.id, restaurantId);
+      setIsFavorited(favorited);
+    } catch (error) {
+      console.error('Error checking favorite status:', error);
     }
   };
 
@@ -298,14 +310,41 @@ export default function RestaurantDetailScreen() {
 
   const handleFavorite = async () => {
     requireAuth(async () => {
-      if (!user || !restaurant?.id) return;
+      if (!user || !restaurant?.id) {
+        console.log('[handleFavorite] Blocked:', { hasUser: !!user, hasRestaurant: !!restaurant?.id });
+        return;
+      }
+
+      console.log('[handleFavorite] Starting optimistic favorite toggle for restaurant:', restaurant.id, 'user:', user.id, 'currentState:', isFavorited);
+
+      // Store the previous state for rollback
+      const previousState = isFavorited;
+      const newState = !isFavorited;
 
       try {
+        // Optimistic update - update UI immediately
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setIsFavorited(!isFavorited);
-        ToastService.showSuccess(isFavorited ? 'Removed from favorites' : 'Added to favorites');
+        setIsFavorited(newState);
+        console.log('[handleFavorite] Optimistically set to:', newState);
+
+        // Call backend service
+        const success = await restaurantFavoriteService.toggleFavorite(user.id, restaurant.id);
+        console.log('[handleFavorite] Service call result:', success);
+
+        if (success) {
+          console.log('[handleFavorite] Success confirmed! State:', newState);
+          // No toast needed - visual feedback is enough
+        } else {
+          // Revert on failure
+          console.log('[handleFavorite] Service returned false, reverting to:', previousState);
+          setIsFavorited(previousState);
+          ToastService.showError('Failed to update favorite');
+        }
       } catch (error) {
-        console.error('Error toggling favorite:', error);
+        // Revert on error
+        console.error('[handleFavorite] Error toggling favorite:', error);
+        console.log('[handleFavorite] Reverting to previous state:', previousState);
+        setIsFavorited(previousState);
         ToastService.showError('Failed to update favorite');
       }
     }, 'favorite restaurants');
@@ -317,8 +356,32 @@ export default function RestaurantDetailScreen() {
 
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setHasVisited(!hasVisited);
-        ToastService.showSuccess(hasVisited ? 'Visit removed' : 'Marked as visited!');
+
+        let success = false;
+        if (hasVisited) {
+          // Remove visit
+          success = await restaurantVisitService.removeVisit(user.id, restaurant.id);
+          if (success) {
+            setHasVisited(false);
+            ToastService.showSuccess('Visit removed');
+          }
+        } else {
+          // Add visit
+          success = await restaurantVisitService.markRestaurantAsVisited(
+            user.id,
+            restaurant.id,
+            undefined,
+            'check_in'
+          );
+          if (success) {
+            setHasVisited(true);
+            ToastService.showSuccess('Marked as visited!');
+          }
+        }
+
+        if (!success) {
+          ToastService.showError('Failed to update visit status');
+        }
       } catch (error) {
         console.error('Error toggling visit status:', error);
         ToastService.showError('Failed to update visit status');

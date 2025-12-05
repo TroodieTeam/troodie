@@ -3,21 +3,23 @@ import { designTokens } from '@/constants/designTokens'
 import { theme } from '@/constants/theme'
 import { useAuth } from '@/contexts/AuthContext'
 import { boardService } from '@/services/boardService'
+import { restaurantFavoriteService } from '@/services/restaurantFavoriteService'
 import { restaurantService } from '@/services/restaurantService'
+import { restaurantVisitService } from '@/services/restaurantVisitService'
 import { BoardRestaurant } from '@/types/board'
 import { RestaurantInfo } from '@/types/core'
 import { useRouter } from 'expo-router'
-import { ArrowLeft, Link, FileText, Star } from 'lucide-react-native'
+import { ArrowLeft, FileText, Link } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   RefreshControl,
   SafeAreaView,
   Text,
   TouchableOpacity,
-  View,
-  Linking
+  View
 } from 'react-native'
 
 type QuickSave = BoardRestaurant & { restaurant?: RestaurantInfo }
@@ -27,11 +29,14 @@ export default function QuickSavesScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [visited, setVisited] = useState<Set<string>>(new Set())
   const { user } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     loadQuickSaves()
+    loadUserStatus()
   }, [user?.id])
 
   const loadQuickSaves = async () => {
@@ -39,10 +44,10 @@ export default function QuickSavesScreen() {
 
     try {
       setError(null)
-      
+
       // Get all Your Saves (no limit)
       const quickSaves = await boardService.getQuickSavesRestaurants(user.id)
-      
+
       // Load restaurant details for each save
       const savesWithRestaurants = await Promise.all(
         quickSaves.map(async (save) => {
@@ -64,9 +69,24 @@ export default function QuickSavesScreen() {
     }
   }
 
+  const loadUserStatus = async () => {
+    if (!user?.id) return
+
+    try {
+      const [favs, visits] = await Promise.all([
+        restaurantFavoriteService.getUserFavorites(user.id),
+        restaurantVisitService.getUserVisitedRestaurants(user.id)
+      ])
+      setFavorites(new Set(favs))
+      setVisited(new Set(visits))
+    } catch (error) {
+      console.error('Error loading user status:', error)
+    }
+  }
+
   const onRefresh = async () => {
     setRefreshing(true)
-    await loadQuickSaves()
+    await Promise.all([loadQuickSaves(), loadUserStatus()])
   }
 
   const handleRestaurantPress = (restaurantId: string) => {
@@ -105,6 +125,8 @@ export default function QuickSavesScreen() {
         <RestaurantCard
           restaurant={item.restaurant}
           onPress={() => handleRestaurantPress(item.restaurant_id)}
+          isFavorited={favorites.has(item.restaurant_id)}
+          isVisited={visited.has(item.restaurant_id)}
         />
         {/* Context Section */}
         {(item.notes || item.external_url || item.rating) && (
@@ -122,11 +144,11 @@ export default function QuickSavesScreen() {
               </View>
             )}
             {item.external_url && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.linkContainer}
                 onPress={() => {
                   // Open the link in browser
-                  Linking.openURL(item.external_url).catch(err => 
+                  Linking.openURL(item.external_url).catch(err =>
                     console.error('Failed to open URL:', err)
                   )
                 }}
@@ -189,14 +211,14 @@ export default function QuickSavesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
-      
+
       {saves.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyTitle}>No Saves Yet</Text>
           <Text style={styles.emptyText}>
             Tap the save button on any restaurant to add it to Your Saves
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.exploreButton}
             onPress={() => router.push('/explore')}
           >

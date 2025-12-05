@@ -56,6 +56,29 @@ class RestaurantVisitService {
   }
 
   /**
+   * Remove a visit record for a user and restaurant
+   */
+  async removeVisit(userId: string, restaurantId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('restaurant_visits')
+        .delete()
+        .eq('user_id', userId)
+        .eq('restaurant_id', restaurantId);
+
+      if (error) {
+        console.error('[RestaurantVisitService] Error removing visit:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[RestaurantVisitService] Unexpected error removing visit:', error);
+      return false;
+    }
+  }
+
+  /**
    * Check if a user has visited a restaurant
    */
   async hasUserVisitedRestaurant(userId: string, restaurantId: string): Promise<boolean> {

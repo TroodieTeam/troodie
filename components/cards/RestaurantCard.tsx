@@ -54,13 +54,13 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false, sh
         </View>
 
         {/* Favorite and Visited Status */}
-        {/* {(isFavorited || isVisited) && ( */}
-        <View style={styles.statusRow}>
-          {!isFavorited && <Text style={styles.favoriteText}>Favorited</Text>}
-          {!isFavorited && !isVisited && <Text style={styles.dot}>•</Text>}
-          {!isVisited && <Text style={styles.visitedText}>Visited</Text>}
-        </View>
-        {/* )} */}
+        {(isFavorited || isVisited) && (
+          <View style={styles.statusRow}>
+            {isFavorited && <Text style={styles.favoriteText}>Favorited</Text>}
+            {isFavorited && isVisited && <Text style={styles.dot}>•</Text>}
+            {isVisited && <Text style={styles.visitedText}>Visited</Text>}
+          </View>
+        )}
 
         {stats && (stats.saves || stats.visits) && (
           <View style={styles.statsRow}>
