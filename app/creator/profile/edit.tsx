@@ -416,11 +416,11 @@ export default function EditCreatorProfileScreen() {
             paddingHorizontal: hasChanges ? 20 : 16,
             paddingVertical: hasChanges ? 10 : 8,
             borderRadius: 8,
-            backgroundColor: hasChanges ? DS.colors.primary : DS.colors.border,
+            backgroundColor: hasChanges ? '#FFAD27' : DS.colors.border,
             opacity: saving ? 0.6 : 1,
             minWidth: hasChanges ? 80 : 60,
             alignItems: 'center',
-            shadowColor: hasChanges ? DS.colors.primary : 'transparent',
+            shadowColor: hasChanges ? '#FFAD27' : 'transparent',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: hasChanges ? 0.3 : 0,
             shadowRadius: 4,
@@ -428,7 +428,7 @@ export default function EditCreatorProfileScreen() {
           }}
         >
           <Text style={{ 
-            color: hasChanges ? 'white' : DS.colors.textLight, 
+            color: hasChanges ? '#171717' : DS.colors.textLight, 
             fontWeight: hasChanges ? '700' : '600',
             fontSize: hasChanges ? 15 : 14,
           }}>
@@ -988,12 +988,12 @@ export default function EditCreatorProfileScreen() {
             onPress={handleSave}
             disabled={saving}
             style={{
-              backgroundColor: DS.colors.primary,
+              backgroundColor: '#FFAD27',
               paddingVertical: 16,
               borderRadius: 12,
               alignItems: 'center',
               justifyContent: 'center',
-              shadowColor: DS.colors.primary,
+              shadowColor: '#FFAD27',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
@@ -1001,7 +1001,7 @@ export default function EditCreatorProfileScreen() {
             }}
           >
             <Text style={{ 
-              color: 'white', 
+              color: '#171717', 
               fontWeight: '700',
               fontSize: 16,
             }}>
