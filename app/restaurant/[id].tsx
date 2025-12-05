@@ -90,13 +90,7 @@ export default function RestaurantDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    if (id && user) {
-      checkSaveStatus(id as string);
-      checkVisitStatus(id as string);
-      checkFavoriteStatus(id as string);
-    }
-  }, [id, user]);
+
 
   const checkVisitStatus = async (restaurantId: string) => {
     if (!user) return;
@@ -150,9 +144,25 @@ export default function RestaurantDetailScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data = await restaurantService.getRestaurantDetails(restaurantId);
+
+      // Load restaurant data and user status in parallel
+      const [data, favorited, visited, saveState] = await Promise.all([
+        restaurantService.getRestaurantDetails(restaurantId),
+        user ? restaurantFavoriteService.isFavorited(user.id, restaurantId) : Promise.resolve(false),
+        user ? restaurantVisitService.hasUserVisitedRestaurant(user.id, restaurantId) : Promise.resolve(false),
+        user ? saveService.getSaveState(restaurantId, user.id) : Promise.resolve({ isSaved: false, boards: [], quickSavesBoardId: null })
+      ]);
+
       if (data) {
         setRestaurant(data);
+
+        // Set user status
+        if (user) {
+          setIsFavorited(favorited);
+          setHasVisited(visited);
+          setIsSaved(saveState.isSaved && saveState.quickSavesBoardId ?
+            saveState.boards.includes(saveState.quickSavesBoardId) : false);
+        }
 
         // If no cover photo, check if we can update it from existing photos
         if (!data.cover_photo_url) {
