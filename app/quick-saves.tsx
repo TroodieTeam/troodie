@@ -374,7 +374,7 @@ const styles = {
   ratingBadge: {
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
-    borderRadius: designTokens.borderRadius.xs,
+    borderRadius: designTokens.borderRadius.sm
   },
   ratingText: {
     fontSize: 12,
