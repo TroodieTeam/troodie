@@ -267,25 +267,57 @@ export async function getCreatorProfile(
       : undefined;
 
     // CM-14: Fetch portfolio items
-    const { data: portfolioItems, error: portfolioError } = await supabase
+    // Try with video columns first, fall back to base schema if they don't exist
+    let portfolioItems: any[] | null = null;
+    let portfolioError: any = null;
+    
+    const { data: videoData, error: videoError } = await supabase
       .from('creator_portfolio_items')
-      .select('id, image_url, video_url, media_type, thumbnail_url')
+      .select('id, image_url, video_url, media_type, thumbnail_url, display_order')
       .eq('creator_profile_id', creatorProfileId)
       .order('display_order')
       .limit(6);
+    
+    // If video columns don't exist, fall back to base schema
+    if (videoError?.message?.includes('video_url') || videoError?.message?.includes('thumbnail_url') || videoError?.message?.includes('media_type')) {
+      console.log('[getCreatorProfile] Video columns not available, using base schema');
+      const { data: baseData, error: baseError } = await supabase
+        .from('creator_portfolio_items')
+        .select('id, image_url, display_order')
+        .eq('creator_profile_id', creatorProfileId)
+        .order('display_order')
+        .limit(6);
+      
+      if (baseError) {
+        portfolioError = baseError;
+        console.log('[getCreatorProfile] Base schema query error:', baseError);
+      } else {
+        portfolioItems = baseData;
+        console.log('[getCreatorProfile] Portfolio items (base schema):', {
+          count: baseData?.length || 0,
+          items: baseData?.map(item => ({ id: item.id, hasImage: !!item.image_url })),
+        });
+      }
+    } else if (videoError) {
+      portfolioError = videoError;
+      console.log('[getCreatorProfile] Portfolio query error:', videoError);
+    } else {
+      portfolioItems = videoData;
+      console.log('[getCreatorProfile] Portfolio items (with video support):', {
+        count: videoData?.length || 0,
+        items: videoData?.map(item => ({
+          id: item.id,
+          hasImage: !!item.image_url,
+          hasVideo: !!(item as any).video_url,
+          mediaType: (item as any).media_type,
+        })),
+      });
+    }
 
-    console.log('[getCreatorProfile] Portfolio items query:', {
+    console.log('[getCreatorProfile] Portfolio items query result:', {
       creatorProfileId,
       count: portfolioItems?.length || 0,
       error: portfolioError?.message || null,
-      items: portfolioItems?.map(item => ({
-        id: item.id,
-        hasImage: !!item.image_url,
-        hasVideo: !!item.video_url,
-        mediaType: item.media_type,
-        imageUrl: item.image_url?.substring(0, 50) + '...',
-        videoUrl: item.video_url?.substring(0, 50) + '...',
-      })),
     });
 
     // Get sample posts
@@ -324,14 +356,21 @@ export async function getCreatorProfile(
       completedCampaigns, // CM-14
       avgRating, // CM-14
       portfolioItems: portfolioItems?.map((item: any) => {
+        // Handle both base schema (image_url only) and extended schema (with video_url)
         const mapped = {
           id: item.id,
           mediaUrl: item.video_url || item.image_url || '',
           mediaType: item.media_type || 'image',
-          thumbnailUrl: item.thumbnail_url,
+          thumbnailUrl: item.thumbnail_url || undefined,
         };
         console.log('[getCreatorProfile] Mapping portfolio item:', {
-          original: { id: item.id, image_url: item.image_url, video_url: item.video_url, media_type: item.media_type },
+          original: { 
+            id: item.id, 
+            image_url: item.image_url, 
+            video_url: item.video_url || 'N/A', 
+            media_type: item.media_type || 'N/A',
+            thumbnail_url: item.thumbnail_url || 'N/A',
+          },
           mapped,
         });
         return mapped;
