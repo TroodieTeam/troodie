@@ -185,36 +185,140 @@ export function ImageViewer({
     }
   };
 
-  // Animated style for each image
-  const createAnimatedStyle = (index: number) => {
-    'worklet';
-    return useAnimatedStyle(() => {
-      const isActive = index === currentIndex;
-      const opacity = isActive ? 1 : 0;
-      
-      // Only apply zoom/pan to active image
-      const activeScale = isActive ? scale.value : 1;
-      const activeTx = isActive ? translateX.value : 0;
-      const activeTy = isActive ? translateY.value : 0;
-      
-      // Calculate position for swipe between images
-      let xOffset = 0;
-      if (isActive) {
-        xOffset = swipeX.value + (index - currentIndex) * SCREEN_WIDTH;
-      } else {
-        xOffset = (index - currentIndex) * SCREEN_WIDTH;
-      }
-
-      return {
-        opacity: withTiming(opacity, { duration: 200 }),
-        transform: [
-          { translateX: xOffset + activeTx },
-          { translateY: activeTy },
-          { scale: activeScale },
-        ],
-      };
-    });
-  };
+  // Create animated styles - limit to 10 images max for performance
+  // Call hooks explicitly to follow React rules
+  const style0 = useAnimatedStyle(() => {
+    const isActive = 0 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (0 - currentIndex) * SCREEN_WIDTH : (0 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style1 = useAnimatedStyle(() => {
+    const isActive = 1 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (1 - currentIndex) * SCREEN_WIDTH : (1 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style2 = useAnimatedStyle(() => {
+    const isActive = 2 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (2 - currentIndex) * SCREEN_WIDTH : (2 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style3 = useAnimatedStyle(() => {
+    const isActive = 3 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (3 - currentIndex) * SCREEN_WIDTH : (3 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style4 = useAnimatedStyle(() => {
+    const isActive = 4 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (4 - currentIndex) * SCREEN_WIDTH : (4 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style5 = useAnimatedStyle(() => {
+    const isActive = 5 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (5 - currentIndex) * SCREEN_WIDTH : (5 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style6 = useAnimatedStyle(() => {
+    const isActive = 6 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (6 - currentIndex) * SCREEN_WIDTH : (6 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style7 = useAnimatedStyle(() => {
+    const isActive = 7 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (7 - currentIndex) * SCREEN_WIDTH : (7 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style8 = useAnimatedStyle(() => {
+    const isActive = 8 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (8 - currentIndex) * SCREEN_WIDTH : (8 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style9 = useAnimatedStyle(() => {
+    const isActive = 9 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (9 - currentIndex) * SCREEN_WIDTH : (9 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const animatedStyles = [style0, style1, style2, style3, style4, style5, style6, style7, style8, style9];
+  const MAX_IMAGES = 10;
 
   return (
     <Modal
@@ -247,9 +351,9 @@ export function ImageViewer({
 
           {/* Image container with gestures */}
           <View style={styles.imageContainer}>
-            {images.map((imageUri, index) => {
+            {images.slice(0, MAX_IMAGES).map((imageUri, index) => {
               const isActive = index === currentIndex;
-              const animatedStyle = createAnimatedStyle(index);
+              const animatedStyle = animatedStyles[index] || animatedStyles[0]; // Fallback to first style
 
               return (
                 <Animated.View
