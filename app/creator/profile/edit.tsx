@@ -411,15 +411,27 @@ export default function EditCreatorProfileScreen() {
         <Text style={{ fontSize: 18, fontWeight: '600', color: DS.colors.text }}>Edit Profile</Text>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={saving}
+          disabled={saving || !hasChanges}
           style={{
-            paddingHorizontal: 16,
-            paddingVertical: 8,
+            paddingHorizontal: hasChanges ? 20 : 16,
+            paddingVertical: hasChanges ? 10 : 8,
             borderRadius: 8,
             backgroundColor: hasChanges ? DS.colors.primary : DS.colors.border,
+            opacity: saving ? 0.6 : 1,
+            minWidth: hasChanges ? 80 : 60,
+            alignItems: 'center',
+            shadowColor: hasChanges ? DS.colors.primary : 'transparent',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: hasChanges ? 0.3 : 0,
+            shadowRadius: 4,
+            elevation: hasChanges ? 4 : 0,
           }}
         >
-          <Text style={{ color: hasChanges ? 'white' : DS.colors.textLight, fontWeight: '600' }}>
+          <Text style={{ 
+            color: hasChanges ? 'white' : DS.colors.textLight, 
+            fontWeight: hasChanges ? '700' : '600',
+            fontSize: hasChanges ? 15 : 14,
+          }}>
             {saving ? 'Saving...' : 'Save'}
           </Text>
         </TouchableOpacity>
