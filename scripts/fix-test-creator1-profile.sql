@@ -13,16 +13,21 @@ DECLARE
   v_profile_id UUID;
   v_profile_exists BOOLEAN;
 BEGIN
-  -- Get user info
-  SELECT email, name INTO v_user_email, v_user_name
-  FROM auth.users
-  WHERE id = v_user_id;
+  -- Get user info from auth.users and public.users
+  SELECT 
+    au.email,
+    COALESCE(pu.name, pu.username, 'Foodie Lens') 
+  INTO v_user_email, v_user_name
+  FROM auth.users au
+  LEFT JOIN public.users pu ON pu.id = au.id
+  WHERE au.id = v_user_id;
   
   IF v_user_email IS NULL THEN
     RAISE EXCEPTION 'User not found: %', v_user_id;
   END IF;
   
   RAISE NOTICE 'Found user: % (%)', v_user_email, v_user_id;
+  RAISE NOTICE 'Display name will be: %', v_user_name;
   
   -- Check if profile already exists
   SELECT EXISTS(
@@ -39,33 +44,43 @@ BEGIN
     RAISE NOTICE 'Creating creator profile for user %', v_user_email;
     
     -- Create creator profile with current schema columns
+    -- Note: total_followers and troodie_engagement_rate are GENERATED columns,
+    -- so we set the underlying columns instead
     INSERT INTO creator_profiles (
       user_id,
       display_name,
       bio,
       location,
+      food_specialties,
       specialties,
       open_to_collabs,
       availability_status,
-      total_followers,
-      troodie_engagement_rate,
       verification_status,
       portfolio_uploaded,
+      instagram_followers,
+      tiktok_followers,
+      troodie_posts_count,
+      troodie_likes_count,
+      troodie_comments_count,
       created_at,
       updated_at
     )
     VALUES (
       v_user_id,
-      COALESCE(v_user_name, 'Foodie Lens'),
+      v_user_name,
       'Professional food photographer specializing in restaurant and culinary content. 5+ years experience.',
       'Charlotte, NC',
       ARRAY['Food Photography', 'Restaurant Reviews'],
+      ARRAY['Food Photography', 'Restaurant Reviews'],
       true,
       'available',
-      1000,
-      5.0,
       'pending',
       false,
+      500,  -- instagram_followers (contributes to total_followers)
+      500,  -- tiktok_followers (contributes to total_followers)
+      45,   -- troodie_posts_count
+      225,  -- troodie_likes_count (for ~5% engagement rate)
+      54,   -- troodie_comments_count (for ~5% engagement rate)
       NOW(),
       NOW()
     )
