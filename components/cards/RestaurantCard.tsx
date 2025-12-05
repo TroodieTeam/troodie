@@ -33,49 +33,43 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false, sh
         style={styles.image}
       />
       <View style={styles.content}>
-        <View style={styles.topRow}>
-          <Text style={styles.name} numberOfLines={1}>
-            {restaurant.name}
-          </Text>
-          <View style={styles.rating}>
-            <Star size={12} color="#FFB800" fill="#FFB800" />
-            <Text style={styles.ratingText}>{restaurant.rating}</Text>
-          </View>
-        </View>
+        <Text style={styles.name} numberOfLines={1}>
+          {restaurant.name}
+        </Text>
 
-        <View style={styles.bottomRow}>
-          <Text style={styles.cuisine} numberOfLines={1}>
-            {restaurant.cuisine} • {restaurant.priceRange}
-          </Text>
-          <Text style={styles.dot}>•</Text>
-          <Text style={styles.locationText} numberOfLines={1}>
-            {restaurant.location}
-          </Text>
-        </View>
+        <Text style={styles.cuisine} numberOfLines={1}>
+          {restaurant.cuisine} • {restaurant.priceRange}
+        </Text>
 
-        {/* Favorite and Visited Status */}
-        {(isFavorited || isVisited) && (
-          <View style={styles.statusRow}>
-            {isFavorited && (
-              <View style={styles.favoriteChip}>
-                <Star size={10} color={designTokens.colors.primaryOrange} fill={designTokens.colors.primaryOrange} />
-                <Text style={styles.favoriteText}>Favorited</Text>
-              </View>
-            )}
-            {isVisited && (
-              <View style={styles.visitedChip}>
-                <CheckCircle size={10} color="#10B981" fill="#fff" />
-                <Text style={styles.visitedText}>Visited</Text>
-              </View>
-            )}
-          </View>
-        )}
+        <Text style={styles.locationText} numberOfLines={1}>
+          {restaurant.location}
+        </Text>
 
         {stats && (stats.saves || stats.visits) && (
           <View style={styles.statsRow}>
             {stats.saves ? <Text style={styles.statText}>{stats.saves} saves</Text> : null}
             {stats.saves && stats.visits && <Text style={styles.dot}>•</Text>}
             {stats.visits ? <Text style={styles.statText}>{stats.visits} visits</Text> : null}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.rightColumn}>
+        <View style={styles.rating}>
+          <Star size={12} color="#FFB800" fill="#FFB800" />
+          <Text style={styles.ratingText}>{restaurant.rating}</Text>
+        </View>
+        {/* Favorite and Visited Status */}
+        {isFavorited && (
+          <View style={styles.favoriteChip}>
+            <Star size={10} color={designTokens.colors.primaryOrange} fill={designTokens.colors.primaryOrange} />
+            <Text style={styles.favoriteText}>Favorited</Text>
+          </View>
+        )}
+        {isVisited && (
+          <View style={styles.visitedChip}>
+            <CheckCircle size={10} color="#10B981" fill="#fff" />
+            <Text style={styles.visitedText}>Visited</Text>
           </View>
         )}
       </View>
@@ -94,54 +88,53 @@ const styles = StyleSheet.create({
     borderColor: designTokens.colors.borderLight,
   },
   image: {
-    width: 64,
-    height: 64,
-    backgroundColor: designTokens.colors.backgroundGray,
+    width: 85,
+    height: 85,
+    backgroundColor: designTokens.colors.backgroundLight,
   },
   content: {
     flex: 1,
-    padding: 8,
+    padding: 12,
+    paddingRight: 80,
     justifyContent: 'center',
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 3,
   },
   name: {
     fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
     color: designTokens.colors.textDark,
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 4,
+  },
+  rightColumn: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    bottom: 8,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 4,
   },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
   ratingText: {
     fontSize: 11,
     fontFamily: 'Inter_500Medium',
     color: designTokens.colors.textDark,
   },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
+
   cuisine: {
     fontSize: 11,
     fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
-    flexShrink: 0,
+    marginBottom: 3,
   },
   locationText: {
     fontSize: 11,
     fontFamily: 'Inter_400Regular',
     color: designTokens.colors.textMedium,
-    flex: 1,
+    marginBottom: 3,
   },
   dot: {
     fontSize: 12,
@@ -151,8 +144,8 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
-    gap: 6,
+    gap: 4,
+    marginBottom: 3,
   },
   favoriteChip: {
     flexDirection: 'row',
