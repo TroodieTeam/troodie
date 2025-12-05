@@ -37,7 +37,6 @@ export default function QuickSavesScreen() {
   // Reload data every time the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('now I will run')
       if (user?.id) {
         // Load saves and status in parallel for better performance
         Promise.all([

@@ -26,7 +26,6 @@ import {
   ExternalLink,
   Eye,
   Globe,
-  Heart,
   MapPin,
   MessageCircle,
   Phone,
@@ -508,7 +507,7 @@ export default function RestaurantDetailScreen() {
         </TouchableOpacity>
         <View style={styles.rightActions}>
           <TouchableOpacity style={styles.headerButton} onPress={handleFavorite}>
-            <Heart
+            <Star
               size={20}
               color={isFavorited ? designTokens.colors.primaryOrange : "white"}
               fill={isFavorited ? designTokens.colors.primaryOrange : "transparent"}
