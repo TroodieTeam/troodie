@@ -8,6 +8,7 @@ import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { personas } from '@/data/personas';
 import { useAccountType } from '@/hooks/useAccountType';
+import { useCreatorProfileId } from '@/hooks/useCreatorProfileId';
 import { profileService } from '@/services/profileService';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import { PersonaType } from '@/types/onboarding';
@@ -80,6 +81,7 @@ export default function MoreScreen() {
     isBusiness,
     businessProfile
   } = useAccountType();
+  const { profileId: creatorProfileId } = useCreatorProfileId();
 
   // Check if user is admin - using specific admin user IDs
   const ADMIN_USER_IDS = [
@@ -272,10 +274,18 @@ export default function MoreScreen() {
     {
       id: 'creator-profile',
       title: 'Creator Profile',
-      subtitle: 'Edit your profile and availability',
+      subtitle: creatorProfileId ? 'View and edit your profile' : 'Complete your creator profile',
       icon: Settings,
       iconColor: '#6366F1',
-      action: () => router.push('/creator/profile/edit'),
+      action: () => {
+        if (creatorProfileId) {
+          // Navigate to view profile, user can edit from there
+          router.push(`/creator/${creatorProfileId}`);
+        } else {
+          // No profile yet, go to edit/create
+          router.push('/creator/profile/edit');
+        }
+      },
     },
     {
       id: 'explore-campaigns',

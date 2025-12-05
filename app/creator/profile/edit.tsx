@@ -72,21 +72,29 @@ export default function EditCreatorProfileScreen() {
   const loadPortfolioItems = async () => {
     if (!creatorProfile?.id) return;
     try {
-      const { data } = await supabase
+      console.log('[EditCreatorProfileScreen] Loading portfolio items for profile:', creatorProfile.id);
+      const { data, error } = await supabase
         .from('creator_portfolio_items')
-        .select('id, media_url, video_url, media_type, display_order')
+        .select('id, image_url, video_url, media_type, display_order')
         .eq('creator_profile_id', creatorProfile.id)
         .order('display_order');
+      
+      console.log('[EditCreatorProfileScreen] Portfolio query result:', {
+        itemCount: data?.length || 0,
+        error: error?.message || null,
+        items: data?.map(item => ({ id: item.id, hasImage: !!item.image_url, hasVideo: !!item.video_url, mediaType: item.media_type })),
+      });
       
       if (data) {
         setPortfolioItems(data.map(item => ({
           id: item.id,
-          media_url: item.media_url || item.video_url || '',
+          media_url: item.image_url || item.video_url || '',
           media_type: item.media_type || 'image',
         })));
+        console.log('[EditCreatorProfileScreen] Portfolio items set:', data.length);
       }
     } catch (error) {
-      console.error('Error loading portfolio items:', error);
+      console.error('[EditCreatorProfileScreen] Error loading portfolio items:', error);
     }
   };
 
