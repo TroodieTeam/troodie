@@ -73,6 +73,13 @@ export default function CreatorProfileScreen() {
           id: data.id,
           displayName: data.displayName,
           userId: data.userId,
+          portfolioItemsCount: data.portfolioItems?.length || 0,
+          portfolioItems: data.portfolioItems?.map(item => ({
+            id: item.id,
+            mediaUrl: item.mediaUrl?.substring(0, 50) + '...',
+            mediaType: item.mediaType,
+            hasThumbnail: !!item.thumbnailUrl,
+          })),
         });
         setProfile(data);
       } else {
@@ -350,6 +357,19 @@ export default function CreatorProfileScreen() {
           <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>
             Portfolio
           </Text>
+          {(() => {
+            console.log('[CreatorProfileScreen] Rendering Portfolio section:', {
+              hasProfile: !!profile,
+              portfolioItems: profile?.portfolioItems,
+              portfolioItemsLength: profile?.portfolioItems?.length || 0,
+              portfolioItemsArray: profile?.portfolioItems?.map(item => ({
+                id: item.id,
+                mediaUrl: item.mediaUrl,
+                mediaType: item.mediaType,
+              })),
+            });
+            return null;
+          })()}
           {profile.portfolioItems && profile.portfolioItems.length > 0 ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {profile.portfolioItems.map((item, index) => {

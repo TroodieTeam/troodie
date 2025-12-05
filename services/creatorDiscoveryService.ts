@@ -274,9 +274,18 @@ export async function getCreatorProfile(
       .order('display_order')
       .limit(6);
 
-    console.log('[getCreatorProfile] Portfolio items:', {
+    console.log('[getCreatorProfile] Portfolio items query:', {
+      creatorProfileId,
       count: portfolioItems?.length || 0,
       error: portfolioError?.message || null,
+      items: portfolioItems?.map(item => ({
+        id: item.id,
+        hasImage: !!item.image_url,
+        hasVideo: !!item.video_url,
+        mediaType: item.media_type,
+        imageUrl: item.image_url?.substring(0, 50) + '...',
+        videoUrl: item.video_url?.substring(0, 50) + '...',
+      })),
     });
 
     // Get sample posts
