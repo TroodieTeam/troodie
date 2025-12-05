@@ -825,8 +825,9 @@ export default function EditCreatorProfileScreen() {
                 >
                   <X size={16} color="white" />
                 </TouchableOpacity>
-              </View>
-            ))}
+                </View>
+              );
+            })}
 
             {portfolioItems.length < 10 && (
               <TouchableOpacity
