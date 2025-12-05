@@ -48,10 +48,74 @@ export function ImageViewer({
   
   // Use a fixed maximum number of hooks (max 20 images supported)
   // This ensures hooks are always called in the same order
-  const MAX_IMAGES = 20;
-  const scales = Array.from({ length: MAX_IMAGES }, () => useSharedValue(1));
-  const translateX = Array.from({ length: MAX_IMAGES }, () => useSharedValue(0));
-  const translateY = Array.from({ length: MAX_IMAGES }, () => useSharedValue(0));
+  // Must call hooks explicitly, not in a loop or callback
+  const scale0 = useSharedValue(1);
+  const scale1 = useSharedValue(1);
+  const scale2 = useSharedValue(1);
+  const scale3 = useSharedValue(1);
+  const scale4 = useSharedValue(1);
+  const scale5 = useSharedValue(1);
+  const scale6 = useSharedValue(1);
+  const scale7 = useSharedValue(1);
+  const scale8 = useSharedValue(1);
+  const scale9 = useSharedValue(1);
+  const scale10 = useSharedValue(1);
+  const scale11 = useSharedValue(1);
+  const scale12 = useSharedValue(1);
+  const scale13 = useSharedValue(1);
+  const scale14 = useSharedValue(1);
+  const scale15 = useSharedValue(1);
+  const scale16 = useSharedValue(1);
+  const scale17 = useSharedValue(1);
+  const scale18 = useSharedValue(1);
+  const scale19 = useSharedValue(1);
+  
+  const translateX0 = useSharedValue(0);
+  const translateX1 = useSharedValue(0);
+  const translateX2 = useSharedValue(0);
+  const translateX3 = useSharedValue(0);
+  const translateX4 = useSharedValue(0);
+  const translateX5 = useSharedValue(0);
+  const translateX6 = useSharedValue(0);
+  const translateX7 = useSharedValue(0);
+  const translateX8 = useSharedValue(0);
+  const translateX9 = useSharedValue(0);
+  const translateX10 = useSharedValue(0);
+  const translateX11 = useSharedValue(0);
+  const translateX12 = useSharedValue(0);
+  const translateX13 = useSharedValue(0);
+  const translateX14 = useSharedValue(0);
+  const translateX15 = useSharedValue(0);
+  const translateX16 = useSharedValue(0);
+  const translateX17 = useSharedValue(0);
+  const translateX18 = useSharedValue(0);
+  const translateX19 = useSharedValue(0);
+  
+  const translateY0 = useSharedValue(0);
+  const translateY1 = useSharedValue(0);
+  const translateY2 = useSharedValue(0);
+  const translateY3 = useSharedValue(0);
+  const translateY4 = useSharedValue(0);
+  const translateY5 = useSharedValue(0);
+  const translateY6 = useSharedValue(0);
+  const translateY7 = useSharedValue(0);
+  const translateY8 = useSharedValue(0);
+  const translateY9 = useSharedValue(0);
+  const translateY10 = useSharedValue(0);
+  const translateY11 = useSharedValue(0);
+  const translateY12 = useSharedValue(0);
+  const translateY13 = useSharedValue(0);
+  const translateY14 = useSharedValue(0);
+  const translateY15 = useSharedValue(0);
+  const translateY16 = useSharedValue(0);
+  const translateY17 = useSharedValue(0);
+  const translateY18 = useSharedValue(0);
+  const translateY19 = useSharedValue(0);
+  
+  // Create arrays for easier access (but hooks are already called above)
+  const scales = [scale0, scale1, scale2, scale3, scale4, scale5, scale6, scale7, scale8, scale9, scale10, scale11, scale12, scale13, scale14, scale15, scale16, scale17, scale18, scale19];
+  const translateX = [translateX0, translateX1, translateX2, translateX3, translateX4, translateX5, translateX6, translateX7, translateX8, translateX9, translateX10, translateX11, translateX12, translateX13, translateX14, translateX15, translateX16, translateX17, translateX18, translateX19];
+  const translateY = [translateY0, translateY1, translateY2, translateY3, translateY4, translateY5, translateY6, translateY7, translateY8, translateY9, translateY10, translateY11, translateY12, translateY13, translateY14, translateY15, translateY16, translateY17, translateY18, translateY19];
   
   // Swipe gesture for changing images
   const swipeX = useSharedValue(0);
