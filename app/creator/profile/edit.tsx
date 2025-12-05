@@ -9,7 +9,9 @@
  * - Open to Collabs toggle
  */
 
+import { ImageViewer } from '@/components/ImageViewer';
 import { VideoThumbnail } from '@/components/VideoThumbnail';
+import { VideoViewer } from '@/components/VideoViewer';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatorProfile } from '@/hooks/useCreatorProfileId';
@@ -64,6 +66,11 @@ export default function EditCreatorProfileScreen() {
   }>>([]);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  
+  // Viewer state
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [videoViewerVisible, setVideoViewerVisible] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
   useEffect(() => {
     if (creatorProfile) {
@@ -816,8 +823,34 @@ export default function EditCreatorProfileScreen() {
                 ? (item.video_url || item.thumbnail_url || item.image_url)
                 : (item.image_url || item.thumbnail_url);
               
+              const itemIndex = portfolioItems.findIndex(i => i.id === item.id);
+              
               return (
-                <View key={item.id} style={{ width: '31%', aspectRatio: 1, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={{ width: '31%', aspectRatio: 1, borderRadius: 8, overflow: 'hidden', position: 'relative' }}
+                  onPress={() => {
+                    if (item.media_type === 'video' && item.video_url) {
+                      // Open video viewer
+                      const videoUrls = portfolioItems
+                        .filter(i => i.media_type === 'video' && i.video_url)
+                        .map(i => i.video_url!);
+                      const videoIndex = videoUrls.findIndex(url => url === item.video_url);
+                      setViewerInitialIndex(Math.max(0, videoIndex));
+                      setVideoViewerVisible(true);
+                    } else if (mediaUrl) {
+                      // Open image viewer
+                      const imageUrls = portfolioItems
+                        .filter(i => i.media_type === 'image' && (i.image_url || i.thumbnail_url))
+                        .map(i => i.image_url || i.thumbnail_url!)
+                        .filter(Boolean);
+                      const imageIndex = imageUrls.findIndex(url => url === mediaUrl);
+                      setViewerInitialIndex(Math.max(0, imageIndex));
+                      setImageViewerVisible(true);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
                   {item.media_type === 'video' && item.video_url ? (
                     <VideoThumbnail
                       videoUri={item.video_url}
@@ -841,20 +874,23 @@ export default function EditCreatorProfileScreen() {
                       <Play size={16} color="white" />
                     </View>
                   )}
-                <TouchableOpacity
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    borderRadius: 12,
-                    padding: 4,
-                  }}
-                  onPress={() => handleRemovePortfolioItem(item.id)}
-                >
-                  <X size={16} color="white" />
+                  <TouchableOpacity
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      backgroundColor: 'rgba(0,0,0,0.6)',
+                      borderRadius: 12,
+                      padding: 4,
+                    }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleRemovePortfolioItem(item.id);
+                    }}
+                  >
+                    <X size={16} color="white" />
+                  </TouchableOpacity>
                 </TouchableOpacity>
-                </View>
               );
             })}
 
@@ -887,6 +923,28 @@ export default function EditCreatorProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Image Viewer */}
+      <ImageViewer
+        visible={imageViewerVisible}
+        images={portfolioItems
+          .filter(item => item.media_type === 'image' && (item.image_url || item.thumbnail_url))
+          .map(item => item.image_url || item.thumbnail_url!)
+          .filter(Boolean) as string[]}
+        initialIndex={viewerInitialIndex}
+        onClose={() => setImageViewerVisible(false)}
+      />
+
+      {/* Video Viewer */}
+      <VideoViewer
+        visible={videoViewerVisible}
+        videos={portfolioItems
+          .filter(item => item.media_type === 'video' && item.video_url)
+          .map(item => item.video_url!)
+          .filter(Boolean) as string[]}
+        initialIndex={viewerInitialIndex}
+        onClose={() => setVideoViewerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
