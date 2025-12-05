@@ -1,6 +1,8 @@
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { getInvitationsForCampaign, withdrawInvitation, type CampaignInvitation } from '@/services/campaignInvitationService';
+import { canRateApplication, rateCreator } from '@/services/ratingService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -8,8 +10,11 @@ import {
   DollarSign,
   Edit,
   ExternalLink,
+  Mail,
+  Star,
   Target,
-  Users
+  Users,
+  X
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -17,9 +22,11 @@ import {
   Alert,
   Image,
   Linking,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -63,6 +70,9 @@ interface Application {
   applied_at: string;
   reviewed_at?: string;
   reviewer_id?: string;
+  rating?: number;
+  rating_comment?: string;
+  rated_at?: string;
 }
 
 interface Content {
@@ -108,7 +118,15 @@ export default function CampaignDetail() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [content, setContent] = useState<Content[]>([]);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'content' | 'deliverables'>('overview');
+  const [invitations, setInvitations] = useState<CampaignInvitation[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'content' | 'deliverables' | 'invitations'>('overview');
+  
+  // Rating modal state (CM-16)
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  const [rating, setRating] = useState<number>(5);
+  const [ratingComment, setRatingComment] = useState<string>('');
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -174,6 +192,14 @@ export default function CampaignDetail() {
         `)
         .eq('campaign_id', id)
         .order('applied_at', { ascending: false });
+      
+      // Include rating fields (CM-16)
+      const applicationsWithRatings = applicationsData?.map(app => ({
+        ...app,
+        rating: app.rating || undefined,
+        rating_comment: app.rating_comment || undefined,
+        rated_at: app.rated_at || undefined,
+      })) || [];
 
       if (appsError) {
         console.error('[CampaignDetails] Applications load error:', appsError);
@@ -181,7 +207,7 @@ export default function CampaignDetail() {
       }
       
       console.log('[CampaignDetails] Applications loaded from database:', applicationsData);
-      setApplications(applicationsData || []);
+      setApplications(applicationsWithRatings);
 
       // Load content
       const { data: contentData, error: contentError } = await supabase
@@ -214,6 +240,14 @@ export default function CampaignDetail() {
 
       if (deliverablesError) throw deliverablesError;
       setDeliverables(deliverablesData || []);
+
+      // Load invitations
+      const { data: invitationsData, error: invitationsError } = await getInvitationsForCampaign(id as string);
+      if (invitationsError) {
+        console.error('[CampaignDetails] Invitations load error:', invitationsError);
+      } else {
+        setInvitations(invitationsData || []);
+      }
 
     } catch (error) {
       console.error('Failed to load campaign:', error);
@@ -319,6 +353,81 @@ export default function CampaignDetail() {
     }
   };
 
+  // Rating handlers (CM-16)
+  const handleOpenRatingModal = async (applicationId: string) => {
+    const { canRate, alreadyRated } = await canRateApplication(applicationId);
+    if (!canRate) {
+      if (alreadyRated) {
+        Alert.alert('Already Rated', 'You have already rated this creator for this campaign.');
+      } else {
+        Alert.alert('Cannot Rate', 'You can only rate creators after campaign completion.');
+      }
+      return;
+    }
+    setSelectedApplicationId(applicationId);
+    setRating(5);
+    setRatingComment('');
+    setRatingModalVisible(true);
+  };
+
+  const handleSubmitRating = async () => {
+    if (!selectedApplicationId) return;
+    
+    setSubmittingRating(true);
+    try {
+      const result = await rateCreator({
+        applicationId: selectedApplicationId,
+        rating,
+        comment: ratingComment || undefined,
+      });
+
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to submit rating');
+        return;
+      }
+
+      Alert.alert('Success', 'Rating submitted successfully');
+      setRatingModalVisible(false);
+      setSelectedApplicationId(null);
+      setRating(5);
+      setRatingComment('');
+      
+      // Refresh applications to show updated rating
+      loadCampaignData();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  const handleWithdrawInvitation = async (invitationId: string) => {
+    Alert.alert(
+      'Withdraw Invitation',
+      'Are you sure you want to withdraw this invitation? The creator will no longer be able to accept it.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Withdraw',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data, error } = await withdrawInvitation(invitationId);
+              if (error) {
+                Alert.alert('Error', error.message || 'Failed to withdraw invitation');
+                return;
+              }
+              Alert.alert('Success', 'Invitation withdrawn successfully');
+              loadCampaignData();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to withdraw invitation');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return '#10B981';
@@ -398,7 +507,7 @@ export default function CampaignDetail() {
           </View>
           
           <TouchableOpacity 
-            onPress={() => router.push(`/business/campaigns/edit/${id}`)}
+            onPress={() => router.push(`/business/campaigns/${id}/edit`)}
             style={{
               width: 40,
               height: 40,
@@ -490,22 +599,28 @@ export default function CampaignDetail() {
         </View>
 
         {/* Condensed Tab Navigation */}
-        <View style={{
-          marginHorizontal: 20,
-          marginTop: 12,
-          flexDirection: 'row',
-          borderBottomWidth: 1,
-          borderBottomColor: '#E8E8E8',
-        }}>
-          {['overview', 'applications', 'content', 'deliverables'].map((tab) => (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={{
+            marginHorizontal: 20,
+            marginTop: 12,
+          }}
+          contentContainerStyle={{
+            borderBottomWidth: 1,
+            borderBottomColor: '#E8E8E8',
+          }}
+        >
+          {['overview', 'applications', 'invitations', 'content', 'deliverables'].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={{
-                flex: 1,
+                paddingHorizontal: 16,
                 paddingVertical: 12,
                 alignItems: 'center',
                 borderBottomWidth: 2,
                 borderBottomColor: activeTab === tab ? '#FFAD27' : 'transparent',
+                minWidth: 100,
               }}
               onPress={() => setActiveTab(tab as any)}
             >
@@ -519,13 +634,16 @@ export default function CampaignDetail() {
                 {tab === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
                   <Text style={{ color: '#DC2626', fontWeight: '600' }}> ({applications.filter(a => a.status === 'pending').length})</Text>
                 )}
+                {tab === 'invitations' && invitations.filter(i => i.status === 'pending').length > 0 && (
+                  <Text style={{ color: '#F59E0B', fontWeight: '600' }}> ({invitations.filter(i => i.status === 'pending').length})</Text>
+                )}
                 {tab === 'deliverables' && deliverables.filter(d => d.status === 'pending_review').length > 0 && (
                   <Text style={{ color: '#F59E0B', fontWeight: '600' }}> ({deliverables.filter(d => d.status === 'pending_review').length})</Text>
                 )}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
@@ -752,6 +870,40 @@ export default function CampaignDetail() {
                           </TouchableOpacity>
                         </View>
                       )}
+                      
+                      {application.status === 'accepted' && (
+                        <View style={{ marginTop: 8 }}>
+                          {application.rating ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                              <Star size={14} color="#FFAD27" fill="#FFAD27" />
+                              <Text style={{ fontSize: 12, color: '#262626', fontWeight: '500' }}>
+                                Rated {application.rating}/5
+                              </Text>
+                              {application.rating_comment && (
+                                <Text style={{ fontSize: 11, color: '#8C8C8C', marginLeft: 8, flex: 1 }} numberOfLines={1}>
+                                  "{application.rating_comment}"
+                                </Text>
+                              )}
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              style={{
+                                backgroundColor: '#FFAD27',
+                                padding: 8,
+                                borderRadius: 6,
+                                alignItems: 'center',
+                                flexDirection: 'row',
+                                justifyContent: 'center',
+                                gap: 4,
+                              }}
+                              onPress={() => handleOpenRatingModal(application.id)}
+                            >
+                              <Star size={14} color="white" />
+                              <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Rate Creator</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -836,6 +988,218 @@ export default function CampaignDetail() {
           </View>
         )}
 
+        {activeTab === 'invitations' && (
+          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+            {invitations.length === 0 ? (
+              <View style={{
+                backgroundColor: '#FFFFFF',
+                padding: 24,
+                borderRadius: 8,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#E8E8E8',
+              }}>
+                <Mail size={32} color="#8C8C8C" />
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#262626',
+                  marginTop: 12,
+                  marginBottom: 4,
+                }}>No Invitations Yet</Text>
+                <Text style={{
+                  fontSize: 13,
+                  color: '#8C8C8C',
+                  textAlign: 'center',
+                  marginBottom: 16,
+                }}>Invite creators from the Browse Creators screen</Text>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#FFAD27',
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                  }}
+                  onPress={() => router.push('/business/creators/browse')}
+                >
+                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Browse Creators</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ gap: 12 }}>
+                {invitations.map((invitation) => (
+                  <View
+                    key={invitation.id}
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: '#E8E8E8',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 8,
+                      elevation: 2,
+                      padding: 16,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                      <Image
+                        source={{ uri: invitation.creator?.avatar_url || 'https://via.placeholder.com/50' }}
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 24,
+                          marginRight: 12,
+                          backgroundColor: '#F7F7F7',
+                        }}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{
+                          fontSize: 16,
+                          fontWeight: '600',
+                          color: '#262626',
+                          marginBottom: 2,
+                        }}>
+                          {invitation.creator?.display_name || 'Unknown Creator'}
+                        </Text>
+                        {invitation.creator?.username && (
+                          <Text style={{
+                            fontSize: 13,
+                            color: '#8C8C8C',
+                          }}>
+                            @{invitation.creator.username}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={{
+                        backgroundColor: invitation.status === 'accepted' ? '#10B981' :
+                                       invitation.status === 'declined' ? '#DC2626' :
+                                       invitation.status === 'withdrawn' ? '#6B7280' :
+                                       invitation.status === 'expired' ? '#F59E0B' : '#F59E0B',
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                      }}>
+                        <Text style={{
+                          color: 'white',
+                          fontSize: 11,
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                        }}>
+                          {invitation.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {invitation.message && (
+                      <View style={{
+                        backgroundColor: '#F7F7F7',
+                        padding: 12,
+                        borderRadius: 8,
+                        marginBottom: 12,
+                      }}>
+                        <Text style={{
+                          fontSize: 13,
+                          color: '#262626',
+                          lineHeight: 18,
+                        }}>
+                          {invitation.message}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 12,
+                    }}>
+                      <Text style={{
+                        fontSize: 12,
+                        color: '#8C8C8C',
+                      }}>
+                        Sent {new Date(invitation.invited_at).toLocaleDateString()}
+                      </Text>
+                      {invitation.status === 'pending' && invitation.expires_at && (
+                        <Text style={{
+                          fontSize: 12,
+                          color: '#F59E0B',
+                          fontWeight: '500',
+                        }}>
+                          Expires {new Date(invitation.expires_at).toLocaleDateString()}
+                        </Text>
+                      )}
+                      {invitation.responded_at && (
+                        <Text style={{
+                          fontSize: 12,
+                          color: '#8C8C8C',
+                        }}>
+                          Responded {new Date(invitation.responded_at).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+
+                    {invitation.status === 'pending' && (
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#DC2626',
+                          padding: 10,
+                          borderRadius: 8,
+                          alignItems: 'center',
+                        }}
+                        onPress={() => handleWithdrawInvitation(invitation.id)}
+                      >
+                        <Text style={{
+                          color: 'white',
+                          fontWeight: '600',
+                          fontSize: 14,
+                        }}>
+                          Withdraw Invitation
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {invitation.status === 'accepted' && (
+                      <View style={{
+                        backgroundColor: '#F0FDF4',
+                        padding: 10,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                      }}>
+                        <Text style={{
+                          color: '#10B981',
+                          fontWeight: '600',
+                          fontSize: 13,
+                        }}>
+                          ✓ Creator accepted this invitation
+                        </Text>
+                      </View>
+                    )}
+
+                    {invitation.status === 'declined' && (
+                      <View style={{
+                        backgroundColor: '#FEF2F2',
+                        padding: 10,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                      }}>
+                        <Text style={{
+                          color: '#DC2626',
+                          fontWeight: '600',
+                          fontSize: 13,
+                        }}>
+                          Creator declined this invitation
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         {activeTab === 'deliverables' && (
           <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
             {deliverables.length === 0 ? (
@@ -875,6 +1239,104 @@ export default function CampaignDetail() {
           </View>
         )}
       </ScrollView>
+
+      {/* Rating Modal (CM-16) */}
+      <Modal
+        visible={ratingModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRatingModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            borderRadius: 16,
+            padding: 24,
+            width: '100%',
+            maxWidth: 400,
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#262626' }}>Rate Creator</Text>
+              <TouchableOpacity onPress={() => setRatingModalVisible(false)}>
+                <X size={24} color="#8C8C8C" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 14, color: '#8C8C8C', marginBottom: 16 }}>
+              How would you rate this creator's performance?
+            </Text>
+
+            {/* Star Rating */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={{ padding: 4 }}
+                >
+                  <Star
+                    size={40}
+                    color="#FFAD27"
+                    fill={star <= rating ? '#FFAD27' : 'transparent'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={{ fontSize: 14, color: '#262626', textAlign: 'center', marginBottom: 16, fontWeight: '600' }}>
+              {rating} {rating === 1 ? 'star' : 'stars'}
+            </Text>
+
+            {/* Comment Input */}
+            <Text style={{ fontSize: 14, color: '#262626', marginBottom: 8, fontWeight: '500' }}>
+              Optional Feedback
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#E8E8E8',
+                borderRadius: 8,
+                padding: 12,
+                minHeight: 100,
+                textAlignVertical: 'top',
+                fontSize: 14,
+                color: '#262626',
+              }}
+              placeholder="Share your experience..."
+              placeholderTextColor="#8C8C8C"
+              value={ratingComment}
+              onChangeText={setRatingComment}
+              multiline
+              maxLength={500}
+            />
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#FFAD27',
+                padding: 14,
+                borderRadius: 8,
+                alignItems: 'center',
+                marginTop: 20,
+                opacity: submittingRating ? 0.6 : 1,
+              }}
+              onPress={handleSubmitRating}
+              disabled={submittingRating}
+            >
+              {submittingRating ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>Submit Rating</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
