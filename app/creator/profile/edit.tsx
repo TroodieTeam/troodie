@@ -19,9 +19,9 @@ import {
 } from '@/services/creatorDiscoveryService';
 import { addPortfolioItems } from '@/services/creatorUpgradeService';
 import {
-  uploadAllPortfolioImages,
-  UploadProgress,
-  PortfolioImage as PortfolioImageType,
+    PortfolioImage as PortfolioImageType,
+    uploadAllPortfolioImages,
+    UploadProgress,
 } from '@/services/portfolioImageService';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -86,27 +86,56 @@ export default function EditCreatorProfileScreen() {
     if (!creatorProfile?.id) return;
     try {
       console.log('[EditCreatorProfileScreen] Loading portfolio items for profile:', creatorProfile.id);
-      const { data, error } = await supabase
+      
+      // First try with video columns (if migration applied)
+      const { data: videoData, error: videoError } = await supabase
         .from('creator_portfolio_items')
         .select('id, image_url, video_url, media_type, thumbnail_url, display_order')
         .eq('creator_profile_id', creatorProfile.id)
         .order('display_order');
       
-      console.log('[EditCreatorProfileScreen] Portfolio query result:', {
-        itemCount: data?.length || 0,
-        error: error?.message || null,
-        items: data?.map(item => ({ id: item.id, hasImage: !!item.image_url, hasVideo: !!item.video_url, mediaType: item.media_type })),
-      });
+      // If video columns don't exist, fall back to base schema
+      if (videoError?.message?.includes('video_url') || videoError?.message?.includes('thumbnail_url') || videoError?.message?.includes('media_type')) {
+        console.log('[EditCreatorProfileScreen] Video columns not available, using base schema');
+        const { data: baseData, error: baseError } = await supabase
+          .from('creator_portfolio_items')
+          .select('id, image_url, display_order')
+          .eq('creator_profile_id', creatorProfile.id)
+          .order('display_order');
+        
+        if (baseError) {
+          console.error('[EditCreatorProfileScreen] Portfolio query error:', baseError);
+          return;
+        }
+        
+        if (baseData) {
+          setPortfolioItems(baseData.map(item => ({
+            id: item.id,
+            image_url: item.image_url || undefined,
+            video_url: undefined,
+            media_type: 'image',
+            thumbnail_url: undefined,
+          })));
+          console.log('[EditCreatorProfileScreen] Portfolio items set (base schema):', baseData.length);
+        }
+        return;
+      }
       
-      if (data) {
-        setPortfolioItems(data.map(item => ({
+      if (videoError) {
+        console.error('[EditCreatorProfileScreen] Portfolio query error:', videoError);
+        return;
+      }
+      
+      // Video columns exist, use full data
+      if (videoData) {
+        setPortfolioItems(videoData.map(item => ({
           id: item.id,
           image_url: item.image_url || undefined,
-          video_url: item.video_url || undefined,
-          media_type: item.media_type || 'image',
-          thumbnail_url: item.thumbnail_url || undefined,
+          video_url: (item as any).video_url || undefined,
+          media_type: (item as any).media_type || 'image',
+          thumbnail_url: (item as any).thumbnail_url || undefined,
         })));
-        console.log('[EditCreatorProfileScreen] Portfolio items set:', data.length);
+        console.log('[EditCreatorProfileScreen] Portfolio items set (with video support):', videoData.length);
       }
     } catch (error) {
       console.error('[EditCreatorProfileScreen] Error loading portfolio items:', error);
@@ -125,7 +154,7 @@ export default function EditCreatorProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow both images and videos
+        mediaTypes: [ImagePicker.MediaType.Images, ImagePicker.MediaType.Videos], // Allow both images and videos
         allowsMultipleSelection: true,
         selectionLimit: 10 - portfolioItems.length, // Max 10 items total
         quality: 0.8,
