@@ -39,8 +39,11 @@ export default function QuickSavesScreen() {
     useCallback(() => {
       console.log('now I will run')
       if (user?.id) {
-        loadQuickSaves()
-        loadUserStatus()
+        // Load saves and status in parallel for better performance
+        Promise.all([
+          loadQuickSaves(),
+          loadUserStatus()
+        ])
       }
     }, [user?.id])
   )
@@ -66,10 +69,14 @@ export default function QuickSavesScreen() {
       )
 
       setSaves(savesWithRestaurants.filter(save => save.restaurant))
+
+      // Set loading false immediately so UI shows
+      // Favorites/visited will update in background
+      setLoading(false)
+      setRefreshing(false)
     } catch (error) {
       console.error('Error loading your saves:', error)
       setError('Failed to load saved restaurants')
-    } finally {
       setLoading(false)
       setRefreshing(false)
     }
