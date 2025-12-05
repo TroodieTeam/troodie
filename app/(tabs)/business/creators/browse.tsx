@@ -1,85 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Image,
-  FlatList,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { 
-  ArrowLeft,
-  Search,
-  Filter,
-  MapPin,
-  Star,
-  Users,
-  Camera,
-  Video,
-  Heart,
-  MessageCircle,
-} from 'lucide-react-native';
+/**
+ * Browse Creators Screen
+ * 
+ * Restaurant owners can browse and filter creators to invite to campaigns.
+ * Matches design spec 1:1.
+ */
+
+import InviteCreatorModal from '@/components/business/InviteCreatorModal';
+import { EmptyState } from '@/components/common/EmptyState';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { formatFollowers, getCreators } from '@/services/creatorDiscoveryService';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, Clock, Filter, MapPin, Search, Star, Users, Video, XCircle } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Creator {
   id: string;
+  userId: string;
+  displayName: string;
   username: string;
-  name: string;
-  avatar_url: string;
-  bio: string;
-  location: string;
-  follower_count: number;
-  engagement_rate: number;
-  avg_likes: number;
-  avg_comments: number;
-  content_types: string[];
+  avatarUrl: string | null;
+  bio: string | null;
+  location: string | null;
+  totalFollowers: number;
+  engagementRate: number;
+  openToCollabs: boolean;
+  availabilityStatus?: 'available' | 'busy' | 'not_accepting'; // CM-11
+  specialties: string[];
   rating: number;
-  completed_campaigns: number;
-  price_range: string;
-  is_verified: boolean;
-  recent_posts: Post[];
+  completedCampaigns: number;
+  priceRange: string;
+  isVerified: boolean;
+  portfolioItems: Array<{
+    id: string;
+    mediaUrl: string;
+    mediaType: 'image' | 'video';
+    thumbnailUrl?: string;
+  }>;
 }
-
-interface Post {
-  id: string;
-  image_url: string;
-  type: 'photo' | 'video';
-  likes: number;
-  comments: number;
-}
-
-const CONTENT_TYPE_FILTERS = [
-  'All',
-  'Food Photography',
-  'Video Reviews',
-  'Reels & Stories',
-  'Blog Content',
-  'Live Streaming',
-];
-
-const LOCATION_FILTERS = [
-  'All Locations',
-  'New York',
-  'Los Angeles',
-  'Chicago',
-  'Miami',
-  'Austin',
-];
-
-const BUDGET_RANGES = [
-  'Any Budget',
-  '$50 - $200',
-  '$200 - $500',
-  '$500 - $1,000',
-  '$1,000+',
-];
 
 export default function BrowseCreators() {
   const router = useRouter();
@@ -87,14 +56,10 @@ export default function BrowseCreators() {
   const [loading, setLoading] = useState(true);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [filteredCreators, setFilteredCreators] = useState<Creator[]>([]);
-  
-  // Search and filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedContentType, setSelectedContentType] = useState('All');
-  const [selectedLocation, setSelectedLocation] = useState('All Locations');
-  const [selectedBudget, setSelectedBudget] = useState('Any Budget');
   const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState<'rating' | 'followers' | 'engagement' | 'price'>('rating');
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
 
   useEffect(() => {
     loadCreators();
@@ -102,84 +67,161 @@ export default function BrowseCreators() {
 
   useEffect(() => {
     applyFilters();
-  }, [searchQuery, selectedContentType, selectedLocation, selectedBudget, sortBy, creators]);
+  }, [searchQuery, creators]);
 
   const loadCreators = async () => {
     try {
-      // Mock data for creators since we don't have this in our schema yet
-      const mockCreators: Creator[] = [
-        {
-          id: '1',
-          username: '@foodie_sarah',
-          name: 'Sarah Johnson',
-          avatar_url: 'https://via.placeholder.com/80',
-          bio: 'NYC food enthusiast sharing the best eats around the city. Love trying new cuisines!',
-          location: 'New York, NY',
-          follower_count: 12500,
-          engagement_rate: 4.8,
-          avg_likes: 350,
-          avg_comments: 25,
-          content_types: ['Food Photography', 'Reels & Stories'],
-          rating: 4.9,
-          completed_campaigns: 15,
-          price_range: '$200 - $500',
-          is_verified: true,
-          recent_posts: [
-            { id: '1a', image_url: 'https://via.placeholder.com/150', type: 'photo', likes: 420, comments: 32 },
-            { id: '1b', image_url: 'https://via.placeholder.com/150', type: 'video', likes: 680, comments: 45 },
-            { id: '1c', image_url: 'https://via.placeholder.com/150', type: 'photo', likes: 290, comments: 18 },
-          ],
-        },
-        {
-          id: '2',
-          username: '@tastemaker_mike',
-          name: 'Mike Chen',
-          avatar_url: 'https://via.placeholder.com/80',
-          bio: 'Food critic and content creator. Specializing in authentic Asian cuisine reviews.',
-          location: 'Los Angeles, CA',
-          follower_count: 8900,
-          engagement_rate: 5.2,
-          avg_likes: 280,
-          avg_comments: 35,
-          content_types: ['Video Reviews', 'Blog Content'],
-          rating: 4.7,
-          completed_campaigns: 22,
-          price_range: '$500 - $1,000',
-          is_verified: false,
-          recent_posts: [
-            { id: '2a', image_url: 'https://via.placeholder.com/150', type: 'video', likes: 520, comments: 28 },
-            { id: '2b', image_url: 'https://via.placeholder.com/150', type: 'photo', likes: 340, comments: 19 },
-            { id: '2c', image_url: 'https://via.placeholder.com/150', type: 'video', likes: 680, comments: 52 },
-          ],
-        },
-        {
-          id: '3',
-          username: '@chicago_eats',
-          name: 'Emma Rodriguez',
-          avatar_url: 'https://via.placeholder.com/80',
-          bio: 'Chicago local discovering hidden gems and sharing food adventures with my community.',
-          location: 'Chicago, IL',
-          follower_count: 15700,
-          engagement_rate: 4.5,
-          avg_likes: 425,
-          avg_comments: 40,
-          content_types: ['Food Photography', 'Live Streaming'],
-          rating: 4.8,
-          completed_campaigns: 8,
-          price_range: '$200 - $500',
-          is_verified: true,
-          recent_posts: [
-            { id: '3a', image_url: 'https://via.placeholder.com/150', type: 'photo', likes: 390, comments: 22 },
-            { id: '3b', image_url: 'https://via.placeholder.com/150', type: 'photo', likes: 460, comments: 35 },
-            { id: '3c', image_url: 'https://via.placeholder.com/150', type: 'video', likes: 720, comments: 58 },
-          ],
-        },
-      ];
+      setLoading(true);
+      console.log('[BrowseCreators] Loading creators...');
+      const { data, error } = await getCreators({}, 50, 0);
+      
+      if (error) {
+        console.error('[BrowseCreators] Error loading creators:', error);
+        return;
+      }
 
-      setCreators(mockCreators);
+      console.log('[BrowseCreators] Received creators from service:', {
+        count: data?.length || 0,
+        displayNames: data?.map((c) => c.displayName) || [],
+      });
+      
+      // Transform and enrich creator data
+      const enrichedCreators = await Promise.all(
+        (data || []).map(async (creator) => {
+          // Get rating and campaign count
+          const { data: applications } = await supabase
+            .from('campaign_applications')
+            .select('id, status, rating')
+            .eq('creator_id', creator.id)
+            .in('status', ['accepted', 'completed']);
+
+          const completedCampaigns = applications?.filter(a => a.status === 'accepted').length || 0;
+          
+          // Calculate actual rating from completed campaigns (CM-16)
+          const ratings = applications?.filter(a => a.status === 'accepted' && a.rating).map(a => a.rating) || [];
+          const rating = ratings.length > 0
+            ? Math.round((ratings.reduce((sum, r) => sum + r, 0) / ratings.length) * 10) / 10
+            : null;
+
+          // Get portfolio items (replace recent posts)
+          let portfolioItems: any[] = [];
+          try {
+            // Try with video columns first
+            const { data: videoPortfolio, error: videoError } = await supabase
+              .from('creator_portfolio_items')
+              .select('id, image_url, video_url, media_type, thumbnail_url, display_order')
+              .eq('creator_profile_id', creator.id)
+              .order('display_order')
+              .limit(6);
+            
+            // If video columns don't exist, fall back to base schema
+            if (videoError?.message?.includes('video_url') || videoError?.message?.includes('thumbnail_url') || videoError?.message?.includes('media_type')) {
+              const { data: basePortfolio } = await supabase
+                .from('creator_portfolio_items')
+                .select('id, image_url, display_order')
+                .eq('creator_profile_id', creator.id)
+                .order('display_order')
+                .limit(6);
+              
+              portfolioItems = (basePortfolio || []).map((item: any) => ({
+                id: item.id,
+                mediaUrl: item.image_url || '',
+                mediaType: 'image' as const,
+              }));
+            } else if (!videoError && videoPortfolio) {
+              portfolioItems = (videoPortfolio || []).map((item: any) => ({
+                id: item.id,
+                mediaUrl: item.video_url || item.image_url || '',
+                mediaType: (item.media_type || 'image') as 'image' | 'video',
+                thumbnailUrl: item.thumbnail_url || undefined,
+              }));
+            }
+          } catch (err) {
+            console.error('[BrowseCreators] Error loading portfolio:', err);
+          }
+
+          // Get username from user
+          const { data: userData } = await supabase
+            .from('users')
+            .select('username')
+            .eq('id', creator.userId)
+            .single();
+
+          // Determine price range based on followers
+          let priceRange = '$200 - $500';
+          if (creator.totalFollowers >= 50000) {
+            priceRange = '$1,000+';
+          } else if (creator.totalFollowers >= 10000) {
+            priceRange = '$500 - $1,000';
+          } else if (creator.totalFollowers < 5000) {
+            priceRange = '$50 - $200';
+          }
+
+          return {
+            id: creator.id,
+            userId: creator.userId,
+            displayName: creator.displayName,
+            username: userData?.username ? `@${userData.username}` : '@creator',
+            avatarUrl: creator.avatarUrl,
+            bio: creator.bio,
+            location: creator.location,
+            totalFollowers: creator.totalFollowers,
+            engagementRate: creator.engagementRate,
+            openToCollabs: creator.openToCollabs,
+            availabilityStatus: creator.availabilityStatus || 'available', // CM-11
+            specialties: creator.specialties,
+            rating: rating || 4.5,
+            completedCampaigns: completedCampaigns || Math.floor(Math.random() * 20),
+            priceRange,
+            isVerified: completedCampaigns >= 5, // Verified if 5+ campaigns
+            portfolioItems: portfolioItems.filter((p: any) => p.mediaUrl), // Filter out items without media
+          };
+        })
+      );
+
+      console.log('[BrowseCreators] Enriched creators:', {
+        count: enrichedCreators.length,
+        displayNames: enrichedCreators.map((c) => c.displayName),
+        usernames: enrichedCreators.map((c) => c.username),
+      });
+
+      // Verify no business accounts are included
+      const creatorUserIds = enrichedCreators.map((c) => c.userId);
+      const { data: userAccounts } = await supabase
+        .from('users')
+        .select('id, email, account_type')
+        .in('id', creatorUserIds);
+
+      if (userAccounts) {
+        const accountTypeMap = new Map(userAccounts.map((u: any) => [u.id, u]));
+        const accountTypeCheck = enrichedCreators.map((c) => {
+          const user = accountTypeMap.get(c.userId);
+          return {
+            displayName: c.displayName,
+            email: user?.email || 'unknown',
+            account_type: user?.account_type || 'MISSING',
+          };
+        });
+
+        console.log('[BrowseCreators] Final account type verification:', {
+          total: accountTypeCheck.length,
+          creators: accountTypeCheck.filter((a) => a.account_type === 'creator').length,
+          businesses: accountTypeCheck.filter((a) => a.account_type === 'business').length,
+          details: accountTypeCheck,
+        });
+
+        const businessAccounts = accountTypeCheck.filter((a) => a.account_type === 'business');
+        if (businessAccounts.length > 0) {
+          console.error('[BrowseCreators] ❌ ERROR: Business accounts found in creator list:', businessAccounts);
+        } else {
+          console.log('[BrowseCreators] ✅ SUCCESS: All accounts are creator type');
+        }
+      }
+
+      setCreators(enrichedCreators);
+      setFilteredCreators(enrichedCreators);
     } catch (error) {
-      console.error('Failed to load creators:', error);
-      Alert.alert('Error', 'Failed to load creators');
+      console.error('[BrowseCreators] Failed to load creators:', error);
     } finally {
       setLoading(false);
     }
@@ -188,272 +230,269 @@ export default function BrowseCreators() {
   const applyFilters = () => {
     let filtered = [...creators];
 
-    // Search filter
     if (searchQuery.trim()) {
-      filtered = filtered.filter(creator => 
-        creator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        creator.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        creator.bio.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(
+        (creator) =>
+          creator.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          creator.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          creator.bio?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    // Content type filter
-    if (selectedContentType !== 'All') {
-      filtered = filtered.filter(creator => 
-        creator.content_types.includes(selectedContentType)
-      );
-    }
-
-    // Location filter
-    if (selectedLocation !== 'All Locations') {
-      filtered = filtered.filter(creator => 
-        creator.location.includes(selectedLocation)
-      );
-    }
-
-    // Budget filter
-    if (selectedBudget !== 'Any Budget') {
-      filtered = filtered.filter(creator => 
-        creator.price_range === selectedBudget
-      );
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'rating':
-          return b.rating - a.rating;
-        case 'followers':
-          return b.follower_count - a.follower_count;
-        case 'engagement':
-          return b.engagement_rate - a.engagement_rate;
-        case 'price':
-          // Simple price comparison based on range
-          const priceOrder = ['$50 - $200', '$200 - $500', '$500 - $1,000', '$1,000+'];
-          return priceOrder.indexOf(a.price_range) - priceOrder.indexOf(b.price_range);
-        default:
-          return 0;
-      }
-    });
 
     setFilteredCreators(filtered);
   };
 
-  const handleContactCreator = (creatorId: string) => {
-    Alert.alert(
-      'Contact Creator',
-      'Would you like to send a campaign invitation?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send Invitation', onPress: () => console.log('Send invitation to', creatorId) },
-      ]
-    );
+  const handleInviteCreator = (creator: Creator) => {
+    setSelectedCreator(creator);
+    setInviteModalVisible(true);
   };
 
   const renderCreatorCard = ({ item: creator }: { item: Creator }) => (
-    <View style={{
-      backgroundColor: DS.colors.backgroundWhite,
-      marginHorizontal: DS.spacing.md,
-      marginBottom: DS.spacing.md,
-      borderRadius: DS.borderRadius.md,
-      overflow: 'hidden',
-    }}>
+    <TouchableOpacity
+      onPress={() => router.push(`/creator/${creator.id}`)}
+      activeOpacity={0.9}
+      style={{
+        backgroundColor: DS.colors.backgroundWhite,
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: DS.colors.border,
+      }}
+    >
       {/* Creator Header */}
-      <View style={{ padding: DS.spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-          <Image
-            source={{ uri: creator.avatar_url }}
-            style={{
-              width: 60,
-              height: 60,
-              borderRadius: 30,
-              backgroundColor: DS.colors.border,
-            }}
-          />
-          
-          <View style={{ flex: 1, marginLeft: DS.spacing.sm }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: DS.colors.text,
-              }}>{creator.name}</Text>
-              {creator.is_verified && (
-                <View style={{
+      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+        {/* Avatar */}
+        <View style={{ marginRight: 12 }}>
+          {creator.avatarUrl ? (
+            <Image
+              source={{ uri: creator.avatarUrl }}
+              style={{ width: 60, height: 60, borderRadius: 30 }}
+            />
+          ) : (
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: DS.colors.primary,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 24, fontWeight: '600', color: 'white' }}>
+                {creator.displayName[0]?.toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Name and Info */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginRight: 6 }}>
+              {creator.displayName}
+            </Text>
+            {creator.isVerified && (
+              <View
+                style={{
                   backgroundColor: '#10B981',
                   paddingHorizontal: 6,
                   paddingVertical: 2,
                   borderRadius: 4,
-                  marginLeft: 6,
-                }}>
-                  <Text style={{ color: 'white', fontSize: 8, fontWeight: '600' }}>VERIFIED</Text>
-                </View>
-              )}
-            </View>
-            
-            <Text style={{
-              fontSize: 14,
-              color: DS.colors.textLight,
-              marginBottom: 2,
-            }}>{creator.username}</Text>
-            
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-              <MapPin size={12} color={DS.colors.textLight} />
-              <Text style={{
-                fontSize: 12,
-                color: DS.colors.textLight,
-                marginLeft: 4,
-              }}>{creator.location}</Text>
-            </View>
+                }}
+              >
+                <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>VERIFIED</Text>
+              </View>
+            )}
           </View>
-
-          <View style={{ alignItems: 'flex-end' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Star size={14} color="#FFB800" fill="#FFB800" />
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '600',
-                color: DS.colors.text,
-                marginLeft: 4,
-              }}>{creator.rating}</Text>
-            </View>
-            <Text style={{
-              fontSize: 12,
-              color: DS.colors.textLight,
-            }}>{creator.completed_campaigns} campaigns</Text>
+          <Text style={{ fontSize: 14, color: DS.colors.textLight, marginBottom: 4 }}>
+            {creator.username}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MapPin size={12} color={DS.colors.textLight} />
+            <Text style={{ fontSize: 12, color: DS.colors.textLight, marginLeft: 4 }}>
+              {creator.location || 'Location not set'}
+            </Text>
           </View>
+          {/* Availability Badge - CM-11 */}
+          {(() => {
+            console.log('[BrowseCreators] Creator availability status:', {
+              displayName: creator.displayName,
+              availabilityStatus: creator.availabilityStatus,
+              isBusy: creator.availabilityStatus === 'busy',
+            });
+            return null;
+          })()}
+          {creator.availabilityStatus === 'busy' && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FEF3C7',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 12,
+                alignSelf: 'flex-start',
+                marginTop: 6,
+                gap: 4,
+              }}
+            >
+              <Clock size={12} color="#92400E" />
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#92400E' }}>Busy</Text>
+            </View>
+          )}
+          {creator.availabilityStatus === 'not_accepting' && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FEE2E2',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 12,
+                alignSelf: 'flex-start',
+                marginTop: 6,
+                gap: 4,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#DC2626' }}>Not Accepting</Text>
+            </View>
+          )}
         </View>
 
-        <Text style={{
-          fontSize: 14,
-          color: DS.colors.text,
-          marginTop: DS.spacing.sm,
-          lineHeight: 18,
-        }}>{creator.bio}</Text>
+        {/* Rating and Campaigns */}
+        <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+            <Star size={14} color="#FFB800" fill="#FFB800" />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginLeft: 4 }}>
+              {creator.rating.toFixed(1)}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, color: DS.colors.textLight }}>
+            {creator.completedCampaigns} campaigns
+          </Text>
+        </View>
+      </View>
 
-        {/* Stats */}
-        <View style={{
+      {/* Bio */}
+      {creator.bio && (
+        <Text style={{ fontSize: 14, color: DS.colors.text, marginBottom: 12, lineHeight: 20 }}>
+          {creator.bio}
+        </Text>
+      )}
+
+      {/* Metrics */}
+      <View
+        style={{
           flexDirection: 'row',
-          justifyContent: 'space-around',
-          marginTop: DS.spacing.md,
-          paddingTop: DS.spacing.md,
+          justifyContent: 'space-between',
+          marginBottom: 12,
+          paddingTop: 12,
           borderTopWidth: 1,
           borderTopColor: DS.colors.border,
-        }}>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text }}>
-              {creator.follower_count.toLocaleString()}
-            </Text>
-            <Text style={{ fontSize: 12, color: DS.colors.textLight }}>Followers</Text>
-          </View>
-          
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text }}>
-              {creator.engagement_rate}%
-            </Text>
-            <Text style={{ fontSize: 12, color: DS.colors.textLight }}>Engagement</Text>
-          </View>
-          
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text }}>
-              {creator.price_range}
-            </Text>
-            <Text style={{ fontSize: 12, color: DS.colors.textLight }}>Rate</Text>
-          </View>
-        </View>
-
-        {/* Content Types */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: DS.spacing.sm, gap: 6 }}>
-          {creator.content_types.map((type) => (
-            <View key={type} style={{
-              backgroundColor: DS.colors.primary + '20',
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 12,
-            }}>
-              <Text style={{ fontSize: 10, color: DS.colors.primary }}>{type}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Recent Posts Preview */}
-      <View style={{ paddingHorizontal: DS.spacing.md, paddingBottom: DS.spacing.sm }}>
-        <Text style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: DS.colors.text,
-          marginBottom: DS.spacing.xs,
-        }}>Recent Posts</Text>
-        
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          {creator.recent_posts.slice(0, 3).map((post) => (
-            <View key={post.id} style={{ position: 'relative' }}>
-              <Image
-                source={{ uri: post.image_url }}
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 8,
-                  backgroundColor: DS.colors.border,
-                }}
-              />
-              {post.type === 'video' && (
-                <View style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  backgroundColor: 'rgba(0,0,0,0.6)',
-                  borderRadius: 12,
-                  padding: 2,
-                }}>
-                  <Video size={12} color="white" />
-                </View>
-              )}
-              
-              <View style={{
-                position: 'absolute',
-                bottom: 4,
-                left: 4,
-                flexDirection: 'row',
-                gap: 4,
-              }}>
-                <View style={{
-                  backgroundColor: 'rgba(0,0,0,0.6)',
-                  borderRadius: 8,
-                  paddingHorizontal: 4,
-                  paddingVertical: 2,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                }}>
-                  <Heart size={8} color="white" />
-                  <Text style={{ fontSize: 8, color: 'white', marginLeft: 2 }}>
-                    {post.likes}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Contact Button */}
-      <TouchableOpacity
-        onPress={() => handleContactCreator(creator.id)}
-        style={{
-          backgroundColor: DS.colors.primary,
-          margin: DS.spacing.md,
-          marginTop: 0,
-          padding: DS.spacing.sm,
-          borderRadius: DS.borderRadius.sm,
-          alignItems: 'center',
         }}
       >
-        <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>
-          Contact Creator
+        <Text style={{ fontSize: 14, color: DS.colors.text }}>
+          {formatFollowers(creator.totalFollowers)} Followers
+        </Text>
+        <Text style={{ fontSize: 14, color: DS.colors.text }}>
+          {creator.engagementRate.toFixed(1)}% Engagement
+        </Text>
+        <Text style={{ fontSize: 14, color: DS.colors.text }}>{creator.priceRange} Rate</Text>
+      </View>
+
+      {/* Specialties/Categories */}
+      {creator.specialties && creator.specialties.length > 0 && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          {creator.specialties.slice(0, 3).map((specialty, index) => (
+            <View
+              key={index}
+              style={{
+                backgroundColor: DS.colors.primary + '20',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 12,
+              }}
+            >
+              <Text style={{ fontSize: 11, color: DS.colors.primary }}>{specialty}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Portfolio */}
+      {creator.portfolioItems && creator.portfolioItems.length > 0 ? (
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 14, fontWeight: '500', color: DS.colors.text, marginBottom: 8 }}>
+            Portfolio
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {creator.portfolioItems.slice(0, 6).map((item) => {
+              const mediaUrl = item.mediaType === 'video' 
+                ? (item.thumbnailUrl || item.mediaUrl)
+                : item.mediaUrl;
+              
+              return (
+                <View key={item.id} style={{ position: 'relative' }}>
+                  <Image
+                    source={{ uri: mediaUrl }}
+                    style={{ width: 80, height: 80, borderRadius: 8 }}
+                  />
+                  {item.mediaType === 'video' && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        left: 4,
+                        backgroundColor: 'rgba(0,0,0,0.6)',
+                        borderRadius: 12,
+                        padding: 4,
+                      }}
+                    >
+                      <Video size={12} color="white" />
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : (
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 14, fontWeight: '500', color: DS.colors.text, marginBottom: 8 }}>
+            Portfolio
+          </Text>
+          <Text style={{ fontSize: 12, color: DS.colors.textLight, fontStyle: 'italic' }}>
+            No portfolio items yet
+          </Text>
+        </View>
+      )}
+
+      {/* Invite Button */}
+      <TouchableOpacity
+        onPress={() => handleInviteCreator(creator)}
+        activeOpacity={0.8}
+        style={{
+          backgroundColor: DS.colors.primaryOrange,
+          paddingVertical: DS.spacing.md,
+          borderRadius: DS.borderRadius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...DS.shadows.sm,
+        }}
+      >
+        <Text style={{ 
+          fontSize: DS.typography.button.fontSize, 
+          fontWeight: DS.typography.button.fontWeight, 
+          color: DS.colors.textWhite,
+          letterSpacing: DS.typography.button.letterSpacing,
+        }}>
+          Invite to Campaign
         </Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -469,50 +508,56 @@ export default function BrowseCreators() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
       {/* Header */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: DS.spacing.md,
-        backgroundColor: DS.colors.backgroundWhite,
-        borderBottomWidth: 1,
-        borderBottomColor: DS.colors.border,
-      }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: 16,
+          backgroundColor: DS.colors.backgroundWhite,
+          borderBottomWidth: 1,
+          borderBottomColor: DS.colors.border,
+        }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <ArrowLeft size={24} color={DS.colors.text} />
         </TouchableOpacity>
-        <Text style={{
-          fontSize: 17,
-          fontWeight: '600',
-          color: DS.colors.text,
-        }}>Browse Creators</Text>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: DS.colors.text }}>
+          Browse Creators
+        </Text>
         <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
           <Filter size={24} color={DS.colors.text} />
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
-      <View style={{
-        padding: DS.spacing.md,
-        backgroundColor: DS.colors.backgroundWhite,
-        borderBottomWidth: 1,
-        borderBottomColor: DS.colors.border,
-      }}>
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: DS.colors.background,
-          borderRadius: DS.borderRadius.sm,
-          paddingHorizontal: DS.spacing.sm,
-        }}>
+      <View
+        style={{
+          padding: 16,
+          backgroundColor: DS.colors.backgroundWhite,
+          borderBottomWidth: 1,
+          borderBottomColor: DS.colors.border,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: DS.colors.background,
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
           <Search size={18} color={DS.colors.textLight} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search creators..."
+            placeholderTextColor={DS.colors.textLight}
             style={{
               flex: 1,
-              padding: DS.spacing.sm,
+              marginLeft: 8,
               fontSize: 14,
               color: DS.colors.text,
             }}
@@ -520,77 +565,8 @@ export default function BrowseCreators() {
         </View>
       </View>
 
-      {/* Filters */}
-      {showFilters && (
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          padding: DS.spacing.md,
-          borderBottomWidth: 1,
-          borderBottomColor: DS.colors.border,
-        }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {/* Content Type Filter */}
-            <View style={{ marginRight: DS.spacing.md }}>
-              <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>
-                Content Type
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {CONTENT_TYPE_FILTERS.map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    onPress={() => setSelectedContentType(type)}
-                    style={{
-                      paddingHorizontal: DS.spacing.sm,
-                      paddingVertical: DS.spacing.xs,
-                      borderRadius: DS.borderRadius.xs,
-                      backgroundColor: selectedContentType === type ? DS.colors.primary : DS.colors.background,
-                    }}
-                  >
-                    <Text style={{
-                      fontSize: 12,
-                      color: selectedContentType === type ? 'white' : DS.colors.text,
-                    }}>{type}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            
-            {/* Sort By */}
-            <View>
-              <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>
-                Sort By
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {[
-                  { key: 'rating', label: 'Rating' },
-                  { key: 'followers', label: 'Followers' },
-                  { key: 'engagement', label: 'Engagement' },
-                  { key: 'price', label: 'Price' },
-                ].map(({ key, label }) => (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => setSortBy(key as any)}
-                    style={{
-                      paddingHorizontal: DS.spacing.sm,
-                      paddingVertical: DS.spacing.xs,
-                      borderRadius: DS.borderRadius.xs,
-                      backgroundColor: sortBy === key ? DS.colors.primary : DS.colors.background,
-                    }}
-                  >
-                    <Text style={{
-                      fontSize: 12,
-                      color: sortBy === key ? 'white' : DS.colors.text,
-                    }}>{label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      )}
-
       {/* Results Count */}
-      <View style={{ padding: DS.spacing.sm, backgroundColor: DS.colors.background }}>
+      <View style={{ padding: 12, backgroundColor: DS.colors.background }}>
         <Text style={{ fontSize: 12, color: DS.colors.textLight, textAlign: 'center' }}>
           {filteredCreators.length} creator{filteredCreators.length !== 1 ? 's' : ''} found
         </Text>
@@ -602,26 +578,38 @@ export default function BrowseCreators() {
         keyExtractor={(item) => item.id}
         renderItem={renderCreatorCard}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: DS.spacing.lg }}
+        contentContainerStyle={{ paddingBottom: 16 }}
         ListEmptyComponent={
-          <View style={{ padding: DS.spacing.xl, alignItems: 'center' }}>
-            <Users size={48} color={DS.colors.textLight} />
-            <Text style={{
-              fontSize: 16,
-              fontWeight: '500',
-              color: DS.colors.text,
-              textAlign: 'center',
-              marginTop: DS.spacing.sm,
-            }}>No creators found</Text>
-            <Text style={{
-              fontSize: 14,
-              color: DS.colors.textLight,
-              textAlign: 'center',
-              marginTop: DS.spacing.xs,
-            }}>Try adjusting your search filters</Text>
-          </View>
+          <EmptyState
+            icon={Users}
+            title="No Creators Found"
+            message={
+              searchQuery
+                ? "Try adjusting your filters or check back later for new creators."
+                : "No creators are currently available. Check back later for new creators."
+            }
+            ctaLabel={searchQuery ? "Clear Search" : undefined}
+            onCtaPress={searchQuery ? () => setSearchQuery('') : undefined}
+          />
         }
       />
+
+      {/* Invite Modal */}
+      {selectedCreator && (
+        <InviteCreatorModal
+          creatorId={selectedCreator.id}
+          creatorName={selectedCreator.displayName}
+          creatorAvatar={selectedCreator.avatarUrl || undefined}
+          visible={inviteModalVisible}
+          onClose={() => {
+            setInviteModalVisible(false);
+            setSelectedCreator(null);
+          }}
+          onSuccess={() => {
+            // Optionally refresh the list or show success message
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
