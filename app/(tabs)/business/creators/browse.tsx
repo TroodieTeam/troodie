@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { formatFollowers, getCreators } from '@/services/creatorDiscoveryService';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Clock, Filter, MapPin, Search, Star, Users, Video, XCircle } from 'lucide-react-native';
+import { ArrowLeft, Clock, Filter, MapPin, Search, Star, Users, Video } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
