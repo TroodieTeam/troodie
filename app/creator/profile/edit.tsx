@@ -9,38 +9,35 @@
  * - Open to Collabs toggle
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Switch,
-  StyleSheet,
-  Image,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { X, Check, Clock, Plus, Lightbulb, Play } from 'lucide-react-native';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatorProfile } from '@/hooks/useCreatorProfileId';
+import { supabase } from '@/lib/supabase';
 import {
-  updateCreatorProfile,
-  toggleOpenToCollabs,
-  CreatorProfile,
+    updateCreatorProfile
 } from '@/services/creatorDiscoveryService';
 import { uploadPortfolioImage } from '@/services/portfolioImageService';
-import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { Check, Lightbulb, Play, Plus, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EditCreatorProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { creatorProfile, loading: profileLoading } = useCreatorProfile();
+  const { profile: creatorProfile, loading: profileLoading } = useCreatorProfile();
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
