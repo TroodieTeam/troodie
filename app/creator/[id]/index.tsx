@@ -9,24 +9,22 @@
  * - Specialties
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Users, TrendingUp, MapPin, Edit, Clock, XCircle, Briefcase, Star, Play } from 'lucide-react-native';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCreatorProfile, CreatorProfile } from '@/services/creatorDiscoveryService';
-import { formatFollowers } from '@/services/creatorDiscoveryService';
+import { CreatorProfile, formatFollowers, getCreatorProfile } from '@/services/creatorDiscoveryService';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Briefcase, Clock, Edit, MapPin, Play, Star, TrendingUp, Users, XCircle } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CreatorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,28 +40,62 @@ export default function CreatorProfileScreen() {
   }, [id]);
 
   const loadProfile = async () => {
-    if (!id) return;
+    if (!id) {
+      console.log('[CreatorProfileScreen] No id provided');
+      return;
+    }
+    
+    console.log('[CreatorProfileScreen] Loading profile with id:', id);
+    console.log('[CreatorProfileScreen] Current user:', user?.id);
+    
     setLoading(true);
     try {
+      console.log('[CreatorProfileScreen] Attempting getCreatorProfile with id:', id);
       const { data, error } = await getCreatorProfile(id);
+      
+      console.log('[CreatorProfileScreen] getCreatorProfile response:', {
+        hasData: !!data,
+        dataId: data?.id,
+        dataUserId: data?.userId,
+        error: error || null,
+      });
+      
       if (data) {
+        console.log('[CreatorProfileScreen] Profile loaded successfully:', {
+          id: data.id,
+          displayName: data.displayName,
+          userId: data.userId,
+        });
         setProfile(data);
       } else {
-        console.error('Error loading profile:', error);
+        console.error('[CreatorProfileScreen] Error loading profile:', error);
         // Try loading by user_id if id might be a user_id
         if (error && error.includes('not found')) {
+          console.log('[CreatorProfileScreen] Attempting fallback lookup by user_id');
           const { data: dataByUserId, error: userIdError } = await getCreatorProfile(id, true);
+          
+          console.log('[CreatorProfileScreen] Fallback lookup result:', {
+            hasData: !!dataByUserId,
+            error: userIdError || null,
+          });
+          
           if (dataByUserId) {
+            console.log('[CreatorProfileScreen] Profile found via user_id fallback');
             setProfile(dataByUserId);
           } else {
-            console.error('Error loading profile by user_id:', userIdError);
+            console.error('[CreatorProfileScreen] Profile not found via user_id fallback:', userIdError);
           }
         }
       }
-    } catch (err) {
-      console.error('Error loading creator profile:', err);
+    } catch (err: any) {
+      console.error('[CreatorProfileScreen] Unexpected error loading creator profile:', {
+        message: err?.message,
+        stack: err?.stack,
+        error: err,
+      });
     } finally {
       setLoading(false);
+      console.log('[CreatorProfileScreen] Loading complete');
     }
   };
 

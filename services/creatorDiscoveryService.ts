@@ -172,10 +172,16 @@ export async function getCreatorProfile(
   creatorIdOrUserId: string,
   isUserId: boolean = false
 ): Promise<{ data: CreatorProfile | null; error?: string }> {
+  console.log('[getCreatorProfile] Starting lookup:', {
+    creatorIdOrUserId,
+    isUserId,
+  });
+  
   try {
     let cp: any = null;
     
     // Try to find creator profile by id first
+    console.log('[getCreatorProfile] Attempting lookup by creator_profile id:', creatorIdOrUserId);
     const { data: cpById, error: idError } = await supabase
       .from('creator_profiles')
       .select(`
@@ -190,10 +196,18 @@ export async function getCreatorProfile(
       .eq('id', creatorIdOrUserId)
       .single();
 
+    console.log('[getCreatorProfile] Lookup by id result:', {
+      found: !!cpById,
+      error: idError?.message || idError?.code || null,
+      data: cpById ? { id: cpById.id, user_id: cpById.user_id, display_name: cpById.display_name } : null,
+    });
+
     if (!idError && cpById) {
       cp = cpById;
+      console.log('[getCreatorProfile] Found profile by id:', cp.id);
     } else {
       // If not found by id, try by user_id as fallback
+      console.log('[getCreatorProfile] Attempting lookup by user_id:', creatorIdOrUserId);
       const { data: cpByUserId, error: userIdError } = await supabase
         .from('creator_profiles')
         .select(`
@@ -208,25 +222,43 @@ export async function getCreatorProfile(
         .eq('user_id', creatorIdOrUserId)
         .single();
       
+      console.log('[getCreatorProfile] Lookup by user_id result:', {
+        found: !!cpByUserId,
+        error: userIdError?.message || userIdError?.code || null,
+        data: cpByUserId ? { id: cpByUserId.id, user_id: cpByUserId.user_id, display_name: cpByUserId.display_name } : null,
+      });
+      
       if (!userIdError && cpByUserId) {
         cp = cpByUserId;
+        console.log('[getCreatorProfile] Found profile by user_id:', cp.id);
       } else {
+        console.error('[getCreatorProfile] Profile not found by id or user_id:', {
+          idError: idError?.message || idError?.code,
+          userIdError: userIdError?.message || userIdError?.code,
+        });
         return { data: null, error: 'Creator profile not found' };
       }
     }
     
     if (!cp) {
+      console.error('[getCreatorProfile] cp is null after lookup attempts');
       return { data: null, error: 'Creator profile not found' };
     }
 
     const creatorProfileId = cp.id;
+    console.log('[getCreatorProfile] Fetching additional data for profile:', creatorProfileId);
 
     // CM-14: Fetch completed campaigns count and rating (CM-16: use actual ratings)
-    const { data: campaignStats } = await supabase
+    const { data: campaignStats, error: campaignStatsError } = await supabase
       .from('campaign_applications')
       .select('id, status, rating')
       .eq('creator_id', creatorProfileId)
       .eq('status', 'accepted'); // Completed campaigns have 'accepted' status
+
+    console.log('[getCreatorProfile] Campaign stats:', {
+      count: campaignStats?.length || 0,
+      error: campaignStatsError?.message || null,
+    });
 
     const completedCampaigns = campaignStats?.length || 0;
     const ratings = campaignStats?.filter(c => c.rating).map(c => c.rating) || [];
@@ -235,15 +267,20 @@ export async function getCreatorProfile(
       : undefined;
 
     // CM-14: Fetch portfolio items
-    const { data: portfolioItems } = await supabase
+    const { data: portfolioItems, error: portfolioError } = await supabase
       .from('creator_portfolio_items')
       .select('id, image_url, video_url, media_type, thumbnail_url')
       .eq('creator_profile_id', creatorProfileId)
       .order('display_order')
       .limit(6);
 
+    console.log('[getCreatorProfile] Portfolio items:', {
+      count: portfolioItems?.length || 0,
+      error: portfolioError?.message || null,
+    });
+
     // Get sample posts
-    const { data: posts } = await supabase
+    const { data: posts, error: postsError } = await supabase
       .from('posts')
       .select(`
         id,
@@ -256,6 +293,11 @@ export async function getCreatorProfile(
       .not('photos', 'is', null)
       .order('likes_count', { ascending: false })
       .limit(3);
+
+    console.log('[getCreatorProfile] Sample posts:', {
+      count: posts?.length || 0,
+      error: postsError?.message || null,
+    });
 
     const profile: CreatorProfile = {
       id: cp.id,
@@ -286,6 +328,14 @@ export async function getCreatorProfile(
       })).filter((p: any) => p.imageUrl), // Filter out posts without images
     };
 
+    console.log('[getCreatorProfile] Profile constructed successfully:', {
+      id: profile.id,
+      userId: profile.userId,
+      displayName: profile.displayName,
+      portfolioCount: profile.portfolioItems?.length || 0,
+      samplePostsCount: profile.samplePosts?.length || 0,
+    });
+
     // Increment view count (if increment function exists)
     try {
       await supabase.rpc('increment', {
@@ -293,12 +343,18 @@ export async function getCreatorProfile(
         row_id: creatorProfileId,
         column_name: 'profile_views',
       });
-    } catch {
+    } catch (err) {
       // Increment function might not exist, ignore
+      console.log('[getCreatorProfile] Could not increment view count (function may not exist)');
     }
 
     return { data: profile };
   } catch (error: any) {
+    console.error('[getCreatorProfile] Unexpected error:', {
+      message: error.message,
+      stack: error.stack,
+      error,
+    });
     return { data: null, error: error.message };
   }
 }
