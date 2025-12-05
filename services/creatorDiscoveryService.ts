@@ -323,11 +323,19 @@ export async function getCreatorProfile(
       specialties: cp.specialties || [],
       completedCampaigns, // CM-14
       avgRating, // CM-14
-      portfolioItems: portfolioItems?.map((item: any) => ({
-        id: item.id,
-        mediaUrl: item.video_url || item.image_url || '',
-        mediaType: item.media_type || 'image',
-      })) || [], // CM-14
+      portfolioItems: portfolioItems?.map((item: any) => {
+        const mapped = {
+          id: item.id,
+          mediaUrl: item.video_url || item.image_url || '',
+          mediaType: item.media_type || 'image',
+          thumbnailUrl: item.thumbnail_url,
+        };
+        console.log('[getCreatorProfile] Mapping portfolio item:', {
+          original: { id: item.id, image_url: item.image_url, video_url: item.video_url, media_type: item.media_type },
+          mapped,
+        });
+        return mapped;
+      }) || [], // CM-14
       samplePosts: (posts || []).map((p: any) => ({
         postId: p.id,
         caption: p.caption,
