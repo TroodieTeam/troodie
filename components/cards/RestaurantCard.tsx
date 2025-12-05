@@ -1,7 +1,7 @@
 import { designTokens } from '@/constants/designTokens';
 import { DEFAULT_IMAGES } from '@/constants/images';
 import { RestaurantInfo } from '@/types/core';
-import { Star } from 'lucide-react-native';
+import { CheckCircle, Star } from 'lucide-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -56,9 +56,18 @@ export function RestaurantCard({ restaurant, onPress, stats, compact = false, sh
         {/* Favorite and Visited Status */}
         {(isFavorited || isVisited) && (
           <View style={styles.statusRow}>
-            {isFavorited && <Text style={styles.favoriteText}>Favorited</Text>}
-            {isFavorited && isVisited && <Text style={styles.dot}>•</Text>}
-            {isVisited && <Text style={styles.visitedText}>Visited</Text>}
+            {isFavorited && (
+              <View style={styles.favoriteChip}>
+                <Star size={10} color={designTokens.colors.primaryOrange} fill={designTokens.colors.primaryOrange} />
+                <Text style={styles.favoriteText}>Favorited</Text>
+              </View>
+            )}
+            {isVisited && (
+              <View style={styles.visitedChip}>
+                <CheckCircle size={10} color="#10B981" fill="#fff" />
+                <Text style={styles.visitedText}>Visited</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -143,6 +152,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
+    gap: 6,
+  },
+  favoriteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderWidth: 1,
+    borderColor: designTokens.colors.primaryOrange,
+  },
+  visitedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderWidth: 1,
+    borderColor: '#10B981',
   },
   favoriteText: {
     fontSize: 11,
