@@ -46,24 +46,32 @@ export function ImageViewer({
 }: ImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   
-  // Per-image scale and translation values
-  const scales = images.map(() => useSharedValue(1));
-  const translateX = images.map(() => useSharedValue(0));
-  const translateY = images.map(() => useSharedValue(0));
+  // Use a fixed maximum number of hooks (max 20 images supported)
+  // This ensures hooks are always called in the same order
+  const MAX_IMAGES = 20;
+  const scales = Array.from({ length: MAX_IMAGES }, () => useSharedValue(1));
+  const translateX = Array.from({ length: MAX_IMAGES }, () => useSharedValue(0));
+  const translateY = Array.from({ length: MAX_IMAGES }, () => useSharedValue(0));
   
   // Swipe gesture for changing images
   const swipeX = useSharedValue(0);
 
   const updateIndex = useCallback((newIndex: number) => {
+    if (newIndex < 0 || newIndex >= images.length) return;
     setCurrentIndex(newIndex);
     // Reset zoom when changing images
-    scales[newIndex].value = 1;
-    translateX[newIndex].value = 0;
-    translateY[newIndex].value = 0;
-  }, [scales, translateX, translateY]);
+    if (scales[newIndex] && translateX[newIndex] && translateY[newIndex]) {
+      scales[newIndex].value = 1;
+      translateX[newIndex].value = 0;
+      translateY[newIndex].value = 0;
+    }
+  }, [scales, translateX, translateY, images.length]);
 
   // Pan gesture for dragging zoomed image
   const createPanGesture = (index: number) => {
+    if (!scales[index] || !translateX[index] || !translateY[index]) {
+      return Gesture.Tap(); // Return a no-op gesture if index is out of bounds
+    }
     return Gesture.Pan()
       .onUpdate((e) => {
         if (scales[index].value > MIN_SCALE) {
@@ -87,6 +95,9 @@ export function ImageViewer({
 
   // Pinch gesture for zooming
   const createPinchGesture = (index: number) => {
+    if (!scales[index] || !translateX[index] || !translateY[index]) {
+      return Gesture.Tap(); // Return a no-op gesture if index is out of bounds
+    }
     return Gesture.Pinch()
       .onUpdate((e) => {
         scales[index].value = clamp(e.scale, MIN_SCALE, MAX_SCALE);
@@ -102,6 +113,9 @@ export function ImageViewer({
 
   // Double tap gesture for zoom in/out
   const createDoubleTapGesture = (index: number) => {
+    if (!scales[index] || !translateX[index] || !translateY[index]) {
+      return Gesture.Tap(); // Return a no-op gesture if index is out of bounds
+    }
     return Gesture.Tap()
       .numberOfTaps(2)
       .onEnd(() => {
@@ -119,6 +133,9 @@ export function ImageViewer({
 
   // Horizontal swipe gesture for changing images (only when not zoomed)
   const createSwipeGesture = (index: number) => {
+    if (!scales[index]) {
+      return Gesture.Tap(); // Return a no-op gesture if index is out of bounds
+    }
     return Gesture.Pan()
       .enabled(scales[index].value <= MIN_SCALE)
       .activeOffsetX([-10, 10])
@@ -152,11 +169,13 @@ export function ImageViewer({
   };
 
   const handleClose = () => {
-    // Reset all zoom states
+    // Reset all zoom states (only for images that exist)
     images.forEach((_, index) => {
-      scales[index].value = 1;
-      translateX[index].value = 0;
-      translateY[index].value = 0;
+      if (scales[index] && translateX[index] && translateY[index]) {
+        scales[index].value = 1;
+        translateX[index].value = 0;
+        translateY[index].value = 0;
+      }
     });
     onClose();
   };
@@ -221,9 +240,9 @@ export function ImageViewer({
 
             const animatedStyle = useAnimatedStyle(() => {
               const opacity = isActive ? 1 : 0;
-              const scale = scales[index].value;
-              const tx = translateX[index].value;
-              const ty = translateY[index].value;
+              const scale = scales[index]?.value ?? 1;
+              const tx = translateX[index]?.value ?? 0;
+              const ty = translateY[index]?.value ?? 0;
               
               // Calculate position for swipe between images
               let xOffset = 0;
