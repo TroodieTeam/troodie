@@ -76,13 +76,12 @@ WHERE au.email = 'test-creator1@bypass.com'
    OR au.id = '4a797077-116e-4a3a-bc43-a71ae18963d8'::uuid;
 
 -- 5. Check portfolio items if profile exists
+-- Only selecting columns that definitely exist in base schema
 SELECT 
   'portfolio_items' as source,
   cpi.id,
   cpi.creator_profile_id,
   cpi.image_url,
-  cpi.video_url,
-  cpi.media_type,
   cpi.display_order,
   cpi.created_at
 FROM creator_portfolio_items cpi
