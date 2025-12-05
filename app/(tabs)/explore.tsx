@@ -135,6 +135,16 @@ export default function ExploreScreen() {
     }
   }, [params.tab]);
 
+  useEffect(() => {
+    const unsubscribe = eventBus.on('post-created', () => {
+      posts.load(); 
+    });
+    return () => {
+     unsubscribe();
+    };
+  }, []);
+
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   // Restaurant data management with server-side search
@@ -382,13 +392,17 @@ export default function ExploreScreen() {
     }
 
     if (activeTab === 'posts') {
+      const post = item as PostWithUser;
+      
       return (
         <PostCard
-          post={item as PostWithUser}
-          onPress={() => router.push({
-            pathname: '/posts/[id]',
-            params: { id: item.id }
-          })}
+          post={post}
+          onPress={() => {
+            router.push({
+              pathname: '/posts/[id]',
+              params: { id: post.id }
+            });
+          }}
           onLike={(postId, liked) => {
             updatePostItem(postId, (post) => ({
               ...post,
@@ -398,7 +412,13 @@ export default function ExploreScreen() {
                 : Math.max((post.likes_count || 1) - 1, 0)
             }));
           }}
-          onComment={() => {}}
+          onComment={(postId) => {
+            console.log('[Explore] PostCard onComment - navigating to post:', postId);
+            router.push({
+              pathname: '/posts/[id]',
+              params: { id: postId }
+            });
+          }}
           onSave={() => {}}
           onBlock={handleUserBlocked}
           onDelete={handlePostDeleted}
@@ -481,38 +501,26 @@ export default function ExploreScreen() {
 
   // Listen for post engagement changes (likes, saves) from detail screen or other sources
   useEffect(() => {
-    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, async ({ 
+    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, ({ 
       postId, 
       isLiked, 
-      likesCount 
+      likesCount,
+      commentsCount
     }: { 
       postId: string; 
       isLiked?: boolean; 
-      likesCount?: number; 
+      likesCount?: number;
+      commentsCount?: number;
     }) => {
-      if (isLiked !== undefined || likesCount !== undefined) {
-        updatePostItem(postId, (item) => ({
-          ...item,
-          likes_count: likesCount !== undefined ? likesCount : item.likes_count ?? 0,
-          is_liked_by_user: isLiked !== undefined ? isLiked : item.is_liked_by_user ?? false,
-        }));
-      }
+      // Optimistic update - update immediately without fetching
+      updatePostItem(postId, (item) => ({
+        ...item,
+        ...(isLiked !== undefined && { is_liked_by_user: isLiked }),
+        ...(likesCount !== undefined && { likes_count: likesCount }),
+        ...(commentsCount !== undefined && { comments_count: commentsCount }),
+      }));
       
-      try {
-        const freshPost = await postService.getPostById(postId);
-        if (freshPost) {
-          updatePostItem(postId, (item) => ({
-            ...item,
-            likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? item.likes_count ?? 0),
-            is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? item.is_liked_by_user ?? false),
-            comments_count: freshPost.comments_count ?? item.comments_count ?? 0,
-            saves_count: freshPost.saves_count ?? item.saves_count ?? 0,
-            is_saved_by_user: freshPost.is_saved_by_user ?? item.is_saved_by_user ?? false,
-          }));
-        }
-      } catch (error) {
-        console.error('Error refreshing post data:', error);
-      }
+      // Don't fetch from server - let realtime handle sync (like likes do)
     });
 
     const subscription = DeviceEventEmitter.addListener('post-comment-added', ({ postId }: { postId: string }) => {

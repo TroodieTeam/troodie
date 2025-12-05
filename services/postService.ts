@@ -255,12 +255,21 @@ class PostService {
       .single();
 
     if (postError) {
+      console.error('[PostService.getPost] Error fetching post:', postError);
       return null;
     }
 
     if (!postData) {
+      console.log('[PostService.getPost] No post data found for:', postId);
       return null;
     }
+
+    console.log('[PostService.getPost] Post data from DB:', {
+      postId: postData.id,
+      comments_count: postData.comments_count,
+      likes_count: postData.likes_count,
+      saves_count: postData.saves_count,
+    });
 
     // Fetch user data
     const { data: userData, error: userError } = await supabase
@@ -314,7 +323,7 @@ class PostService {
     }
 
     // Transform to PostWithUser format
-    return {
+    const result = {
       ...postData,
       user: userData ? this.transformUser({ user: userData }) : this.transformUser(postData),
       restaurant: restaurantData ? {
@@ -329,6 +338,15 @@ class PostService {
       is_liked_by_user: isLiked,
       is_saved_by_user: isSaved,
     };
+
+    console.log('[PostService.getPost] Final transformed post:', {
+      postId: result.id,
+      comments_count: result.comments_count,
+      likes_count: result.likes_count,
+      saves_count: result.saves_count,
+    });
+
+    return result;
   }
 
   /**
@@ -543,10 +561,10 @@ class PostService {
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
     // Combine posts with user and restaurant data, including like/save status
-    return postsData.map(post => {
+    const result = postsData.map(post => {
       const userData = usersMap.get(post.user_id);
       const restaurantData = restaurantsMap.get(post.restaurant_id);
-      return {
+      const transformedPost = {
         ...post,
         user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
         restaurant: restaurantData ? {
@@ -561,7 +579,19 @@ class PostService {
         is_liked_by_user: currentUserId ? likedPostIds.has(post.id) : false,
         is_saved_by_user: currentUserId ? savedPostIds.has(post.id) : false,
       };
+      
+      console.log('[PostService.getExplorePosts] Post transformed:', {
+        postId: transformedPost.id,
+        comments_count: transformedPost.comments_count,
+        likes_count: transformedPost.likes_count,
+        saves_count: transformedPost.saves_count,
+        raw_comments_count: post.comments_count,
+      });
+      
+      return transformedPost;
     });
+    
+    return result;
   }
 
   /**
