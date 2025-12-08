@@ -8,20 +8,21 @@
 import InviteCreatorModal from '@/components/business/InviteCreatorModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { DS } from '@/components/design-system/tokens';
+import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { formatFollowers, getCreators } from '@/services/creatorDiscoveryService';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Clock, Filter, MapPin, Search, Star, Users, Video } from 'lucide-react-native';
+import { ArrowLeft, Clock, Filter, MapPin, Play, Search, Star, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -123,11 +124,78 @@ export default function BrowseCreators() {
                 .order('display_order')
                 .limit(6);
               
-              portfolioItems = (basePortfolio || []).map((item: any) => ({
-                id: item.id,
-                mediaUrl: item.image_url || '',
-                mediaType: 'image' as const,
-              }));
+              // Apply same Cloudinary detection logic as getCreatorProfile
+              portfolioItems = (basePortfolio || []).map((item: any) => {
+                const imageUrl = item.image_url || '';
+                
+                // Detect media type from URL structure (same as getCreatorProfile)
+                let detectedMediaType: 'image' | 'video' = 'image';
+                let finalMediaUrl = imageUrl;
+                
+                const url = imageUrl.toLowerCase();
+                const isCloudinaryVideo = url.includes('/video/upload/');
+                
+                if (
+                  isCloudinaryVideo ||
+                  url.includes('.mp4') ||
+                  url.includes('.mov') ||
+                  url.includes('.avi') ||
+                  url.includes('.webm') ||
+                  url.includes('.mkv') ||
+                  (url.includes('video') && !url.includes('thumbnail'))
+                ) {
+                  detectedMediaType = 'video';
+                  
+                  // Extract proper video URL from Cloudinary (same logic as getCreatorProfile)
+                  if (isCloudinaryVideo) {
+                    try {
+                      const urlObj = new URL(imageUrl);
+                      const pathParts = urlObj.pathname.split('/');
+                      const uploadIndex = pathParts.findIndex(p => p === 'upload');
+                      
+                      if (uploadIndex >= 0) {
+                        const versionIndex = pathParts.findIndex((p, i) => 
+                          i > uploadIndex && /^v\d+$/.test(p)
+                        );
+                        
+                        if (versionIndex >= 0 && versionIndex < pathParts.length - 1) {
+                          const version = pathParts[versionIndex];
+                          const fileName = pathParts[versionIndex + 1].replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                          const basePath = pathParts.slice(0, uploadIndex + 1).join('/');
+                          finalMediaUrl = `${urlObj.origin}${basePath}/${version}/${fileName}`;
+                        } else {
+                          finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                        }
+                      } else {
+                        finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                      }
+                    } catch (e) {
+                      console.warn('[BrowseCreators] Failed to parse Cloudinary video URL:', e);
+                      finalMediaUrl = imageUrl.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                    }
+                  }
+                }
+                
+                const mappedItem = {
+                  id: item.id,
+                  mediaUrl: finalMediaUrl,
+                  mediaType: detectedMediaType,
+                  thumbnailUrl: detectedMediaType === 'video' ? imageUrl : undefined,
+                };
+                
+                // Strategic logging for base schema video detection
+                if (detectedMediaType === 'video') {
+                  console.log('[BrowseCreators] Base schema - detected video:', {
+                    itemId: item.id,
+                    originalImageUrl: imageUrl,
+                    detectedMediaType,
+                    finalMediaUrl,
+                    thumbnailUrl: mappedItem.thumbnailUrl,
+                  });
+                }
+                
+                return mappedItem;
+              });
             } else if (!videoError && videoPortfolio) {
               portfolioItems = (videoPortfolio || []).map((item: any) => {
                 const videoUrl = item.video_url || '';
@@ -186,12 +254,28 @@ export default function BrowseCreators() {
                   }
                 }
                 
-                return {
+                const mappedItem = {
                   id: item.id,
                   mediaUrl: finalMediaUrl,
                   mediaType: detectedMediaType,
                   thumbnailUrl: item.thumbnail_url || (detectedMediaType === 'video' && imageUrl && !videoUrl ? imageUrl : undefined),
                 };
+                
+                // Strategic logging for portfolio item mapping
+                if (detectedMediaType === 'video') {
+                  console.log('[BrowseCreators] Mapped video portfolio item:', {
+                    itemId: item.id,
+                    originalVideoUrl: videoUrl,
+                    originalImageUrl: imageUrl,
+                    originalMediaType: item.media_type,
+                    detectedMediaType,
+                    finalMediaUrl,
+                    thumbnailUrl: mappedItem.thumbnailUrl,
+                    hasFinalMediaUrl: !!finalMediaUrl,
+                  });
+                }
+                
+                return mappedItem;
               });
             }
           } catch (err) {
@@ -376,11 +460,6 @@ export default function BrowseCreators() {
           </View>
           {/* Availability Badge - CM-11 */}
           {(() => {
-            console.log('[BrowseCreators] Creator availability status:', {
-              displayName: creator.displayName,
-              availabilityStatus: creator.availabilityStatus,
-              isBusy: creator.availabilityStatus === 'busy',
-            });
             return null;
           })()}
           {creator.availabilityStatus === 'busy' && (
@@ -428,9 +507,9 @@ export default function BrowseCreators() {
               {creator.rating.toFixed(1)}
             </Text>
           </View>
-          <Text style={{ fontSize: 12, color: DS.colors.textLight }}>
+          {/* <Text style={{ fontSize: 12, color: DS.colors.textLight }}>
             {creator.completedCampaigns} campaigns
-          </Text>
+          </Text> */}
         </View>
       </View>
 
@@ -458,27 +537,8 @@ export default function BrowseCreators() {
         <Text style={{ fontSize: 14, color: DS.colors.text }}>
           {creator.engagementRate.toFixed(1)}% Engagement
         </Text>
-        <Text style={{ fontSize: 14, color: DS.colors.text }}>{creator.priceRange} Rate</Text>
+        {/* <Text style={{ fontSize: 14, color: DS.colors.text }}>{creator.priceRange} Rate</Text> */}
       </View>
-
-      {/* Specialties/Categories */}
-      {creator.specialties && creator.specialties.length > 0 && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-          {creator.specialties.slice(0, 3).map((specialty, index) => (
-            <View
-              key={index}
-              style={{
-                backgroundColor: DS.colors.primary + '20',
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 12,
-              }}
-            >
-              <Text style={{ fontSize: 11, color: DS.colors.primary }}>{specialty}</Text>
-            </View>
-          ))}
-        </View>
-      )}
 
       {/* Portfolio */}
       {creator.portfolioItems && creator.portfolioItems.length > 0 ? (
@@ -488,16 +548,42 @@ export default function BrowseCreators() {
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {creator.portfolioItems.slice(0, 6).map((item) => {
-              const mediaUrl = item.mediaType === 'video' 
-                ? (item.thumbnailUrl || item.mediaUrl)
-                : item.mediaUrl;
+              // For videos, use the actual video URL (mediaUrl contains the video URL from creatorDiscoveryService)
+              // For images, use mediaUrl directly
+              const videoUrl = item.mediaType === 'video' ? item.mediaUrl : null;
+              const imageUrl = item.mediaType === 'image' ? item.mediaUrl : null;
+              
+              // Strategic logging for video thumbnail debugging
+              if (item.mediaType === 'video') {
+                console.log('[BrowseCreators] Video portfolio item:', {
+                  creatorId: creator.id,
+                  creatorName: creator.displayName,
+                  itemId: item.id,
+                  mediaType: item.mediaType,
+                  mediaUrl: item.mediaUrl,
+                  thumbnailUrl: item.thumbnailUrl,
+                  videoUrl,
+                  hasVideoUrl: !!videoUrl,
+                  willRenderVideoThumbnail: item.mediaType === 'video' && !!videoUrl,
+                });
+              }
               
               return (
-                <View key={item.id} style={{ position: 'relative' }}>
-                  <Image
-                    source={{ uri: mediaUrl }}
-                    style={{ width: 80, height: 80, borderRadius: 8 }}
-                  />
+                <View key={item.id} style={{ position: 'relative', width: 80, height: 80 }}>
+                  {item.mediaType === 'video' && videoUrl ? (
+                    <VideoThumbnail
+                      videoUri={videoUrl}
+                      style={{ width: 80, height: 80, borderRadius: 8 }}
+                      resizeMode="cover"
+                    />
+                  ) : imageUrl ? (
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={{ width: 80, height: 80, borderRadius: 8 }}
+                    />
+                  ) : (
+                    <View style={{ width: 80, height: 80, borderRadius: 8, backgroundColor: DS.colors.border }} />
+                  )}
                   {item.mediaType === 'video' && (
                     <View
                       style={{
@@ -509,7 +595,7 @@ export default function BrowseCreators() {
                         padding: 4,
                       }}
                     >
-                      <Video size={12} color="white" />
+                      <Play size={12} color="white" />
                     </View>
                   )}
                 </View>

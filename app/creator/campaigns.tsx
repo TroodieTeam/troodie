@@ -1,10 +1,19 @@
+import { EmptyState } from '@/components/common/EmptyState';
 import { CreatorHeader } from '@/components/creator/CreatorHeader';
+import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import {
+  acceptInvitation,
+  declineInvitation,
+  getInvitationsForCreator,
+  type CampaignInvitation
+} from '@/services/campaignInvitationService';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   Check,
   Clock,
+  DollarSign,
   Filter,
   MapPin,
   Target,
@@ -26,8 +35,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type CampaignStatus = 'applied' | 'accepted' | 'active' | 'completed' | 'rejected';
-type TabType = 'active' | 'pending' | 'completed';
+type CampaignStatus = 'pending' | 'applied' | 'accepted' | 'active' | 'completed' | 'rejected';
+type TabType = 'active' | 'pending' | 'completed' | 'invitations';
 
 interface Campaign {
   id: string;
@@ -61,6 +70,12 @@ export default function MyCampaigns() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [applicationNote, setApplicationNote] = useState('');
+  const [invitations, setInvitations] = useState<CampaignInvitation[]>([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(false);
+  const [selectedInvitation, setSelectedInvitation] = useState<CampaignInvitation | null>(null);
+  const [showCampaignDetailsModal, setShowCampaignDetailsModal] = useState(false);
+  const [campaignDetails, setCampaignDetails] = useState<any>(null);
+  const [loadingCampaignDetails, setLoadingCampaignDetails] = useState(false);
   const [filters, setFilters] = useState({
     location: '',
     minPayout: 0,
@@ -75,7 +90,11 @@ export default function MyCampaigns() {
 
   useEffect(() => {
     if (creatorProfileId) {
-      loadCampaigns();
+      if (activeTab === 'invitations') {
+        loadInvitations();
+      } else {
+        loadCampaigns();
+      }
     }
   }, [creatorProfileId, activeTab]);
 
@@ -142,10 +161,11 @@ export default function MyCampaigns() {
           query = query.eq('campaign_applications.status', 'accepted');
           break;
         case 'pending':
-          query = query.eq('campaign_applications.status', 'applied');
+          query = query.eq('campaign_applications.status', 'pending');
           break;
         case 'completed':
-          query = query.eq('campaign_applications.status', 'completed');
+          query = query.eq('campaign_applications.status', 'accepted'); // Completed campaigns are still 'accepted' status
+          // TODO: Add completed status to campaign_applications if needed
           break;
       }
 
@@ -188,9 +208,119 @@ export default function MyCampaigns() {
     }
   };
 
+  const loadInvitations = async () => {
+    if (!creatorProfileId) return;
+    
+    try {
+      setLoadingInvitations(true);
+      const { data, error } = await getInvitationsForCreator(creatorProfileId, 'pending');
+      
+      if (error) {
+        console.error('Error loading invitations:', error);
+        return;
+      }
+      
+      setInvitations(data || []);
+    } catch (error) {
+      console.error('Error loading invitations:', error);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: string) => {
+    try {
+      const { data, error } = await acceptInvitation(invitationId);
+      
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to accept invitation');
+        return;
+      }
+      
+      Alert.alert('Success', 'Invitation accepted! The campaign has been added to your Active campaigns.');
+      loadInvitations();
+      // Switch to active tab to show the new campaign
+      setActiveTab('active');
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to accept invitation');
+    }
+  };
+
+  const handleViewCampaignDetails = async (invitation: CampaignInvitation) => {
+    if (!invitation.campaign?.id) return;
+    
+    setSelectedInvitation(invitation);
+    setShowCampaignDetailsModal(true);
+    setLoadingCampaignDetails(true);
+    
+    try {
+      // Fetch full campaign details
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          restaurants (
+            id,
+            name,
+            cover_photo_url,
+            photos
+          )
+        `)
+        .eq('id', invitation.campaign.id)
+        .single();
+      
+      if (error) {
+        console.error('Error loading campaign details:', error);
+        Alert.alert('Error', 'Failed to load campaign details');
+        setShowCampaignDetailsModal(false);
+        return;
+      }
+      
+      setCampaignDetails(data);
+    } catch (error) {
+      console.error('Error in handleViewCampaignDetails:', error);
+      Alert.alert('Error', 'Failed to load campaign details');
+      setShowCampaignDetailsModal(false);
+    } finally {
+      setLoadingCampaignDetails(false);
+    }
+  };
+
+  const handleDeclineInvitation = async (invitationId: string) => {
+    Alert.alert(
+      'Decline Invitation',
+      'Are you sure you want to decline this invitation?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data, error } = await declineInvitation(invitationId);
+              
+              if (error) {
+                Alert.alert('Error', error.message || 'Failed to decline invitation');
+                return;
+              }
+              
+              loadInvitations();
+            } catch (error: any) {
+              Alert.alert('Error', 'Failed to decline invitation');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadCampaigns();
+    if (activeTab === 'invitations') {
+      await loadInvitations();
+    } else {
+      await loadCampaigns();
+    }
     setRefreshing(false);
   };
 
@@ -267,6 +397,7 @@ export default function MyCampaigns() {
       case 'completed':
         return 'Completed';
       case 'applied':
+      case 'pending':
         return 'Pending';
       case 'accepted':
         return 'Accepted';
@@ -284,8 +415,11 @@ export default function MyCampaigns() {
       onPress={() => {
         // Direct navigation based on campaign status
         if (campaign.creator_status === 'accepted') {
+          // Always allow navigation to submit-deliverable screen
+          // The submit-deliverable screen will handle showing progress and
+          // allowing additional submissions if not all deliverables are submitted
           router.push(`/creator/submit-deliverable?campaignId=${campaign.id}`);
-        } else if (campaign.creator_status === 'applied') {
+        } else if (campaign.creator_status === 'pending') {
           // Show application pending state
           Alert.alert(
             'Application Pending',
@@ -312,7 +446,7 @@ export default function MyCampaigns() {
         )}
         <View style={styles.campaignInfo}>
           <Text style={styles.restaurantName}>{campaign.restaurant_name}</Text>
-          <Text style={styles.campaignTitle} numberOfLines={1}>{campaign.title}</Text>
+          <Text style={styles.campaignTitle} numberOfLines={2}>{campaign.title}</Text>
           <View style={styles.campaignMeta}>
             <View style={styles.metaItem}>
               <MapPin size={12} color="#737373" />
@@ -350,7 +484,7 @@ export default function MyCampaigns() {
              campaign.deliverable_status === 'rejected' ? 'Needs Revision' : 'Deliverables Submitted'}
           </Text>
         )}
-        {campaign.creator_status === 'applied' && (
+        {campaign.creator_status === 'pending' && (
           <Text style={styles.actionTextPending}>Pending Review</Text>
         )}
         {campaign.creator_status === 'rejected' && (
@@ -389,29 +523,37 @@ export default function MyCampaigns() {
   );
 
   const renderEmptyState = () => {
-    const emptyMessages: Record<TabType, { title: string; description: string }> = {
+    const emptyMessages: Record<TabType, { title: string; description: string; ctaLabel?: string; onCtaPress?: () => void }> = {
       active: {
         title: 'No Active Campaigns',
         description: 'Your accepted campaigns will appear here',
       },
       pending: {
         title: 'No Pending Applications',
-        description: 'Your applications under review will appear here',
+        description: 'Start applying to campaigns to get matched with restaurants.',
+        ctaLabel: 'Explore Campaigns',
+        onCtaPress: () => router.push('/creator/explore-campaigns'),
       },
       completed: {
         title: 'No Completed Campaigns',
         description: 'Your completed campaigns will appear here',
+      },
+      invitations: {
+        title: 'No Invitations',
+        description: 'You haven\'t received any campaign invitations yet.',
       },
     };
     
     const message = emptyMessages[activeTab];
     
     return (
-      <View style={styles.emptyState}>
-        <Target size={48} color="#E5E5E5" />
-        <Text style={styles.emptyTitle}>{message.title}</Text>
-        <Text style={styles.emptyDescription}>{message.description}</Text>
-      </View>
+      <EmptyState
+        icon={Target}
+        title={message.title}
+        message={message.description}
+        ctaLabel={message.ctaLabel}
+        onCtaPress={message.onCtaPress}
+      />
     );
   };
 
@@ -430,24 +572,38 @@ export default function MyCampaigns() {
       <CreatorHeader 
         title="My Campaigns" 
         rightElement={
-          <TouchableOpacity style={styles.filterButton}>
-            <Filter size={20} color="#737373" />
+          <TouchableOpacity style={styles.filterButton} activeOpacity={0.7}>
+            <Filter size={DS.layout.iconSize.md} color={DS.colors.textGray} />
           </TouchableOpacity>
         }
       />
 
       {/* Tabs */}
       <View style={styles.tabs}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {(['active', 'pending', 'completed'] as TabType[]).map((tab) => (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContent}
+        >
+          {(['active', 'pending', 'completed', 'invitations'] as TabType[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
+              <View style={styles.tabContent}>
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                  {tab === 'invitations' ? 'Invitations' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </Text>
+                {tab === 'invitations' && invitations.length > 0 && (
+                  <View style={[styles.badge, activeTab === tab && styles.badgeActive]}>
+                    <Text style={[styles.badgeText, activeTab === tab && styles.badgeTextActive]}>
+                      {invitations.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -460,7 +616,80 @@ export default function MyCampaigns() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />
         }
       >
-        {campaigns.length > 0 ? (
+        {activeTab === 'invitations' ? (
+          loadingInvitations ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#10B981" />
+            </View>
+          ) : invitations.length > 0 ? (
+            <View style={styles.campaignsList}>
+              {invitations.map((invitation) => (
+                <TouchableOpacity
+                  key={invitation.id}
+                  style={styles.invitationCard}
+                  onPress={() => handleViewCampaignDetails(invitation)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.invitationHeader}>
+                    <Text style={styles.invitationTitle}>New Invitation</Text>
+                    <Text style={styles.invitationDate}>
+                      {new Date(invitation.invited_at).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  {invitation.campaign && (
+                    <>
+                      <Text style={styles.invitationCampaignTitle}>
+                        {invitation.campaign.title}
+                      </Text>
+                      <Text style={styles.invitationRestaurant}>
+                        {invitation.campaign.restaurant_name}
+                      </Text>
+                      <View style={styles.invitationMeta}>
+                        <Text style={styles.invitationBudget}>
+                          ${(invitation.campaign.budget_cents / 100).toLocaleString()}
+                        </Text>
+                        <Text style={styles.invitationDeadline}>
+                          Deadline: {new Date(invitation.campaign.deadline).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      {invitation.message && (
+                        <View style={styles.invitationMessage}>
+                          <Text style={styles.invitationMessageText}>{invitation.message}</Text>
+                        </View>
+                      )}
+                      <View style={styles.invitationActions}>
+                        <TouchableOpacity
+                          style={styles.declineButton}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeclineInvitation(invitation.id);
+                          }}
+                        >
+                          <Text style={styles.declineButtonText}>Decline</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.acceptButton}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleAcceptInvitation(invitation.id);
+                          }}
+                        >
+                          <Text style={styles.acceptButtonText}>Accept</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              icon={Target}
+              title="No Invitations"
+              message="You haven't received any campaign invitations yet."
+            />
+          )
+        ) : campaigns.length > 0 ? (
           <View style={styles.campaignsList}>
             {campaigns.map(renderCampaignCard)}
           </View>
@@ -469,6 +698,139 @@ export default function MyCampaigns() {
         )}
       </ScrollView>
 
+
+      {/* Campaign Details Modal */}
+      <Modal
+        visible={showCampaignDetailsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCampaignDetailsModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Campaign Details</Text>
+            <TouchableOpacity onPress={() => setShowCampaignDetailsModal(false)}>
+              <X size={24} color={DS.colors.textDark} />
+            </TouchableOpacity>
+          </View>
+          
+          {loadingCampaignDetails ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={DS.colors.primaryOrange} />
+            </View>
+          ) : campaignDetails && selectedInvitation?.campaign ? (
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Restaurant Image */}
+              {campaignDetails.restaurants?.cover_photo_url && (
+                <Image
+                  source={{ uri: campaignDetails.restaurants.cover_photo_url }}
+                  style={styles.campaignImage}
+                  resizeMode="cover"
+                />
+              )}
+              
+              {/* Restaurant Name */}
+              <View style={styles.modalRestaurantSection}>
+                <Text style={styles.modalRestaurantName}>
+                  {campaignDetails.restaurants?.name || selectedInvitation.campaign.restaurant_name}
+                </Text>
+              </View>
+              
+              {/* Campaign Title */}
+              <Text style={styles.modalCampaignTitle}>
+                {selectedInvitation.campaign.title}
+              </Text>
+              
+              {/* Campaign Description */}
+              <Text style={styles.modalDescription}>
+                {selectedInvitation.campaign.description || campaignDetails.description}
+              </Text>
+              
+              {/* Campaign Stats */}
+              <View style={styles.modalStats}>
+                <View style={styles.modalStatItem}>
+                  <DollarSign size={20} color={DS.colors.success} />
+                  <View style={styles.modalStatContent}>
+                    <Text style={styles.modalStatLabel}>Budget</Text>
+                    <Text style={styles.modalStatValue}>
+                      ${(selectedInvitation.campaign.budget_cents / 100).toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.modalStatItem}>
+                  <Clock size={20} color={DS.colors.warning} />
+                  <View style={styles.modalStatContent}>
+                    <Text style={styles.modalStatLabel}>Deadline</Text>
+                    <Text style={styles.modalStatValue}>
+                      {new Date(selectedInvitation.campaign.deadline).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              {/* Requirements */}
+              {campaignDetails.requirements && Array.isArray(campaignDetails.requirements) && campaignDetails.requirements.length > 0 && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Requirements</Text>
+                  {campaignDetails.requirements.map((req: string, index: number) => (
+                    <View key={index} style={styles.requirementItem}>
+                      <Text style={styles.requirementBullet}>•</Text>
+                      <Text style={styles.requirementText}>{req}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {/* Deliverables */}
+              {campaignDetails.deliverables && Array.isArray(campaignDetails.deliverables) && campaignDetails.deliverables.length > 0 && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Expected Deliverables</Text>
+                  {campaignDetails.deliverables.map((deliverable: string, index: number) => (
+                    <View key={index} style={styles.requirementItem}>
+                      <Text style={styles.requirementBullet}>•</Text>
+                      <Text style={styles.requirementText}>{deliverable}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {/* Invitation Message */}
+              {selectedInvitation.message && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Message from Business</Text>
+                  <View style={styles.invitationMessageBox}>
+                    <Text style={styles.invitationMessageText}>{selectedInvitation.message}</Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          ) : null}
+          
+          {/* Modal Footer Actions */}
+          {selectedInvitation && !loadingCampaignDetails && (
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.modalDeclineButton}
+                onPress={() => {
+                  setShowCampaignDetailsModal(false);
+                  handleDeclineInvitation(selectedInvitation.id);
+                }}
+              >
+                <Text style={styles.modalDeclineButtonText}>Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalAcceptButton}
+                onPress={() => {
+                  setShowCampaignDetailsModal(false);
+                  handleAcceptInvitation(selectedInvitation.id);
+                }}
+              >
+                <Text style={styles.modalAcceptButtonText}>Accept Invitation</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </SafeAreaView>
+      </Modal>
 
       {/* Application Modal */}
       <Modal
@@ -520,77 +882,99 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterButton: {
-    padding: 8,
+    padding: DS.spacing.sm,
+    borderRadius: DS.borderRadius.sm,
   },
   tabs: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: DS.spacing.lg,
+    paddingTop: DS.spacing.sm,
+    paddingBottom: DS.spacing.md,
+    backgroundColor: DS.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: DS.colors.borderLight,
+  },
+  tabsContent: {
+    paddingRight: DS.spacing.lg,
+    gap: DS.spacing.sm,
   },
   tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    paddingHorizontal: DS.spacing.lg,
+    paddingVertical: DS.spacing.sm + 2,
+    borderRadius: DS.borderRadius.full,
+    backgroundColor: DS.colors.surfaceLight,
+    minHeight: DS.layout.buttonHeight.small,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tabActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: DS.colors.success,
+    ...DS.shadows.sm,
+  },
+  tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#737373',
+    ...DS.typography.button,
+    color: DS.colors.textGray,
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: DS.colors.textWhite,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
   },
   campaignsList: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+    gap: 16,
   },
   campaignCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
     borderColor: '#F3F4F6',
-    marginBottom: 12,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   campaignHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    marginBottom: 16,
   },
   restaurantImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     marginRight: 12,
   },
   campaignInfo: {
     flex: 1,
+    marginRight: 8,
   },
   restaurantName: {
     fontSize: 12,
     color: '#737373',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   campaignTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 4,
+    marginBottom: 8,
+    lineHeight: 22,
   },
   campaignMeta: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
+    flexWrap: 'wrap',
   },
   metaItem: {
     flexDirection: 'row',
@@ -603,16 +987,17 @@ const styles = StyleSheet.create({
   },
   campaignPayout: {
     alignItems: 'flex-end',
+    minWidth: 80,
   },
   payoutAmount: {
     fontSize: 20,
     fontWeight: '600',
     color: '#10B981',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 12,
   },
   statusTextBadge: {
@@ -620,29 +1005,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   deliverablesSection: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: '#F3F4F6',
   },
   deliverablesTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   deliverableItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 10,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     borderWidth: 2,
     borderColor: '#E5E5E5',
-    marginRight: 8,
+    marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -663,7 +1048,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 64,
+    paddingVertical: 80,
+    paddingHorizontal: 32,
   },
   emptyTitle: {
     fontSize: 18,
@@ -817,8 +1203,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   actionIndicator: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
     alignItems: 'center',
@@ -837,5 +1223,242 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#EF4444',
+  },
+  invitationCard: {
+    backgroundColor: DS.colors.surface,
+    borderRadius: DS.borderRadius.lg,
+    padding: DS.spacing.lg,
+    marginBottom: DS.spacing.md,
+    borderWidth: 1,
+    borderColor: DS.colors.border,
+    ...DS.shadows.sm,
+  },
+  invitationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  invitationTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+    textTransform: 'uppercase',
+  },
+  invitationDate: {
+    fontSize: 12,
+    color: '#737373',
+  },
+  invitationCampaignTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  invitationRestaurant: {
+    fontSize: 14,
+    color: '#737373',
+    marginBottom: 12,
+  },
+  invitationMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  invitationBudget: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  invitationDeadline: {
+    fontSize: 13,
+    color: '#737373',
+  },
+  invitationMessage: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  invitationMessageText: {
+    fontSize: 14,
+    color: '#262626',
+    lineHeight: 20,
+  },
+  invitationActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  declineButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    alignItems: 'center',
+  },
+  declineButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#737373',
+  },
+  acceptButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+  },
+  acceptButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  badge: {
+    backgroundColor: DS.colors.success,
+    borderRadius: DS.borderRadius.full,
+    paddingHorizontal: DS.spacing.xs + 2,
+    paddingVertical: 2,
+    marginLeft: DS.spacing.xs,
+    minWidth: 20,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeActive: {
+    backgroundColor: DS.colors.textWhite,
+  },
+  badgeText: {
+    ...DS.typography.caption,
+    fontWeight: '700',
+    color: DS.colors.textWhite,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  badgeTextActive: {
+    color: DS.colors.success,
+  },
+  // Campaign Details Modal Styles
+  campaignImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: DS.colors.surfaceLight,
+  },
+  modalRestaurantSection: {
+    paddingHorizontal: DS.spacing.lg,
+    paddingTop: DS.spacing.md,
+  },
+  modalRestaurantName: {
+    ...DS.typography.h3,
+    color: DS.colors.textGray,
+  },
+  modalCampaignTitle: {
+    ...DS.typography.h1,
+    color: DS.colors.textDark,
+    paddingHorizontal: DS.spacing.lg,
+    marginTop: DS.spacing.sm,
+    marginBottom: DS.spacing.md,
+  },
+  modalDescription: {
+    ...DS.typography.body,
+    color: DS.colors.textDark,
+    paddingHorizontal: DS.spacing.lg,
+    marginBottom: DS.spacing.lg,
+    lineHeight: 22,
+  },
+  modalStats: {
+    flexDirection: 'row',
+    paddingHorizontal: DS.spacing.lg,
+    marginBottom: DS.spacing.lg,
+    gap: DS.spacing.md,
+  },
+  modalStatItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DS.colors.surfaceLight,
+    padding: DS.spacing.md,
+    borderRadius: DS.borderRadius.md,
+    gap: DS.spacing.sm,
+  },
+  modalStatContent: {
+    flex: 1,
+  },
+  modalStatLabel: {
+    ...DS.typography.caption,
+    color: DS.colors.textGray,
+    marginBottom: DS.spacing.xs,
+  },
+  modalStatValue: {
+    ...DS.typography.h3,
+    color: DS.colors.textDark,
+  },
+  modalSection: {
+    paddingHorizontal: DS.spacing.lg,
+    marginBottom: DS.spacing.lg,
+  },
+  modalSectionTitle: {
+    ...DS.typography.h3,
+    color: DS.colors.textDark,
+    marginBottom: DS.spacing.md,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    marginBottom: DS.spacing.sm,
+    paddingLeft: DS.spacing.xs,
+  },
+  requirementBullet: {
+    ...DS.typography.body,
+    color: DS.colors.textDark,
+    marginRight: DS.spacing.sm,
+    fontWeight: '600',
+  },
+  requirementText: {
+    ...DS.typography.body,
+    color: DS.colors.textDark,
+    flex: 1,
+    lineHeight: 22,
+  },
+  invitationMessageBox: {
+    backgroundColor: DS.colors.surfaceLight,
+    padding: DS.spacing.md,
+    borderRadius: DS.borderRadius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: DS.colors.primaryOrange,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: DS.spacing.lg,
+    gap: DS.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: DS.colors.border,
+    backgroundColor: DS.colors.surface,
+  },
+  modalDeclineButton: {
+    flex: 1,
+    paddingVertical: DS.spacing.md,
+    borderRadius: DS.borderRadius.md,
+    borderWidth: 1,
+    borderColor: DS.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: DS.colors.surface,
+  },
+  modalDeclineButtonText: {
+    ...DS.typography.button,
+    color: DS.colors.textDark,
+  },
+  modalAcceptButton: {
+    flex: 2,
+    paddingVertical: DS.spacing.md,
+    borderRadius: DS.borderRadius.md,
+    backgroundColor: DS.colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...DS.shadows.sm,
+  },
+  modalAcceptButtonText: {
+    ...DS.typography.button,
+    color: DS.colors.textWhite,
   },
 });

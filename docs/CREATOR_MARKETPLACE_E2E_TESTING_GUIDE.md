@@ -259,6 +259,13 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    -- Should show: account_type='creator', is_creator=true, profile_id NOT NULL
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- Reset test-consumer2 back to consumer status
+-- Run scripts/reset-creator-status.sql to undo creator upgrade
+-- This removes creator_profiles record and resets account_type to 'consumer'
+```
+
 #### Test Case 1.2: Rollback on Profile Creation Failure
 1. **Setup:** Simulate profile creation failure (temporarily break RLS policy)
    - **Test Account:** `test-consumer2@bypass.com` (OTP: `000000`)
@@ -274,6 +281,12 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
 4. **Verification:**
    - Check user account_type is still 'consumer'
    - Verify no creator_profiles record exists
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies rollback worked correctly
+-- Account should remain as consumer with no creator_profiles record
+```
 
 ---
 
@@ -303,6 +316,13 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    -- media_type should be 'image'
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- Reset test-consumer3 back to consumer status
+-- Run scripts/reset-creator-status.sql to undo creator upgrade
+-- This removes creator_profiles record, portfolio items, and resets account_type
+```
+
 #### Test Case 2.4: Successful Video Upload
 1. **Setup:** Creator onboarding flow
    - **Test Account:** `test-consumer4@troodieapp.com` (OTP: `000000`) - Consumer upgrading to creator
@@ -324,6 +344,13 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    -- Should have video_url and thumbnail_url populated
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- Reset test-consumer4 back to consumer status
+-- Run scripts/reset-creator-status.sql to undo creator upgrade
+-- This removes creator_profiles record, portfolio items (including videos), and resets account_type
+```
+
 #### Test Case 2.5: Mixed Image and Video Upload
 1. **Setup:** Creator onboarding flow
    - **Test Account:** `test-consumer5@troodieapp.com` (OTP: `000000`) - Consumer upgrading to creator
@@ -334,6 +361,13 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    - Both images and videos upload successfully
    - Media type correctly set for each item
    - All items display in portfolio
+
+**Post-Test Cleanup:**
+```sql
+-- Reset test-consumer5 back to consumer status
+-- Run scripts/reset-creator-status.sql to undo creator upgrade
+-- This removes creator_profiles record, portfolio items (images and videos), and resets account_type
+```
 
 #### Test Case 2.2: Upload Failure Handling
 1. **Setup:** Simulate network failure during upload
@@ -347,6 +381,13 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    - Successful uploads preserved
    - Can retry only failed images
 
+**Post-Test Cleanup:**
+```sql
+-- Reset test-consumer6 back to consumer status
+-- Run scripts/reset-creator-status.sql to undo creator upgrade
+-- This removes any partial creator_profiles record and resets account_type
+```
+
 #### Test Case 2.3: Large Image Compression
 1. **Setup:** Select image > 2MB
    - **Test Account:** `test-consumer7@troodieapp.com` (OTP: `000000`) - Consumer upgrading to creator
@@ -356,6 +397,13 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    - Image compressed to < 1MB
    - Quality remains acceptable
    - Upload completes successfully
+
+**Post-Test Cleanup:**
+```sql
+-- Reset test-consumer7 back to consumer status
+-- Run scripts/reset-creator-status.sql to undo creator upgrade
+-- This removes creator_profiles record, portfolio items, and resets account_type
+```
 
 ---
 
@@ -415,6 +463,26 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    -- creator_id should equal profile_id, not user_id
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove the test application created during testing
+DELETE FROM campaign_applications ca
+WHERE ca.creator_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND ca.campaign_id IN (
+  SELECT c.id FROM campaigns c
+  JOIN restaurants r ON c.restaurant_id = r.id
+  JOIN business_profiles bp ON bp.restaurant_id = r.id
+  JOIN users u ON bp.user_id = u.id
+  WHERE u.email IN ('test-business2@troodieapp.com', 'test-business3@troodieapp.com')
+)
+ORDER BY ca.applied_at DESC
+LIMIT 1;
+```
+
 #### Test Case 3.2: Missing Creator Profile
 1. **Setup:** User with `is_creator=true` but no `creator_profiles` record
    - **Test Account:** `test-consumer8@troodieapp.com` (OTP: `000000`) - Requires manual setup: set `is_creator=true` but delete `creator_profiles` record
@@ -424,6 +492,12 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
 3. **Expected:**
    - Error: "Please complete your creator profile first"
    - Redirect to profile setup
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies error handling
+-- Account should remain in edge case state (is_creator=true but no creator_profiles)
+```
 
 #### Test Case 3.3: Duplicate Application Prevention
 1. **Setup:** Creator with existing application to campaign
@@ -437,6 +511,26 @@ WHERE u.email LIKE 'test-business%@troodieapp.com';
    - "Apply Now" button shows "Already Applied" (disabled state)
    - Error alert: "You have already applied to this campaign" if somehow triggered
    - No duplicate application created
+
+**Post-Test Cleanup:**
+```sql
+-- Remove the test application created during testing
+DELETE FROM campaign_applications ca
+WHERE ca.creator_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND ca.campaign_id IN (
+  SELECT c.id FROM campaigns c
+  JOIN restaurants r ON c.restaurant_id = r.id
+  JOIN business_profiles bp ON bp.restaurant_id = r.id
+  JOIN users u ON bp.user_id = u.id
+  WHERE u.email IN ('test-business2@troodieapp.com', 'test-business3@troodieapp.com')
+)
+ORDER BY ca.applied_at DESC
+LIMIT 1;
+```
 
 #### Diagnostic Query: Understanding Campaign Visibility
 If you have no campaigns showing in "My Campaigns", run this diagnostic query to understand why:
@@ -603,6 +697,26 @@ Test URLs:
 - Clear error message shown
 - Submission blocked
 
+**Post-Test Cleanup:**
+```sql
+-- Remove any test deliverables created during CM-4 testing
+DELETE FROM campaign_deliverables cd
+WHERE cd.campaign_application_id IN (
+  SELECT ca.id FROM campaign_applications ca
+  JOIN campaigns c ON ca.campaign_id = c.id
+  WHERE c.title LIKE '%CM-4 Test%'
+);
+
+-- Remove test applications
+DELETE FROM campaign_applications ca
+WHERE ca.campaign_id IN (
+  SELECT id FROM campaigns WHERE title LIKE '%CM-4 Test%'
+);
+
+-- Remove test campaigns
+DELETE FROM campaigns WHERE title LIKE '%CM-4 Test%';
+```
+
 ---
 
 ### CM-5: Auto-Approval Cron Job
@@ -651,6 +765,16 @@ Test URLs:
    WHERE id = '...';
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- Reset deliverable status back to pending_review for re-testing
+UPDATE campaign_deliverables
+SET status = 'pending_review',
+    auto_approved_at = NULL,
+    payment_status = NULL
+WHERE id = '...'; -- Replace with actual deliverable ID from test
+```
+
 #### Test Case 5.4: Recently Submitted Not Affected
 1. **Setup:** Deliverable submitted 48 hours ago
    - **Test Account:** `test-creator2@troodieapp.com` (OTP: `000000`) - Has deliverables
@@ -660,6 +784,12 @@ Test URLs:
    - Status remains `pending_review`
    - Not auto-approved
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies deliverable remains pending
+-- Deliverable should remain in pending_review status
+```
+
 #### Test Case 5.5: Already Reviewed Not Affected
 1. **Setup:** Deliverable approved manually 80 hours ago
    - **Test Account:** `test-creator3@troodieapp.com` (OTP: `000000`) - Has approved deliverables
@@ -668,6 +798,12 @@ Test URLs:
 3. **Expected:**
    - Status remains `approved`
    - Not changed to `auto_approved`
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies deliverable remains approved
+-- Deliverable should remain in approved status
+```
 
 #### Test Case 5.6: Monitoring View
 1. **Setup:** No specific test account needed (database view check)
@@ -679,6 +815,12 @@ Test URLs:
    - Shows daily statistics
    - Overdue count accurate
    - Auto-approved count accurate
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies monitoring view
+-- View is read-only and doesn't modify data
+```
 
 ---
 
@@ -800,6 +942,21 @@ Test URLs:
      - ✅ Status shows as "Active"
      - ✅ Budget/date information displays correctly
 
+**Post-Test Cleanup:**
+```sql
+-- Remove the test campaign created during testing
+DELETE FROM campaigns
+WHERE title = 'Summer Menu Launch 2025'
+AND restaurant_id IN (
+  SELECT r.id FROM restaurants r
+  JOIN business_profiles bp ON bp.restaurant_id = r.id
+  JOIN users u ON bp.user_id = u.id
+  WHERE u.email = 'test-business1@bypass.com'
+)
+ORDER BY created_at DESC
+LIMIT 1;
+```
+
 #### Test Case 7.2: No Business Profile
 1. **Setup:** User without business profile
    - **Test Account:** `test-consumer9@bypass.com` (OTP: `000000`) - Consumer account (no business profile)
@@ -811,6 +968,12 @@ Test URLs:
    - Message: "Please complete your business setup to create campaigns"
    - "Complete Setup" button → redirects to setup
    - "Go Back" button available
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies error handling
+-- Account should remain as consumer without business profile
+```
 
 #### Test Case 7.3: No Restaurant Linked
 1. **Setup:** Business profile without restaurant
@@ -824,6 +987,12 @@ Test URLs:
    - "Claim Restaurant" button → redirects to claim flow
    - "Go Back" button available
 
+**Post-Test Cleanup:**
+```sql
+-- Restore business_profile with restaurant_id if needed
+-- Or leave in edge case state for future testing
+```
+
 #### Test Case 7.4: Unverified Restaurant
 1. **Setup:** Business profile with unverified restaurant claim
    - **Test Account:** `test-business1@bypass.com` (OTP: `000000`) - Requires manual setup: set `verification_status` = `'pending'` in business_profiles
@@ -833,6 +1002,16 @@ Test URLs:
    - Error screen shown
    - Message: "Your restaurant claim is pending verification"
    - Submit button disabled (form doesn't load)
+
+**Post-Test Cleanup:**
+```sql
+-- Restore verification_status to 'verified' for test-business1
+UPDATE business_profiles bp
+SET verification_status = 'verified'
+FROM users u
+WHERE bp.user_id = u.id
+AND u.email = 'test-business1@bypass.com';
+```
 
 #### Test Case 7.5: Network Error Handling
 1. **Setup:** Simulate network failure
@@ -845,6 +1024,12 @@ Test URLs:
    - Clear error message
    - Can retry without leaving screen
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies error handling
+-- Network simulation doesn't modify data
+```
+
 #### Test Case 7.6: Submit Button Disabled
 1. **Setup:** Campaign form with missing restaurant data
    - **Test Account:** `test-business1@troodieapp.com` (OTP: `000000`) - Can test with restaurant data loading failure
@@ -853,6 +1038,12 @@ Test URLs:
 3. **Expected:**
    - Submit button disabled
    - Cannot submit without valid restaurant
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies form validation
+-- No data is created when submit is disabled
+```
 
 ---
 
@@ -878,6 +1069,12 @@ Test URLs:
    - Only restaurant owners see Analytics tab
    - Non-owners don't see tab
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies UI visibility
+-- Analytics dashboard is read-only view
+```
+
 #### Test Case 6.2: View Real-Time Metrics
 1. **Setup:** Restaurant with existing saves and posts
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`) - MEDIUM activity
@@ -897,6 +1094,12 @@ Test URLs:
    -- Compare with displayed values
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies analytics display
+-- Analytics function is read-only
+```
+
 #### Test Case 6.3: Trending Badge Display
 1. **Setup:** Restaurant with >10 saves in last 24 hours
    - **Test Account:** `test-business3@troodieapp.com` (OTP: `000000`) - HIGH activity
@@ -911,6 +1114,12 @@ Test URLs:
 4. **Verification:**
    - Badge only shows when `saves_last_24h > 10`
    - Badge hidden when < 10 saves
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies badge display logic
+-- If saves were modified for testing, restore original save timestamps
+```
 
 #### Test Case 6.4: Daily Saves Chart
 1. **Setup:** Restaurant with saves over past 30 days
@@ -928,6 +1137,12 @@ Test URLs:
    - Chart data matches `daily_saves` from function
    - Empty state shown if no data
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies chart display
+-- Chart uses read-only analytics function
+```
+
 #### Test Case 6.5: Top Savers List
 1. **Setup:** Restaurant with multiple users who saved
    - **Test Account:** `test-business3@troodieapp.com` (OTP: `000000`) - HIGH activity
@@ -943,6 +1158,23 @@ Test URLs:
 4. **Verification:**
    - List ordered by save count DESC
    - Creator badge only on creators
+
+**Post-Test Cleanup:**
+```sql
+-- Remove test save created during testing (if any)
+DELETE FROM restaurant_saves rs
+WHERE rs.restaurant_id IN (
+  SELECT r.id FROM restaurants r
+  JOIN business_profiles bp ON bp.restaurant_id = r.id
+  JOIN users u ON bp.user_id = u.id
+  WHERE u.email = 'test-business2@bypass.com'
+)
+AND rs.user_id IN (
+  SELECT id FROM users WHERE email = 'test-consumer1@troodieapp.com'
+)
+ORDER BY rs.created_at DESC
+LIMIT 1;
+```
 
 #### Test Case 6.6: Real-Time Save Updates
 1. **Setup:** Analytics dashboard open
@@ -978,6 +1210,12 @@ Test URLs:
    - CSV format correct
    - All metrics included
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies export functionality
+-- Export is read-only operation
+```
+
 #### Test Case 6.8: Pull-to-Refresh
 1. **Setup:** Analytics dashboard
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`) - MEDIUM activity
@@ -989,6 +1227,12 @@ Test URLs:
    - Data reloads
    - Metrics update
    - Loading state shown during refresh
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies refresh functionality
+-- Refresh is read-only operation
+```
 
 #### Test Case 6.9: Empty State
 1. **Setup:** New restaurant with no saves/posts
@@ -1002,6 +1246,12 @@ Test URLs:
    - Chart shows empty state
    - Top Savers shows "No savers yet"
    - No errors displayed
+
+**Post-Test Cleanup:**
+```sql
+-- Restore saves/posts if they were removed for testing
+-- Or leave restaurant in empty state for future testing
+```
 
 ---
 
@@ -1022,6 +1272,12 @@ Test URLs:
    - "Edit Details" button visible for owned restaurant
    - Button hidden for non-owned restaurant
    - Button navigates to edit screen
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies UI visibility
+-- No data is modified
+```
 
 #### Test Case 8.2: Edit Description
 1. **Setup:** Restaurant owner viewing own restaurant
@@ -1044,6 +1300,24 @@ Test URLs:
    -- Should match entered text
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- Restore original description (or clear test description)
+UPDATE restaurants r
+SET custom_description = NULL
+FROM business_profiles bp
+WHERE bp.restaurant_id = r.id
+AND bp.user_id IN (
+  SELECT id FROM users WHERE email = 'test-business2@troodieapp.com'
+)
+AND r.id IN (
+  SELECT restaurant_id FROM business_profiles bp2
+  JOIN users u ON bp2.user_id = u.id
+  WHERE u.email = 'test-business2@troodieapp.com'
+  LIMIT 1
+);
+```
+
 #### Test Case 8.3: Description Validation
 1. **Setup:** Edit restaurant screen
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1057,6 +1331,12 @@ Test URLs:
    - Save button disabled
    - Cannot save until under limit
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies validation prevents save
+-- No invalid data is saved
+```
+
 #### Test Case 8.4: Edit About Us
 1. **Setup:** Edit restaurant screen
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1069,6 +1349,24 @@ Test URLs:
    - About Us saves successfully
    - Character count displayed
    - Updates visible immediately
+
+**Post-Test Cleanup:**
+```sql
+-- Restore original about_us (or clear test data)
+UPDATE restaurants r
+SET about_us = NULL
+FROM business_profiles bp
+WHERE bp.restaurant_id = r.id
+AND bp.user_id IN (
+  SELECT id FROM users WHERE email = 'test-business2@troodieapp.com'
+)
+AND r.id IN (
+  SELECT restaurant_id FROM business_profiles bp2
+  JOIN users u ON bp2.user_id = u.id
+  WHERE u.email = 'test-business2@troodieapp.com'
+  LIMIT 1
+);
+```
 
 #### Test Case 8.5: Parking Information
 1. **Setup:** Edit restaurant screen
@@ -1085,6 +1383,24 @@ Test URLs:
 4. **Verification:**
    - Parking options: Free Lot, Paid Lot, Valet, Street, Validation, None
    - Notes max 200 characters
+
+**Post-Test Cleanup:**
+```sql
+-- Restore original parking info (or clear test data)
+UPDATE restaurants r
+SET parking_type = NULL, parking_notes = NULL
+FROM business_profiles bp
+WHERE bp.restaurant_id = r.id
+AND bp.user_id IN (
+  SELECT id FROM users WHERE email = 'test-business2@troodieapp.com'
+)
+AND r.id IN (
+  SELECT restaurant_id FROM business_profiles bp2
+  JOIN users u ON bp2.user_id = u.id
+  WHERE u.email = 'test-business2@troodieapp.com'
+  LIMIT 1
+);
+```
 
 #### Test Case 8.6: Special Deals Editor
 1. **Setup:** Edit restaurant screen
@@ -1108,6 +1424,24 @@ Test URLs:
    - Title max 100 chars
    - Description max 300 chars
 
+**Post-Test Cleanup:**
+```sql
+-- Restore original special_deals (or clear test deals)
+UPDATE restaurants r
+SET special_deals = NULL
+FROM business_profiles bp
+WHERE bp.restaurant_id = r.id
+AND bp.user_id IN (
+  SELECT id FROM users WHERE email = 'test-business2@troodieapp.com'
+)
+AND r.id IN (
+  SELECT restaurant_id FROM business_profiles bp2
+  JOIN users u ON bp2.user_id = u.id
+  WHERE u.email = 'test-business2@troodieapp.com'
+  LIMIT 1
+);
+```
+
 #### Test Case 8.7: Hours Editor
 1. **Setup:** Edit restaurant screen
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1126,6 +1460,24 @@ Test URLs:
    - Hours stored as JSONB
    - Format: `{ "monday": { "open": "09:00", "close": "22:00", "closed": false } }`
 
+**Post-Test Cleanup:**
+```sql
+-- Restore original hours (or clear test hours)
+UPDATE restaurants r
+SET hours = NULL
+FROM business_profiles bp
+WHERE bp.restaurant_id = r.id
+AND bp.user_id IN (
+  SELECT id FROM users WHERE email = 'test-business2@troodieapp.com'
+)
+AND r.id IN (
+  SELECT restaurant_id FROM business_profiles bp2
+  JOIN users u ON bp2.user_id = u.id
+  WHERE u.email = 'test-business2@troodieapp.com'
+  LIMIT 1
+);
+```
+
 #### Test Case 8.8: Unsaved Changes Warning
 1. **Setup:** Edit restaurant screen with changes
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1138,6 +1490,12 @@ Test URLs:
    - Options: "Keep Editing", "Discard"
    - Discard returns to profile
    - Keep Editing stays on edit screen
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies UI behavior
+-- Changes are discarded, so no data modified
+```
 
 #### Test Case 8.9: Save Button States
 1. **Setup:** Edit restaurant screen
@@ -1152,6 +1510,12 @@ Test URLs:
    - Save button enabled when changes made
    - Save button shows "Saving..." during save
    - Button disabled during save operation
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies UI states
+-- No data is modified
+```
 
 #### Test Case 8.10: Activity Feed Entry
 1. **Setup:** Restaurant owner
@@ -1172,6 +1536,22 @@ Test URLs:
    ORDER BY created_at DESC LIMIT 1;
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove test activity feed entry created during testing
+DELETE FROM activity_feed
+WHERE entity_type = 'restaurant'
+AND entity_id IN (
+  SELECT r.id FROM restaurants r
+  JOIN business_profiles bp ON bp.restaurant_id = r.id
+  JOIN users u ON bp.user_id = u.id
+  WHERE u.email = 'test-business2@troodieapp.com'
+)
+AND activity_type = 'restaurant_updated'
+ORDER BY created_at DESC
+LIMIT 1;
+```
+
 #### Test Case 8.11: Ownership Verification
 1. **Setup:** User trying to edit restaurant they don't own
    - **Test Account:** `test-consumer1@troodieapp.com` (OTP: `000000`) - Does not own restaurant
@@ -1182,6 +1562,12 @@ Test URLs:
    - Access denied error
    - Redirected back
    - Cannot edit restaurant
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies access control
+-- No data is modified
+```
 
 ---
 
@@ -1203,6 +1589,12 @@ Test URLs:
    - Filter button visible
    - Loading state shown initially
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies UI display
+-- Discovery screen is read-only view
+```
+
 #### Test Case 9.2: Creator Card Display
 1. **Setup:** Creators discovery screen
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`) - Business browsing creators
@@ -1223,6 +1615,12 @@ Test URLs:
    - Images load correctly
    - Metrics formatted properly
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies UI display
+-- Creator cards are read-only view
+```
+
 #### Test Case 9.3: Filter by City
 1. **Setup:** Creators discovery screen
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1242,6 +1640,12 @@ Test URLs:
    -- Compare with displayed results
    ```
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies filter functionality
+-- Filters are read-only queries
+```
+
 #### Test Case 9.4: Filter by Minimum Followers
 1. **Setup:** Creators discovery screen
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1257,6 +1661,12 @@ Test URLs:
 4. **Verification:**
    - Filter options: Any, 1K+, 5K+, 10K+, 50K+
    - Filter applied correctly
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies filter functionality
+-- Filters are read-only queries
+```
 
 #### Test Case 9.5: Filter by Engagement Rate
 1. **Setup:** Creators discovery screen
@@ -1274,6 +1684,12 @@ Test URLs:
    - Filter options: Any, 2%+, 5%+, 10%+
    - Engagement rate calculated correctly
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies filter functionality
+-- Filters are read-only queries
+```
+
 #### Test Case 9.6: Multiple Filters Combined
 1. **Setup:** Creators discovery screen
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1289,6 +1705,12 @@ Test URLs:
    - Multiple filter badges shown
    - Can remove individual filters
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies filter functionality
+-- Filters are read-only queries
+```
+
 #### Test Case 9.7: Clear All Filters
 1. **Setup:** Creators with active filters
    - **Test Account:** `test-business2@troodieapp.com` (OTP: `000000`)
@@ -1300,6 +1722,12 @@ Test URLs:
    - All filters cleared
    - Full creator list shown
    - Filter count resets to 0
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies filter functionality
+-- Filters are read-only queries
+```
 
 #### Test Case 9.8: Creator Profile View
 1. **Setup:** Creators discovery screen
@@ -1358,6 +1786,13 @@ Test URLs:
    - Changes persist in database
    - Visible to other users
 
+**Post-Test Cleanup:**
+```sql
+-- Restore original profile data (or leave test changes for future testing)
+-- Note: Profile edits are typically kept for demonstration purposes
+-- If needed, restore from backup or reset to original values
+```
+
 #### Test Case 9.11: Specialties Management
 1. **Setup:** Edit creator profile
    - **Test Account:** `test-creator1@troodieapp.com` (OTP: `000000`) - Editing own profile
@@ -1372,6 +1807,17 @@ Test URLs:
    - No duplicates allowed
    - Saved to database
    - Displayed on profile
+
+**Post-Test Cleanup:**
+```sql
+-- Restore original specialties (or leave test changes)
+-- Note: Profile edits are typically kept for demonstration purposes
+UPDATE creator_profiles cp
+SET specialties = NULL
+FROM users u
+WHERE cp.user_id = u.id
+AND u.email = 'test-creator1@troodieapp.com';
+```
 
 #### Test Case 9.12: Open to Collabs Toggle
 1. **Setup:** Edit creator profile
@@ -1389,6 +1835,16 @@ Test URLs:
    SELECT open_to_collabs FROM creator_profiles WHERE id = '...';
    -- Should match toggle state
    ```
+
+**Post-Test Cleanup:**
+```sql
+-- Restore open_to_collabs to original state (typically true for test creators)
+UPDATE creator_profiles cp
+SET open_to_collabs = true
+FROM users u
+WHERE cp.user_id = u.id
+AND u.email = 'test-creator1@troodieapp.com';
+```
 
 #### Test Case 9.13: Pagination
 1. **Setup:** Creators discovery with many results
@@ -1439,6 +1895,12 @@ Test URLs:
    SELECT troodie_engagement_rate, troodie_posts_count
    FROM creator_profiles WHERE id = '...';
    ```
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies metrics calculation
+-- Metrics update is read-only calculation based on existing data
+```
 
 #### Test Case 9.17: Browse Creators Screen (Restaurant Owner)
 1. **Setup:** Business account logged in
@@ -1934,6 +2396,15 @@ SELECT * FROM get_creators(p_city := 'San Francisco');
 -- Should only return creators in San Francisco, no businesses
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove creator_profile created for test-business1 during pre-test setup
+DELETE FROM creator_profiles cp
+WHERE cp.user_id IN (
+  SELECT id FROM users WHERE email = 'test-business1@bypass.com'
+);
+```
+
 ---
 
 ## ER-007: Campaign Invitation System
@@ -1978,7 +2449,6 @@ BEGIN
       description,
       status,
       budget_cents,
-      payout_per_creator,
       start_date,
       end_date,
       max_creators,
@@ -1992,7 +2462,6 @@ BEGIN
       'Test campaign for invitation system testing',
       'active',
       100000, -- $1000
-      50000,  -- $500 per creator
       NOW(),
       NOW() + INTERVAL '30 days',
       5,
@@ -2098,6 +2567,22 @@ LIMIT 1;
 -- Should show: status = 'pending', expires_at = invited_at + 14 days
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove test invitation created during testing
+DELETE FROM campaign_invitations ci
+WHERE ci.creator_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND ci.invited_by IN (
+  SELECT id FROM users WHERE email = 'test-business1@bypass.com'
+)
+ORDER BY ci.invited_at DESC
+LIMIT 1;
+```
+
 ### Test Case ER-007-2: Creator Views Invitation
 
 **Objective:** Verify creators can see invitations in their campaigns screen.
@@ -2144,6 +2629,12 @@ JOIN users u ON cp.user_id = u.id
 WHERE u.email = 'test-creator1@bypass.com'
 AND ci.status = 'pending';
 -- Should return the invitation created in ER-007-1
+```
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies invitation display
+-- Cleanup handled in ER-007-3 after acceptance
 ```
 
 ### Test Case ER-007-3: Creator Accepts Invitation
@@ -2716,6 +3207,17 @@ ORDER BY cd.deliverable_index;
 -- All should have status = 'pending_review'
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove test deliverables created during testing
+DELETE FROM campaign_deliverables cd
+WHERE cd.campaign_application_id IN (
+  SELECT ca.id FROM campaign_applications ca
+  JOIN campaigns c ON ca.campaign_id = c.id
+  WHERE c.title = 'ER-008 Test: Multi-Deliverable Campaign'
+);
+```
+
 ### Test Case ER-008-2: Deliverable Progress Tracking
 
 **Objective:** Verify progress tracking works correctly during incremental submission.
@@ -2865,6 +3367,17 @@ ORDER BY cd.deliverable_index;
 -- Should be: 1, 2, 3 with no gaps or duplicates
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove test deliverables created during testing
+DELETE FROM campaign_deliverables cd
+WHERE cd.campaign_application_id IN (
+  SELECT ca.id FROM campaign_applications ca
+  JOIN campaigns c ON ca.campaign_id = c.id
+  WHERE c.title = 'ER-008 Test: Multi-Deliverable Campaign'
+);
+```
+
 ### Test Case ER-008-4: Required Deliverables Display in Campaign Details
 
 **Objective:** Verify required deliverables are displayed to creators before applying.
@@ -2912,6 +3425,12 @@ SELECT
 FROM campaigns c
 WHERE c.title = 'ER-008 Test: Multi-Deliverable Campaign';
 -- Should show deliverable_requirements JSONB with 3 deliverables
+```
+
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies display functionality
+-- Campaign display is read-only
 ```
 
 ### Test Case ER-008-5: Partial Submission Handling
@@ -2985,6 +3504,25 @@ ORDER BY cd.deliverable_index;
 -- Should show 2-3 deliverables depending on test step
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove test deliverables and application
+DELETE FROM campaign_deliverables cd
+WHERE cd.campaign_application_id IN (
+  SELECT ca.id FROM campaign_applications ca
+  JOIN campaigns c ON ca.campaign_id = c.id
+  WHERE c.title = 'ER-008 Test: Multi-Deliverable Campaign'
+);
+
+DELETE FROM campaign_applications ca
+WHERE ca.campaign_id IN (
+  SELECT id FROM campaigns WHERE title = 'ER-008 Test: Multi-Deliverable Campaign'
+);
+
+-- Remove test campaign
+DELETE FROM campaigns WHERE title = 'ER-008 Test: Multi-Deliverable Campaign';
+```
+
 ---
 
 ## CM-10: Creator Profile Schema Cleanup
@@ -3046,6 +3584,12 @@ SELECT * FROM get_creators(p_limit := 5);
 -- Should return creators without errors
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies schema cleanup
+-- Migration removes columns, no data to clean up
+```
+
 ### Test Case CM-10-2: Verify get_creators Function Updated
 
 **Objective:** Ensure get_creators function no longer accepts collab_types parameter.
@@ -3079,12 +3623,18 @@ SELECT * FROM get_creators(
 -- Should work without errors
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies function signature
+-- Function update is schema change, no data to clean up
+```
+
 ---
 
 ## CM-11: Creator Availability Status
 
 **Status:** ✅ Implemented  
-**Testing Confirmed:** ⬜ Not Yet Tested
+**Testing Confirmed:** ✅ Tested and Working
 
 ### Pre-Test Setup for CM-11
 
@@ -3134,6 +3684,16 @@ FROM creator_profiles cp
 JOIN users u ON cp.user_id = u.id
 WHERE u.email = 'test-creator1@bypass.com';
 -- Should show: availability_status = 'busy'
+```
+
+**Post-Test Cleanup:**
+```sql
+-- Restore availability_status to original state
+UPDATE creator_profiles cp
+SET availability_status = 'available'
+FROM users u
+WHERE cp.user_id = u.id
+AND u.email = 'test-creator1@bypass.com';
 ```
 
 ### Test Case CM-11-2: Business Views Busy Creator
@@ -3200,6 +3760,16 @@ JOIN users u ON cp.user_id = u.id
 WHERE u.email IN ('test-creator1@bypass.com', 'test-creator2@bypass.com', 'test-creator3@bypass.com');
 -- Should show: test-creator1 (busy), test-creator3 (available)
 -- Should NOT show: test-creator2 (not_accepting)
+```
+
+**Post-Test Cleanup:**
+```sql
+-- Restore availability_status to original state
+UPDATE creator_profiles cp
+SET availability_status = 'available'
+FROM users u
+WHERE cp.user_id = u.id
+AND u.email = 'test-creator2@bypass.com';
 ```
 
 ---
@@ -3277,6 +3847,21 @@ LIMIT 1;
 -- deliverable_requirements should contain: deliverables array
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove test campaign created during testing
+DELETE FROM campaigns
+WHERE title = 'CM-12 Test Campaign'
+AND restaurant_id IN (
+  SELECT r.id FROM restaurants r
+  JOIN business_profiles bp ON bp.restaurant_id = r.id
+  JOIN users u ON bp.user_id = u.id
+  WHERE u.email = 'test-business1@bypass.com'
+)
+ORDER BY created_at DESC
+LIMIT 1;
+```
+
 ### Test Case CM-12-2: Verify Requirements Moved to Step 3
 
 **Objective:** Verify requirements section is now in Step 3 with deliverables.
@@ -3301,12 +3886,18 @@ LIMIT 1;
 - Requirements optional (not blocking submission)
 - Requirements save with campaign
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies form structure
+-- No data is created if form is not submitted
+```
+
 ---
 
 ## CM-13: Display Deliverables to Creators
 
 **Status:** ✅ Implemented  
-**Testing Confirmed:** ⬜ Not Yet Tested
+**Testing Confirmed:** ✅ Tested and Working
 
 ### Pre-Test Setup for CM-13
 
@@ -3332,7 +3923,6 @@ BEGIN
     description,
     status,
     budget_cents,
-    payout_per_creator,
     start_date,
     end_date,
     max_creators,
@@ -3344,7 +3934,6 @@ BEGIN
     'CM-13 Test: Deliverables Display',
     'Test campaign to verify deliverables are shown to creators',
     'active',
-    100000,
     100000,
     NOW(),
     NOW() + INTERVAL '30 days',
@@ -3410,6 +3999,12 @@ SELECT
 FROM campaigns c
 WHERE c.title = 'CM-13 Test: Deliverables Display';
 -- Should show JSONB array with 2 deliverables
+```
+
+**Post-Test Cleanup:**
+```sql
+-- Remove test campaign created during pre-test setup
+DELETE FROM campaigns WHERE title = 'CM-13 Test: Deliverables Display';
 ```
 
 ### Test Case CM-13-2: Deliverable Count on Campaign Card
@@ -3497,6 +4092,12 @@ END $$;
 - No deliverable count on card
 - No deliverables section in modal
 - No errors or crashes
+
+**Post-Test Cleanup:**
+```sql
+-- Remove test campaign created during pre-test setup
+DELETE FROM campaigns WHERE title = 'CM-13 Test: No Deliverables';
+```
 
 ---
 
@@ -3613,6 +4214,29 @@ JOIN users u ON cp.user_id = u.id
 WHERE u.email = 'test-creator1@bypass.com';
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Remove test portfolio items and completed application created during pre-test setup
+DELETE FROM creator_portfolio_items
+WHERE creator_profile_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND media_url LIKE 'https://example.com/portfolio%';
+
+DELETE FROM campaign_applications ca
+WHERE ca.creator_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND ca.status = 'completed'
+AND ca.rating = 4.8
+ORDER BY ca.created_at DESC
+LIMIT 1;
+```
+
 ### Test Case CM-14-2: Profile with Missing Data (Empty States)
 
 **Objective:** Verify empty states display correctly.
@@ -3653,6 +4277,17 @@ WHERE creator_profile_id IN (
 - No blank/confusing sections
 - Profile still usable
 
+**Post-Test Cleanup:**
+```sql
+-- Restore creator profile data modified during pre-test setup
+UPDATE creator_profiles cp
+SET bio = 'Test creator bio', specialties = ARRAY['Food', 'Restaurants']
+FROM users u
+WHERE cp.user_id = u.id
+AND u.email = 'test-creator2@bypass.com';
+-- Restore portfolio items if needed
+```
+
 ### Test Case CM-14-3: Estimated Rate Calculation
 
 **Objective:** Verify estimated rate calculates correctly based on followers.
@@ -3684,6 +4319,17 @@ AND u.email = 'test-creator3@bypass.com';
   - 5K-10K: $200 - $500
   - 10K-50K: $500 - $1,000
   - 50K+: $1,000+
+
+**Post-Test Cleanup:**
+```sql
+-- Restore original follower count (or leave test value)
+-- Note: Follower counts are typically kept for demonstration
+UPDATE creator_profiles cp
+SET total_followers = NULL  -- or restore original value
+FROM users u
+WHERE cp.user_id = u.id
+AND u.email = 'test-creator3@bypass.com';
+```
 
 ---
 
@@ -3763,6 +4409,12 @@ WHERE u.email = 'test-creator1@bypass.com';
 -- Fields: display_name, bio, location, specialties (array), portfolio (min 3)
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies completeness calculation
+-- Completeness is calculated from existing profile data
+```
+
 ### Test Case CM-15-2: Portfolio Management
 
 **Objective:** Verify creators can add and remove portfolio images.
@@ -3809,6 +4461,19 @@ WHERE creator_profile_id = (
 )
 ORDER BY display_order;
 -- Should show all portfolio items
+```
+
+**Post-Test Cleanup:**
+```sql
+-- Remove test portfolio items added during testing (if any)
+-- Or leave portfolio items for future testing/demonstration
+DELETE FROM creator_portfolio_items
+WHERE creator_profile_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND media_url LIKE 'https://example.com/portfolio%';
 ```
 
 ### Test Case CM-15-3: Portfolio Maximum Limit
@@ -3868,6 +4533,18 @@ END $$;
 - Add button hidden at limit
 - Can remove to add more
 
+**Post-Test Cleanup:**
+```sql
+-- Restore portfolio to original state (remove test items if added)
+DELETE FROM creator_portfolio_items
+WHERE creator_profile_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND media_url LIKE 'https://example.com/portfolio%';
+```
+
 ### Test Case CM-15-4: Profile Tips Section
 
 **Objective:** Verify tips section provides helpful guidance.
@@ -3891,9 +4568,18 @@ END $$;
 - Tips helpful and relevant
 - Styling matches design (amber background)
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies UI display
+-- Tips section is read-only guidance
+```
+
 ---
 
 ## CM-16: Creator Rating System
+
+**Status:** ✅ Implemented  
+**Testing Confirmed:** ✅ Tested and Working
 
 ### Test Case CM-16-1: Business Rates Creator After Campaign Completion
 
@@ -3906,37 +4592,48 @@ END $$;
 
 **Pre-Test Setup:**
 ```sql
--- Ensure creator has completed campaign application
+-- Ensure creator has completed campaign application AND ALL deliverables are approved
+-- Note: Rating requires both accepted application AND ALL deliverables must be approved
+-- Rating is the final step in closing out a campaign
 DO $$
 DECLARE
-  business_user_id UUID;
-  creator_profile_id UUID;
-  campaign_id UUID;
-  application_id UUID;
+  v_business_user_id UUID;
+  v_creator_profile_id UUID;
+  v_campaign_id UUID;
+  v_application_id UUID;
+  v_restaurant_id UUID;
+  v_deliverable_exists BOOLEAN;
 BEGIN
+  -- Ensure rating columns exist (apply migration if needed)
+  ALTER TABLE campaign_applications
+  ADD COLUMN IF NOT EXISTS rating DECIMAL(2,1) CHECK (rating >= 1.0 AND rating <= 5.0),
+  ADD COLUMN IF NOT EXISTS rating_comment TEXT,
+  ADD COLUMN IF NOT EXISTS rated_at TIMESTAMP WITH TIME ZONE;
+
   -- Get business user ID
-  SELECT id INTO business_user_id
+  SELECT id INTO v_business_user_id
   FROM auth.users
   WHERE email = 'test-business1@bypass.com';
 
   -- Get creator profile ID
-  SELECT cp.id INTO creator_profile_id
+  SELECT cp.id INTO v_creator_profile_id
   FROM creator_profiles cp
   JOIN users u ON cp.user_id = u.id
   WHERE u.email = 'test-creator1@bypass.com';
 
-  -- Get or create a campaign
-  SELECT id INTO campaign_id
+  -- Get or create the specific test campaign for rating
+  -- IMPORTANT: This must be specifically "Test Campaign for Rating" to avoid conflicts with other test campaigns
+  SELECT id INTO v_campaign_id
   FROM campaigns
-  WHERE restaurant_id IN (
-    SELECT id FROM restaurants WHERE claimed_by = business_user_id
-  )
+  WHERE owner_id = v_business_user_id
+    AND title = 'Test Campaign for Rating'
   LIMIT 1;
 
-  IF campaign_id IS NULL THEN
-    -- Create a campaign
+  IF v_campaign_id IS NULL THEN
+    -- Create the test campaign specifically for rating tests
     INSERT INTO campaigns (
       restaurant_id,
+      owner_id,
       title,
       description,
       budget_cents,
@@ -3945,24 +4642,30 @@ BEGIN
     )
     SELECT 
       r.id,
+      v_business_user_id,
       'Test Campaign for Rating',
-      'Test campaign for rating system',
+      'Test campaign for rating system - CM-16',
       10000,
       NOW() + INTERVAL '30 days',
       'active'
     FROM restaurants r
-    WHERE r.claimed_by = business_user_id
+    WHERE r.owner_id = v_business_user_id
     LIMIT 1
-    RETURNING id INTO campaign_id;
+    RETURNING id INTO v_campaign_id;
+  ELSE
+    -- Ensure the existing campaign is active (for rating to work)
+    UPDATE campaigns
+    SET status = 'active'
+    WHERE id = v_campaign_id AND status != 'active';
   END IF;
 
   -- Get or create application
-  SELECT id INTO application_id
-  FROM campaign_applications
-  WHERE campaign_id = campaign_id
-    AND creator_id = creator_profile_id;
+  SELECT ca.id INTO v_application_id
+  FROM campaign_applications ca
+  WHERE ca.campaign_id = v_campaign_id
+    AND ca.creator_id = v_creator_profile_id;
 
-  IF application_id IS NULL THEN
+  IF v_application_id IS NULL THEN
     INSERT INTO campaign_applications (
       campaign_id,
       creator_id,
@@ -3970,30 +4673,93 @@ BEGIN
       applied_at
     )
     VALUES (
-      campaign_id,
-      creator_profile_id,
+      v_campaign_id,
+      v_creator_profile_id,
       'accepted',
       NOW()
     )
-    RETURNING id INTO application_id;
+    RETURNING id INTO v_application_id;
   ELSE
     -- Ensure status is accepted
     UPDATE campaign_applications
     SET status = 'accepted'
-    WHERE id = application_id;
+    WHERE campaign_applications.id = v_application_id;
   END IF;
 
   -- Ensure no existing rating
   UPDATE campaign_applications
   SET rating = NULL, rating_comment = NULL, rated_at = NULL
-  WHERE id = application_id;
+  WHERE campaign_applications.id = v_application_id;
+
+  -- Ensure ALL deliverables are approved (required for rating)
+  -- Rating is the final step - all deliverables must be completed and approved
+  -- Get restaurant_id for the deliverable
+  SELECT restaurant_id INTO v_restaurant_id
+  FROM campaigns
+  WHERE id = v_campaign_id;
+
+  -- Update any existing deliverables to approved status
+  UPDATE campaign_deliverables
+  SET status = 'approved',
+      reviewed_at = COALESCE(reviewed_at, NOW() - INTERVAL '12 hours'),
+      reviewer_id = COALESCE(reviewer_id, v_business_user_id)
+  WHERE campaign_application_id = v_application_id
+    AND status NOT IN ('approved', 'auto_approved');
+
+  -- Check if any deliverables exist
+  SELECT EXISTS (
+    SELECT 1 FROM campaign_deliverables
+    WHERE campaign_application_id = v_application_id
+  ) INTO v_deliverable_exists;
+
+  -- Create an approved deliverable if none exists
+  IF NOT v_deliverable_exists THEN
+    INSERT INTO campaign_deliverables (
+      campaign_application_id,
+      creator_id,
+      restaurant_id,
+      campaign_id,
+      content_type,
+      content_url,
+      platform_post_url,
+      caption,
+      social_platform,
+      status,
+      submitted_at,
+      reviewed_at,
+      reviewer_id
+    )
+    VALUES (
+      v_application_id,
+      v_creator_profile_id,
+      v_restaurant_id,
+      v_campaign_id,
+      'post',
+      'https://example.com/deliverable.jpg',
+      'https://instagram.com/p/test',
+      'Test deliverable for rating flow',
+      'instagram',
+      'approved',
+      NOW() - INTERVAL '1 day',
+      NOW() - INTERVAL '12 hours',
+      v_business_user_id
+    );
+  END IF;
 END $$;
 
 -- Verify setup
 SELECT 
   ca.id as application_id,
   ca.status,
-  ca.rating,
+  CASE 
+    WHEN EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = 'campaign_applications' 
+      AND column_name = 'rating'
+    ) THEN ca.rating::text
+    ELSE 'N/A (rating columns not migrated)'
+  END as rating,
   c.title as campaign_title,
   cp.display_name as creator_name
 FROM campaign_applications ca
@@ -4002,27 +4768,50 @@ JOIN creator_profiles cp ON ca.creator_id = cp.id
 JOIN users u ON cp.user_id = u.id
 WHERE u.email = 'test-creator1@bypass.com'
   AND ca.status = 'accepted'
+  AND c.title = 'Test Campaign for Rating'
 LIMIT 1;
--- Should show application with status 'accepted' and no rating
+-- Should show application with status 'accepted' and no rating (or N/A if columns don't exist)
+-- Campaign title should be "Test Campaign for Rating"
+-- Verify ALL deliverables are approved:
+SELECT 
+  cd.id as deliverable_id,
+  cd.status,
+  cd.content_type,
+  ca.id as application_id,
+  COUNT(*) FILTER (WHERE cd.status IN ('approved', 'auto_approved')) as approved_count,
+  COUNT(*) as total_count
+FROM campaign_deliverables cd
+JOIN campaign_applications ca ON cd.campaign_application_id = ca.id
+JOIN campaigns c ON ca.campaign_id = c.id
+WHERE c.title = 'Test Campaign for Rating'
+GROUP BY cd.id, cd.status, cd.content_type, ca.id;
+-- Should show all deliverables with status 'approved' or 'auto_approved'
+-- approved_count should equal total_count for rating to be allowed
 ```
 
 **Steps:**
 1. Log in as `test-business1@bypass.com`
 2. Navigate to Business → Campaigns
-3. Open a campaign with accepted creator application
-4. Navigate to "Applications" tab
-5. Find the accepted application for `test-creator1@bypass.com`
-6. Verify "Rate Creator" button appears (if not already rated)
-7. Tap "Rate Creator" button
-8. Verify rating modal opens with:
+3. **Look for the test campaign** - It will have a yellow banner indicator saying "⭐ Test Campaign - Use this for rating flow testing" in the campaign list
+4. Open the test campaign (titled "Test Campaign for Rating" or "CM-16")
+5. You'll see a prominent banner at the top of the campaign detail screen indicating this is the test campaign
+6. Navigate to the **Applications** tab
+7. Find an application with status "accepted" (if none exist, the setup script creates one)
+8. **Important:** The "Rate Creator" button will only appear if:
+   - Application status is "accepted" ✅
+   - ALL deliverables have been approved ✅ (setup script ensures this)
+   - Rating is the final step - all deliverables must be completed before rating
+9. Verify "Rate Creator" button appears (if not already rated)
+10. Tap "Rate Creator" button
+11. Verify rating modal opens with:
    - Star rating selector (1-5 stars)
    - Optional feedback text input
    - Submit button
-9. Select 5 stars
-10. Enter feedback: "Excellent work! Very professional."
-11. Tap "Submit Rating"
-12. Verify success message appears
-13. Verify modal closes
+12. Select 5 stars
+13. Enter feedback: "Excellent work! Very professional."
+14. Tap "Submit Rating"
+15. Verify success message appears and rating is saved
+16. Verify modal closes
 14. Verify application now shows "Rated 5/5" with feedback displayed
 
 **Expected Result:**
@@ -4049,6 +4838,43 @@ WHERE u.email = 'test-creator1@bypass.com'
 ORDER BY ca.rated_at DESC
 LIMIT 1;
 -- Should show rating = 5.0, comment, and rated_at timestamp
+```
+
+**Post-Test Cleanup:**
+```sql
+-- Remove test rating created during testing
+-- Only runs if rating columns exist
+DO $$
+DECLARE
+  v_application_id UUID;
+BEGIN
+  IF EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_schema = 'public'
+    AND table_name = 'campaign_applications' 
+    AND column_name = 'rating'
+  ) THEN
+    -- Find the most recently rated application for test-creator1
+    SELECT ca.id INTO v_application_id
+    FROM campaign_applications ca
+WHERE ca.creator_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND ca.rating IS NOT NULL
+ORDER BY ca.rated_at DESC
+LIMIT 1;
+    
+    -- Clear the rating if found
+    IF v_application_id IS NOT NULL THEN
+      UPDATE campaign_applications
+      SET rating = NULL, rating_comment = NULL, rated_at = NULL
+      WHERE id = v_application_id;
+    END IF;
+  END IF;
+END $$;
 ```
 
 ### Test Case CM-16-2: Rating Appears in Browse Creators
@@ -4109,6 +4935,12 @@ GROUP BY cp.id, cp.display_name;
 -- Should match displayed rating
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- No cleanup needed - test verifies rating display
+-- Cleanup handled in CM-16-1
+```
+
 ### Test Case CM-16-3: Rating Appears in Creator Profile
 
 **Objective:** Verify ratings display in creator profile view.
@@ -4147,21 +4979,19 @@ GROUP BY cp.id, cp.display_name;
 -- Create pending application
 DO $$
 DECLARE
-  business_user_id UUID;
-  creator_profile_id UUID;
-  campaign_id UUID;
+  v_business_user_id UUID;
+  v_creator_profile_id UUID;
+  v_campaign_id UUID;
 BEGIN
-  SELECT id INTO business_user_id FROM auth.users WHERE email = 'test-business1@bypass.com';
-  SELECT cp.id INTO creator_profile_id
+  SELECT id INTO v_business_user_id FROM auth.users WHERE email = 'test-business1@bypass.com';
+  SELECT cp.id INTO v_creator_profile_id
   FROM creator_profiles cp
   JOIN users u ON cp.user_id = u.id
   WHERE u.email = 'test-creator1@bypass.com';
   
-  SELECT id INTO campaign_id
+  SELECT id INTO v_campaign_id
   FROM campaigns
-  WHERE restaurant_id IN (
-    SELECT id FROM restaurants WHERE claimed_by = business_user_id
-  )
+  WHERE owner_id = v_business_user_id
   LIMIT 1;
 
   -- Create pending application
@@ -4172,8 +5002,8 @@ BEGIN
     applied_at
   )
   VALUES (
-    campaign_id,
-    creator_profile_id,
+    v_campaign_id,
+    v_creator_profile_id,
     'pending',
     NOW()
   )
@@ -4195,6 +5025,20 @@ END $$;
 - Rating button only appears for accepted applications
 - Cannot rate pending applications
 - Cannot rate rejected applications
+
+**Post-Test Cleanup:**
+```sql
+-- Remove test pending application created during testing
+DELETE FROM campaign_applications ca
+WHERE ca.creator_id IN (
+  SELECT cp.id FROM creator_profiles cp
+  JOIN users u ON cp.user_id = u.id
+  WHERE u.email = 'test-creator1@bypass.com'
+)
+AND ca.status = 'pending'
+ORDER BY ca.applied_at DESC
+LIMIT 1;
+```
 
 ---
 
@@ -4311,6 +5155,14 @@ WHERE creator_id = (
 );
 ```
 
+**Post-Test Cleanup:**
+```sql
+-- Restore creator profile data modified during pre-test setup
+-- Restore bio and specialties if they were cleared
+-- Restore portfolio items if they were removed
+-- Note: Pre-test setup may have modified data, restore as needed
+```
+
 **Steps:**
 1. Log in as `test-creator1@bypass.com`
 2. Navigate to Creator → My Campaigns
@@ -4364,6 +5216,75 @@ The script displays:
 - SQL queries to find entities in the database
 - Purpose and usage notes
 - Relationships and dependencies
+
+---
+
+## Production Test Data Helper
+
+For production testing, use the production-specific helper script:
+
+```bash
+# View production test users (@bypass.com domain)
+node scripts/prod-test-data-helper.js users
+
+# View restaurants claimed by test users
+node scripts/prod-test-data-helper.js restaurants
+
+# View creator profiles for test users
+node scripts/prod-test-data-helper.js creator-profiles
+
+# View other test data types
+node scripts/prod-test-data-helper.js campaigns
+node scripts/prod-test-data-helper.js applications
+node scripts/prod-test-data-helper.js deliverables
+node scripts/prod-test-data-helper.js posts
+```
+
+**Note:** The production helper outputs SQL queries that should be run in Supabase SQL Editor against the production database. Test users are identified by `@bypass.com` email domain.
+
+### Get All Test User UIDs
+
+Run this query in Supabase SQL Editor to get all production test account UIDs:
+
+```sql
+SELECT 
+  id as user_id,
+  email,
+  account_type,
+  created_at,
+  is_test_account
+FROM users
+WHERE is_test_email(email)
+ORDER BY account_type, email;
+```
+
+### Comprehensive Production Test Queries
+
+For a complete set of production test queries covering all workflows, see:
+- **File:** `scripts/prod-test-queries.sql`
+- **Usage:** Copy queries from this file into Supabase SQL Editor
+- **Covers:** All CM-* and ER-* test cases with production-specific queries
+
+### Critical Workflows to Test First
+
+Before testing all features, verify these 3 critical workflows:
+
+1. **CM-1: Creator Profile Race Condition Fix**
+   - Consumer upgrades to creator atomically
+   - Foundation for all creator features
+   - Query: See `scripts/prod-test-queries.sql` section 2
+
+2. **CM-3: Campaign Application creator_id**
+   - Creator applies to campaign with correct creator_id
+   - Core marketplace functionality
+   - Query: See `scripts/prod-test-queries.sql` section 3
+
+3. **CM-4: Deliverable URL Validation**
+   - Creator submits deliverable with URL validation
+   - Core deliverable workflow
+   - Query: See `scripts/prod-test-queries.sql` section 4
+
+After verifying these critical workflows, proceed with testing all other features using queries in `scripts/prod-test-queries.sql`.
 
 ---
 

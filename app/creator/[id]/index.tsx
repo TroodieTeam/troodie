@@ -116,13 +116,6 @@ export default function CreatorProfileScreen() {
 
   const isOwnProfile = profile?.userId === user?.id;
 
-  // CM-14: Calculate estimated rate based on followers
-  const getEstimatedRate = (followers: number): string => {
-    if (followers < 5000) return '$50 - $200';
-    if (followers < 10000) return '$200 - $500';
-    if (followers < 50000) return '$500 - $1,000';
-    return '$1,000+';
-  };
 
   if (loading) {
     return (
@@ -296,26 +289,6 @@ export default function CreatorProfileScreen() {
             </View>
           </View>
 
-          {/* CM-14: Estimated Rate Card */}
-          <View style={{
-            backgroundColor: '#F0FDF4',
-            padding: 16,
-            marginTop: 16,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: '#BBF7D0',
-            width: '100%',
-          }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#166534', marginBottom: 4 }}>
-              Estimated Rate
-            </Text>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#15803D' }}>
-              {getEstimatedRate(profile.totalFollowers)}
-            </Text>
-            <Text style={{ fontSize: 11, color: '#166534', marginTop: 4 }}>
-              Based on follower count
-            </Text>
-          </View>
         </View>
 
         {/* Bio - CM-14: Empty state */}
@@ -328,29 +301,6 @@ export default function CreatorProfileScreen() {
           )}
         </View>
 
-        {/* Specialties - CM-14: Empty state */}
-        <View style={{ padding: 16, backgroundColor: DS.colors.backgroundWhite, marginTop: 8 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>Specialties</Text>
-          {profile.specialties && profile.specialties.length > 0 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {profile.specialties.map((specialty, index) => (
-                <View
-                  key={index}
-                  style={{
-                    backgroundColor: DS.colors.primary + '20',
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 16,
-                  }}
-                >
-                  <Text style={{ fontSize: 13, color: DS.colors.text }}>{specialty}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={{ fontSize: 14, color: DS.colors.textLight, fontStyle: 'italic' }}>No specialties set</Text>
-          )}
-        </View>
 
         {/* Portfolio Section */}
         <View style={{ padding: 16, backgroundColor: DS.colors.backgroundWhite, marginTop: 8 }}>

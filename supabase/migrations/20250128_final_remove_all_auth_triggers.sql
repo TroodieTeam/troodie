@@ -95,6 +95,8 @@ CREATE POLICY "allow_all_insert" ON public.users
   FOR INSERT TO anon, authenticated
   WITH CHECK (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "allow_own_update" ON public;
 CREATE POLICY "allow_own_update" ON public.users
   FOR UPDATE TO authenticated
   USING (auth.uid() = id)

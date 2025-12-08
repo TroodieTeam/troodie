@@ -23,10 +23,10 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import {
-  getRequiredDeliverables,
-  getSubmissionProgress,
-  submitMultipleDeliverables,
-  validateSocialMediaUrl
+    getRequiredDeliverables,
+    getSubmissionProgress,
+    submitMultipleDeliverables,
+    validateSocialMediaUrl
 } from '@/services/deliverableSubmissionService';
 import { ImageUploadServiceV2 } from '@/services/imageUploadServiceV2';
 import type { DeliverablePlatform } from '@/types/deliverableRequirements';
@@ -35,15 +35,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 // ============================================================================
@@ -365,6 +365,7 @@ export default function SubmitDeliverableScreen() {
     : (requiredCount > 0 ? Math.round((submittedCount / requiredCount) * 100) : 0);
   // Show progress section if we have progress data OR if we have required deliverables
   const showProgressSection = (progress !== null) || (requiredDeliverables.length > 0);
+  const allDeliverablesSubmitted = requiredCount > 0 && submittedCount >= requiredCount;
 
   if (loading) {
     return (
@@ -453,8 +454,20 @@ export default function SubmitDeliverableScreen() {
           </View>
         )}
 
-        {/* Deliverables Forms */}
-        {deliverables.map((deliverable, index) => (
+        {/* All Deliverables Submitted Message */}
+        {allDeliverablesSubmitted && (
+          <View style={styles.completeMessage}>
+            <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+            <Text style={styles.completeTitle}>All Deliverables Submitted</Text>
+            <Text style={styles.completeText}>
+              You've successfully submitted all {requiredCount} required deliverable{requiredCount !== 1 ? 's' : ''} for this campaign.{'\n\n'}
+              Your submissions are now pending review. You'll receive a notification once they've been reviewed.
+            </Text>
+          </View>
+        )}
+
+        {/* Deliverables Forms - Only show if not all submitted */}
+        {!allDeliverablesSubmitted && deliverables.map((deliverable, index) => (
           <View key={index} style={styles.deliverableForm}>
             <View style={styles.deliverableHeader}>
               <Text style={styles.deliverableNumber}>Deliverable {index + 1}</Text>
@@ -610,11 +623,13 @@ export default function SubmitDeliverableScreen() {
           </View>
         ))}
 
-        {/* Add Another Deliverable Button */}
-        <TouchableOpacity style={styles.addButton} onPress={addDeliverable}>
-          <Ionicons name="add-circle-outline" size={24} color="#FFAD27" />
-          <Text style={styles.addButtonText}>Add Another Deliverable</Text>
-        </TouchableOpacity>
+        {/* Add Another Deliverable Button - Only show if not all submitted */}
+        {!allDeliverablesSubmitted && (
+          <TouchableOpacity style={styles.addButton} onPress={addDeliverable}>
+            <Ionicons name="add-circle-outline" size={24} color="#FFAD27" />
+            <Text style={styles.addButtonText}>Add Another Deliverable</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Info Box */}
         <View style={styles.infoBox}>
@@ -632,25 +647,27 @@ export default function SubmitDeliverableScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Submit Button */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Text style={styles.submitButtonText}>
-                Submit {deliverables.length} Deliverable{deliverables.length !== 1 ? 's' : ''}
-              </Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+      {/* Submit Button - Only show if not all submitted */}
+      {!allDeliverablesSubmitted && (
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.submitButtonText}>
+                  Submit {deliverables.length} Deliverable{deliverables.length !== 1 ? 's' : ''}
+                </Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

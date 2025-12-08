@@ -33,6 +33,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_community_member_count_trigger ON community_members;
 CREATE TRIGGER update_community_member_count_trigger
 AFTER INSERT OR DELETE ON community_members
 FOR EACH ROW

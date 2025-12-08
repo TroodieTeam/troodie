@@ -124,25 +124,23 @@ export const authService = {
       if (this._isBypassEmail(email)) {
         console.log('[AuthService] Bypass account detected - will use password auth')
 
-        // Check if profile exists in public.users
-        const { data: userData, error: userError } = await supabase
+        // For bypass accounts, we don't require the user to exist in public.users
+        // The profile will be created automatically after authentication via ensure_user_profile
+        // Check if profile exists (for logging only, not blocking)
+        const { data: userData } = await supabase
           .from('users')
           .select('id, email')
           .eq('email', email.toLowerCase())
-          .single()
+          .maybeSingle()
 
-        if (userError || !userData) {
-          console.error('[AuthService] Bypass account not found in database')
-          return {
-            success: false,
-            error: 'Test account not found. Please run the seed script first.',
-          }
+        if (userData) {
+          console.log('[AuthService] Bypass account found in public.users - skipping OTP email')
+        } else {
+          console.log('[AuthService] Bypass account not in public.users yet - profile will be created after authentication')
         }
 
-        console.log('[AuthService] Bypass account found - skipping OTP email')
-
         // Return success without sending OTP
-        // We'll authenticate with password in verifyOtp
+        // We'll authenticate with password in verifyOtp, and profile will be created automatically
         return {
           success: true,
           messageId: null, // No email sent

@@ -90,6 +90,18 @@ export default function MoreScreen() {
     'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
   ];
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
+  
+  // Debug logging for admin access
+  React.useEffect(() => {
+    if (user?.id) {
+      console.log('[MoreScreen] Admin check:', {
+        user_id: user.id,
+        isAdmin,
+        admin_user_ids: ADMIN_USER_IDS,
+        matches: ADMIN_USER_IDS.includes(user.id),
+      });
+    }
+  }, [user?.id, isAdmin]);
 
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
   const [checkingNotifications, setCheckingNotifications] = React.useState(true);
@@ -266,7 +278,17 @@ export default function MoreScreen() {
 
   // Admin Tools Section
   const adminItems: MenuItem[] = isAdmin ? [
-
+    {
+      id: 'admin-reviews',
+      title: 'Review Queue',
+      subtitle: 'Review pending restaurant claims and creator applications',
+      icon: BarChart3,
+      iconColor: '#FF6B6B',
+      action: () => {
+        console.log('[MoreScreen] Navigating to admin reviews');
+        router.push('/admin/reviews');
+      },
+    },
   ] : [];
 
   // Creator Tools Section
@@ -445,6 +467,13 @@ export default function MoreScreen() {
 
   // Dynamic section ordering based on account type
   const sections: MenuSection[] = useMemo(() => {
+    // Debug logging for admin section
+    console.log('[MoreScreen] Building sections:', {
+      isAdmin,
+      adminItemsLength: adminItems.length,
+      adminItems,
+    });
+    
     const baseSections: MenuSection[] = [
       // Admin Tools (highest priority for admins)
       ...(adminItems.length > 0 ? [{

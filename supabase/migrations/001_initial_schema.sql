@@ -289,16 +289,16 @@ CREATE TABLE favorite_spots (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_restaurants_location ON restaurants USING GIST(location);
-CREATE INDEX idx_restaurants_city ON restaurants(city);
-CREATE INDEX idx_restaurants_cuisine ON restaurants USING GIN(cuisine_types);
-CREATE INDEX idx_restaurant_saves_user_id ON restaurant_saves(user_id);
-CREATE INDEX idx_restaurant_saves_restaurant_id ON restaurant_saves(restaurant_id);
-CREATE INDEX idx_boards_user_id ON boards(user_id);
-CREATE INDEX idx_communities_location ON communities(location);
-CREATE INDEX idx_notifications_user_id ON notifications(user_id, is_read);
-CREATE INDEX idx_user_relationships_follower ON user_relationships(follower_id);
-CREATE INDEX idx_user_relationships_following ON user_relationships(following_id);
+CREATE INDEX IF NOT EXISTS idx_restaurants_location ON restaurants USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_restaurants_city ON restaurants(city);
+CREATE INDEX IF NOT EXISTS idx_restaurants_cuisine ON restaurants USING GIN(cuisine_types);
+CREATE INDEX IF NOT EXISTS idx_restaurant_saves_user_id ON restaurant_saves(user_id);
+CREATE INDEX IF NOT EXISTS idx_restaurant_saves_restaurant_id ON restaurant_saves(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_boards_user_id ON boards(user_id);
+CREATE INDEX IF NOT EXISTS idx_communities_location ON communities(location);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_user_relationships_follower ON user_relationships(follower_id);
+CREATE INDEX IF NOT EXISTS idx_user_relationships_following ON user_relationships(following_id);
 
 -- Create views for common queries
 -- User stats view
@@ -341,32 +341,52 @@ END;
 $$ language 'plpgsql';
 
 -- Apply updated_at trigger to all tables with updated_at column
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_restaurants_updated_at ON restaurants;
 CREATE TRIGGER update_restaurants_updated_at BEFORE UPDATE ON restaurants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_boards_updated_at ON boards;
 CREATE TRIGGER update_boards_updated_at BEFORE UPDATE ON boards
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_restaurant_saves_updated_at ON restaurant_saves;
 CREATE TRIGGER update_restaurant_saves_updated_at BEFORE UPDATE ON restaurant_saves
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_communities_updated_at ON communities;
 CREATE TRIGGER update_communities_updated_at BEFORE UPDATE ON communities
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
 CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_campaigns_updated_at ON campaigns;
 CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_board_subscriptions_updated_at ON board_subscriptions;
 CREATE TRIGGER update_board_subscriptions_updated_at BEFORE UPDATE ON board_subscriptions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_community_posts_updated_at ON community_posts;
 CREATE TRIGGER update_community_posts_updated_at BEFORE UPDATE ON community_posts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

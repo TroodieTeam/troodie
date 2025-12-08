@@ -164,12 +164,17 @@ export default function ManageCampaigns() {
     { id: 'completed', label: 'Completed', count: campaigns.filter(c => c.status === 'completed').length },
   ];
 
-  const renderCampaignItem = ({ item }: { item: Campaign }) => (
+  const renderCampaignItem = ({ item }: { item: Campaign }) => {
+    const isTestCampaign = item.name?.toLowerCase().includes('test campaign for rating') || 
+                           item.name?.toLowerCase().includes('cm-16');
+    return (
     <CampaignListItem
       campaign={item}
       onPress={() => router.push(`/business/campaigns/${item.id}`)}
+        isTestCampaign={isTestCampaign}
     />
   );
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
@@ -278,7 +283,7 @@ export default function ManageCampaigns() {
   );
 }
 
-const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: () => void }) => {
+const CampaignListItem = ({ campaign, onPress, isTestCampaign = false }: { campaign: Campaign; onPress: () => void; isTestCampaign?: boolean }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return '#10B981';
@@ -313,17 +318,33 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
       style={{
         backgroundColor: DS.colors.surface,
         borderRadius: DS.borderRadius.lg,
-        padding: DS.spacing.md,
+        padding: DS.spacing.lg,
         marginBottom: DS.spacing.md,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        ...DS.shadows.sm,
       }}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      {/* Test Campaign Banner */}
+      {isTestCampaign && (
+        <View style={{
+          backgroundColor: DS.colors.warning + '15',
+          borderLeftWidth: 3,
+          borderLeftColor: DS.colors.warning,
+          padding: DS.spacing.sm,
+          marginBottom: DS.spacing.md,
+          borderRadius: DS.borderRadius.xs,
+        }}>
+          <Text style={{
+            fontSize: DS.typography.caption.fontSize,
+            fontWeight: '600',
+            color: DS.colors.warning,
+          }}>
+            ⭐ Test Campaign - Use this for rating flow testing
+          </Text>
+        </View>
+      )}
+
       {/* Campaign Title and Status */}
       <View style={{
         flexDirection: 'row',
@@ -332,135 +353,227 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
         marginBottom: DS.spacing.md,
       }}>
         <Text style={{
-          fontSize: 18,
-          fontWeight: '700',
+          ...DS.typography.h3,
           color: DS.colors.textDark,
           flex: 1,
           marginRight: DS.spacing.sm,
         }}>
           {campaign.name}
         </Text>
+        <View style={{
+          backgroundColor: getStatusColor(campaign.status) + '15',
+          paddingHorizontal: DS.spacing.sm,
+          paddingVertical: DS.spacing.xs,
+          borderRadius: DS.borderRadius.sm,
+        }}>
         <Text style={{
-          fontSize: 12,
+            ...DS.typography.caption,
           fontWeight: '600',
           color: getStatusColor(campaign.status),
           textTransform: 'uppercase',
-          letterSpacing: 0.5,
         }}>
           {campaign.status}
         </Text>
+        </View>
       </View>
 
-      {/* Compact Stats Row */}
+      {/* Stats Grid */}
       <View style={{
         flexDirection: 'row',
-        alignItems: 'center',
+        flexWrap: 'wrap',
         marginBottom: DS.spacing.md,
+        gap: DS.spacing.md,
       }}>
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
           flex: 1,
+          minWidth: '45%',
         }}>
-          <Users size={16} color={DS.colors.textLight} />
+          <View style={{
+            width: 32,
+            height: 32,
+            borderRadius: DS.borderRadius.sm,
+            backgroundColor: DS.colors.surfaceLight,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: DS.spacing.sm,
+        }}>
+            <Users size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              ...DS.typography.metadata,
+              color: DS.colors.textGray,
+            }}>
+              Creators
+            </Text>
           <Text style={{
-            fontSize: 14,
+              ...DS.typography.body,
+              fontWeight: '600',
             color: DS.colors.textDark,
-            marginLeft: 6,
           }}>
-            {campaign.selected_creators_count}/{campaign.max_creators} creators
+              {campaign.selected_creators_count}/{campaign.max_creators}
           </Text>
+          </View>
         </View>
         
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
           flex: 1,
+          minWidth: '45%',
         }}>
-          <DollarSign size={16} color={DS.colors.textLight} />
+          <View style={{
+            width: 32,
+            height: 32,
+            borderRadius: DS.borderRadius.sm,
+            backgroundColor: DS.colors.surfaceLight,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: DS.spacing.sm,
+          }}>
+            <DollarSign size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              ...DS.typography.metadata,
+              color: DS.colors.textGray,
+            }}>
+              Budget
+            </Text>
           <Text style={{
-            fontSize: 14,
+              ...DS.typography.body,
+              fontWeight: '600',
             color: DS.colors.textDark,
-            marginLeft: 6,
           }}>
             ${spent.toLocaleString()}/${budget.toLocaleString()}
           </Text>
+          </View>
         </View>
 
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
+          flex: 1,
+          minWidth: '45%',
         }}>
-          <Clock size={16} color={DS.colors.textLight} />
+          <View style={{
+            width: 32,
+            height: 32,
+            borderRadius: DS.borderRadius.sm,
+            backgroundColor: DS.colors.surfaceLight,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: DS.spacing.sm,
+          }}>
+            <Clock size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              ...DS.typography.metadata,
+              color: DS.colors.textGray,
+            }}>
+              Time Left
+            </Text>
           <Text style={{
-            fontSize: 14,
+              ...DS.typography.body,
+              fontWeight: '600',
             color: DS.colors.textDark,
-            marginLeft: 6,
           }}>
             {getDaysText()}
           </Text>
+          </View>
         </View>
       </View>
 
-      {/* Progress Bar */}
+      {/* Deliverables Progress */}
+      {campaign.total_deliverables > 0 && (
+        <View style={{
+          marginTop: DS.spacing.sm,
+          paddingTop: DS.spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: DS.colors.borderLight,
+        }}>
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: DS.spacing.xs,
+          }}>
+            <Text style={{
+              ...DS.typography.metadata,
+              color: DS.colors.textGray,
+            }}>
+              Deliverables Progress
+            </Text>
+            <Text style={{
+              ...DS.typography.metadata,
+              fontWeight: '600',
+              color: DS.colors.textDark,
+            }}>
+              {campaign.delivered_content_count}/{campaign.total_deliverables}
+            </Text>
+          </View>
       <View style={{
         height: 6,
         backgroundColor: DS.colors.surfaceLight,
-        borderRadius: 3,
+            borderRadius: DS.borderRadius.xs,
         overflow: 'hidden',
-        marginBottom: DS.spacing.xs,
       }}>
         <View style={{
           height: '100%',
           width: `${Math.min(deliverableProgress, 100)}%`,
-          backgroundColor: DS.colors.primaryOrange,
-          borderRadius: 3,
+              backgroundColor: DS.colors.success,
+              borderRadius: DS.borderRadius.xs,
         }} />
       </View>
-      
-      {/* Progress Text */}
-      <Text style={{
-        fontSize: 12,
-        color: DS.colors.textLight,
-      }}>
-        {campaign.delivered_content_count}/{campaign.total_deliverables} deliverables completed
-      </Text>
+        </View>
+      )}
 
       {/* Action Badges */}
       {(campaign.pending_applications_count > 0 || campaign.pending_deliverables_count > 0) && (
         <View style={{
-          marginTop: DS.spacing.sm,
-          paddingTop: DS.spacing.sm,
+          marginTop: DS.spacing.md,
+          paddingTop: DS.spacing.md,
           borderTopWidth: 1,
-          borderTopColor: DS.colors.border,
+          borderTopColor: DS.colors.borderLight,
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: DS.spacing.sm,
         }}>
           {campaign.pending_applications_count > 0 && (
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
-              marginBottom: campaign.pending_deliverables_count > 0 ? DS.spacing.xs : 0,
+              backgroundColor: DS.colors.error + '10',
+              paddingHorizontal: DS.spacing.sm,
+              paddingVertical: DS.spacing.xs,
+              borderRadius: DS.borderRadius.sm,
             }}>
               <View style={{
                 backgroundColor: DS.colors.error,
-                borderRadius: 12,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                marginRight: 6,
+                borderRadius: DS.borderRadius.full,
+                width: 20,
+                height: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: DS.spacing.xs,
               }}>
                 <Text style={{
                   color: 'white',
-                  fontSize: 11,
+                  ...DS.typography.caption,
                   fontWeight: '700',
                 }}>
                   {campaign.pending_applications_count}
                 </Text>
               </View>
               <Text style={{
-                fontSize: 13,
+                ...DS.typography.metadata,
                 color: DS.colors.textDark,
                 fontWeight: '500',
               }}>
-                New application{campaign.pending_applications_count > 1 ? 's' : ''} to review
+                New application{campaign.pending_applications_count > 1 ? 's' : ''}
               </Text>
             </View>
           )}
@@ -469,28 +582,34 @@ const CampaignListItem = ({ campaign, onPress }: { campaign: Campaign; onPress: 
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
+              backgroundColor: DS.colors.warning + '10',
+              paddingHorizontal: DS.spacing.sm,
+              paddingVertical: DS.spacing.xs,
+              borderRadius: DS.borderRadius.sm,
             }}>
               <View style={{
-                backgroundColor: '#F59E0B',
-                borderRadius: 12,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                marginRight: 6,
+                backgroundColor: DS.colors.warning,
+                borderRadius: DS.borderRadius.full,
+                width: 20,
+                height: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: DS.spacing.xs,
               }}>
                 <Text style={{
                   color: 'white',
-                  fontSize: 11,
+                  ...DS.typography.caption,
                   fontWeight: '700',
                 }}>
                   {campaign.pending_deliverables_count}
                 </Text>
               </View>
               <Text style={{
-                fontSize: 13,
+                ...DS.typography.metadata,
                 color: DS.colors.textDark,
                 fontWeight: '500',
               }}>
-                Deliverable{campaign.pending_deliverables_count > 1 ? 's' : ''} pending review
+                Pending deliverable{campaign.pending_deliverables_count > 1 ? 's' : ''}
               </Text>
             </View>
           )}

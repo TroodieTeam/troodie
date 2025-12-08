@@ -23,7 +23,10 @@ export interface UpgradeResult {
 }
 
 export interface PortfolioItem {
-  imageUrl: string;
+  imageUrl?: string; // For images
+  videoUrl?: string; // For videos
+  thumbnailUrl?: string; // For videos
+  mediaType?: 'image' | 'video';
   caption?: string;
   displayOrder?: number;
   isFeatured?: boolean;
@@ -102,12 +105,29 @@ export async function addPortfolioItems(
 ): Promise<AddPortfolioResult> {
   try {
     // Convert to the format expected by the RPC function
-    const itemsJson = items.map((item, index) => ({
-      image_url: item.imageUrl,
-      caption: item.caption || '',
-      display_order: item.displayOrder ?? index,
-      is_featured: item.isFeatured ?? index === 0,
-    }));
+    const itemsJson = items.map((item, index) => {
+      const mediaType = item.mediaType || 'image';
+      
+      // For images: image_url is required
+      // For videos: video_url is required, image_url (thumbnail) is optional
+      let imageUrl: string | null = null;
+      if (mediaType === 'image') {
+        imageUrl = item.imageUrl || null;
+      } else if (mediaType === 'video') {
+        // For videos, use thumbnailUrl as image_url if available
+        imageUrl = item.thumbnailUrl || null;
+      }
+      
+      return {
+        image_url: imageUrl, // Can be null for videos without thumbnails
+        video_url: mediaType === 'video' ? (item.videoUrl || null) : null,
+        media_type: mediaType,
+        thumbnail_url: item.thumbnailUrl || null,
+        caption: item.caption || '',
+        display_order: item.displayOrder ?? index,
+        is_featured: item.isFeatured ?? index === 0,
+      };
+    });
 
     const { data, error } = await supabase.rpc('add_creator_portfolio_items', {
       p_creator_profile_id: creatorProfileId,
@@ -139,6 +159,56 @@ export async function addPortfolioItems(
     return {
       success: false,
       error: error.message || 'An unexpected error occurred',
+    };
+  }
+}
+
+/**
+ * Rollback creator upgrade - reset user back to consumer
+ * Use only when creator onboarding fails after user was upgraded
+ * 
+ * @param userId - The user's ID
+ * @returns Success status
+ */
+export async function rollbackCreatorUpgrade(
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Delete creator profile (cascade will handle portfolio items)
+    const { error: profileError } = await supabase
+      .from('creator_profiles')
+      .delete()
+      .eq('user_id', userId);
+
+    if (profileError) {
+      console.error('[CreatorUpgrade] Rollback profile delete error:', profileError);
+      // Continue anyway to reset user account
+    }
+
+    // Reset user account type
+    const { error: userError } = await supabase
+      .from('users')
+      .update({
+        account_type: 'consumer',
+        is_creator: false,
+        account_upgraded_at: null,
+      })
+      .eq('id', userId);
+
+    if (userError) {
+      console.error('[CreatorUpgrade] Rollback user update error:', userError);
+      return {
+        success: false,
+        error: userError.message || 'Failed to rollback user account',
+      };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[CreatorUpgrade] Rollback exception:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to rollback creator upgrade',
     };
   }
 }
@@ -224,5 +294,6 @@ export const creatorUpgradeService = {
   upgradeToCreator,
   addPortfolioItems,
   getCreatorProfileId,
+  rollbackCreatorUpgrade,
   completeCreatorOnboarding,
 };

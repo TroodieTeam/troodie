@@ -7,13 +7,12 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { decode } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system/legacy';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { CloudinaryVideoService } from './cloudinaryVideoService';
+import { ImageUploadServiceV2 } from './imageUploadServiceV2';
+import { VideoUploadService } from './videoUploadService';
 
 const PORTFOLIO_BUCKET = 'creator-portfolios';
-const MAX_WIDTH = 1200;
-const COMPRESSION_QUALITY = 0.8;
 
 export interface UploadResult {
   success: boolean;
@@ -26,22 +25,124 @@ export interface UploadProgress {
   progress: number; // 0-100
   status: 'pending' | 'processing' | 'uploading' | 'complete' | 'error';
   error?: string;
+  mediaType?: 'image' | 'video'; // Added to distinguish between images and videos
 }
 
 export interface PortfolioImage {
   id: string;
   uri: string;
   caption: string;
+  mediaType?: 'image' | 'video';
+  duration?: number; // For videos, in seconds
 }
 
 export interface UploadedImage {
   id: string;
   url: string;
   caption: string;
+  mediaType?: 'image' | 'video';
+  thumbnailUrl?: string; // For videos
+}
+
+/**
+ * Upload a single portfolio video to Cloud Storage (Cloudinary or Supabase).
+ * Uses the same approach as post creation for consistency and optimization.
+ *
+ * @param userId - The user's ID (used as folder name)
+ * @param videoUri - Local URI of the video
+ * @param videoId - Unique identifier for this video
+ * @param onProgress - Optional callback for progress updates (0-100)
+ * @returns Upload result with cloud URL or error
+ */
+export async function uploadPortfolioVideo(
+  userId: string,
+  videoUri: string,
+  videoId: string,
+  onProgress?: (progress: number) => void
+): Promise<UploadResult & { thumbnailUrl?: string }> {
+  try {
+    onProgress?.(0);
+
+    // Check if video is already a Cloudinary URL (from previous optimization)
+    const isCloudinaryUrl = videoUri.startsWith('https://res.cloudinary.com') || videoUri.startsWith('https://cloudinary.com');
+    
+    // Check if video should use Cloudinary (only for local files)
+    const useCloudinary = !isCloudinaryUrl && await CloudinaryVideoService.shouldUseCloudinary(videoUri);
+
+    let publicUrl: string;
+    let thumbnailUrl: string | undefined;
+
+    if (useCloudinary) {
+      // Use Cloudinary for optimization (better for larger videos)
+      onProgress?.(5);
+      
+      const result = await CloudinaryVideoService.uploadAndOptimize(
+        videoUri,
+        (progress) => {
+          // Convert Cloudinary progress (0-100) to our progress scale
+          // Map 0-100% to 5-95% to account for thumbnail generation
+          const mappedProgress = 5 + (progress.progress * 0.9);
+          onProgress?.(mappedProgress);
+        }
+      );
+
+      publicUrl = result.url;
+      // Cloudinary can generate thumbnails - use their thumbnail URL if available
+      if (result.thumbnailUrl) {
+        thumbnailUrl = result.thumbnailUrl;
+      } else {
+        // Generate thumbnail URL from Cloudinary URL
+        // Cloudinary format: https://res.cloudinary.com/.../video/upload/.../video.mp4
+        // Thumbnail: Replace video/upload with video/upload/w_400,h_300,c_fill,q_auto,f_auto
+        thumbnailUrl = publicUrl.replace('/video/upload/', '/video/upload/w_400,h_300,c_fill,q_auto,f_auto/');
+        // Change extension to .jpg for thumbnail
+        thumbnailUrl = thumbnailUrl.replace(/\.(mp4|mov|avi)$/, '.jpg');
+      }
+      
+      onProgress?.(100);
+    } else if (isCloudinaryUrl) {
+      // Video is already a Cloudinary URL - use it directly
+      publicUrl = videoUri;
+      
+      // Generate thumbnail URL from Cloudinary URL
+      thumbnailUrl = publicUrl.replace('/video/upload/', '/video/upload/w_400,h_300,c_fill,q_auto,f_auto/');
+      thumbnailUrl = thumbnailUrl.replace(/\.(mp4|mov|avi)$/, '.jpg');
+      
+      onProgress?.(100);
+    } else {
+      // Use regular Supabase upload for small videos
+      onProgress?.(10);
+      
+      // Upload to creator-portfolios bucket
+      const uploadPath = `${userId}/${Date.now()}-${videoId}`;
+      const result = await VideoUploadService.uploadVideo(
+        videoUri,
+        PORTFOLIO_BUCKET,
+        uploadPath
+      );
+      
+      publicUrl = result.publicUrl;
+      
+      // For Supabase videos, we can't auto-generate thumbnails easily
+      // The VideoThumbnail component will handle displaying the video thumbnail client-side
+      // For now, we don't set thumbnailUrl - it will be generated on the client
+      
+      onProgress?.(100);
+    }
+
+    return { success: true, url: publicUrl, thumbnailUrl };
+  } catch (error: any) {
+    console.error('[PortfolioUpload] Video error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to upload video',
+    };
+  }
 }
 
 /**
  * Upload a single portfolio image to Supabase Storage.
+ * Uses ImageUploadServiceV2 for consistency with post creation and better reliability.
  *
  * @param userId - The user's ID (used as folder name)
  * @param imageUri - Local URI of the image
@@ -56,55 +157,23 @@ export async function uploadPortfolioImage(
   onProgress?: (progress: number) => void
 ): Promise<UploadResult> {
   try {
-    // Step 1: Compress and resize image
     onProgress?.(10);
 
-    const processedImage = await manipulateAsync(
-      imageUri,
-      [{ resize: { width: MAX_WIDTH } }],
-      { compress: COMPRESSION_QUALITY, format: SaveFormat.JPEG }
-    );
-
-    onProgress?.(30);
-
-    // Step 2: Convert to base64
-    const base64 = await FileSystem.readAsStringAsync(processedImage.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    onProgress?.(50);
-
-    // Step 3: Generate unique filename
+    // Generate upload path
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 8);
-    const filename = `${userId}/${timestamp}-${imageId}-${randomSuffix}.jpg`;
+    const uploadPath = `${userId}/${timestamp}-${imageId}-${randomSuffix}`;
 
-    // Step 4: Upload to Supabase Storage
-    const arrayBuffer = decode(base64);
-
-    const { data, error } = await supabase.storage
-      .from(PORTFOLIO_BUCKET)
-      .upload(filename, arrayBuffer, {
-        contentType: 'image/jpeg',
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    onProgress?.(80);
-
-    if (error) {
-      console.error('[PortfolioUpload] Storage error:', error);
-      return { success: false, error: error.message };
-    }
-
-    // Step 5: Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(PORTFOLIO_BUCKET).getPublicUrl(data.path);
+    // Use ImageUploadServiceV2 for consistent upload handling with fallbacks
+    const result = await ImageUploadServiceV2.uploadImage(
+      imageUri,
+      PORTFOLIO_BUCKET,
+      uploadPath
+    );
 
     onProgress?.(100);
 
-    return { success: true, url: publicUrl };
+    return { success: true, url: result.publicUrl };
   } catch (error: any) {
     console.error('[PortfolioUpload] Error:', error);
     return {
@@ -134,13 +203,15 @@ export async function uploadAllPortfolioImages(
     imageId: img.id,
     progress: 0,
     status: 'pending' as const,
+    mediaType: img.mediaType,
   }));
 
   onProgressUpdate?.(progressState);
 
-  // Upload images sequentially to avoid overwhelming the network
+  // Upload media sequentially to avoid overwhelming the network
   for (let i = 0; i < images.length; i++) {
-    const image = images[i];
+    const media = images[i];
+    const isVideo = media.mediaType === 'video';
 
     // Update status to processing
     progressState[i].status = 'processing';
@@ -150,23 +221,39 @@ export async function uploadAllPortfolioImages(
     progressState[i].status = 'uploading';
     onProgressUpdate?.([...progressState]);
 
-    const result = await uploadPortfolioImage(
-      userId,
-      image.uri,
-      image.id,
-      (progress) => {
-        progressState[i].progress = progress;
-        onProgressUpdate?.([...progressState]);
-      }
-    );
+    let result: UploadResult & { thumbnailUrl?: string };
+    
+    if (isVideo) {
+      result = await uploadPortfolioVideo(
+        userId,
+        media.uri,
+        media.id,
+        (progress) => {
+          progressState[i].progress = progress;
+          onProgressUpdate?.([...progressState]);
+        }
+      );
+    } else {
+      result = await uploadPortfolioImage(
+        userId,
+        media.uri,
+        media.id,
+        (progress) => {
+          progressState[i].progress = progress;
+          onProgressUpdate?.([...progressState]);
+        }
+      );
+    }
 
     if (result.success && result.url) {
       progressState[i].status = 'complete';
       progressState[i].progress = 100;
       results.push({
-        id: image.id,
+        id: media.id,
         url: result.url,
-        caption: image.caption,
+        caption: media.caption,
+        mediaType: isVideo ? 'video' : 'image',
+        thumbnailUrl: result.thumbnailUrl,
       });
     } else {
       progressState[i].status = 'error';
@@ -199,6 +286,7 @@ export async function uploadPortfolioImagesParallel(
     imageId: img.id,
     progress: 0,
     status: 'pending' as const,
+    mediaType: img.mediaType,
   }));
 
   onProgressUpdate?.(progressState);
@@ -311,6 +399,7 @@ export function getFailedUploads(progresses: UploadProgress[]): UploadProgress[]
 // Export as singleton-style object
 export const portfolioImageService = {
   uploadPortfolioImage,
+  uploadPortfolioVideo,
   uploadAllPortfolioImages,
   uploadPortfolioImagesParallel,
   deletePortfolioImage,

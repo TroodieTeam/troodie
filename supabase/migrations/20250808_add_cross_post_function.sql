@@ -38,6 +38,8 @@ CREATE POLICY "Users can add their posts to communities" ON post_communities
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can remove their posts from communities" ON post_communities;
 CREATE POLICY "Users can remove their posts from communities" ON post_communities
   FOR DELETE USING (
     added_by = auth.uid()

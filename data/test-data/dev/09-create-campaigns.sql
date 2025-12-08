@@ -12,7 +12,7 @@ DECLARE
   campaign_id UUID;
   restaurant_id_2 UUID := '052bcb9b-66da-4aa6-b114-48df7309efb1'::uuid; -- Vicente (Business 2 - MEDIUM)
   restaurant_id_3 UUID := '0557acdd-e8e8-473b-badb-913c624aa199'::uuid; -- Fin & Fino (Business 3 - HIGH)
-  business_user_2 UUID := 'a9b0c1d2-e3f4-4567-a890-123456789012'::uuid; -- test-business2
+  business_user_2 UUID := 'f456d1ea-96f0-4245-b420-4db4e6456def'::uuid; -- test-business2
   business_user_3 UUID := 'b0c1d2e3-f4a5-4678-b901-234567890123'::uuid; -- test-business3
   i INTEGER;
 BEGIN

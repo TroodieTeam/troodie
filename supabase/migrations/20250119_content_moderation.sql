@@ -14,9 +14,9 @@ CREATE TABLE IF NOT EXISTS content_reports (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_content_reports_status ON content_reports(status);
-CREATE INDEX idx_content_reports_created_at ON content_reports(created_at DESC);
-CREATE INDEX idx_content_reports_content ON content_reports(content_type, content_id);
+CREATE INDEX IF NOT EXISTS idx_content_reports_status ON content_reports(status);
+CREATE INDEX IF NOT EXISTS idx_content_reports_created_at ON content_reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_content_reports_content ON content_reports(content_type, content_id);
 
 -- User Blocks Table
 CREATE TABLE IF NOT EXISTS user_blocks (
@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS user_blocks (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_user_blocks_blocker ON user_blocks(blocker_id);
-CREATE INDEX idx_user_blocks_blocked ON user_blocks(blocked_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id);
 
 -- Add terms acceptance to profiles
 ALTER TABLE profiles 
@@ -41,12 +41,16 @@ ADD COLUMN IF NOT EXISTS terms_version VARCHAR(20) DEFAULT '1.0';
 ALTER TABLE content_reports ENABLE ROW LEVEL SECURITY;
 
 -- Users can create reports
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create reports" ON content_reports;
 CREATE POLICY "Users can create reports" ON content_reports
   FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = reporter_id);
 
 -- Users can view their own reports
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own reports" ON content_reports;
 CREATE POLICY "Users can view own reports" ON content_reports
   FOR SELECT
   TO authenticated
@@ -54,6 +58,8 @@ CREATE POLICY "Users can view own reports" ON content_reports
 
 -- Admin users can view all reports (you'll need to add admin role check)
 -- For now, we'll create a placeholder that you can update with your admin logic
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can view all reports" ON content_reports;
 CREATE POLICY "Admins can view all reports" ON content_reports
   FOR ALL
   TO authenticated
@@ -69,18 +75,24 @@ CREATE POLICY "Admins can view all reports" ON content_reports
 ALTER TABLE user_blocks ENABLE ROW LEVEL SECURITY;
 
 -- Users can create blocks
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create blocks" ON user_blocks;
 CREATE POLICY "Users can create blocks" ON user_blocks
   FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = blocker_id);
 
 -- Users can view their own blocks
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own blocks" ON user_blocks;
 CREATE POLICY "Users can view own blocks" ON user_blocks
   FOR SELECT
   TO authenticated
   USING (auth.uid() = blocker_id);
 
 -- Users can delete their own blocks
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete own blocks" ON user_blocks;
 CREATE POLICY "Users can delete own blocks" ON user_blocks
   FOR DELETE
   TO authenticated

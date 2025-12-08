@@ -13,7 +13,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Check, X, Image as ImageIcon } from 'lucide-react-native';
+import { Check, X, Image as ImageIcon, Video } from 'lucide-react-native';
 import {
   UploadProgress,
   calculateOverallProgress,
@@ -26,7 +26,7 @@ interface UploadProgressIndicatorProps {
 
 export function UploadProgressIndicator({
   progress,
-  title = 'Uploading Images...',
+  title = 'Uploading Content...',
 }: UploadProgressIndicatorProps) {
   const overallProgress = calculateOverallProgress(progress);
   const completedCount = progress.filter((p) => p.status === 'complete').length;
@@ -54,12 +54,20 @@ export function UploadProgressIndicator({
 
       {/* Individual Image Progress */}
       <View style={styles.imageList}>
-        {progress.map((item, index) => (
-          <View key={item.imageId} style={styles.imageRow}>
-            <View style={styles.imageInfo}>
-              <ImageIcon size={16} color="#737373" />
-              <Text style={styles.imageLabel}>Image {index + 1}</Text>
-            </View>
+        {progress.map((item, index) => {
+          const isVideo = item.mediaType === 'video';
+          const mediaLabel = isVideo ? 'Video' : 'Image';
+          
+          return (
+            <View key={item.imageId} style={styles.imageRow}>
+              <View style={styles.imageInfo}>
+                {isVideo ? (
+                  <Video size={16} color="#737373" />
+                ) : (
+                  <ImageIcon size={16} color="#737373" />
+                )}
+                <Text style={styles.imageLabel}>{mediaLabel} {index + 1}</Text>
+              </View>
 
             <View style={styles.statusContainer}>
               {item.status === 'pending' && (
@@ -105,7 +113,8 @@ export function UploadProgressIndicator({
               )}
             </View>
           </View>
-        ))}
+          );
+        })}
       </View>
 
       {/* Error Details */}

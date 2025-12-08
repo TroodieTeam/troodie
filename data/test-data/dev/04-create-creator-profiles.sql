@@ -1,7 +1,8 @@
 -- ================================================================
 -- Step 4: Create Creator Profiles with Portfolios
 -- ================================================================
--- Creates 7 creator profiles with portfolio items (images/videos)
+-- Creates creator profiles with portfolio items (images/videos)
+-- Currently creates profiles for 3 creators (creators 4-7 commented out)
 -- ================================================================
 
 DO $$
@@ -10,10 +11,9 @@ DECLARE
   i INTEGER;
 BEGIN
   -- Creator 1: Food Photographer
-  INSERT INTO public.creator_profiles (id, user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
+  INSERT INTO public.creator_profiles (user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
   VALUES (
-    '0557acdd-e8e8-473b-badb-913a624fa199'::uuid,
-    'e1f2a3b4-c5d6-4789-e012-345678901234'::uuid, -- test-creator1
+    '4a797077-116e-4a3a-bc43-a71ae18963d8'::uuid, -- test-creator1
     'Foodie Lens',
     'Professional food photographer specializing in restaurant and culinary content. 5+ years experience.',
     'Charlotte, NC',
@@ -48,10 +48,9 @@ BEGIN
   END LOOP;
 
   -- Creator 2: Travel Food Blogger
-  INSERT INTO public.creator_profiles (id, user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
+  INSERT INTO public.creator_profiles (user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
   VALUES (
-    '1a2b3c4d-5e6f-4789-a012-345678901234'::uuid,
-    'f2a3b4c5-d6e7-4890-f123-456789012345'::uuid, -- test-creator2
+    '381d705b-d5d1-4e44-85fc-b772d68921ba'::uuid, -- test-creator2
     'Wanderlust Eats',
     'Travel and food blogger exploring local restaurants across the Southeast. Always looking for hidden gems!',
     'Atlanta, GA',
@@ -86,10 +85,9 @@ BEGIN
   END LOOP;
 
   -- Creator 3: Lifestyle Influencer
-  INSERT INTO public.creator_profiles (id, user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
+  INSERT INTO public.creator_profiles (user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
   VALUES (
-    '2b3c4d5e-6f7a-4890-b123-456789012345'::uuid,
-    'a3b4c5d6-e7f8-4901-a234-567890123456'::uuid, -- test-creator3
+    'e50f6c6f-9487-4ff2-acd0-3542fdd46dd1'::uuid, -- test-creator3
     'Lifestyle & Bites',
     'Lifestyle content creator focusing on dining experiences and local food culture.',
     'Raleigh, NC',
@@ -123,10 +121,22 @@ BEGIN
     ) ON CONFLICT DO NOTHING;
   END LOOP;
 
+  RAISE NOTICE '✅ Step 4 Complete: Created 3 creator profiles with portfolios';
+  RAISE NOTICE '   - test-creator1: Foodie Lens';
+  RAISE NOTICE '   - test-creator2: Wanderlust Eats';
+  RAISE NOTICE '   - test-creator3: Lifestyle & Bites';
+  RAISE NOTICE '   - Creators 4-7 will be added when those users are created';
+END $$;
+
+-- ================================================================
+-- NOTE: Creators 4-7 are commented out below
+-- Uncomment and remove hardcoded IDs when those users are created
+-- ================================================================
+
+/*
   -- Creator 4: Restaurant Critic
-  INSERT INTO public.creator_profiles (id, user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
+  INSERT INTO public.creator_profiles (user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
   VALUES (
-    '3c4d5e6f-7a8b-4901-c234-567890123456'::uuid,
     'b4c5d6e7-f8a9-4012-b345-678901234567'::uuid, -- test-creator4
     'The Critic',
     'Professional restaurant critic with 10+ years experience. Honest, detailed reviews.',
@@ -162,9 +172,8 @@ BEGIN
   END LOOP;
 
   -- Creator 5: Video Content Creator
-  INSERT INTO public.creator_profiles (id, user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
+  INSERT INTO public.creator_profiles (user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
   VALUES (
-    '4d5e6f7a-8b9c-4012-d345-678901234567'::uuid,
     'c5d6e7f8-a9b0-4123-c456-789012345678'::uuid, -- test-creator5
     'Food Reels Pro',
     'Creating engaging food video content for TikTok and Instagram. Specializing in quick recipe videos and restaurant tours.',
@@ -200,9 +209,8 @@ BEGIN
   END LOOP;
 
   -- Creator 6: Micro Influencer
-  INSERT INTO public.creator_profiles (id, user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
+  INSERT INTO public.creator_profiles (user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
   VALUES (
-    '5e6f7a8b-9c0d-4123-e456-789012345678'::uuid,
     'd6e7f8a9-b0c1-4234-d567-890123456789'::uuid, -- test-creator6
     'Local Foodie',
     'Sharing my favorite local spots and hidden gems in the Charlotte area.',
@@ -238,9 +246,8 @@ BEGIN
   END LOOP;
 
   -- Creator 7: Food Stylist
-  INSERT INTO public.creator_profiles (id, user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
+  INSERT INTO public.creator_profiles (user_id, display_name, bio, location, open_to_collabs, food_specialties, troodie_posts_count, troodie_likes_count, troodie_comments_count, created_at, updated_at)
   VALUES (
-    '6f7a8b9c-0d1e-4234-f567-890123456789'::uuid,
     'e7f8a9b0-c1d2-4345-e678-901234567890'::uuid, -- test-creator7
     'Styled Plates',
     'Professional food stylist creating beautiful, appetizing content for restaurants and brands.',
@@ -274,7 +281,4 @@ BEGIN
       NOW() - (INTERVAL '1 day' * (6 - i))
     ) ON CONFLICT DO NOTHING;
   END LOOP;
-
-  RAISE NOTICE '✅ Step 4 Complete: Created 7 creator profiles with portfolios';
-END $$;
-
+*/

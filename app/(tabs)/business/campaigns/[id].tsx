@@ -5,30 +5,30 @@ import { getInvitationsForCampaign, withdrawInvitation, type CampaignInvitation 
 import { canRateApplication, rateCreator } from '@/services/ratingService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ArrowLeft,
-  Clock,
-  DollarSign,
-  Edit,
-  ExternalLink,
-  Mail,
-  Star,
-  Target,
-  Users,
-  X
+    ArrowLeft,
+    Clock,
+    DollarSign,
+    Edit,
+    ExternalLink,
+    Mail,
+    Star,
+    Target,
+    Users,
+    X
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Linking,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -96,15 +96,27 @@ interface Deliverable {
   platform: string;
   platform_post_url: string;
   caption: string;
-  status: 'pending_review' | 'approved' | 'rejected' | 'needs_revision';
+  status: 'pending_review' | 'approved' | 'rejected' | 'needs_revision' | 'auto_approved' | 'draft' | 'revision_requested' | 'disputed';
   submitted_at: string;
   reviewed_at?: string;
   reviewer_id?: string;
   restaurant_feedback?: string;
   auto_approved: boolean;
+  thumbnail_url?: string;
+  content_type?: string;
+  views_count?: number;
+  likes_count?: number;
+  comments_count?: number;
+  shares_count?: number;
+  engagement_rate?: number;
   creator_profiles: {
     display_name: string;
     avatar_url: string;
+  };
+  campaign_applications?: {
+    id: string;
+    status: string;
+    rating?: number;
   };
 }
 
@@ -127,6 +139,7 @@ export default function CampaignDetail() {
   const [rating, setRating] = useState<number>(5);
   const [ratingComment, setRatingComment] = useState<string>('');
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [isTestCampaign, setIsTestCampaign] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -171,10 +184,18 @@ export default function CampaignDetail() {
         throw campaignError;
       }
 
-      setCampaign({
+      const campaignObj = {
         ...campaignData,
         restaurant: campaignData.restaurants,
-      });
+      };
+      setCampaign(campaignObj);
+      
+      // Check if this is a test campaign
+      const title = campaignData.title || campaignData.name || '';
+      setIsTestCampaign(
+        title.toLowerCase().includes('test campaign for rating') ||
+        title.toLowerCase().includes('cm-16')
+      );
 
       // Load applications
       console.log('[CampaignDetails] Loading applications for campaign:', id);
@@ -233,6 +254,11 @@ export default function CampaignDetail() {
           creator_profiles (
             display_name,
             avatar_url
+          ),
+          campaign_applications!inner (
+            id,
+            status,
+            rating
           )
         `)
         .eq('campaign_id', id)
@@ -355,12 +381,15 @@ export default function CampaignDetail() {
 
   // Rating handlers (CM-16)
   const handleOpenRatingModal = async (applicationId: string) => {
-    const { canRate, alreadyRated } = await canRateApplication(applicationId);
+    const { canRate, alreadyRated, error } = await canRateApplication(applicationId);
     if (!canRate) {
       if (alreadyRated) {
         Alert.alert('Already Rated', 'You have already rated this creator for this campaign.');
       } else {
-        Alert.alert('Cannot Rate', 'You can only rate creators after campaign completion.');
+        Alert.alert(
+          'Cannot Rate', 
+          error || 'You can only rate creators after their application is accepted and at least one deliverable has been approved.'
+        );
       }
       return;
     }
@@ -467,16 +496,48 @@ export default function CampaignDetail() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-      {/* Modern Header */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
+      {/* Test Campaign Banner */}
+      {isTestCampaign && (
       <View style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(10px)',
+          backgroundColor: DS.colors.warning + '15',
+          borderLeftWidth: 4,
+          borderLeftColor: DS.colors.warning,
+          padding: DS.spacing.md,
+          marginHorizontal: DS.spacing.lg,
+          marginTop: DS.spacing.md,
+          borderRadius: DS.borderRadius.sm,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}>
+          <Star size={20} color={DS.colors.warning} fill={DS.colors.warning} />
+          <View style={{ flex: 1, marginLeft: DS.spacing.sm }}>
+            <Text style={{
+              ...DS.typography.body,
+              fontWeight: '600',
+              color: DS.colors.warning,
+              marginBottom: DS.spacing.xs,
+            }}>
+              Test Campaign for Rating Flow
+            </Text>
+            <Text style={{
+              ...DS.typography.metadata,
+              color: DS.colors.textGray,
+            }}>
+              Use this campaign to test the creator rating system. Look for accepted applications in the Applications tab.
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Header */}
+      <View style={{
+        backgroundColor: DS.colors.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#E8E8E8',
-        paddingTop: 24,
-        paddingBottom: 16,
-        paddingHorizontal: 20,
+        borderBottomColor: DS.colors.borderLight,
+        paddingTop: DS.spacing.md,
+        paddingBottom: DS.spacing.md,
+        paddingHorizontal: DS.spacing.lg,
       }}>
         <View style={{
           flexDirection: 'row',
@@ -486,38 +547,36 @@ export default function CampaignDetail() {
           <TouchableOpacity 
             onPress={() => router.back()}
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(0, 0, 0, 0.03)',
+              width: DS.layout.buttonHeight.medium,
+              height: DS.layout.buttonHeight.medium,
+              borderRadius: DS.borderRadius.full,
+              backgroundColor: DS.colors.surfaceLight,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <ArrowLeft size={20} color="#262626" />
+            <ArrowLeft size={DS.layout.iconSize.md} color={DS.colors.textDark} />
           </TouchableOpacity>
           
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={{
-              fontSize: 20,
-              fontWeight: '600',
-              color: '#262626',
-              letterSpacing: -0.5,
+              ...DS.typography.h2,
+              color: DS.colors.textDark,
             }}>Campaign Details</Text>
           </View>
           
           <TouchableOpacity 
             onPress={() => router.push(`/business/campaigns/${id}/edit`)}
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(0, 0, 0, 0.03)',
+              width: DS.layout.buttonHeight.medium,
+              height: DS.layout.buttonHeight.medium,
+              borderRadius: DS.borderRadius.full,
+              backgroundColor: DS.colors.surfaceLight,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Edit size={18} color="#FFAD27" />
+            <Edit size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
           </TouchableOpacity>
         </View>
       </View>
@@ -529,146 +588,254 @@ export default function CampaignDetail() {
         }
         style={{ flex: 1 }}
       >
-        {/* Condensed Hero Section */}
+        {/* Hero Card */}
         <View style={{
-          backgroundColor: '#FFFFFF',
-          marginHorizontal: 20,
-          marginTop: 12,
-          borderRadius: 12,
+          backgroundColor: DS.colors.surface,
+          marginHorizontal: DS.spacing.lg,
+          marginTop: DS.spacing.md,
+          borderRadius: DS.borderRadius.lg,
           borderWidth: 1,
-          borderColor: '#E8E8E8',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          elevation: 2,
+          borderColor: DS.colors.borderLight,
+          ...DS.shadows.sm,
         }}>
-          <View style={{ padding: 16 }}>
+          <View style={{ padding: DS.spacing.lg }}>
             {/* Title and Status */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              marginBottom: DS.spacing.md 
+            }}>
               <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: '#262626',
+                ...DS.typography.h3,
+                color: DS.colors.textDark,
                 flex: 1,
+                marginRight: DS.spacing.sm,
               }}>{campaign.title || campaign.name}</Text>
               
               <View style={{
-                backgroundColor: getStatusColor(campaign.status),
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                borderRadius: 6,
+                backgroundColor: getStatusColor(campaign.status) + '15',
+                paddingHorizontal: DS.spacing.sm,
+                paddingVertical: DS.spacing.xs,
+                borderRadius: DS.borderRadius.sm,
               }}>
                 <Text style={{
-                  color: 'white',
-                  fontSize: 10,
+                  ...DS.typography.caption,
                   fontWeight: '600',
+                  color: getStatusColor(campaign.status),
                   textTransform: 'uppercase',
                 }}>{campaign.status}</Text>
               </View>
             </View>
 
-            {/* Key Metrics Row */}
+            {/* Key Metrics Grid */}
             <View style={{
               flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: DS.spacing.md,
             }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <DollarSign size={14} color="#8C8C8C" />
-                <Text style={{ marginLeft: 4, fontSize: 12, color: '#262626', fontWeight: '500' }}>
+              <View style={{
+                flexDirection: 'row',
+              alignItems: 'center',
+                flex: 1,
+                minWidth: '30%',
+            }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: DS.borderRadius.sm,
+                  backgroundColor: DS.colors.surfaceLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: DS.spacing.sm,
+                }}>
+                  <DollarSign size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    ...DS.typography.metadata,
+                    color: DS.colors.textGray,
+                  }}>
+                    Budget
+                  </Text>
+                  <Text style={{
+                    ...DS.typography.body,
+                    fontWeight: '600',
+                    color: DS.colors.textDark,
+                  }}>
                   ${(campaign.spent_amount_cents / 100).toFixed(0)}/${(campaign.budget_cents / 100).toFixed(0)}
                 </Text>
+                </View>
               </View>
               
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Users size={14} color="#8C8C8C" />
-                <Text style={{ marginLeft: 4, fontSize: 12, color: '#262626', fontWeight: '500' }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                flex: 1,
+                minWidth: '30%',
+              }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: DS.borderRadius.sm,
+                  backgroundColor: DS.colors.surfaceLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: DS.spacing.sm,
+                }}>
+                  <Users size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    ...DS.typography.metadata,
+                    color: DS.colors.textGray,
+                  }}>
+                    Creators
+                  </Text>
+                  <Text style={{
+                    ...DS.typography.body,
+                    fontWeight: '600',
+                    color: DS.colors.textDark,
+                  }}>
                   {campaign.selected_creators_count}/{campaign.max_creators}
                 </Text>
+                </View>
               </View>
               
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Clock size={14} color="#8C8C8C" />
-                <Text style={{ marginLeft: 4, fontSize: 12, color: '#262626', fontWeight: '500' }}>
-                  {getDaysRemaining()}d left
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                flex: 1,
+                minWidth: '30%',
+              }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: DS.borderRadius.sm,
+                  backgroundColor: DS.colors.surfaceLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: DS.spacing.sm,
+                }}>
+                  <Clock size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    ...DS.typography.metadata,
+                    color: DS.colors.textGray,
+                  }}>
+                    Time Left
+                  </Text>
+                  <Text style={{
+                    ...DS.typography.body,
+                    fontWeight: '600',
+                    color: DS.colors.textDark,
+                  }}>
+                    {getDaysRemaining()}d
                 </Text>
+                </View>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Condensed Tab Navigation */}
+        {/* Tab Navigation */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
           style={{
-            marginHorizontal: 20,
-            marginTop: 12,
+            marginHorizontal: DS.spacing.lg,
+            marginTop: DS.spacing.md,
           }}
           contentContainerStyle={{
             borderBottomWidth: 1,
-            borderBottomColor: '#E8E8E8',
+            borderBottomColor: DS.colors.borderLight,
           }}
         >
-          {['overview', 'applications', 'invitations', 'content', 'deliverables'].map((tab) => (
+          {['overview', 'applications', 'invitations', 'content', 'deliverables'].map((tab) => {
+            const pendingCount = 
+              tab === 'applications' ? applications.filter(a => a.status === 'pending').length :
+              tab === 'invitations' ? invitations.filter(i => i.status === 'pending').length :
+              tab === 'deliverables' ? deliverables.filter(d => d.status === 'pending_review').length : 0;
+            
+            return (
             <TouchableOpacity
               key={tab}
               style={{
-                paddingHorizontal: 16,
-                paddingVertical: 12,
+                  paddingHorizontal: DS.spacing.md,
+                  paddingVertical: DS.spacing.md,
                 alignItems: 'center',
                 borderBottomWidth: 2,
-                borderBottomColor: activeTab === tab ? '#FFAD27' : 'transparent',
+                  borderBottomColor: activeTab === tab ? DS.colors.primaryOrange : 'transparent',
                 minWidth: 100,
               }}
               onPress={() => setActiveTab(tab as any)}
             >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{
-                fontSize: 14,
+                    ...DS.typography.button,
                 fontWeight: activeTab === tab ? '600' : '500',
-                color: activeTab === tab ? '#262626' : '#8C8C8C',
+                    color: activeTab === tab ? DS.colors.textDark : DS.colors.textGray,
                 textTransform: 'capitalize',
               }}>
                 {tab}
-                {tab === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
-                  <Text style={{ color: '#DC2626', fontWeight: '600' }}> ({applications.filter(a => a.status === 'pending').length})</Text>
-                )}
-                {tab === 'invitations' && invitations.filter(i => i.status === 'pending').length > 0 && (
-                  <Text style={{ color: '#F59E0B', fontWeight: '600' }}> ({invitations.filter(i => i.status === 'pending').length})</Text>
-                )}
-                {tab === 'deliverables' && deliverables.filter(d => d.status === 'pending_review').length > 0 && (
-                  <Text style={{ color: '#F59E0B', fontWeight: '600' }}> ({deliverables.filter(d => d.status === 'pending_review').length})</Text>
-                )}
               </Text>
+                  {pendingCount > 0 && (
+                    <View style={{
+                      backgroundColor: tab === 'applications' ? DS.colors.error : DS.colors.warning,
+                      borderRadius: DS.borderRadius.full,
+                      paddingHorizontal: DS.spacing.xs,
+                      paddingVertical: 2,
+                      marginLeft: DS.spacing.xs,
+                      minWidth: 20,
+                      alignItems: 'center',
+                    }}>
+                      <Text style={{
+                        ...DS.typography.caption,
+                        fontWeight: '700',
+                        color: 'white',
+                      }}>
+                        {pendingCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
             </TouchableOpacity>
-          ))}
+            );
+          })}
         </ScrollView>
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
-          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-            {/* Quick Actions - Prioritized */}
+          <View style={{ paddingHorizontal: DS.spacing.lg, paddingTop: DS.spacing.md }}>
+            {/* Quick Actions */}
             {campaign.status === 'active' && (
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              <View style={{ 
+                flexDirection: 'row', 
+                gap: DS.spacing.sm, 
+                marginBottom: DS.spacing.lg 
+              }}>
                 <TouchableOpacity
                   style={{
                     flex: 1,
-                    backgroundColor: '#FFAD27',
-                    padding: 12,
-                    borderRadius: 8,
+                    backgroundColor: DS.colors.warning,
+                    padding: DS.spacing.md,
+                    borderRadius: DS.borderRadius.sm,
                     alignItems: 'center',
                   }}
                   onPress={() => handleStatusChange('pending')}
                 >
-                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Pause</Text>
+                  <Text style={{ 
+                    color: 'white', 
+                    ...DS.typography.button,
+                  }}>Pause</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={{
                     flex: 1,
-                    backgroundColor: '#DC2626',
-                    padding: 12,
-                    borderRadius: 8,
+                    backgroundColor: DS.colors.error,
+                    padding: DS.spacing.md,
+                    borderRadius: DS.borderRadius.sm,
                     alignItems: 'center',
                   }}
                   onPress={() => {
@@ -682,7 +849,10 @@ export default function CampaignDetail() {
                     );
                   }}
                 >
-                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>End</Text>
+                  <Text style={{ 
+                    color: 'white', 
+                    ...DS.typography.button,
+                  }}>End</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -690,111 +860,159 @@ export default function CampaignDetail() {
             {campaign.status === 'pending' && (
               <TouchableOpacity
                 style={{
-                  backgroundColor: '#10B981',
-                  padding: 12,
-                  borderRadius: 8,
+                  backgroundColor: DS.colors.success,
+                  padding: DS.spacing.md,
+                  borderRadius: DS.borderRadius.sm,
                   alignItems: 'center',
-                  marginBottom: 16,
+                  marginBottom: DS.spacing.lg,
                 }}
                 onPress={() => handleStatusChange('active')}
               >
-                <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>Resume Campaign</Text>
+                <Text style={{ 
+                  color: 'white', 
+                  ...DS.typography.button,
+                }}>Resume Campaign</Text>
               </TouchableOpacity>
             )}
 
-            {/* Condensed Campaign Info */}
+            {/* Campaign Info Card */}
             <View style={{
-              backgroundColor: '#FFFFFF',
-              padding: 12,
-              borderRadius: 8,
+              backgroundColor: DS.colors.surface,
+              padding: DS.spacing.lg,
+              borderRadius: DS.borderRadius.md,
               borderWidth: 1,
-              borderColor: '#E8E8E8',
-              marginBottom: 12,
+              borderColor: DS.colors.borderLight,
+              marginBottom: DS.spacing.md,
+              ...DS.shadows.sm,
             }}>
-              <Text style={{ fontSize: 13, color: '#8C8C8C', marginBottom: 8 }}>{campaign.description}</Text>
+              <Text style={{ 
+                ...DS.typography.body,
+                color: DS.colors.textGray, 
+                marginBottom: DS.spacing.md,
+                lineHeight: 20,
+              }}>{campaign.description}</Text>
               
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 11, color: '#8C8C8C' }}>
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between',
+                paddingTop: DS.spacing.md,
+                borderTopWidth: 1,
+                borderTopColor: DS.colors.borderLight,
+              }}>
+                <Text style={{ 
+                  ...DS.typography.metadata,
+                  color: DS.colors.textGray,
+                }}>
                   {new Date(campaign.start_date).toLocaleDateString()} - {new Date(campaign.end_date).toLocaleDateString()}
                 </Text>
-                <Text style={{ fontSize: 11, color: '#8C8C8C' }}>{campaign.restaurant?.name}</Text>
+                <Text style={{ 
+                  ...DS.typography.metadata,
+                  color: DS.colors.textGray,
+                }}>{campaign.restaurant?.name}</Text>
               </View>
             </View>
 
-            {/* Compact Progress */}
+            {/* Progress Card */}
             <View style={{
-              backgroundColor: '#FFFFFF',
-              padding: 12,
-              borderRadius: 8,
+              backgroundColor: DS.colors.surface,
+              padding: DS.spacing.lg,
+              borderRadius: DS.borderRadius.md,
               borderWidth: 1,
-              borderColor: '#E8E8E8',
+              borderColor: DS.colors.borderLight,
+              ...DS.shadows.sm,
             }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={{ fontSize: 12, color: '#8C8C8C' }}>Budget Used</Text>
-                <Text style={{ fontSize: 12, color: '#262626', fontWeight: '600' }}>
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                marginBottom: DS.spacing.sm 
+              }}>
+                <Text style={{ 
+                  ...DS.typography.metadata,
+                  color: DS.colors.textGray,
+                }}>Budget Used</Text>
+                <Text style={{ 
+                  ...DS.typography.metadata,
+                  fontWeight: '600',
+                  color: DS.colors.textDark,
+                }}>
                   {Math.round((campaign.spent_amount_cents / campaign.budget_cents) * 100)}%
                 </Text>
               </View>
               <View style={{
-                height: 4,
-                backgroundColor: '#F7F7F7',
-                borderRadius: 2,
-                marginBottom: 12,
+                height: 6,
+                backgroundColor: DS.colors.surfaceLight,
+                borderRadius: DS.borderRadius.xs,
+                marginBottom: DS.spacing.md,
               }}>
                 <View style={{
-                  height: 4,
-                  backgroundColor: '#FFAD27',
-                  borderRadius: 2,
-                  width: `${(campaign.spent_amount_cents / campaign.budget_cents) * 100}%`,
+                  height: 6,
+                  backgroundColor: DS.colors.primaryOrange,
+                  borderRadius: DS.borderRadius.xs,
+                  width: `${Math.min((campaign.spent_amount_cents / campaign.budget_cents) * 100, 100)}%`,
                 }} />
               </View>
               
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 12, color: '#8C8C8C' }}>Deliverables</Text>
-                <Text style={{ fontSize: 12, color: '#262626', fontWeight: '600' }}>
+              {campaign.total_deliverables > 0 && (
+                <>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    justifyContent: 'space-between',
+                    marginTop: DS.spacing.sm,
+                  }}>
+                    <Text style={{ 
+                      ...DS.typography.metadata,
+                      color: DS.colors.textGray,
+                    }}>Deliverables</Text>
+                    <Text style={{ 
+                      ...DS.typography.metadata,
+                      fontWeight: '600',
+                      color: DS.colors.textDark,
+                    }}>
                   {campaign.delivered_content_count}/{campaign.total_deliverables}
                 </Text>
               </View>
               <View style={{
-                height: 4,
-                backgroundColor: '#F7F7F7',
-                borderRadius: 2,
-                marginTop: 8,
+                    height: 6,
+                    backgroundColor: DS.colors.surfaceLight,
+                    borderRadius: DS.borderRadius.xs,
+                    marginTop: DS.spacing.sm,
               }}>
                 <View style={{
-                  height: 4,
-                  backgroundColor: '#10B981',
-                  borderRadius: 2,
-                  width: `${(campaign.delivered_content_count / (campaign.total_deliverables || 1)) * 100}%`,
+                      height: 6,
+                      backgroundColor: DS.colors.success,
+                      borderRadius: DS.borderRadius.xs,
+                      width: `${Math.min((campaign.delivered_content_count / campaign.total_deliverables) * 100, 100)}%`,
                 }} />
               </View>
+                </>
+              )}
             </View>
 
           </View>
         )}
 
         {activeTab === 'applications' && (
-          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+          <View style={{ paddingHorizontal: DS.spacing.lg, paddingTop: DS.spacing.md }}>
             {applications.length === 0 ? (
               <View style={{
-                backgroundColor: '#FFFFFF',
-                padding: 24,
-                borderRadius: 8,
+                backgroundColor: DS.colors.surface,
+                padding: DS.spacing.xxl,
+                borderRadius: DS.borderRadius.md,
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: '#E8E8E8',
+                borderColor: DS.colors.borderLight,
+                ...DS.shadows.sm,
               }}>
-                <Users size={32} color="#8C8C8C" />
+                <Users size={DS.layout.iconSize.xl} color={DS.colors.textGray} />
                 <Text style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: '#262626',
-                  marginTop: 12,
-                  marginBottom: 4,
+                  ...DS.typography.h3,
+                  color: DS.colors.textDark,
+                  marginTop: DS.spacing.md,
+                  marginBottom: DS.spacing.xs,
                 }}>No Applications Yet</Text>
                 <Text style={{
-                  fontSize: 13,
-                  color: '#8C8C8C',
+                  ...DS.typography.body,
+                  color: DS.colors.textGray,
                   textAlign: 'center',
                 }}>Creators will apply once your campaign is active</Text>
               </View>
@@ -803,84 +1021,131 @@ export default function CampaignDetail() {
                 <View
                   key={application.id}
                   style={{
-                    backgroundColor: '#FFFFFF',
-                    padding: 12,
-                    borderRadius: 8,
-                    marginBottom: 8,
+                    backgroundColor: DS.colors.surface,
+                    padding: DS.spacing.md,
+                    borderRadius: DS.borderRadius.md,
+                    marginBottom: DS.spacing.sm,
                     borderWidth: 1,
-                    borderColor: '#E8E8E8',
+                    borderColor: DS.colors.borderLight,
+                    ...DS.shadows.sm,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Image
                       source={{ uri: application.creator_profiles.avatar_url || 'https://via.placeholder.com/50' }}
                       style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 20,
-                        marginRight: 12,
+                        width: DS.layout.avatarSize.md,
+                        height: DS.layout.avatarSize.md,
+                        borderRadius: DS.borderRadius.full,
+                        marginRight: DS.spacing.md,
+                        backgroundColor: DS.colors.surfaceLight,
                       }}
                     />
                     <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#262626' }}>
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        marginBottom: DS.spacing.xs 
+                      }}>
+                        <Text style={{ 
+                          ...DS.typography.body,
+                          fontWeight: '600', 
+                          color: DS.colors.textDark,
+                        }}>
                           {application.creator_profiles.display_name}
                         </Text>
                         <View style={{
-                          backgroundColor: application.status === 'accepted' ? '#10B981' : 
-                                         application.status === 'rejected' ? '#DC2626' : '#F59E0B',
-                          paddingHorizontal: 6,
-                          paddingVertical: 2,
-                          borderRadius: 4,
+                          backgroundColor: (application.status === 'accepted' ? DS.colors.success : 
+                                         application.status === 'rejected' ? DS.colors.error : DS.colors.warning) + '15',
+                          paddingHorizontal: DS.spacing.sm,
+                          paddingVertical: DS.spacing.xs,
+                          borderRadius: DS.borderRadius.sm,
                         }}>
-                          <Text style={{ color: 'white', fontSize: 9, fontWeight: '600', textTransform: 'uppercase' }}>
+                          <Text style={{ 
+                            ...DS.typography.caption,
+                            fontWeight: '600', 
+                            color: application.status === 'accepted' ? DS.colors.success : 
+                                   application.status === 'rejected' ? DS.colors.error : DS.colors.warning,
+                            textTransform: 'uppercase',
+                          }}>
                             {application.status}
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ fontSize: 11, color: '#8C8C8C', marginBottom: 4 }}>
+                      <Text style={{ 
+                        ...DS.typography.metadata,
+                        color: DS.colors.textGray, 
+                        marginBottom: DS.spacing.xs,
+                      }}>
                         {application.creator_profiles.followers_count.toLocaleString()} followers • ${(application.proposed_rate_cents / 100).toFixed(0)}
                       </Text>
                       
                       {application.status === 'pending' && (
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <View style={{ 
+                          flexDirection: 'row', 
+                          gap: DS.spacing.sm,
+                          marginTop: DS.spacing.sm,
+                        }}>
                           <TouchableOpacity
                             style={{
                               flex: 1,
-                              backgroundColor: '#10B981',
-                              padding: 8,
-                              borderRadius: 6,
+                              backgroundColor: DS.colors.success,
+                              padding: DS.spacing.sm,
+                              borderRadius: DS.borderRadius.sm,
                               alignItems: 'center',
                             }}
                             onPress={() => handleApplicationAction(application.id, 'accepted')}
                           >
-                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Accept</Text>
+                            <Text style={{ 
+                              color: 'white', 
+                              ...DS.typography.button,
+                            }}>Accept</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={{
                               flex: 1,
-                              backgroundColor: '#DC2626',
-                              padding: 8,
-                              borderRadius: 6,
+                              backgroundColor: DS.colors.error,
+                              padding: DS.spacing.sm,
+                              borderRadius: DS.borderRadius.sm,
                               alignItems: 'center',
                             }}
                             onPress={() => handleApplicationAction(application.id, 'rejected')}
                           >
-                            <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Reject</Text>
+                            <Text style={{ 
+                              color: 'white', 
+                              ...DS.typography.button,
+                            }}>Reject</Text>
                           </TouchableOpacity>
                         </View>
                       )}
                       
                       {application.status === 'accepted' && (
-                        <View style={{ marginTop: 8 }}>
+                        <View style={{ marginTop: DS.spacing.sm }}>
                           {application.rating ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                              <Star size={14} color="#FFAD27" fill="#FFAD27" />
-                              <Text style={{ fontSize: 12, color: '#262626', fontWeight: '500' }}>
+                            <View style={{ 
+                              flexDirection: 'row', 
+                              alignItems: 'center', 
+                              gap: DS.spacing.xs,
+                              backgroundColor: DS.colors.surfaceLight,
+                              padding: DS.spacing.sm,
+                              borderRadius: DS.borderRadius.sm,
+                            }}>
+                              <Star size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} fill={DS.colors.primaryOrange} />
+                              <Text style={{ 
+                                ...DS.typography.metadata,
+                                color: DS.colors.textDark, 
+                                fontWeight: '600',
+                              }}>
                                 Rated {application.rating}/5
                               </Text>
                               {application.rating_comment && (
-                                <Text style={{ fontSize: 11, color: '#8C8C8C', marginLeft: 8, flex: 1 }} numberOfLines={1}>
+                                <Text style={{ 
+                                  ...DS.typography.caption,
+                                  color: DS.colors.textGray, 
+                                  marginLeft: DS.spacing.sm, 
+                                  flex: 1 
+                                }} numberOfLines={1}>
                                   "{application.rating_comment}"
                                 </Text>
                               )}
@@ -888,18 +1153,21 @@ export default function CampaignDetail() {
                           ) : (
                             <TouchableOpacity
                               style={{
-                                backgroundColor: '#FFAD27',
-                                padding: 8,
-                                borderRadius: 6,
+                                backgroundColor: DS.colors.primaryOrange,
+                                padding: DS.spacing.sm,
+                                borderRadius: DS.borderRadius.sm,
                                 alignItems: 'center',
                                 flexDirection: 'row',
                                 justifyContent: 'center',
-                                gap: 4,
+                                gap: DS.spacing.xs,
                               }}
                               onPress={() => handleOpenRatingModal(application.id)}
                             >
-                              <Star size={14} color="white" />
-                              <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Rate Creator</Text>
+                              <Star size={DS.layout.iconSize.sm} color="white" fill="white" />
+                              <Text style={{ 
+                                color: 'white', 
+                                ...DS.typography.button,
+                              }}>Rate Creator</Text>
                             </TouchableOpacity>
                           )}
                         </View>
@@ -1232,6 +1500,7 @@ export default function CampaignDetail() {
                     key={deliverable.id} 
                     deliverable={deliverable} 
                     onStatusChange={(status, feedback) => handleDeliverableStatusChange(deliverable.id, status, feedback)}
+                    onRateCreator={handleOpenRatingModal}
                   />
                 ))}
               </View>
@@ -1343,20 +1612,42 @@ export default function CampaignDetail() {
 
 const DeliverableCard = ({ 
   deliverable, 
-  onStatusChange 
+  onStatusChange,
+  onRateCreator
 }: { 
   deliverable: Deliverable; 
   onStatusChange: (status: string, feedback?: string) => void;
+  onRateCreator?: (applicationId: string) => void;
 }) => {
   const [showDetails, setShowDetails] = useState(false);
+  const [canRate, setCanRate] = useState(false);
+  const [checkingRating, setCheckingRating] = useState(false);
+  
+  useEffect(() => {
+    // Check if rating is available for approved deliverables
+    if (deliverable.status === 'approved' || deliverable.status === 'auto_approved') {
+      if (deliverable.campaign_applications?.id) {
+        setCheckingRating(true);
+        canRateApplication(deliverable.campaign_applications.id)
+          .then(({ canRate: canRateResult }) => {
+            setCanRate(canRateResult);
+            setCheckingRating(false);
+          })
+          .catch(() => setCheckingRating(false));
+      }
+    }
+  }, [deliverable.status, deliverable.campaign_applications?.id]);
   
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending_review': return '#F59E0B';
-      case 'approved': return '#10B981';
-      case 'rejected': return '#DC2626';
+      case 'pending_review': return DS.colors.warning;
+      case 'approved': 
+      case 'auto_approved': return DS.colors.success;
+      case 'rejected': return DS.colors.error;
+      case 'revision_requested':
       case 'needs_revision': return '#8B5CF6';
-      default: return '#6B7280';
+      case 'disputed': return DS.colors.error;
+      default: return DS.colors.textGray;
     }
   };
 
@@ -1364,9 +1655,36 @@ const DeliverableCard = ({
     switch (status) {
       case 'pending_review': return 'Pending Review';
       case 'approved': return 'Approved';
+      case 'auto_approved': return 'Auto Approved';
       case 'rejected': return 'Rejected';
+      case 'revision_requested':
       case 'needs_revision': return 'Needs Revision';
+      case 'disputed': return 'Disputed';
       default: return 'Unknown';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending_review': return '⏳';
+      case 'approved': 
+      case 'auto_approved': return '✓';
+      case 'rejected': return '✗';
+      case 'revision_requested':
+      case 'needs_revision': return '↻';
+      case 'disputed': return '⚠';
+      default: return '•';
+    }
+  };
+
+  const getContentTypeIcon = (type?: string) => {
+    switch (type?.toLowerCase()) {
+      case 'photo': return '📷';
+      case 'video': return '🎥';
+      case 'reel': return '🎬';
+      case 'story': return '📱';
+      case 'post': return '📝';
+      default: return '📄';
     }
   };
 
@@ -1388,123 +1706,251 @@ const DeliverableCard = ({
   };
 
   const timeRemaining = getTimeRemaining();
+  const isApproved = deliverable.status === 'approved' || deliverable.status === 'auto_approved';
+  const hasMetrics = deliverable.views_count !== undefined || deliverable.likes_count !== undefined;
 
   return (
     <View style={{
-      backgroundColor: '#FFFFFF',
-      borderRadius: 12,
+      backgroundColor: DS.colors.surface,
+      borderRadius: DS.borderRadius.lg,
       borderWidth: 1,
-      borderColor: '#E8E8E8',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
+      borderColor: DS.colors.border,
+      ...DS.shadows.sm,
+      overflow: 'hidden',
     }}>
-      {/* Compact Header */}
+      {/* Thumbnail Preview */}
+      {deliverable.thumbnail_url && (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={async () => {
+            try {
+              const url = deliverable.platform_post_url;
+              if (!url) {
+                Alert.alert('Error', 'No post URL available');
+                return;
+              }
+              const canOpen = await Linking.canOpenURL(url);
+              if (!canOpen) {
+                Alert.alert('Error', 'Cannot open this URL');
+                return;
+              }
+              await Linking.openURL(url);
+            } catch (error) {
+              console.error('Error opening URL:', error);
+              Alert.alert('Error', 'Failed to open the post URL');
+            }
+          }}
+        >
+          <Image
+            source={{ uri: deliverable.thumbnail_url }}
+            style={{
+              width: '100%',
+              height: 200,
+              backgroundColor: DS.colors.surfaceLight,
+            }}
+            resizeMode="cover"
+          />
+          {/* Overlay with content type */}
       <View style={{
+            position: 'absolute',
+            top: DS.spacing.sm,
+            right: DS.spacing.sm,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            paddingHorizontal: DS.spacing.sm,
+            paddingVertical: DS.spacing.xs,
+            borderRadius: DS.borderRadius.xs,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 12,
-        paddingBottom: deliverable.status === 'pending_review' ? 8 : 12,
+          }}>
+            <Text style={{ fontSize: 12, marginRight: 4 }}>{getContentTypeIcon(deliverable.content_type)}</Text>
+            <Text style={{
+              ...DS.typography.caption,
+              color: DS.colors.textWhite,
+              textTransform: 'uppercase',
+            }}>
+              {deliverable.content_type || 'Post'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Header Section */}
+      <View style={{
+        padding: DS.spacing.lg,
+        paddingBottom: DS.spacing.md,
       }}>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: DS.spacing.sm,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             <Image
-              source={{ uri: deliverable.creator_profiles.avatar_url || 'https://via.placeholder.com/18' }}
+              source={{ uri: deliverable.creator_profiles.avatar_url || 'https://via.placeholder.com/32' }}
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: 9,
-                marginRight: 6,
+                width: DS.layout.avatarSize.sm,
+                height: DS.layout.avatarSize.sm,
+                borderRadius: DS.layout.avatarSize.sm / 2,
+                marginRight: DS.spacing.sm,
+                backgroundColor: DS.colors.surfaceLight,
               }}
             />
+            <View style={{ flex: 1 }}>
             <Text style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: '#262626',
+                ...DS.typography.h3,
+                color: DS.colors.textDark,
+                marginBottom: 2,
             }}>
               {deliverable.creator_profiles.display_name}
             </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{
-              fontSize: 10,
-              color: '#8C8C8C',
+                  ...DS.typography.metadata,
+                  color: DS.colors.textGray,
               textTransform: 'uppercase',
-              fontWeight: '500',
-              marginLeft: 4,
+                  marginRight: DS.spacing.xs,
             }}>
-              {deliverable.platform}
+                  {deliverable.platform || 'Social'}
             </Text>
+                {deliverable.submitted_at && (
+                  <>
+                    <Text style={{ ...DS.typography.metadata, color: DS.colors.textLight }}>•</Text>
+                    <Text style={{
+                      ...DS.typography.metadata,
+                      color: DS.colors.textGray,
+                      marginLeft: DS.spacing.xs,
+                    }}>
+                      {new Date(deliverable.submitted_at).toLocaleDateString()}
+                    </Text>
+                  </>
+                )}
+              </View>
+            </View>
           </View>
           
-          {/* Time Remaining - Compact */}
-          {timeRemaining && (
+          {/* Status Badge */}
             <View style={{
-              backgroundColor: timeRemaining === 'Overdue' ? '#FEE2E2' : '#FEF3C7',
-              paddingHorizontal: 4,
-              paddingVertical: 1,
-              borderRadius: 3,
-              alignSelf: 'flex-start',
+            backgroundColor: `${getStatusColor(deliverable.status)}15`,
+            paddingHorizontal: DS.spacing.sm,
+            paddingVertical: DS.spacing.xs,
+            borderRadius: DS.borderRadius.sm,
+            borderWidth: 1,
+            borderColor: `${getStatusColor(deliverable.status)}30`,
             }}>
               <Text style={{
-                fontSize: 9,
+              ...DS.typography.caption,
                 fontWeight: '600',
-                color: timeRemaining === 'Overdue' ? '#DC2626' : '#D97706',
+              color: getStatusColor(deliverable.status),
               }}>
-                {timeRemaining === 'Overdue' ? '⚠️ Overdue' : `⏰ ${timeRemaining}`}
+              {`${getStatusIcon(deliverable.status)} ${getStatusText(deliverable.status)}`}
               </Text>
             </View>
-          )}
         </View>
         
+        {/* Time Remaining Alert */}
+        {timeRemaining && (
         <View style={{
-          backgroundColor: `${getStatusColor(deliverable.status)}20`,
-          paddingHorizontal: 6,
-          paddingVertical: 3,
-          borderRadius: 4,
+            backgroundColor: timeRemaining === 'Overdue' ? `${DS.colors.error}15` : `${DS.colors.warning}15`,
+            paddingHorizontal: DS.spacing.sm,
+            paddingVertical: DS.spacing.xs,
+            borderRadius: DS.borderRadius.xs,
+            marginTop: DS.spacing.xs,
+            flexDirection: 'row',
+            alignItems: 'center',
         }}>
           <Text style={{
-            fontSize: 10,
+              ...DS.typography.caption,
             fontWeight: '600',
-            color: getStatusColor(deliverable.status),
+              color: timeRemaining === 'Overdue' ? DS.colors.error : DS.colors.warning,
           }}>
-            {getStatusText(deliverable.status)}
+              {timeRemaining === 'Overdue' ? '⚠️ Overdue for Review' : `⏰ ${timeRemaining} to review`}
           </Text>
         </View>
+        )}
+
+        {/* Engagement Metrics */}
+        {hasMetrics && (deliverable.views_count || deliverable.likes_count || deliverable.comments_count) && (
+          <View style={{
+            flexDirection: 'row',
+            marginTop: DS.spacing.md,
+            paddingTop: DS.spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: DS.colors.borderLight,
+            gap: DS.spacing.md,
+          }}>
+            {deliverable.views_count !== undefined && deliverable.views_count > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray, marginRight: 4 }}>👁</Text>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textDark, fontWeight: '600' }}>
+                  {deliverable.views_count.toLocaleString()}
+                </Text>
+              </View>
+            )}
+            {deliverable.likes_count !== undefined && deliverable.likes_count > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray, marginRight: 4 }}>❤️</Text>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textDark, fontWeight: '600' }}>
+                  {deliverable.likes_count.toLocaleString()}
+                </Text>
+              </View>
+            )}
+            {deliverable.comments_count !== undefined && deliverable.comments_count > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray, marginRight: 4 }}>💬</Text>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textDark, fontWeight: '600' }}>
+                  {deliverable.comments_count.toLocaleString()}
+                </Text>
+              </View>
+            )}
+            {deliverable.engagement_rate !== undefined && deliverable.engagement_rate > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' }}>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray, marginRight: 4 }}>📊</Text>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.success, fontWeight: '600' }}>
+                  {deliverable.engagement_rate.toFixed(1)}%
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Collapsible Details */}
       {showDetails && (
         <View style={{
-          paddingHorizontal: 12,
-          paddingBottom: 8,
+          paddingHorizontal: DS.spacing.lg,
+          paddingBottom: DS.spacing.md,
           borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
+          borderTopColor: DS.colors.borderLight,
+          backgroundColor: DS.colors.surfaceLight,
         }}>
-          {/* Content */}
+          {/* Caption */}
           {deliverable.caption && (
+            <View style={{ marginBottom: DS.spacing.md }}>
             <Text style={{
-              fontSize: 13,
-              color: '#262626',
-              marginBottom: 8,
-              lineHeight: 18,
+                ...DS.typography.body,
+                color: DS.colors.textDark,
+                lineHeight: 20,
             }}>
               {deliverable.caption}
             </Text>
+            </View>
           )}
           
+          {/* View Post Button */}
+          {deliverable.platform_post_url && (
           <TouchableOpacity
             style={{
-              backgroundColor: '#F7F7F7',
-              padding: 8,
-              borderRadius: 6,
+                backgroundColor: DS.colors.surface,
+                padding: DS.spacing.md,
+                borderRadius: DS.borderRadius.md,
               borderWidth: 1,
-              borderColor: '#E8E8E8',
-              marginBottom: 8,
+                borderColor: DS.colors.border,
+                marginBottom: DS.spacing.md,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
+                ...DS.shadows.sm,
             }}
             onPress={async () => {
               try {
@@ -1513,15 +1959,11 @@ const DeliverableCard = ({
                   Alert.alert('Error', 'No post URL available');
                   return;
                 }
-
-                // Check if the URL can be opened
                 const canOpen = await Linking.canOpenURL(url);
                 if (!canOpen) {
                   Alert.alert('Error', 'Cannot open this URL');
                   return;
                 }
-
-                // Open the URL
                 await Linking.openURL(url);
               } catch (error) {
                 console.error('Error opening URL:', error);
@@ -1529,34 +1971,54 @@ const DeliverableCard = ({
               }
             }}
           >
-            <ExternalLink size={14} color="#FFAD27" style={{ marginRight: 4 }} />
+              <ExternalLink size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} style={{ marginRight: DS.spacing.xs }} />
             <Text style={{
-              fontSize: 12,
-              color: '#FFAD27',
-              fontWeight: '500',
+                ...DS.typography.button,
+                color: DS.colors.primaryOrange,
             }}>
-              View Post
+                View Post on {deliverable.platform || 'Platform'}
             </Text>
           </TouchableOpacity>
+          )}
+
+          {/* Review Info */}
+          {deliverable.reviewed_at && (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: DS.spacing.sm,
+            }}>
+              <Text style={{
+                ...DS.typography.metadata,
+                color: DS.colors.textGray,
+              }}>
+                Reviewed {new Date(deliverable.reviewed_at).toLocaleDateString()}
+                {deliverable.auto_approved && ' (Auto-approved)'}
+              </Text>
+            </View>
+          )}
 
           {/* Feedback */}
           {deliverable.restaurant_feedback && (
             <View style={{
-              backgroundColor: '#F0F9FF',
-              padding: 8,
-              borderRadius: 6,
+              backgroundColor: `${DS.colors.info}10`,
+              padding: DS.spacing.md,
+              borderRadius: DS.borderRadius.md,
+              borderLeftWidth: 3,
+              borderLeftColor: DS.colors.info,
             }}>
               <Text style={{
-                fontSize: 11,
+                ...DS.typography.caption,
                 fontWeight: '600',
-                color: '#0369A1',
-                marginBottom: 2,
+                color: DS.colors.info,
+                marginBottom: DS.spacing.xs,
+                textTransform: 'uppercase',
               }}>
                 Your Feedback:
               </Text>
               <Text style={{
-                fontSize: 12,
-                color: '#0369A1',
+                ...DS.typography.body,
+                color: DS.colors.textDark,
               }}>
                 {deliverable.restaurant_feedback}
               </Text>
@@ -1565,33 +2027,99 @@ const DeliverableCard = ({
         </View>
       )}
 
+      {/* Rate Creator CTA for Approved Deliverables */}
+      {isApproved && canRate && deliverable.campaign_applications?.id && (
+        <View style={{
+          paddingHorizontal: DS.spacing.lg,
+          paddingVertical: DS.spacing.md,
+          backgroundColor: `${DS.colors.success}10`,
+          borderTopWidth: 1,
+          borderTopColor: DS.colors.borderLight,
+        }}>
+          <TouchableOpacity
+            style={{
+              backgroundColor: DS.colors.primaryOrange,
+              paddingVertical: DS.spacing.md,
+              paddingHorizontal: DS.spacing.lg,
+              borderRadius: DS.borderRadius.md,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...DS.shadows.sm,
+            }}
+            onPress={() => onRateCreator?.(deliverable.campaign_applications!.id)}
+          >
+            <Star size={DS.layout.iconSize.sm} color={DS.colors.textWhite} fill={DS.colors.textWhite} style={{ marginRight: DS.spacing.xs }} />
+            <Text style={{
+              ...DS.typography.button,
+              color: DS.colors.textWhite,
+            }}>
+              Rate Creator
+            </Text>
+          </TouchableOpacity>
+          <Text style={{
+            ...DS.typography.caption,
+            color: DS.colors.textGray,
+            textAlign: 'center',
+            marginTop: DS.spacing.xs,
+          }}>
+            All deliverables approved - ready to rate
+          </Text>
+        </View>
+      )}
+
+      {/* Already Rated Indicator */}
+      {isApproved && deliverable.campaign_applications?.rating && (
+        <View style={{
+          paddingHorizontal: DS.spacing.lg,
+          paddingVertical: DS.spacing.md,
+          backgroundColor: `${DS.colors.success}10`,
+          borderTopWidth: 1,
+          borderTopColor: DS.colors.borderLight,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Star size={DS.layout.iconSize.sm} color={DS.colors.success} fill={DS.colors.success} style={{ marginRight: DS.spacing.xs }} />
+          <Text style={{
+            ...DS.typography.body,
+            color: DS.colors.success,
+            fontWeight: '600',
+          }}>
+            Rated {deliverable.campaign_applications.rating}/5
+          </Text>
+        </View>
+      )}
+
       {/* Actions - Always Visible for Pending */}
       {deliverable.status === 'pending_review' && (
         <View style={{
           flexDirection: 'row',
-          paddingHorizontal: 16,
-          paddingBottom: 12,
-          gap: 6,
+          paddingHorizontal: DS.spacing.lg,
+          paddingBottom: DS.spacing.lg,
+          paddingTop: DS.spacing.md,
+          gap: DS.spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: DS.colors.borderLight,
         }}>
           <TouchableOpacity
             style={{
               flex: 1,
-              backgroundColor: '#10B981',
-              paddingVertical: 8,
-              paddingHorizontal: 6,
-              borderRadius: 6,
+              backgroundColor: DS.colors.success,
+              paddingVertical: DS.spacing.md,
+              borderRadius: DS.borderRadius.md,
               alignItems: 'center',
-              minHeight: 36,
+              justifyContent: 'center',
+              minHeight: DS.layout.buttonHeight.medium,
+              ...DS.shadows.sm,
             }}
             onPress={() => onStatusChange('approved')}
           >
             <Text style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: '#FFFFFF',
-              textAlign: 'center',
+              ...DS.typography.button,
+              color: DS.colors.textWhite,
             }}>
-              Approve
+              ✓ Approve
             </Text>
           </TouchableOpacity>
           
@@ -1599,11 +2127,12 @@ const DeliverableCard = ({
             style={{
               flex: 1,
               backgroundColor: '#8B5CF6',
-              paddingVertical: 8,
-              paddingHorizontal: 6,
-              borderRadius: 6,
+              paddingVertical: DS.spacing.md,
+              borderRadius: DS.borderRadius.md,
               alignItems: 'center',
-              minHeight: 36,
+              justifyContent: 'center',
+              minHeight: DS.layout.buttonHeight.medium,
+              ...DS.shadows.sm,
             }}
             onPress={() => {
               Alert.prompt(
@@ -1611,30 +2140,29 @@ const DeliverableCard = ({
                 'What changes would you like the creator to make?',
                 [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Send', onPress: (feedback?: string) => onStatusChange('needs_revision', feedback || '') }
+                  { text: 'Send', onPress: (feedback?: string) => onStatusChange('revision_requested', feedback || '') }
                 ]
               );
             }}
           >
             <Text style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: '#FFFFFF',
-              textAlign: 'center',
+              ...DS.typography.button,
+              color: DS.colors.textWhite,
             }}>
-              Revision
+              ↻ Revision
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={{
               flex: 1,
-              backgroundColor: '#DC2626',
-              paddingVertical: 8,
-              paddingHorizontal: 6,
-              borderRadius: 6,
+              backgroundColor: DS.colors.error,
+              paddingVertical: DS.spacing.md,
+              borderRadius: DS.borderRadius.md,
               alignItems: 'center',
-              minHeight: 36,
+              justifyContent: 'center',
+              minHeight: DS.layout.buttonHeight.medium,
+              ...DS.shadows.sm,
             }}
             onPress={() => {
               Alert.prompt(
@@ -1648,12 +2176,10 @@ const DeliverableCard = ({
             }}
           >
             <Text style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: '#FFFFFF',
-              textAlign: 'center',
+              ...DS.typography.button,
+              color: DS.colors.textWhite,
             }}>
-              Reject
+              ✗ Reject
             </Text>
           </TouchableOpacity>
         </View>
@@ -1665,23 +2191,25 @@ const DeliverableCard = ({
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: 8,
+          paddingVertical: DS.spacing.md,
           borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
+          borderTopColor: DS.colors.borderLight,
+          backgroundColor: DS.colors.surfaceLight,
         }}
         onPress={() => setShowDetails(!showDetails)}
+        activeOpacity={0.7}
       >
         <Text style={{
-          fontSize: 12,
-          color: '#8C8C8C',
-          fontWeight: '500',
-          marginRight: 4,
+          ...DS.typography.metadata,
+          color: DS.colors.textGray,
+          fontWeight: '600',
+          marginRight: DS.spacing.xs,
         }}>
           {showDetails ? 'Hide Details' : 'Show Details'}
         </Text>
         <Text style={{
-          fontSize: 12,
-          color: '#8C8C8C',
+          ...DS.typography.metadata,
+          color: DS.colors.textGray,
           transform: [{ rotate: showDetails ? '180deg' : '0deg' }],
         }}>
           ▼

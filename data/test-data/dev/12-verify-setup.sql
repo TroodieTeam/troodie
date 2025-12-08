@@ -26,20 +26,20 @@ DECLARE
   deliverable_count INTEGER;
 BEGIN
   -- Count users
-  SELECT COUNT(*) INTO user_count FROM public.users WHERE email LIKE 'test-%@troodieapp.com';
-  SELECT COUNT(*) INTO consumer_count FROM public.users WHERE email LIKE 'test-consumer%@troodieapp.com';
-  SELECT COUNT(*) INTO creator_count FROM public.users WHERE email LIKE 'test-creator%@troodieapp.com';
-  SELECT COUNT(*) INTO business_count FROM public.users WHERE email LIKE 'test-business%@troodieapp.com';
+  SELECT COUNT(*) INTO user_count FROM public.users WHERE email LIKE 'test-%@bypass.com';
+  SELECT COUNT(*) INTO consumer_count FROM public.users WHERE email LIKE 'test-consumer%@bypass.com';
+  SELECT COUNT(*) INTO creator_count FROM public.users WHERE email LIKE 'test-creator%@bypass.com';
+  SELECT COUNT(*) INTO business_count FROM public.users WHERE email LIKE 'test-business%@bypass.com';
   
   -- Count boards
   SELECT COUNT(*) INTO board_count 
   FROM public.boards 
-  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@troodieapp.com');
+  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@bypass.com');
   
   -- Count creator profiles
   SELECT COUNT(*) INTO creator_profile_count 
   FROM public.creator_profiles 
-  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-creator%@troodieapp.com');
+  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-creator%@bypass.com');
   
   -- Count restaurants
   SELECT COUNT(*) INTO restaurant_count 
@@ -62,24 +62,24 @@ BEGIN
   -- Count business profiles
   SELECT COUNT(*) INTO business_profile_count 
   FROM public.business_profiles 
-  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-business%@troodieapp.com');
+  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-business%@bypass.com');
   
   -- Count posts and engagement
   SELECT COUNT(*) INTO post_count 
   FROM public.posts 
-  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@troodieapp.com');
+  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@bypass.com');
   
   SELECT COUNT(*) INTO post_like_count 
   FROM public.post_likes 
-  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@troodieapp.com');
+  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@bypass.com');
   
   SELECT COUNT(*) INTO post_comment_count 
   FROM public.post_comments 
-  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@troodieapp.com');
+  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@bypass.com');
   
   SELECT COUNT(*) INTO post_save_count 
   FROM public.post_saves 
-  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@troodieapp.com');
+  WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@bypass.com');
   
   -- Count restaurant saves (from board_restaurants - the actual save mechanism)
   SELECT COUNT(*) INTO restaurant_save_count 
@@ -93,7 +93,7 @@ BEGIN
   -- Count follows
   SELECT COUNT(*) INTO follow_count 
   FROM public.user_relationships 
-  WHERE follower_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@troodieapp.com');
+  WHERE follower_id IN (SELECT id FROM public.users WHERE email LIKE 'test-%@bypass.com');
   
   -- Count campaigns
   SELECT COUNT(*) INTO campaign_count 
@@ -108,7 +108,7 @@ BEGIN
   FROM public.campaign_applications 
   WHERE creator_id IN (
     SELECT id FROM public.creator_profiles 
-    WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-creator%@troodieapp.com')
+    WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-creator%@bypass.com')
   );
   
   -- Count deliverables
@@ -116,7 +116,7 @@ BEGIN
   FROM public.campaign_deliverables 
   WHERE creator_id IN (
     SELECT id FROM public.creator_profiles 
-    WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-creator%@troodieapp.com')
+    WHERE user_id IN (SELECT id FROM public.users WHERE email LIKE 'test-creator%@bypass.com')
   );
 
   RAISE NOTICE '========================================';
@@ -149,11 +149,11 @@ BEGIN
   RAISE NOTICE '  - Deliverables: %', deliverable_count;
   RAISE NOTICE '';
   RAISE NOTICE 'Business Activity Levels:';
-  RAISE NOTICE '  - test-business1@troodieapp.com (NEW): 1 restaurant, 0 campaigns';
-  RAISE NOTICE '  - test-business2@troodieapp.com (MEDIUM): 1 restaurant, 3 campaigns';
-  RAISE NOTICE '  - test-business3@troodieapp.com (HIGH): 1 restaurant, 10 campaigns';
+  RAISE NOTICE '  - test-business1@bypass.com (NEW): 1 restaurant, 0 campaigns';
+  RAISE NOTICE '  - test-business2@bypass.com (MEDIUM): 1 restaurant, 3 campaigns';
+  RAISE NOTICE '  - test-business3@bypass.com (HIGH): Will be added when user is created';
   RAISE NOTICE '';
-  RAISE NOTICE 'All accounts use OTP: 000000 for authentication';
+  RAISE NOTICE 'All accounts use @bypass.com domain with password authentication';
   RAISE NOTICE '========================================';
 END $$;
 

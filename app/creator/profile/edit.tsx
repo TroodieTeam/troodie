@@ -13,32 +13,34 @@ import { ImageViewer } from '@/components/ImageViewer';
 import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { VideoViewer } from '@/components/VideoViewer';
 import { DS } from '@/components/design-system/tokens';
+import { MAJOR_CITIES } from '@/constants/majorCities';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatorProfile } from '@/hooks/useCreatorProfileId';
 import { supabase } from '@/lib/supabase';
 import {
-    updateCreatorProfile
+  updateCreatorProfile
 } from '@/services/creatorDiscoveryService';
 import { addPortfolioItems } from '@/services/creatorUpgradeService';
 import {
-    PortfolioImage as PortfolioImageType,
-    uploadAllPortfolioImages,
-    UploadProgress,
+  PortfolioImage as PortfolioImageType,
+  uploadAllPortfolioImages,
+  UploadProgress,
 } from '@/services/portfolioImageService';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { Check, Lightbulb, Play, Plus, X } from 'lucide-react-native';
+import { ChevronDown, Lightbulb, Play, Plus, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,8 +51,7 @@ export default function EditCreatorProfileScreen() {
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
-  const [specialties, setSpecialties] = useState<string[]>([]);
-  const [newSpecialty, setNewSpecialty] = useState('');
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [openToCollabs, setOpenToCollabs] = useState(true);
   const [availabilityStatus, setAvailabilityStatus] = useState<'available' | 'busy' | 'not_accepting'>('available');
   const [saving, setSaving] = useState(false);
@@ -77,7 +78,6 @@ export default function EditCreatorProfileScreen() {
       setDisplayName(creatorProfile.display_name || '');
       setBio(creatorProfile.bio || '');
       setLocation(creatorProfile.location || '');
-      setSpecialties(creatorProfile.specialties || []);
       setOpenToCollabs(creatorProfile.open_to_collabs ?? true);
       setAvailabilityStatus((creatorProfile.availability_status as 'available' | 'busy' | 'not_accepting') || 'available');
       
@@ -161,7 +161,7 @@ export default function EditCreatorProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [ImagePicker.MediaType.Images, ImagePicker.MediaType.Videos], // Allow both images and videos
+        mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow both images and videos
         allowsMultipleSelection: true,
         selectionLimit: 10 - portfolioItems.length, // Max 10 items total
         quality: 0.8,
@@ -269,7 +269,6 @@ export default function EditCreatorProfileScreen() {
       { field: 'displayName', label: 'Display name' },
       { field: 'bio', label: 'Bio' },
       { field: 'location', label: 'Location' },
-      { field: 'specialties', label: 'Specialties', isArray: true },
       { field: 'portfolioItems', label: 'Portfolio images', isArray: true, min: 3 },
     ];
 
@@ -280,7 +279,6 @@ export default function EditCreatorProfileScreen() {
       const value = check.field === 'displayName' ? displayName :
                    check.field === 'bio' ? bio :
                    check.field === 'location' ? location :
-                   check.field === 'specialties' ? specialties :
                    check.field === 'portfolioItems' ? portfolioItems : null;
 
       if (check.isArray) {
@@ -312,7 +310,6 @@ export default function EditCreatorProfileScreen() {
       displayName: displayName || undefined,
       bio: bio || undefined,
       location: location || undefined,
-      specialties: specialties,
       openToCollabs: openToCollabs,
       availabilityStatus: availabilityStatus,
     });
@@ -336,18 +333,6 @@ export default function EditCreatorProfileScreen() {
     }
   };
 
-  const addSpecialty = () => {
-    if (newSpecialty.trim() && !specialties.includes(newSpecialty.trim())) {
-      setSpecialties([...specialties, newSpecialty.trim()]);
-      setNewSpecialty('');
-      setHasChanges(true);
-    }
-  };
-
-  const removeSpecialty = (index: number) => {
-    setSpecialties(specialties.filter((_, i) => i !== index));
-    setHasChanges(true);
-  };
 
   useEffect(() => {
     console.log('[EditCreatorProfileScreen] Profile state:', {
@@ -500,7 +485,6 @@ export default function EditCreatorProfileScreen() {
             <Text style={{ fontSize: 13, color: '#78350F', lineHeight: 18 }}>• Add a bio that describes your content style</Text>
             <Text style={{ fontSize: 13, color: '#78350F', lineHeight: 18 }}>• Include 3+ portfolio images showing your best work</Text>
             <Text style={{ fontSize: 13, color: '#78350F', lineHeight: 18 }}>• Set your location to appear in local searches</Text>
-            <Text style={{ fontSize: 13, color: '#78350F', lineHeight: 18 }}>• Add specialties that match your food content</Text>
           </View>
         </View>
 
@@ -557,84 +541,31 @@ export default function EditCreatorProfileScreen() {
         {/* Location */}
         <View style={{ marginBottom: 24 }}>
           <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>Location</Text>
-          <TextInput
+          <TouchableOpacity
             style={{
               borderWidth: 1,
               borderColor: DS.colors.border,
               borderRadius: 12,
               padding: 12,
               fontSize: 14,
-              color: DS.colors.text,
               backgroundColor: DS.colors.backgroundWhite,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
-            value={location}
-            onChangeText={(text) => {
-              setLocation(text);
-              setHasChanges(true);
-            }}
-            placeholder="City, State (e.g., Charlotte, NC)"
-            placeholderTextColor={DS.colors.textLight}
-          />
+            onPress={() => setShowLocationPicker(true)}
+          >
+            <Text style={{ 
+              fontSize: 14, 
+              color: location ? DS.colors.text : DS.colors.textLight,
+              flex: 1,
+            }}>
+              {location || 'Select your city...'}
+            </Text>
+            <ChevronDown size={20} color={DS.colors.textLight} />
+          </TouchableOpacity>
         </View>
 
-        {/* Specialties */}
-        <View style={{ marginBottom: 24 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>Specialties</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-            <TextInput
-              style={{
-                flex: 1,
-                borderWidth: 1,
-                borderColor: DS.colors.border,
-                borderRadius: 12,
-                padding: 12,
-                fontSize: 14,
-                color: DS.colors.text,
-                backgroundColor: DS.colors.backgroundWhite,
-              }}
-              value={newSpecialty}
-              onChangeText={setNewSpecialty}
-              placeholder="Add specialty..."
-              placeholderTextColor={DS.colors.textLight}
-              onSubmitEditing={addSpecialty}
-            />
-            <TouchableOpacity
-              onPress={addSpecialty}
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                backgroundColor: DS.colors.primary,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Check size={20} color="white" />
-            </TouchableOpacity>
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {specialties.map((specialty, index) => (
-              <View
-                key={index}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: DS.colors.primary + '20',
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 16,
-                }}
-              >
-                <Text style={{ fontSize: 13, color: DS.colors.text, marginRight: 8 }}>{specialty}</Text>
-                <TouchableOpacity
-                  onPress={() => removeSpecialty(index)}
-                  style={{ marginLeft: 4 }}
-                >
-                  <X size={14} color={DS.colors.textLight} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* Open to Collabs */}
         <View
@@ -837,46 +768,101 @@ export default function EditCreatorProfileScreen() {
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {portfolioItems.map((item) => {
-              const mediaUrl = item.media_type === 'video' 
-                ? (item.video_url || item.thumbnail_url || item.image_url)
-                : (item.image_url || item.thumbnail_url);
+              // Apply same intelligent detection logic as creatorDiscoveryService.ts
+              // Videos might be stored in video_url OR image_url (Cloudinary videos)
+              let videoUrl: string | undefined = undefined;
+              let imageUrl: string | undefined = undefined;
               
-              const itemIndex = portfolioItems.findIndex(i => i.id === item.id);
+              if (item.media_type === 'video') {
+                // For videos, check both video_url and image_url (Cloudinary stores videos in image_url)
+                videoUrl = item.video_url || item.image_url;
+                
+                // If video is in image_url (Cloudinary), reconstruct the video URL
+                if (!item.video_url && item.image_url) {
+                  const url = item.image_url.toLowerCase();
+                  const isCloudinaryVideo = url.includes('/video/upload/');
+                  
+                  if (isCloudinaryVideo) {
+                    try {
+                      // Cloudinary URL structure: .../video/upload/{transformations}/v{version}/{public_id}.{ext}
+                      // To get base video: .../video/upload/v{version}/{public_id}.mp4
+                      const urlObj = new URL(item.image_url);
+                      const pathParts = urlObj.pathname.split('/');
+                      const uploadIndex = pathParts.findIndex(p => p === 'upload');
+                      
+                      if (uploadIndex >= 0) {
+                        // Find version and filename
+                        const versionIndex = pathParts.findIndex((p, i) => 
+                          i > uploadIndex && /^v\d+$/.test(p)
+                        );
+                        
+                        if (versionIndex >= 0 && versionIndex < pathParts.length - 1) {
+                          // Reconstruct: /video/upload/v{version}/{filename}.mp4
+                          const version = pathParts[versionIndex];
+                          const fileName = pathParts[versionIndex + 1].replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                          const basePath = pathParts.slice(0, uploadIndex + 1).join('/');
+                          videoUrl = `${urlObj.origin}${basePath}/${version}/${fileName}`;
+                        } else {
+                          // Fallback: simple replacement
+                          videoUrl = item.image_url.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                        }
+                      } else {
+                        // Fallback: simple replacement
+                        videoUrl = item.image_url.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                      }
+                    } catch (e) {
+                      // If URL parsing fails, try simple replacement
+                      console.warn('[EditCreatorProfileScreen] Failed to parse Cloudinary video URL:', e);
+                      videoUrl = item.image_url.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                    }
+                  } else {
+                    // Not Cloudinary, use image_url as-is (might be direct video URL)
+                    videoUrl = item.image_url;
+                  }
+                }
+              } else {
+                // For images, use image_url or thumbnail_url
+                imageUrl = item.image_url || item.thumbnail_url;
+              }
               
               return (
                 <TouchableOpacity
                   key={item.id}
                   style={{ width: '31%', aspectRatio: 1, borderRadius: 8, overflow: 'hidden', position: 'relative' }}
                   onPress={() => {
-                    if (item.media_type === 'video' && item.video_url) {
+                    if (item.media_type === 'video' && videoUrl) {
                       // Open video viewer
                       const videoUrls = portfolioItems
-                        .filter(i => i.media_type === 'video' && i.video_url)
-                        .map(i => i.video_url!);
-                      const videoIndex = videoUrls.findIndex(url => url === item.video_url);
+                        .filter(i => {
+                          if (i.media_type !== 'video') return false;
+                          return i.video_url || i.image_url;
+                        })
+                        .map(i => i.video_url || i.image_url!)
+                        .filter(Boolean);
+                      const videoIndex = videoUrls.findIndex(url => url === videoUrl);
                       setViewerInitialIndex(Math.max(0, videoIndex));
                       setVideoViewerVisible(true);
-                    } else if (mediaUrl) {
+                    } else if (imageUrl) {
                       // Open image viewer
                       const imageUrls = portfolioItems
                         .filter(i => i.media_type === 'image' && (i.image_url || i.thumbnail_url))
                         .map(i => i.image_url || i.thumbnail_url!)
                         .filter(Boolean);
-                      const imageIndex = imageUrls.findIndex(url => url === mediaUrl);
+                      const imageIndex = imageUrls.findIndex(url => url === imageUrl);
                       setViewerInitialIndex(Math.max(0, imageIndex));
                       setImageViewerVisible(true);
                     }
                   }}
                   activeOpacity={0.8}
                 >
-                  {item.media_type === 'video' && item.video_url ? (
+                  {item.media_type === 'video' && videoUrl ? (
                     <VideoThumbnail
-                      videoUri={item.video_url}
+                      videoUri={videoUrl}
                       style={{ width: '100%', height: '100%' }}
                       resizeMode="cover"
                     />
-                  ) : mediaUrl ? (
-                    <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%' }} />
+                  ) : imageUrl ? (
+                    <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%' }} />
                   ) : (
                     <View style={{ width: '100%', height: '100%', backgroundColor: DS.colors.border }} />
                   )}
@@ -957,59 +943,136 @@ export default function EditCreatorProfileScreen() {
       <VideoViewer
         visible={videoViewerVisible}
         videos={portfolioItems
-          .filter(item => item.media_type === 'video' && item.video_url)
-          .map(item => item.video_url!)
+          .filter(item => item.media_type === 'video' && (item.video_url || item.image_url))
+          .map(item => {
+            // Apply same Cloudinary URL reconstruction logic
+            if (item.video_url) return item.video_url;
+            if (!item.image_url) return '';
+            
+            const url = item.image_url.toLowerCase();
+            const isCloudinaryVideo = url.includes('/video/upload/');
+            
+            if (isCloudinaryVideo) {
+              try {
+                const urlObj = new URL(item.image_url);
+                const pathParts = urlObj.pathname.split('/');
+                const uploadIndex = pathParts.findIndex(p => p === 'upload');
+                
+                if (uploadIndex >= 0) {
+                  const versionIndex = pathParts.findIndex((p, i) => 
+                    i > uploadIndex && /^v\d+$/.test(p)
+                  );
+                  
+                  if (versionIndex >= 0 && versionIndex < pathParts.length - 1) {
+                    const version = pathParts[versionIndex];
+                    const fileName = pathParts[versionIndex + 1].replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+                    const basePath = pathParts.slice(0, uploadIndex + 1).join('/');
+                    return `${urlObj.origin}${basePath}/${version}/${fileName}`;
+                  }
+                }
+                return item.image_url.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+              } catch (e) {
+                return item.image_url.replace(/\.(jpg|jpeg|png|gif)$/i, '.mp4');
+              }
+            }
+            return item.image_url;
+          })
           .filter(Boolean) as string[]}
         initialIndex={viewerInitialIndex}
         onClose={() => setVideoViewerVisible(false)}
       />
 
-      {/* Floating Save Button - More prominent when there are changes */}
-      {hasChanges && (
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: DS.colors.backgroundWhite,
-            borderTopWidth: 1,
-            borderTopColor: DS.colors.border,
-            padding: 16,
-            paddingBottom: 32,
+      {/* Location Picker Modal */}
+      <Modal
+        visible={showLocationPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowLocationPicker(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'flex-end',
+        }}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setShowLocationPicker(false)}
+          />
+          <View style={{
+            backgroundColor: '#FFFFFF',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            maxHeight: '80%',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={saving}
-            style={{
-              backgroundColor: '#FFAD27',
-              paddingVertical: 16,
-              borderRadius: 12,
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+          }}>
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#FFAD27',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 6,
-            }}
-          >
-            <Text style={{ 
-              color: '#171717', 
-              fontWeight: '700',
-              fontSize: 16,
+              paddingHorizontal: 20,
+              paddingVertical: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: '#E5E5E5',
             }}>
-              {saving ? 'Saving Changes...' : 'Save Changes'}
-            </Text>
-          </TouchableOpacity>
+              <Text style={{ 
+                fontSize: 18, 
+                fontWeight: '600', 
+                color: '#171717',
+                fontFamily: 'Inter_600SemiBold',
+              }}>
+                Select City
+              </Text>
+              <TouchableOpacity 
+                onPress={() => setShowLocationPicker(false)}
+                style={{ padding: 4 }}
+              >
+                <X size={24} color="#171717" />
+              </TouchableOpacity>
+            </View>
+
+            {/* City List */}
+            <ScrollView 
+              style={{ maxHeight: 500 }}
+              showsVerticalScrollIndicator={true}
+            >
+              {MAJOR_CITIES.map((city) => (
+                <TouchableOpacity
+                  key={city}
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingVertical: 16,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#F0F0F0',
+                    backgroundColor: location === city ? '#FFAD2720' : '#FFFFFF',
+                  }}
+                  onPress={() => {
+                    setLocation(city);
+                    setHasChanges(true);
+                    setShowLocationPicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ 
+                    fontSize: 16, 
+                    color: '#171717',
+                    fontWeight: location === city ? '600' : '400',
+                    fontFamily: location === city ? 'Inter_600SemiBold' : 'Inter_400Regular',
+                  }}>
+                    {city}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
-      )}
+      </Modal>
+
     </SafeAreaView>
   );
 }

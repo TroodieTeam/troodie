@@ -80,5 +80,7 @@ CREATE POLICY "Users can create their own posts" ON posts
 CREATE POLICY "Users can update their own posts" ON posts
   FOR UPDATE USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own posts" ON posts;
 CREATE POLICY "Users can delete their own posts" ON posts
   FOR DELETE USING (user_id = auth.uid());

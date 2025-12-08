@@ -11,20 +11,20 @@ DECLARE
   restaurant_id_2 UUID := '052bcb9b-66da-4aa6-b114-48df7309efb1'::uuid; -- Vicente (Business 2 - MEDIUM)
   restaurant_id_3 UUID := '0557acdd-e8e8-473b-badb-913c624aa199'::uuid; -- Fin & Fino (Business 3 - HIGH)
   creator_user_ids UUID[] := ARRAY[
-    'e1f2a3b4-c5d6-4789-e012-345678901234'::uuid, -- test-creator1
-    'f2a3b4c5-d6e7-4890-f123-456789012345'::uuid, -- test-creator2
-    'a3b4c5d6-e7f8-4901-a234-567890123456'::uuid, -- test-creator3
+    '4a797077-116e-4a3a-bc43-a71ae18963d8'::uuid, -- test-creator1
+    '381d705b-d5d1-4e44-85fc-b772d68921ba'::uuid, -- test-creator2
+    'e50f6c6f-9487-4ff2-acd0-3542fdd46dd1'::uuid, -- test-creator3
     'b4c5d6e7-f8a9-4012-b345-678901234567'::uuid, -- test-creator4
     'c5d6e7f8-a9b0-4123-c456-789012345678'::uuid, -- test-creator5
     'd6e7f8a9-b0c1-4234-d567-890123456789'::uuid, -- test-creator6
     'e7f8a9b0-c1d2-4345-e678-901234567890'::uuid  -- test-creator7
   ];
   consumer_user_ids UUID[] := ARRAY[
-    'a1b2c3d4-e5f6-4789-a012-345678901234'::uuid, -- test-consumer1
-    'b2c3d4e5-f6a7-4890-b123-456789012345'::uuid, -- test-consumer2
-    'c3d4e5f6-a7b8-4901-c234-567890123456'::uuid, -- test-consumer3
-    'd4e5f6a7-b8c9-4012-d345-678901234567'::uuid, -- test-consumer4
-    'e5f6a7b8-c9d0-4123-e456-789012345678'::uuid, -- test-consumer5
+    '273eb12a-09c8-47f9-894b-58c4861fa651'::uuid, -- test-consumer1
+    '5ed86604-5b63-47aa-9d30-2ea0b0c3a6c2'::uuid, -- test-consumer2
+    '6c1eeeb9-4be4-4129-bfca-19b4a163a45e'::uuid, -- test-consumer3
+    '87464291-d9b2-4935-b29f-416328bdd43e'::uuid, -- test-consumer4
+    'ec03ddc6-c3f2-4c82-9d4d-620928284bca'::uuid, -- test-consumer5
     'f6a7b8c9-d0e1-4234-f567-890123456789'::uuid, -- test-consumer6
     'a7b8c9d0-e1f2-4345-a678-901234567890'::uuid, -- test-consumer7
     'b8c9d0e1-f2a3-4456-b789-012345678901'::uuid, -- test-consumer8
@@ -47,7 +47,8 @@ BEGIN
   all_user_ids := creator_user_ids || consumer_user_ids;
 
   -- Create posts from creators (3-8 posts each, mentioning restaurants)
-  FOR i IN 1..7 LOOP
+  -- Note: Only 3 creators exist currently, adjust loop if more are added
+  FOR i IN 1..3 LOOP
     post_author := creator_user_ids[i];
     
     -- Get creator's default board
@@ -154,7 +155,8 @@ BEGIN
   END LOOP;
 
   -- Create posts from consumers (1-3 posts each)
-  FOR i IN 1..10 LOOP
+  -- Note: Only 5 consumers exist currently, adjust loop if more are added
+  FOR i IN 1..5 LOOP
     post_author := consumer_user_ids[i];
     
     FOR j IN 1..(1 + (i % 3)) LOOP

@@ -29,11 +29,15 @@ CREATE POLICY "Users can create communities"
   ON communities FOR INSERT 
   WITH CHECK (auth.uid() = created_by OR auth.uid() = admin_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community owners can update their communities" ON communities;
 CREATE POLICY "Community owners can update their communities" 
   ON communities FOR UPDATE 
   USING (created_by = auth.uid() OR admin_id = auth.uid());
 
 -- Create safe policies for community_members
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members viewable by anyone for public communities" ON community_members;
 CREATE POLICY "Community members viewable by anyone for public communities" 
   ON community_members FOR SELECT 
   USING (
@@ -44,10 +48,14 @@ CREATE POLICY "Community members viewable by anyone for public communities"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members viewable by member for private communities" ON community_members;
 CREATE POLICY "Community members viewable by member for private communities" 
   ON community_members FOR SELECT 
   USING (community_members.user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can join public communities" ON community_members;
 CREATE POLICY "Users can join public communities" 
   ON community_members FOR INSERT 
   WITH CHECK (
@@ -61,6 +69,8 @@ CREATE POLICY "Users can join public communities"
   );
 
 -- Create safe policies for community_posts
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community posts viewable by members" ON community_posts;
 CREATE POLICY "Community posts viewable by members" 
   ON community_posts FOR SELECT 
   USING (
@@ -84,6 +94,8 @@ CREATE POLICY "Community posts viewable by members"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can create posts" ON community_posts;
 CREATE POLICY "Community members can create posts" 
   ON community_posts FOR INSERT 
   WITH CHECK (
@@ -97,10 +109,14 @@ CREATE POLICY "Community members can create posts"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own posts" ON community_posts;
 CREATE POLICY "Users can update their own posts" 
   ON community_posts FOR UPDATE 
   USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own posts" ON community_posts;
 CREATE POLICY "Users can delete their own posts" 
   ON community_posts FOR DELETE 
   USING (user_id = auth.uid());

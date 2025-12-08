@@ -31,6 +31,8 @@ CREATE INDEX IF NOT EXISTS idx_board_invitations_token ON board_invitations(invi
 ALTER TABLE board_invitations ENABLE ROW LEVEL SECURITY;
 
 -- Board owners can create invitations
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can create invitations" ON board_invitations;
 CREATE POLICY "Board owners can create invitations"
   ON board_invitations FOR INSERT
   WITH CHECK (
@@ -42,6 +44,8 @@ CREATE POLICY "Board owners can create invitations"
   );
 
 -- Users can see their own invitations
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can see their invitations" ON board_invitations;
 CREATE POLICY "Users can see their invitations"
   ON board_invitations FOR SELECT
   USING (
@@ -51,11 +55,15 @@ CREATE POLICY "Users can see their invitations"
   );
 
 -- Users can update their own invitations (accept/decline)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their invitations" ON board_invitations;
 CREATE POLICY "Users can update their invitations"
   ON board_invitations FOR UPDATE
   USING (invitee_id = auth.uid() OR invite_email = (SELECT email FROM auth.users WHERE id = auth.uid()));
 
 -- Board owners can delete invitations
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can delete invitations" ON board_invitations;
 CREATE POLICY "Board owners can delete invitations"
   ON board_invitations FOR DELETE
   USING (

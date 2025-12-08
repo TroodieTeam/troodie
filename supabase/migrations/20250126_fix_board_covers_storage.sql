@@ -16,6 +16,8 @@ WITH CHECK (
   auth.role() = 'authenticated'
 );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own board covers" ON storage;
 CREATE POLICY "Users can update their own board covers"
 ON storage.objects FOR UPDATE
 USING (
@@ -23,6 +25,8 @@ USING (
   auth.uid()::text = (storage.foldername(name))[1]
 );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own board covers" ON storage;
 CREATE POLICY "Users can delete their own board covers"
 ON storage.objects FOR DELETE
 USING (

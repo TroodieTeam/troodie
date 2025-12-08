@@ -1,187 +1,228 @@
-import { supabase } from '@/lib/supabase'
+/**
+ * Rating Service
+ * Handles creator rating functionality for businesses
+ * Task: CM-16
+ */
 
-export type TrafficLightRating = 'red' | 'yellow' | 'green'
+import { supabase } from '@/lib/supabase';
 
-export interface RatingSummary {
-  redCount: number
-  yellowCount: number
-  greenCount: number
-  totalCount: number
-  overallRating: TrafficLightRating | 'neutral'
-  greenPercentage: number
-  yellowPercentage: number
-  redPercentage: number
-  userRating?: TrafficLightRating
+export interface RateCreatorParams {
+  applicationId: string;
+  rating: number;
+  comment?: string;
 }
 
-export const ratingService = {
-  /**
-   * Rate a restaurant with traffic light rating
-   */
-  async rateRestaurant(
-    userId: string,
-    restaurantId: string,
-    rating: TrafficLightRating
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .rpc('rate_restaurant', {
-          p_user_id: userId,
-          p_restaurant_id: restaurantId,
-          p_rating: rating
-        })
+export interface CreatorRating {
+  averageRating: number | null;
+  totalRatings: number;
+}
 
-      if (error) throw error
+/**
+ * Rate a creator after campaign completion
+ * @param params - Rating parameters
+ * @returns Success status and error if any
+ */
+export async function rateCreator(
+  params: RateCreatorParams
+): Promise<{ success: boolean; error?: string }> {
+  const { applicationId, rating, comment } = params;
 
-      return data || { success: false, error: 'Unknown error' }
-    } catch (error: any) {
-      console.error('Error rating restaurant:', error)
-      return { success: false, error: error.message || 'Failed to rate restaurant' }
+  // Validate rating
+  if (rating < 1 || rating > 5) {
+    return { success: false, error: 'Rating must be between 1 and 5' };
+  }
+
+  try {
+    // Check application exists and is completed
+    // Note: Business user authorization is handled at the UI level (only campaign owners can see applications)
+    const { data: application, error: fetchError } = await supabase
+      .from('campaign_applications')
+      .select('id, status, rating, campaign_id')
+      .eq('id', applicationId)
+      .single();
+
+    if (fetchError) {
+      return { success: false, error: fetchError.message };
     }
-  },
 
-  /**
-   * Get restaurant rating summary including user's rating
-   */
-  async getRestaurantRatingSummary(
-    restaurantId: string,
-    userId?: string
-  ): Promise<RatingSummary | null> {
-    try {
-      // Get restaurant rating summary
-      const { data: restaurant, error: restaurantError } = await supabase
-        .from('restaurant_ratings_view')
-        .select('*')
-        .eq('id', restaurantId)
-        .single()
-
-      if (restaurantError) throw restaurantError
-
-      // Get user's rating if userId provided
-      let userRating: TrafficLightRating | undefined
-      if (userId) {
-        const { data: ratingData, error: ratingError } = await supabase
-          .rpc('get_user_restaurant_rating', {
-            p_user_id: userId,
-            p_restaurant_id: restaurantId
-          })
-
-        if (!ratingError && ratingData) {
-          userRating = ratingData as TrafficLightRating
-        }
-      }
-
-      return {
-        redCount: restaurant.red_ratings_count || 0,
-        yellowCount: restaurant.yellow_ratings_count || 0,
-        greenCount: restaurant.green_ratings_count || 0,
-        totalCount: restaurant.total_ratings_count || 0,
-        overallRating: restaurant.overall_rating || 'neutral',
-        greenPercentage: restaurant.green_percentage || 0,
-        yellowPercentage: restaurant.yellow_percentage || 0,
-        redPercentage: restaurant.red_percentage || 0,
-        userRating
-      }
-    } catch (error) {
-      console.error('Error fetching rating summary:', error)
-      return null
+    if (!application) {
+      return { success: false, error: 'Application not found' };
     }
-  },
 
-  /**
-   * Get user's rating for a restaurant
-   */
-  async getUserRestaurantRating(
-    userId: string,
-    restaurantId: string
-  ): Promise<TrafficLightRating | null> {
-    try {
-      const { data, error } = await supabase
-        .rpc('get_user_restaurant_rating', {
-          p_user_id: userId,
-          p_restaurant_id: restaurantId
-        })
-
-      if (error) throw error
-
-      return data as TrafficLightRating | null
-    } catch (error) {
-      console.error('Error fetching user rating:', error)
-      return null
+    // Check if already rated
+    if (application.rating) {
+      return { success: false, error: 'Rating already submitted for this campaign' };
     }
-  },
 
-  /**
-   * Get restaurants with specific rating by a user
-   */
-  async getUserRatedRestaurants(
-    userId: string,
-    rating?: TrafficLightRating
-  ): Promise<Array<{ restaurantId: string; rating: TrafficLightRating; addedAt: string }>> {
-    try {
-      let query = supabase
-        .from('board_restaurants')
-        .select(`
-          restaurant_id,
-          traffic_light_rating,
-          added_at,
-          boards!inner(user_id)
-        `)
-        .eq('boards.user_id', userId)
-        .not('traffic_light_rating', 'is', null)
-        .order('added_at', { ascending: false })
-
-      if (rating) {
-        query = query.eq('traffic_light_rating', rating)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      return (data || []).map(item => ({
-        restaurantId: item.restaurant_id,
-        rating: item.traffic_light_rating as TrafficLightRating,
-        addedAt: item.added_at
-      }))
-    } catch (error) {
-      console.error('Error fetching user rated restaurants:', error)
-      return []
+    // Check if application is accepted
+    if (application.status !== 'accepted') {
+      return { success: false, error: 'Can only rate creators with accepted applications' };
     }
-  },
 
-  /**
-   * Get trending restaurants based on ratings
-   */
-  async getTrendingByRating(
-    limit: number = 10,
-    ratingFilter?: 'green' | 'mixed'
-  ): Promise<any[]> {
-    try {
-      let query = supabase
-        .from('restaurant_ratings_view')
-        .select(`
-          *,
-          restaurants!inner(*)
-        `)
-        .gt('total_ratings_count', 0)
-        .order('total_ratings_count', { ascending: false })
-        .limit(limit)
+    // Check that ALL deliverables have been approved
+    // Rating is the final step - all deliverables must be completed and approved
+    const { data: allDeliverables, error: deliverablesError } = await supabase
+      .from('campaign_deliverables')
+      .select('id, status')
+      .eq('campaign_application_id', applicationId);
 
-      if (ratingFilter === 'green') {
-        query = query.eq('overall_rating', 'green')
-      } else if (ratingFilter === 'mixed') {
-        query = query.in('overall_rating', ['yellow', 'green'])
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      return data || []
-    } catch (error) {
-      console.error('Error fetching trending restaurants:', error)
-      return []
+    if (deliverablesError) {
+      return { success: false, error: `Failed to check deliverables: ${deliverablesError.message}` };
     }
+
+    if (!allDeliverables || allDeliverables.length === 0) {
+      return { 
+        success: false, 
+        error: 'Cannot rate creator until deliverables have been submitted and approved' 
+      };
+    }
+
+    // Check that all deliverables are approved (no pending, rejected, or disputed)
+    const unapprovedDeliverables = allDeliverables.filter(
+      d => !['approved', 'auto_approved'].includes(d.status)
+    );
+
+    if (unapprovedDeliverables.length > 0) {
+      const unapprovedStatuses = [...new Set(unapprovedDeliverables.map(d => d.status))];
+      return { 
+        success: false, 
+        error: `Cannot rate creator until all deliverables are approved. Found deliverables with status: ${unapprovedStatuses.join(', ')}` 
+      };
+    }
+
+    // Update rating
+    const { error: updateError } = await supabase
+      .from('campaign_applications')
+      .update({
+        rating: rating,
+        rating_comment: comment || null,
+        rated_at: new Date().toISOString(),
+      })
+      .eq('id', applicationId);
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to submit rating' };
+  }
+}
+
+/**
+ * Get average rating for a creator
+ * @param creatorId - Creator profile ID
+ * @returns Average rating and total count
+ */
+export async function getCreatorRating(
+  creatorId: string
+): Promise<{ data: CreatorRating | null; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('campaign_applications')
+      .select('rating')
+      .eq('creator_id', creatorId)
+      .eq('status', 'accepted')
+      .not('rating', 'is', null);
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return { data: { averageRating: null, totalRatings: 0 } };
+    }
+
+    const totalRatings = data.length;
+    const sum = data.reduce((acc, app) => acc + Number(app.rating), 0);
+    const averageRating = Math.round((sum / totalRatings) * 10) / 10; // Round to 1 decimal
+
+    return {
+      data: {
+        averageRating,
+        totalRatings,
+      },
+    };
+  } catch (error: any) {
+    return { data: null, error: error.message || 'Failed to fetch rating' };
+  }
+}
+
+/**
+ * Check if an application can be rated
+ * @param applicationId - Application ID
+ * @returns Whether rating is possible and if already rated
+ */
+export async function canRateApplication(
+  applicationId: string
+): Promise<{ canRate: boolean; alreadyRated: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('campaign_applications')
+      .select('id, status, rating')
+      .eq('id', applicationId)
+      .single();
+
+    if (error) {
+      return { canRate: false, alreadyRated: false, error: error.message };
+    }
+
+    if (!data) {
+      return { canRate: false, alreadyRated: false, error: 'Application not found' };
+    }
+
+    const alreadyRated = !!data.rating;
+    
+    // Check if application is accepted
+    if (data.status !== 'accepted') {
+      return { canRate: false, alreadyRated, error: 'Application must be accepted' };
+    }
+
+    // Check that ALL deliverables have been approved
+    // Rating is the final step - all deliverables must be completed and approved
+    const { data: allDeliverables, error: deliverablesError } = await supabase
+      .from('campaign_deliverables')
+      .select('id, status')
+      .eq('campaign_application_id', applicationId);
+
+    if (deliverablesError) {
+      return { 
+        canRate: false, 
+        alreadyRated, 
+        error: `Failed to check deliverables: ${deliverablesError.message}` 
+      };
+    }
+
+    if (!allDeliverables || allDeliverables.length === 0) {
+      return { 
+        canRate: false, 
+        alreadyRated, 
+        error: 'Cannot rate creator until deliverables have been submitted and approved' 
+      };
+    }
+
+    // Check that all deliverables are approved (no pending, rejected, or disputed)
+    const unapprovedDeliverables = allDeliverables.filter(
+      d => !['approved', 'auto_approved'].includes(d.status)
+    );
+
+    if (unapprovedDeliverables.length > 0) {
+      const unapprovedStatuses = [...new Set(unapprovedDeliverables.map(d => d.status))];
+      return { 
+        canRate: false, 
+        alreadyRated, 
+        error: `All deliverables must be approved before rating. Found deliverables with status: ${unapprovedStatuses.join(', ')}` 
+      };
+    }
+
+    const canRate = !alreadyRated;
+    return { canRate, alreadyRated };
+  } catch (error: any) {
+    return {
+      canRate: false,
+      alreadyRated: false,
+      error: error.message || 'Failed to check rating status',
+    };
   }
 }

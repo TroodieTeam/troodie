@@ -358,6 +358,7 @@ export default function SubmitDeliverable() {
     ? progress.percentage 
     : (requiredCount > 0 ? Math.round((submittedCount / requiredCount) * 100) : 0);
   const showProgressSection = (progress !== null) || (requiredDeliverables.length > 0);
+  const allDeliverablesSubmitted = requiredCount > 0 && submittedCount >= requiredCount;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['left', 'right']}>
@@ -667,8 +668,46 @@ export default function SubmitDeliverable() {
           )}
         </View>
 
-        {/* Deliverable Forms */}
-        {deliverables.map((deliverable, index) => (
+        {/* All Deliverables Submitted Message */}
+        {allDeliverablesSubmitted && (
+          <View style={{
+            backgroundColor: '#F0FDF4',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: '#10B981',
+            padding: 20,
+            marginBottom: 16,
+            alignItems: 'center',
+          }}>
+            <Text style={{
+              fontSize: 48,
+              marginBottom: 12,
+            }}>
+              ✓
+            </Text>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: '600',
+              color: '#065F46',
+              marginBottom: 8,
+              textAlign: 'center',
+            }}>
+              All Deliverables Submitted
+            </Text>
+            <Text style={{
+              fontSize: 14,
+              color: '#047857',
+              textAlign: 'center',
+              lineHeight: 20,
+            }}>
+              You've successfully submitted all {requiredCount} required deliverable{requiredCount !== 1 ? 's' : ''} for this campaign.{'\n\n'}
+              Your submissions are now pending review. You'll receive a notification once they've been reviewed.
+            </Text>
+          </View>
+        )}
+
+        {/* Deliverable Forms - Only show if not all submitted */}
+        {!allDeliverablesSubmitted && deliverables.map((deliverable, index) => (
           <View key={index} style={{
             backgroundColor: '#FFFFFF',
             borderRadius: 12,
@@ -830,8 +869,8 @@ export default function SubmitDeliverable() {
               </View>
             </View>
 
-            {/* Add Another Deliverable Button - Show after each form except the last */}
-            {index === deliverables.length - 1 && (
+            {/* Add Another Deliverable Button - Show after each form except the last, and only if not all submitted */}
+            {index === deliverables.length - 1 && !allDeliverablesSubmitted && (
               <TouchableOpacity
                 style={{
                   flexDirection: 'row',
@@ -861,8 +900,8 @@ export default function SubmitDeliverable() {
           </View>
         ))}
 
-        {/* Review Section */}
-        {deliverables.length > 0 && deliverables.some(d => d.url.trim() && d.platform) && (
+        {/* Review Section - Only show if not all submitted */}
+        {!allDeliverablesSubmitted && deliverables.length > 0 && deliverables.some(d => d.url.trim() && d.platform) && (
           <View style={{
             backgroundColor: '#F0F9FF',
             borderRadius: 12,
@@ -920,32 +959,34 @@ export default function SubmitDeliverable() {
           </View>
         )}
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={{
-            backgroundColor: canSubmit ? '#10B981' : '#9CA3AF',
-            paddingVertical: 16,
-            borderRadius: 12,
-            alignItems: 'center',
-            marginBottom: 24,
-            flexDirection: 'row',
-            justifyContent: 'center',
-          }}
-          onPress={handleSubmit}
-          disabled={submitting || !canSubmit}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: '#FFFFFF',
-            }}>
-              Submit {deliverables.filter(d => d.url.trim() && d.platform).length} Deliverable{deliverables.filter(d => d.url.trim() && d.platform).length !== 1 ? 's' : ''}
-            </Text>
-          )}
-        </TouchableOpacity>
+        {/* Submit Button - Only show if not all submitted */}
+        {!allDeliverablesSubmitted && (
+          <TouchableOpacity
+            style={{
+              backgroundColor: canSubmit ? '#10B981' : '#9CA3AF',
+              paddingVertical: 16,
+              borderRadius: 12,
+              alignItems: 'center',
+              marginBottom: 24,
+              flexDirection: 'row',
+              justifyContent: 'center',
+            }}
+            onPress={handleSubmit}
+            disabled={submitting || !canSubmit}
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: '#FFFFFF',
+              }}>
+                Submit {deliverables.filter(d => d.url.trim() && d.platform).length} Deliverable{deliverables.filter(d => d.url.trim() && d.platform).length !== 1 ? 's' : ''}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Info Box */}
         <View style={{

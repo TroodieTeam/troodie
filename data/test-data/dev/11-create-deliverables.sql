@@ -84,7 +84,8 @@ BEGIN
     END LOOP;
   END LOOP;
 
-  -- Business 3 (HIGH): 15-20 deliverables
+  -- Business 3 (HIGH): Commented out - user doesn't exist yet
+  /*
   FOR application_id IN 
     SELECT ca.id 
     FROM public.campaign_applications ca
@@ -154,9 +155,10 @@ BEGIN
       END;
     END LOOP;
   END LOOP;
+  */
 
   RAISE NOTICE '✅ Step 11 Complete: Created deliverables';
-  RAISE NOTICE '   - Business 2 (MEDIUM): ~5 deliverables';
-  RAISE NOTICE '   - Business 3 (HIGH): ~15 deliverables';
+  RAISE NOTICE '   - Business 2 (MEDIUM): ~3-5 deliverables';
+  RAISE NOTICE '   - Business 3 (HIGH): Will be added when user is created';
 END $$;
 
