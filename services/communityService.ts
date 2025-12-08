@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { Database } from '@/lib/supabase';
 
 // Type definitions based on backend schema
 export interface Community {
@@ -57,11 +56,29 @@ class CommunityService {
     if (cached) return cached;
 
     try {
+      // Check if current user is a test user
+      const { data: { user } } = await supabase.auth.getUser();
+      const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      
       let query = supabase
         .from('communities')
         .select('*')
         .eq('is_active', true)
         .order('member_count', { ascending: false });
+
+      // Exclude communities created by test users if current user is not a test user
+      if (!isCurrentUserTest) {
+        // Get test user IDs
+        const { data: testUsers } = await supabase
+          .from('users')
+          .select('id')
+          .eq('is_test_account', true);
+        
+        if (testUsers && testUsers.length > 0) {
+          const testUserIds = testUsers.map(u => u.id);
+          query = query.not('created_by', 'in', `(${testUserIds.join(',')})`);
+        }
+      }
 
       // If user is logged in, include their private communities
       if (userId) {
