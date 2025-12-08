@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { RealtimeChannel } from '@supabase/supabase-js'
+import { useEffect, useState } from 'react'
 
 interface FeedItem {
   id: string
@@ -37,8 +37,12 @@ export function useRealtimeFeed(userId: string | null, friendIds: string[] = [])
       try {
         setLoading(true)
         
+        // Check if current user is a test user
+        const { data: { user } } = await supabase.auth.getUser();
+        const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+        
         // Fetch initial feed items
-        const { data, error } = await supabase
+        let query = supabase
           .from('restaurant_saves')
           .select(`
             *,
@@ -47,7 +51,23 @@ export function useRealtimeFeed(userId: string | null, friendIds: string[] = [])
           `)
           .or(`privacy.eq.public,and(privacy.eq.friends,user_id.in.(${friendIds.join(',')}))`)
           .order('created_at', { ascending: false })
-          .limit(50)
+          .limit(50);
+
+        // Exclude test users if current user is not a test user
+        if (!isCurrentUserTest) {
+          // Get test user IDs
+          const { data: testUsers } = await supabase
+            .from('users')
+            .select('id')
+            .eq('is_test_account', true);
+          
+          if (testUsers && testUsers.length > 0) {
+            const testUserIds = testUsers.map(u => u.id);
+            query = query.not('user_id', 'in', `(${testUserIds.join(',')})`);
+          }
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error
         setFeedItems(data || [])

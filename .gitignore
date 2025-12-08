@@ -45,6 +45,9 @@ app-example
 # documentation files
 README.md
 TODO.md
+# Allow README files in data directories
+!data/**/README.md
+!data/**/README-*.md
 
 .env.local
 .env*

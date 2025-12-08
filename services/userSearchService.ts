@@ -60,13 +60,24 @@ export class UserSearchService {
     try {
       const currentUserId = await authService.getCurrentUserId()
       
+      // Check if current user is a test user
+      const { data: { user } } = await supabase.auth.getUser();
+      const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      
       // Get all users from the platform
-      const { data: allUsers, error } = await supabase
+      let query = supabase
         .from('users')
         .select('id, username, name, bio, avatar_url, is_verified, followers_count, saves_count, location')
         .neq('id', currentUserId || '') // Exclude current user
         .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1)
+        .range(offset, offset + limit - 1);
+
+      // Exclude test users if current user is not a test user
+      if (!isCurrentUserTest) {
+        query = query.eq('is_test_account', false);
+      }
+
+      const { data: allUsers, error } = await query;
 
       if (error) throw error
 
