@@ -68,6 +68,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger on post_communities junction table (not posts table)
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_community_post_count_trigger ON post_communities;
 CREATE TRIGGER update_community_post_count_trigger
 AFTER INSERT OR DELETE ON post_communities
 FOR EACH ROW

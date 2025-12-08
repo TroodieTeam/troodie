@@ -36,18 +36,26 @@ ALTER TABLE restaurant_images ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 -- Anyone can view public restaurant images
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Restaurant images are viewable by everyone for public images" ON restaurant_images;
 CREATE POLICY "Restaurant images are viewable by everyone for public images" ON restaurant_images
   FOR SELECT USING (privacy = 'public' OR user_id = auth.uid());
 
 -- Users can insert their own images
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert their own restaurant images" ON restaurant_images;
 CREATE POLICY "Users can insert their own restaurant images" ON restaurant_images
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Users can update their own images
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own restaurant images" ON restaurant_images;
 CREATE POLICY "Users can update their own restaurant images" ON restaurant_images
   FOR UPDATE USING (auth.uid() = user_id);
 
 -- Users can delete their own images
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own restaurant images" ON restaurant_images;
 CREATE POLICY "Users can delete their own restaurant images" ON restaurant_images
   FOR DELETE USING (auth.uid() = user_id);
 
@@ -142,5 +150,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_restaurant_images_updated_at ON restaurant_images;
 CREATE TRIGGER update_restaurant_images_updated_at BEFORE UPDATE ON restaurant_images
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

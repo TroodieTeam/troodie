@@ -76,27 +76,37 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger for profile completion
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_profile_completion ON public;
 CREATE TRIGGER update_profile_completion
 BEFORE INSERT OR UPDATE ON public.profiles
 FOR EACH ROW
 EXECUTE FUNCTION update_profile_completion_percentage();
 
 -- Storage policies for profile images
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can upload own profile image" ON storage;
 CREATE POLICY "Users can upload own profile image" ON storage.objects
   FOR INSERT WITH CHECK (
     bucket_id = 'profiles' AND 
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own profile image" ON storage;
 CREATE POLICY "Users can update own profile image" ON storage.objects
   FOR UPDATE USING (
     bucket_id = 'profiles' AND 
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view profile images" ON storage;
 CREATE POLICY "Anyone can view profile images" ON storage.objects
   FOR SELECT USING (bucket_id = 'profiles');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete own profile image" ON storage;
 CREATE POLICY "Users can delete own profile image" ON storage.objects
   FOR DELETE USING (
     bucket_id = 'profiles' AND 

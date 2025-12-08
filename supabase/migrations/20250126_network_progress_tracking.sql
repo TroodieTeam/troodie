@@ -6,7 +6,7 @@ ADD COLUMN has_joined_community boolean DEFAULT false,
 ADD COLUMN network_progress integer DEFAULT 0;
 
 -- Create index for network progress queries
-CREATE INDEX idx_users_network_progress ON users (network_progress);
+CREATE INDEX IF NOT EXISTS idx_users_network_progress ON users (network_progress);
 
 -- Create function to update network progress
 CREATE OR REPLACE FUNCTION update_network_progress(user_id UUID, action_type TEXT)

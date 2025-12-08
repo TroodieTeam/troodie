@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS campaigns (
   completed_at TIMESTAMPTZ
 );
 
+-- Ensure location column exists (for production compatibility)
+-- This handles cases where the campaigns table exists but doesn't have the location column
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+
 -- ================================================================
 -- CREATOR CAMPAIGNS (Junction Table)
 -- ================================================================
@@ -270,34 +274,34 @@ CREATE TABLE IF NOT EXISTS audience_insights (
 -- ================================================================
 
 -- Campaigns
-CREATE INDEX idx_campaigns_restaurant ON campaigns(restaurant_id);
-CREATE INDEX idx_campaigns_status ON campaigns(status);
-CREATE INDEX idx_campaigns_dates ON campaigns(start_date, end_date);
-CREATE INDEX idx_campaigns_location ON campaigns(location);
+CREATE INDEX IF NOT EXISTS idx_campaigns_restaurant ON campaigns(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_campaigns_dates ON campaigns(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_campaigns_location ON campaigns(location);
 
 -- Creator Campaigns
-CREATE INDEX idx_creator_campaigns_campaign ON creator_campaigns(campaign_id);
-CREATE INDEX idx_creator_campaigns_creator ON creator_campaigns(creator_id);
-CREATE INDEX idx_creator_campaigns_status ON creator_campaigns(status);
-CREATE INDEX idx_creator_campaigns_dates ON creator_campaigns(applied_at, completed_at);
+CREATE INDEX IF NOT EXISTS idx_creator_campaigns_campaign ON creator_campaigns(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_creator_campaigns_creator ON creator_campaigns(creator_id);
+CREATE INDEX IF NOT EXISTS idx_creator_campaigns_status ON creator_campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_creator_campaigns_dates ON creator_campaigns(applied_at, completed_at);
 
 -- Earnings
-CREATE INDEX idx_creator_earnings_creator ON creator_earnings(creator_id);
-CREATE INDEX idx_creator_earnings_campaign ON creator_earnings(campaign_id);
-CREATE INDEX idx_creator_earnings_status ON creator_earnings(status);
-CREATE INDEX idx_creator_earnings_dates ON creator_earnings(earned_date, paid_date);
+CREATE INDEX IF NOT EXISTS idx_creator_earnings_creator ON creator_earnings(creator_id);
+CREATE INDEX IF NOT EXISTS idx_creator_earnings_campaign ON creator_earnings(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_creator_earnings_status ON creator_earnings(status);
+CREATE INDEX IF NOT EXISTS idx_creator_earnings_dates ON creator_earnings(earned_date, paid_date);
 
 -- Payouts
-CREATE INDEX idx_creator_payouts_creator ON creator_payouts(creator_id);
-CREATE INDEX idx_creator_payouts_status ON creator_payouts(status);
-CREATE INDEX idx_creator_payouts_dates ON creator_payouts(requested_at, completed_at);
+CREATE INDEX IF NOT EXISTS idx_creator_payouts_creator ON creator_payouts(creator_id);
+CREATE INDEX IF NOT EXISTS idx_creator_payouts_status ON creator_payouts(status);
+CREATE INDEX IF NOT EXISTS idx_creator_payouts_dates ON creator_payouts(requested_at, completed_at);
 
 -- Analytics
-CREATE INDEX idx_creator_analytics_creator_date ON creator_analytics(creator_id, date);
-CREATE INDEX idx_creator_analytics_period ON creator_analytics(period);
-CREATE INDEX idx_content_analytics_creator ON content_analytics(creator_id);
-CREATE INDEX idx_content_analytics_content ON content_analytics(content_type, content_id);
-CREATE INDEX idx_audience_insights_creator ON audience_insights(creator_id);
+CREATE INDEX IF NOT EXISTS idx_creator_analytics_creator_date ON creator_analytics(creator_id, date);
+CREATE INDEX IF NOT EXISTS idx_creator_analytics_period ON creator_analytics(period);
+CREATE INDEX IF NOT EXISTS idx_content_analytics_creator ON content_analytics(creator_id);
+CREATE INDEX IF NOT EXISTS idx_content_analytics_content ON content_analytics(content_type, content_id);
+CREATE INDEX IF NOT EXISTS idx_audience_insights_creator ON audience_insights(creator_id);
 
 -- ================================================================
 -- ROW LEVEL SECURITY
@@ -313,10 +317,14 @@ ALTER TABLE content_analytics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audience_insights ENABLE ROW LEVEL SECURITY;
 
 -- Campaigns: Public read, business owners can manage
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view active campaigns" ON campaigns;
 CREATE POLICY "Anyone can view active campaigns"
   ON campaigns FOR SELECT
   USING (status IN ('active', 'completed'));
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Business owners can manage their campaigns" ON campaigns;
 CREATE POLICY "Business owners can manage their campaigns"
   ON campaigns FOR ALL
   USING (
@@ -326,41 +334,59 @@ CREATE POLICY "Business owners can manage their campaigns"
   );
 
 -- Creator Campaigns: Creators see their own, campaign owners see all
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view their campaign applications" ON creator_campaigns;
 CREATE POLICY "Creators can view their campaign applications"
   ON creator_campaigns FOR SELECT
   USING (creator_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can apply to campaigns" ON creator_campaigns;
 CREATE POLICY "Creators can apply to campaigns"
   ON creator_campaigns FOR INSERT
   WITH CHECK (creator_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can update their campaign status" ON creator_campaigns;
 CREATE POLICY "Creators can update their campaign status"
   ON creator_campaigns FOR UPDATE
   USING (creator_id = auth.uid());
 
 -- Earnings: Creators see their own
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view their earnings" ON creator_earnings;
 CREATE POLICY "Creators can view their earnings"
   ON creator_earnings FOR SELECT
   USING (creator_id = auth.uid());
 
 -- Payouts: Creators see their own
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view their payouts" ON creator_payouts;
 CREATE POLICY "Creators can view their payouts"
   ON creator_payouts FOR SELECT
   USING (creator_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can request payouts" ON creator_payouts;
 CREATE POLICY "Creators can request payouts"
   ON creator_payouts FOR INSERT
   WITH CHECK (creator_id = auth.uid());
 
 -- Analytics: Creators see their own
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view their analytics" ON creator_analytics;
 CREATE POLICY "Creators can view their analytics"
   ON creator_analytics FOR SELECT
   USING (creator_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view their content analytics" ON content_analytics;
 CREATE POLICY "Creators can view their content analytics"
   ON content_analytics FOR SELECT
   USING (creator_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view their audience insights" ON audience_insights;
 CREATE POLICY "Creators can view their audience insights"
   ON audience_insights FOR SELECT
   USING (creator_id = auth.uid());
@@ -425,6 +451,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_update_campaign_metrics ON creator_campaigns;
 CREATE TRIGGER trigger_update_campaign_metrics
 AFTER INSERT OR UPDATE ON creator_campaigns
 FOR EACH ROW
@@ -435,45 +463,55 @@ EXECUTE FUNCTION update_campaign_metrics();
 -- ================================================================
 
 -- Insert sample campaigns (will be linked to restaurants later)
-INSERT INTO campaigns (
-  restaurant_id,
-  title,
-  description,
-  requirements,
-  deliverables,
-  payout_per_creator,
-  budget_total,
-  status,
-  start_date,
-  end_date,
-  application_deadline,
-  location,
-  categories
-) 
-SELECT
-  r.id,
-  'Featured Creator Campaign - ' || r.name,
-  'Help us reach food lovers in Charlotte by sharing your authentic experience at ' || r.name,
-  '["40+ restaurant saves", "Active in Charlotte area", "Authentic food content", "3+ boards"]'::JSONB,
-  '["Create 1 Instagram post", "Save to 2+ boards", "Share with friends", "Tag restaurant"]'::JSONB,
-  CASE 
-    WHEN RANDOM() < 0.3 THEN 50
-    WHEN RANDOM() < 0.6 THEN 75
-    ELSE 100
-  END,
-  500,
-  CASE 
-    WHEN RANDOM() < 0.7 THEN 'active'
-    WHEN RANDOM() < 0.9 THEN 'draft'
-    ELSE 'completed'
-  END,
-  NOW() - INTERVAL '7 days',
-  NOW() + INTERVAL '30 days',
-  NOW() + INTERVAL '7 days',
-  'Charlotte, NC',
-  ARRAY['Local Favorites', 'Trending']
-FROM restaurants r
-LIMIT 5;
+-- Only insert if no campaigns exist yet (idempotent)
+DO $$
+DECLARE
+  campaign_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO campaign_count FROM campaigns;
+  
+  IF campaign_count = 0 THEN
+    INSERT INTO campaigns (
+      restaurant_id,
+      title,
+      description,
+      requirements,
+      deliverables,
+      payout_per_creator,
+      budget_total,
+      status,
+      start_date,
+      end_date,
+      application_deadline,
+      location,
+      categories
+    ) 
+    SELECT
+      r.id,
+      'Featured Creator Campaign - ' || r.name,
+      'Help us reach food lovers in Charlotte by sharing your authentic experience at ' || r.name,
+      '["40+ restaurant saves", "Active in Charlotte area", "Authentic food content", "3+ boards"]'::JSONB,
+      '["Create 1 Instagram post", "Save to 2+ boards", "Share with friends", "Tag restaurant"]'::JSONB,
+      CASE 
+        WHEN RANDOM() < 0.3 THEN 50
+        WHEN RANDOM() < 0.6 THEN 75
+        ELSE 100
+      END,
+      500,
+      CASE 
+        WHEN RANDOM() < 0.7 THEN 'active'
+        WHEN RANDOM() < 0.9 THEN 'draft'
+        ELSE 'completed'
+      END,
+      NOW() - INTERVAL '7 days',
+      NOW() + INTERVAL '30 days',
+      NOW() + INTERVAL '7 days',
+      'Charlotte, NC',
+      ARRAY['Local Favorites', 'Trending']
+    FROM restaurants r
+    LIMIT 5;
+  END IF;
+END $$;
 
 -- Success message
 DO $$

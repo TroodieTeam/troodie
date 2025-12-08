@@ -48,13 +48,13 @@ CREATE TABLE IF NOT EXISTS board_members (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_boards_user_id ON boards(user_id);
-CREATE INDEX idx_boards_type ON boards(type);
-CREATE INDEX idx_boards_is_private ON boards(is_private);
-CREATE INDEX idx_board_restaurants_board_id ON board_restaurants(board_id);
-CREATE INDEX idx_board_restaurants_restaurant_id ON board_restaurants(restaurant_id);
-CREATE INDEX idx_board_members_board_id ON board_members(board_id);
-CREATE INDEX idx_board_members_user_id ON board_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_boards_user_id ON boards(user_id);
+CREATE INDEX IF NOT EXISTS idx_boards_type ON boards(type);
+CREATE INDEX IF NOT EXISTS idx_boards_is_private ON boards(is_private);
+CREATE INDEX IF NOT EXISTS idx_board_restaurants_board_id ON board_restaurants(board_id);
+CREATE INDEX IF NOT EXISTS idx_board_restaurants_restaurant_id ON board_restaurants(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_board_members_board_id ON board_members(board_id);
+CREATE INDEX IF NOT EXISTS idx_board_members_user_id ON board_members(user_id);
 
 -- Create updated_at trigger for boards
 CREATE OR REPLACE FUNCTION update_boards_updated_at()
@@ -65,6 +65,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_boards_updated_at ON boards;
 CREATE TRIGGER update_boards_updated_at
 BEFORE UPDATE ON boards
 FOR EACH ROW
@@ -87,6 +89,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_board_restaurant_count_trigger ON board_restaurants;
 CREATE TRIGGER update_board_restaurant_count_trigger
 AFTER INSERT OR DELETE ON board_restaurants
 FOR EACH ROW
@@ -109,6 +113,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_board_member_count_trigger ON board_members;
 CREATE TRIGGER update_board_member_count_trigger
 AFTER INSERT OR DELETE ON board_members
 FOR EACH ROW
@@ -122,10 +128,14 @@ ALTER TABLE board_restaurants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE board_members ENABLE ROW LEVEL SECURITY;
 
 -- Boards policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view public boards" ON boards;
 CREATE POLICY "Users can view public boards" ON boards
   FOR SELECT
   USING (is_private = false OR user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view private boards they own or are members of" ON boards;
 CREATE POLICY "Users can view private boards they own or are members of" ON boards
   FOR SELECT
   USING (
@@ -139,20 +149,28 @@ CREATE POLICY "Users can view private boards they own or are members of" ON boar
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create boards" ON boards;
 CREATE POLICY "Users can create boards" ON boards
   FOR INSERT
   WITH CHECK (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own boards" ON boards;
 CREATE POLICY "Users can update their own boards" ON boards
   FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own boards" ON boards;
 CREATE POLICY "Users can delete their own boards" ON boards
   FOR DELETE
   USING (user_id = auth.uid());
 
 -- Board restaurants policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view restaurants in public boards" ON board_restaurants;
 CREATE POLICY "Users can view restaurants in public boards" ON board_restaurants
   FOR SELECT
   USING (
@@ -163,6 +181,8 @@ CREATE POLICY "Users can view restaurants in public boards" ON board_restaurants
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can add restaurants to their own boards" ON board_restaurants;
 CREATE POLICY "Users can add restaurants to their own boards" ON board_restaurants
   FOR INSERT
   WITH CHECK (
@@ -173,6 +193,8 @@ CREATE POLICY "Users can add restaurants to their own boards" ON board_restauran
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can update restaurants in their boards" ON board_restaurants;
 CREATE POLICY "Board owners can update restaurants in their boards" ON board_restaurants
   FOR UPDATE
   USING (
@@ -183,6 +205,8 @@ CREATE POLICY "Board owners can update restaurants in their boards" ON board_res
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can remove restaurants from their boards" ON board_restaurants;
 CREATE POLICY "Board owners can remove restaurants from their boards" ON board_restaurants
   FOR DELETE
   USING (
@@ -194,6 +218,8 @@ CREATE POLICY "Board owners can remove restaurants from their boards" ON board_r
   );
 
 -- Board members policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view members of boards they belong to" ON board_members;
 CREATE POLICY "Users can view members of boards they belong to" ON board_members
   FOR SELECT
   USING (
@@ -205,6 +231,8 @@ CREATE POLICY "Users can view members of boards they belong to" ON board_members
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can add members" ON board_members;
 CREATE POLICY "Board owners can add members" ON board_members
   FOR INSERT
   WITH CHECK (
@@ -215,6 +243,8 @@ CREATE POLICY "Board owners can add members" ON board_members
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can remove members" ON board_members;
 CREATE POLICY "Board owners can remove members" ON board_members
   FOR DELETE
   USING (
@@ -242,6 +272,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to create default board when a new user is created
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS create_default_board_trigger ON auth;
 CREATE TRIGGER create_default_board_trigger
 AFTER INSERT ON auth.users
 FOR EACH ROW

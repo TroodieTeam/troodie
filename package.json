@@ -42,7 +42,9 @@
     "supabase:types": "supabase gen types typescript --linked > types/supabase-staging.ts",
     "supabase:seed": "node scripts/seed-staging-data.js",
     "staging:setup": "npm run supabase:link-staging && npm run supabase:migrate && npm run supabase:types",
-    "staging:reset": "npm run supabase:reset && npm run supabase:migrate && npm run supabase:types"
+    "staging:reset": "npm run supabase:reset && npm run supabase:migrate && npm run supabase:types",
+    "prod:migrate:cm": "node scripts/apply-creator-marketplace-migrations.js",
+    "prod:setup:test-users": "node scripts/setup-production-test-users.js"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",
@@ -50,6 +52,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "^8.5.1",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",

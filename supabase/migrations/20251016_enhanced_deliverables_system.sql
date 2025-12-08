@@ -145,12 +145,16 @@ CREATE POLICY "Creators can create own deliverables"
   ON campaign_deliverables_new FOR INSERT
   WITH CHECK (auth.uid() = creator_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can update own pending deliverables" ON campaign_deliverables_new;
 CREATE POLICY "Creators can update own pending deliverables"
   ON campaign_deliverables_new FOR UPDATE
   USING (auth.uid() = creator_id AND status IN ('pending', 'needs_revision'))
   WITH CHECK (auth.uid() = creator_id);
 
 -- Restaurants can view and review deliverables for their campaigns
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Restaurants can view campaign deliverables" ON campaign_deliverables_new;
 CREATE POLICY "Restaurants can view campaign deliverables"
   ON campaign_deliverables_new FOR SELECT
   USING (
@@ -162,6 +166,8 @@ CREATE POLICY "Restaurants can view campaign deliverables"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Restaurants can update campaign deliverables" ON campaign_deliverables_new;
 CREATE POLICY "Restaurants can update campaign deliverables"
   ON campaign_deliverables_new FOR UPDATE
   USING (
@@ -174,6 +180,8 @@ CREATE POLICY "Restaurants can update campaign deliverables"
   );
 
 -- Admins can view and manage all deliverables
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can view all deliverables" ON campaign_deliverables_new;
 CREATE POLICY "Admins can view all deliverables"
   ON campaign_deliverables_new FOR SELECT
   USING (
@@ -184,6 +192,8 @@ CREATE POLICY "Admins can view all deliverables"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can update all deliverables" ON campaign_deliverables_new;
 CREATE POLICY "Admins can update all deliverables"
   ON campaign_deliverables_new FOR UPDATE
   USING (
@@ -326,6 +336,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_update_campaign_application_on_deliverable_change ON campaign_deliverables_new;
 CREATE TRIGGER trigger_update_campaign_application_on_deliverable_change
 AFTER INSERT OR UPDATE ON campaign_deliverables_new
 FOR EACH ROW

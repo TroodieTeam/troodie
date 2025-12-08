@@ -159,6 +159,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger for like notifications
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_like_notification ON save_interactions;
 CREATE TRIGGER trigger_like_notification
 AFTER INSERT ON save_interactions
 FOR EACH ROW
@@ -191,6 +193,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger for comment notifications
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_comment_notification ON comments;
 CREATE TRIGGER trigger_comment_notification
 AFTER INSERT ON comments
 FOR EACH ROW
@@ -216,6 +220,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger for follow notifications
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_follow_notification ON user_relationships;
 CREATE TRIGGER trigger_follow_notification
 AFTER INSERT ON user_relationships
 FOR EACH ROW
@@ -310,8 +316,58 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Enable Realtime for required tables
+-- Use DO blocks to make publication additions idempotent
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'restaurant_saves'
+    ) THEN
 ALTER PUBLICATION supabase_realtime ADD TABLE restaurant_saves;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'save_interactions'
+    ) THEN
 ALTER PUBLICATION supabase_realtime ADD TABLE save_interactions;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'comments'
+    ) THEN
 ALTER PUBLICATION supabase_realtime ADD TABLE comments;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'notifications'
+    ) THEN
 ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND tablename = 'community_posts'
+    ) THEN
 ALTER PUBLICATION supabase_realtime ADD TABLE community_posts;
+    END IF;
+END $$;

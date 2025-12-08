@@ -22,18 +22,24 @@ ALTER TABLE restaurant_visits ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 -- Users can view all visits (for social features)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view all restaurant visits" ON restaurant_visits;
 CREATE POLICY "Users can view all restaurant visits"
     ON restaurant_visits
     FOR SELECT
     USING (true);
 
 -- Users can insert their own visits
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert their own visits" ON restaurant_visits;
 CREATE POLICY "Users can insert their own visits"
     ON restaurant_visits
     FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
 -- Users can delete their own visits
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own visits" ON restaurant_visits;
 CREATE POLICY "Users can delete their own visits"
     ON restaurant_visits
     FOR DELETE

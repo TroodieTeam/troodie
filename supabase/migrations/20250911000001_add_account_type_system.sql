@@ -6,15 +6,15 @@
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'account_type') THEN
-    ALTER TABLE users ADD COLUMN account_type VARCHAR(20) DEFAULT 'consumer' CHECK (account_type IN ('consumer', 'creator', 'business'));
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type VARCHAR(20) DEFAULT 'consumer' CHECK (account_type IN ('consumer', 'creator', 'business'));
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'account_status') THEN
-    ALTER TABLE users ADD COLUMN account_status VARCHAR(30) DEFAULT 'active' CHECK (account_status IN ('active', 'suspended', 'pending_verification'));
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(30) DEFAULT 'active' CHECK (account_status IN ('active', 'suspended', 'pending_verification'));
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'account_upgraded_at') THEN
-    ALTER TABLE users ADD COLUMN account_upgraded_at TIMESTAMP;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS account_upgraded_at TIMESTAMP;
   END IF;
 END $$;
 
@@ -47,31 +47,31 @@ CREATE TABLE IF NOT EXISTS business_profiles (
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_account_type') THEN
-    CREATE INDEX idx_users_account_type ON users(account_type);
+    CREATE INDEX IF NOT EXISTS idx_users_account_type ON users(account_type);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_account_status') THEN
-    CREATE INDEX idx_users_account_status ON users(account_status);
+    CREATE INDEX IF NOT EXISTS idx_users_account_status ON users(account_status);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_creator_profiles_user_id') THEN
-    CREATE INDEX idx_creator_profiles_user_id ON creator_profiles(user_id);
+    CREATE INDEX IF NOT EXISTS idx_creator_profiles_user_id ON creator_profiles(user_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_creator_profiles_verification') THEN
-    CREATE INDEX idx_creator_profiles_verification ON creator_profiles(verification_status);
+    CREATE INDEX IF NOT EXISTS idx_creator_profiles_verification ON creator_profiles(verification_status);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_business_profiles_user_id') THEN
-    CREATE INDEX idx_business_profiles_user_id ON business_profiles(user_id);
+    CREATE INDEX IF NOT EXISTS idx_business_profiles_user_id ON business_profiles(user_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_business_profiles_restaurant') THEN
-    CREATE INDEX idx_business_profiles_restaurant ON business_profiles(restaurant_id);
+    CREATE INDEX IF NOT EXISTS idx_business_profiles_restaurant ON business_profiles(restaurant_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_business_profiles_verification') THEN
-    CREATE INDEX idx_business_profiles_verification ON business_profiles(verification_status);
+    CREATE INDEX IF NOT EXISTS idx_business_profiles_verification ON business_profiles(verification_status);
   END IF;
 END $$;
 
@@ -231,21 +231,29 @@ ALTER TABLE business_profiles ENABLE ROW LEVEL SECURITY;
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Users can view their own creator profile') THEN
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own creator profile" ON creator_profiles;
     CREATE POLICY "Users can view their own creator profile" ON creator_profiles
       FOR SELECT USING (auth.uid() = user_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Users can update their own creator profile') THEN
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own creator profile" ON creator_profiles;
     CREATE POLICY "Users can update their own creator profile" ON creator_profiles
       FOR UPDATE USING (auth.uid() = user_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Users can insert their own creator profile') THEN
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert their own creator profile" ON creator_profiles;
     CREATE POLICY "Users can insert their own creator profile" ON creator_profiles
       FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'creator_profiles' AND policyname = 'Public can view verified creator profiles') THEN
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Public can view verified creator profiles" ON creator_profiles;
     CREATE POLICY "Public can view verified creator profiles" ON creator_profiles
       FOR SELECT USING (verification_status = 'verified');
   END IF;
@@ -255,16 +263,22 @@ END $$;
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'business_profiles' AND policyname = 'Users can view their own business profile') THEN
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own business profile" ON business_profiles;
     CREATE POLICY "Users can view their own business profile" ON business_profiles
       FOR SELECT USING (auth.uid() = user_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'business_profiles' AND policyname = 'Users can update their own business profile') THEN
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own business profile" ON business_profiles;
     CREATE POLICY "Users can update their own business profile" ON business_profiles
       FOR UPDATE USING (auth.uid() = user_id);
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'business_profiles' AND policyname = 'Users can insert their own business profile') THEN
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert their own business profile" ON business_profiles;
     CREATE POLICY "Users can insert their own business profile" ON business_profiles
       FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;

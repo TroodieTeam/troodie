@@ -12,21 +12,29 @@ VALUES (
 );
 
 -- Create storage policies for post photos
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can upload their own post photos" ON storage;
 CREATE POLICY "Users can upload their own post photos" ON storage.objects
   FOR INSERT WITH CHECK (
     bucket_id = 'post-photos' AND
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view public post photos" ON storage;
 CREATE POLICY "Users can view public post photos" ON storage.objects
   FOR SELECT USING (bucket_id = 'post-photos');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own post photos" ON storage;
 CREATE POLICY "Users can update their own post photos" ON storage.objects
   FOR UPDATE USING (
     bucket_id = 'post-photos' AND
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own post photos" ON storage;
 CREATE POLICY "Users can delete their own post photos" ON storage.objects
   FOR DELETE USING (
     bucket_id = 'post-photos' AND
