@@ -238,3 +238,5 @@ Add empty state for "No applications" scenario.
 
 
 
+
+

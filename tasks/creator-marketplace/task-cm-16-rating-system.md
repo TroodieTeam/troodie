@@ -319,3 +319,5 @@ const avgRating = ratingData && ratingData.length > 0
 
 
 
+
+
