@@ -1,29 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Switch,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { 
-  ArrowLeft,
-  Calendar,
-  DollarSign,
-  Target,
-  Users,
-  Plus,
-  X,
-  CheckCircle,
-} from 'lucide-react-native';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
+import {
+    ArrowLeft,
+    Calendar,
+    CheckCircle,
+    DollarSign,
+    Plus,
+    Target,
+    X
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CampaignFormData {
   title: string;
@@ -32,10 +32,7 @@ interface CampaignFormData {
   deadline: string;
   requirements: string[];
   deliverables: Deliverable[];
-  target_audience: string;
-  content_type: string[];
-  posting_schedule: string;
-  brand_guidelines: string;
+  // Removed in CM-12: target_audience, content_type, posting_schedule, brand_guidelines
 }
 
 interface Deliverable {
@@ -45,13 +42,7 @@ interface Deliverable {
   quantity: number;
 }
 
-const CONTENT_TYPES = [
-  'Photo Posts',
-  'Video Content',
-  'Reels/Stories',
-  'Blog Reviews',
-  'Live Streaming',
-];
+// Removed CONTENT_TYPES in CM-12
 
 const DELIVERABLE_TYPES = [
   'Instagram Post',
@@ -60,7 +51,7 @@ const DELIVERABLE_TYPES = [
   'TikTok Video',
   'YouTube Video',
   'Blog Article',
-  'Google Review',
+  'Troodie Review',
 ];
 
 export default function CreateCampaign() {
@@ -69,7 +60,7 @@ export default function CreateCampaign() {
   const [loading, setLoading] = useState(false);
   const [restaurantData, setRestaurantData] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 3; // CM-12: Reduced from 4 to 3 steps
 
   const [formData, setFormData] = useState<CampaignFormData>({
     title: '',
@@ -78,10 +69,7 @@ export default function CreateCampaign() {
     deadline: '',
     requirements: [],
     deliverables: [],
-    target_audience: '',
-    content_type: [],
-    posting_schedule: '',
-    brand_guidelines: '',
+    // Removed in CM-12: target_audience, content_type, posting_schedule, brand_guidelines
   });
 
   const [newRequirement, setNewRequirement] = useState('');
@@ -91,17 +79,33 @@ export default function CreateCampaign() {
     quantity: 1,
   });
 
+  const [loadingState, setLoadingState] = useState<'loading' | 'loaded' | 'error' | 'no_profile' | 'no_restaurant'>('loading');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
+
   useEffect(() => {
     loadRestaurantData();
-  }, []);
+  }, [user?.id]);
 
   const loadRestaurantData = async () => {
-    try {
-      if (!user?.id) return;
+    setLoadingState('loading');
+    setErrorMessage(null);
 
-      const { data: profile, error } = await supabase
+    try {
+      if (!user?.id) {
+        setLoadingState('error');
+        setErrorMessage('Please sign in to create a campaign');
+        return;
+      }
+
+      // Fetch business profile with restaurant
+      const { data: profile, error: profileError } = await supabase
         .from('business_profiles')
         .select(`
+          id,
+          restaurant_id,
+          verification_status,
           restaurants (
             id,
             name
@@ -110,10 +114,38 @@ export default function CreateCampaign() {
         .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
-      setRestaurantData(profile?.restaurants);
-    } catch (error) {
+      if (profileError) {
+        if (profileError.code === 'PGRST116') {
+          // No rows returned - no business profile
+          setLoadingState('no_profile');
+          setErrorMessage('Please complete your business setup to create campaigns');
+          return;
+        }
+        throw profileError;
+      }
+
+      if (!profile.restaurant_id || !profile.restaurants) {
+        setLoadingState('no_restaurant');
+        setErrorMessage('Please claim a restaurant before creating campaigns');
+        return;
+      }
+
+      if (profile.verification_status !== 'verified') {
+        setLoadingState('error');
+        setErrorMessage('Your restaurant claim is pending verification');
+        return;
+      }
+
+      // Successfully loaded
+      setRestaurantData({
+        id: profile.restaurants.id,
+        name: profile.restaurants.name,
+      });
+      setLoadingState('loaded');
+    } catch (error: any) {
       console.error('Failed to load restaurant data:', error);
+      setLoadingState('error');
+      setErrorMessage('Failed to load restaurant data. Please try again.');
     }
   };
 
@@ -163,13 +195,7 @@ export default function CreateCampaign() {
     });
   };
 
-  const toggleContentType = (type: string) => {
-    const updatedTypes = formData.content_type.includes(type)
-      ? formData.content_type.filter(t => t !== type)
-      : [...formData.content_type, type];
-    
-    setFormData({ ...formData, content_type: updatedTypes });
-  };
+  // Removed toggleContentType in CM-12 - content_type field removed
 
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -178,9 +204,7 @@ export default function CreateCampaign() {
       case 2:
         return formData.budget !== '' && formData.deadline !== '';
       case 3:
-        return formData.deliverables.length > 0;
-      case 4:
-        return formData.content_type.length > 0;
+        return formData.deliverables.length > 0; // CM-12: Requirements are optional
       default:
         return false;
     }
@@ -199,28 +223,70 @@ export default function CreateCampaign() {
   };
 
   const handleSubmit = async () => {
+    // Validate before submission
+    if (!restaurantData?.id) {
+      Alert.alert('Error', 'Restaurant data is missing. Please refresh and try again.');
+      return;
+    }
+
+    if (!validateStep(currentStep)) {
+      Alert.alert('Incomplete', 'Please fill in all required fields.');
+      return;
+    }
+
     setLoading(true);
     try {
-      if (!user?.id || !restaurantData?.id) return;
+      if (!user?.id || !restaurantData?.id) {
+        throw new Error('Missing user or restaurant information');
+      }
+
+      // Convert budget to cents
+      const budgetCents = Math.round(parseFloat(formData.budget) * 100);
+      
+      // Prepare deliverable_requirements as JSONB (CM-12: Simplified)
+      // Expand deliverables based on quantity - each quantity becomes a separate deliverable
+      const expandedDeliverables = formData.deliverables.flatMap((deliverable) => {
+        // Create array of deliverables based on quantity
+        return Array.from({ length: deliverable.quantity }, (_, index) => ({
+          index: index + 1,
+          type: deliverable.type,
+          description: deliverable.description,
+          platform: deliverable.type.toLowerCase().includes('instagram') ? 'instagram' :
+                   deliverable.type.toLowerCase().includes('tiktok') ? 'tiktok' :
+                   deliverable.type.toLowerCase().includes('youtube') ? 'youtube' :
+                   deliverable.type.toLowerCase().includes('facebook') ? 'facebook' :
+                   deliverable.type.toLowerCase().includes('twitter') ? 'twitter' : undefined,
+          content_type: deliverable.type.toLowerCase().includes('reel') ? 'reel' :
+                       deliverable.type.toLowerCase().includes('story') ? 'story' :
+                       deliverable.type.toLowerCase().includes('video') ? 'video' :
+                       deliverable.type.toLowerCase().includes('article') ? 'article' : 'post',
+          required: true,
+        }));
+      });
+      
+      // Re-index deliverables sequentially across all types
+      const reindexedDeliverables = expandedDeliverables.map((deliverable, index) => ({
+        ...deliverable,
+        index: index + 1,
+      }));
+      
+      const deliverableRequirements = {
+        deliverables: reindexedDeliverables,
+        // Removed in CM-12: target_audience, content_type, posting_schedule, brand_guidelines
+      };
 
       const { error } = await supabase
         .from('campaigns')
         .insert({
           restaurant_id: restaurantData.id,
-          creator_id: user.id,
+          owner_id: user.id,
           title: formData.title,
           description: formData.description,
-          requirements: formData.requirements,
-          budget: parseFloat(formData.budget),
+          requirements: formData.requirements.length > 0 ? formData.requirements : null,
+          budget_cents: budgetCents,
           deadline: new Date(formData.deadline).toISOString(),
           status: 'active',
-          campaign_data: {
-            target_audience: formData.target_audience,
-            content_type: formData.content_type,
-            posting_schedule: formData.posting_schedule,
-            brand_guidelines: formData.brand_guidelines,
-            deliverables: formData.deliverables,
-          },
+          deliverable_requirements: deliverableRequirements,
         });
 
       if (error) throw error;
@@ -250,13 +316,15 @@ export default function CreateCampaign() {
       alignItems: 'center',
       marginBottom: DS.spacing.lg,
     }}>
-      {[1, 2, 3, 4].map((step) => (
+      {[1, 2, 3].map((step) => ( // CM-12: Reduced to 3 steps
         <View key={step} style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{
             width: 32,
             height: 32,
             borderRadius: 16,
-            backgroundColor: step <= currentStep ? DS.colors.primary : DS.colors.border,
+            backgroundColor: step <= currentStep ? DS.colors.primaryOrange : '#808080',
+            borderWidth: step <= currentStep ? 0 : 2,
+            borderColor: step <= currentStep ? 'transparent' : '#666666',
             justifyContent: 'center',
             alignItems: 'center',
           }}>
@@ -264,17 +332,19 @@ export default function CreateCampaign() {
               <CheckCircle size={20} color="white" />
             ) : (
               <Text style={{
-                color: step <= currentStep ? 'white' : DS.colors.textLight,
-                fontWeight: '600',
+                color: step <= currentStep ? 'white' : '#FFFFFF',
+                fontWeight: '700',
+                fontSize: 14,
               }}>{step}</Text>
             )}
           </View>
-          {step < 4 && (
+          {step < 3 && ( // CM-12: Reduced to 3 steps
             <View style={{
               width: 40,
-              height: 2,
-              backgroundColor: step < currentStep ? DS.colors.primary : DS.colors.border,
+              height: 3,
+              backgroundColor: step < currentStep ? DS.colors.primaryOrange : '#808080',
               marginHorizontal: DS.spacing.xs,
+              borderRadius: 1,
             }} />
           )}
         </View>
@@ -323,7 +393,7 @@ export default function CreateCampaign() {
         <TextInput
           value={formData.description}
           onChangeText={(text) => setFormData({ ...formData, description: text })}
-          placeholder="Describe what you want creators to showcase..."
+          placeholder="Describe what you want creators to showcase. Include any specific hashtags, mentions, or guidelines..."
           multiline
           numberOfLines={4}
           style={{
@@ -339,31 +409,7 @@ export default function CreateCampaign() {
         />
       </View>
 
-      <View>
-        <Text style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: DS.colors.text,
-          marginBottom: DS.spacing.xs,
-        }}>Brand Guidelines</Text>
-        <TextInput
-          value={formData.brand_guidelines}
-          onChangeText={(text) => setFormData({ ...formData, brand_guidelines: text })}
-          placeholder="Any specific requirements for photos, hashtags, mentions..."
-          multiline
-          numberOfLines={3}
-          style={{
-            borderWidth: 1,
-            borderColor: DS.colors.border,
-            borderRadius: DS.borderRadius.sm,
-            padding: DS.spacing.sm,
-            fontSize: 14,
-            color: DS.colors.text,
-            textAlignVertical: 'top',
-            minHeight: 80,
-          }}
-        />
-      </View>
+      {/* Removed Brand Guidelines in CM-12 - now included in description placeholder */}
     </View>
   );
 
@@ -416,20 +462,29 @@ export default function CreateCampaign() {
           color: DS.colors.text,
           marginBottom: DS.spacing.xs,
         }}>Campaign Deadline *</Text>
-        <TextInput
-          value={formData.deadline}
-          onChangeText={(text) => setFormData({ ...formData, deadline: text })}
-          placeholder="YYYY-MM-DD"
+        <TouchableOpacity
+          onPress={() => {
+            const currentDate = formData.deadline ? new Date(formData.deadline) : new Date();
+            setTempDate(currentDate);
+            setShowDatePicker(true);
+          }}
           style={{
             borderWidth: 1,
             borderColor: DS.colors.border,
             borderRadius: DS.borderRadius.sm,
             padding: DS.spacing.sm,
-            fontSize: 14,
-            color: DS.colors.text,
             paddingLeft: 35,
+            minHeight: 44,
+            justifyContent: 'center',
           }}
-        />
+        >
+          <Text style={{
+            fontSize: 14,
+            color: formData.deadline ? DS.colors.textDark : DS.colors.textGray,
+          }}>
+            {formData.deadline || 'YYYY-MM-DD'}
+          </Text>
+        </TouchableOpacity>
         <Calendar 
           size={16} 
           color={DS.colors.textLight}
@@ -437,279 +492,559 @@ export default function CreateCampaign() {
             position: 'absolute',
             left: DS.spacing.sm,
             top: 36,
+            pointerEvents: 'none',
           }}
         />
-      </View>
-
-      <View>
-        <Text style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: DS.colors.text,
-          marginBottom: DS.spacing.xs,
-        }}>Posting Schedule</Text>
-        <TextInput
-          value={formData.posting_schedule}
-          onChangeText={(text) => setFormData({ ...formData, posting_schedule: text })}
-          placeholder="e.g., Post within 3 days of visit"
-          style={{
-            borderWidth: 1,
-            borderColor: DS.colors.border,
-            borderRadius: DS.borderRadius.sm,
-            padding: DS.spacing.sm,
-            fontSize: 14,
-            color: DS.colors.text,
-          }}
-        />
-      </View>
-    </View>
-  );
-
-  const renderStep3 = () => (
-    <View>
-      <Text style={{
-        fontSize: 18,
-        fontWeight: '600',
-        color: DS.colors.text,
-        marginBottom: DS.spacing.md,
-      }}>Deliverables</Text>
-
-      {/* Add New Deliverable */}
-      <View style={{
-        backgroundColor: DS.colors.background,
-        padding: DS.spacing.md,
-        borderRadius: DS.borderRadius.sm,
-        marginBottom: DS.spacing.md,
-      }}>
-        <Text style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: DS.colors.text,
-          marginBottom: DS.spacing.sm,
-        }}>Add Deliverable</Text>
-
-        <View style={{ marginBottom: DS.spacing.sm }}>
-          <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Type</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {DELIVERABLE_TYPES.map((type) => (
-              <TouchableOpacity
-                key={type}
-                onPress={() => setNewDeliverable({ ...newDeliverable, type })}
-                style={{
-                  paddingHorizontal: DS.spacing.sm,
-                  paddingVertical: DS.spacing.xs,
-                  borderRadius: DS.borderRadius.xs,
-                  borderWidth: 1,
-                  borderColor: newDeliverable.type === type ? DS.colors.primary : DS.colors.border,
-                  backgroundColor: newDeliverable.type === type ? DS.colors.primary + '20' : 'transparent',
-                }}
-              >
-                <Text style={{
-                  fontSize: 12,
-                  color: newDeliverable.type === type ? DS.colors.primary : DS.colors.textLight,
-                }}>{type}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={{ marginBottom: DS.spacing.sm }}>
-          <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Description</Text>
-          <TextInput
-            value={newDeliverable.description}
-            onChangeText={(text) => setNewDeliverable({ ...newDeliverable, description: text })}
-            placeholder="Describe the deliverable..."
-            style={{
-              borderWidth: 1,
-              borderColor: DS.colors.border,
-              borderRadius: DS.borderRadius.sm,
-              padding: DS.spacing.xs,
-              fontSize: 12,
+        {showDatePicker && (
+          <DateTimePicker
+            value={tempDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(event, selectedDate) => {
+              if (Platform.OS === 'android') {
+                setShowDatePicker(false);
+              }
+              if (event.type === 'set' && selectedDate) {
+                setTempDate(selectedDate);
+                const formattedDate = selectedDate.toISOString().split('T')[0];
+                setFormData({ ...formData, deadline: formattedDate });
+                if (Platform.OS === 'android') {
+                  setShowDatePicker(false);
+                }
+              } else if (event.type === 'dismissed') {
+                setShowDatePicker(false);
+              }
             }}
+            minimumDate={new Date()}
           />
-        </View>
-
-        <View style={{ marginBottom: DS.spacing.sm }}>
-          <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Quantity</Text>
-          <TextInput
-            value={newDeliverable.quantity.toString()}
-            onChangeText={(text) => setNewDeliverable({ ...newDeliverable, quantity: parseInt(text) || 1 })}
-            keyboardType="numeric"
-            style={{
-              borderWidth: 1,
-              borderColor: DS.colors.border,
-              borderRadius: DS.borderRadius.sm,
-              padding: DS.spacing.xs,
-              fontSize: 12,
-              width: 80,
-            }}
-          />
-        </View>
-
-        <TouchableOpacity
-          onPress={addDeliverable}
-          style={{
-            backgroundColor: DS.colors.primary,
-            padding: DS.spacing.xs,
-            borderRadius: DS.borderRadius.sm,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add Deliverable</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Current Deliverables */}
-      {formData.deliverables.map((deliverable) => (
-        <View key={deliverable.id} style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          padding: DS.spacing.sm,
-          borderRadius: DS.borderRadius.sm,
-          marginBottom: DS.spacing.sm,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '500', color: DS.colors.text }}>
-              {deliverable.type} ({deliverable.quantity}x)
-            </Text>
-            <Text style={{ fontSize: 12, color: DS.colors.textLight, marginTop: 2 }}>
-              {deliverable.description}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => removeDeliverable(deliverable.id)}>
-            <X size={16} color={DS.colors.textLight} />
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      {formData.deliverables.length === 0 && (
-        <Text style={{ fontSize: 12, color: DS.colors.textLight, textAlign: 'center' }}>
-          No deliverables added yet
-        </Text>
-      )}
-    </View>
-  );
-
-  const renderStep4 = () => (
-    <View>
-      <Text style={{
-        fontSize: 18,
-        fontWeight: '600',
-        color: DS.colors.text,
-        marginBottom: DS.spacing.md,
-      }}>Content & Audience</Text>
-
-      <View style={{ marginBottom: DS.spacing.md }}>
-        <Text style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: DS.colors.text,
-          marginBottom: DS.spacing.xs,
-        }}>Preferred Content Types *</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {CONTENT_TYPES.map((type) => (
+        )}
+        {Platform.OS === 'ios' && showDatePicker && (
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            padding: DS.spacing.md,
+            backgroundColor: DS.colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: DS.colors.border,
+          }}>
             <TouchableOpacity
-              key={type}
-              onPress={() => toggleContentType(type)}
+              onPress={() => setShowDatePicker(false)}
               style={{
-                paddingHorizontal: DS.spacing.sm,
-                paddingVertical: DS.spacing.xs,
-                borderRadius: DS.borderRadius.xs,
-                borderWidth: 1,
-                borderColor: formData.content_type.includes(type) ? DS.colors.primary : DS.colors.border,
-                backgroundColor: formData.content_type.includes(type) ? DS.colors.primary + '20' : 'transparent',
+                paddingHorizontal: DS.spacing.lg,
+                paddingVertical: DS.spacing.sm,
               }}
             >
               <Text style={{
-                fontSize: 12,
-                color: formData.content_type.includes(type) ? DS.colors.primary : DS.colors.textLight,
-              }}>{type}</Text>
+                color: DS.colors.primaryOrange,
+                fontWeight: '600',
+                fontSize: 16,
+              }}>Done</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+        )}
       </View>
 
-      <View style={{ marginBottom: DS.spacing.md }}>
-        <Text style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: DS.colors.text,
-          marginBottom: DS.spacing.xs,
-        }}>Target Audience</Text>
-        <TextInput
-          value={formData.target_audience}
-          onChangeText={(text) => setFormData({ ...formData, target_audience: text })}
-          placeholder="e.g., Food enthusiasts in NYC aged 25-40"
-          style={{
-            borderWidth: 1,
-            borderColor: DS.colors.border,
-            borderRadius: DS.borderRadius.sm,
-            padding: DS.spacing.sm,
-            fontSize: 14,
-            color: DS.colors.text,
-          }}
-        />
-      </View>
+      {/* Removed Posting Schedule in CM-12 */}
+    </View>
+  );
 
-      {/* Requirements */}
+  const renderStep3 = () => {
+    const isAddButtonDisabled = !newDeliverable.type || !newDeliverable.description.trim();
+    const isAddRequirementDisabled = !newRequirement.trim();
+    
+    return (
       <View>
         <Text style={{
-          fontSize: 14,
-          fontWeight: '500',
-          color: DS.colors.text,
-          marginBottom: DS.spacing.xs,
-        }}>Additional Requirements</Text>
+          fontSize: 18,
+          fontWeight: '600',
+          color: DS.colors.textDark,
+          marginBottom: DS.spacing.md,
+        }}>Deliverables & Requirements</Text>
 
-        <View style={{ flexDirection: 'row', marginBottom: DS.spacing.sm }}>
-          <TextInput
-            value={newRequirement}
-            onChangeText={setNewRequirement}
-            placeholder="Add a requirement..."
+        {/* Add New Deliverable */}
+        <View style={{
+          backgroundColor: DS.colors.surface,
+          padding: DS.spacing.md,
+          borderRadius: DS.borderRadius.sm,
+          marginBottom: DS.spacing.md,
+          borderWidth: 1,
+          borderColor: DS.colors.border,
+        }}>
+          <Text style={{
+            fontSize: 16,
+            fontWeight: '600',
+            color: DS.colors.textDark,
+            marginBottom: DS.spacing.md,
+          }}>Add Deliverable</Text>
+
+          <View style={{ marginBottom: DS.spacing.md }}>
+            <Text style={{ 
+              fontSize: 14, 
+              fontWeight: '500',
+              color: DS.colors.textDark, 
+              marginBottom: DS.spacing.xs 
+            }}>Type *</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {DELIVERABLE_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  onPress={() => setNewDeliverable({ ...newDeliverable, type })}
+                  style={{
+                    paddingHorizontal: DS.spacing.sm,
+                    paddingVertical: DS.spacing.xs,
+                    borderRadius: DS.borderRadius.sm,
+                    borderWidth: 2,
+                    borderColor: newDeliverable.type === type 
+                      ? DS.colors.primaryOrange 
+                      : DS.colors.border,
+                    backgroundColor: newDeliverable.type === type 
+                      ? DS.colors.primaryOrange + '15' 
+                      : 'transparent',
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 13,
+                    fontWeight: newDeliverable.type === type ? '600' : '400',
+                    color: newDeliverable.type === type 
+                      ? DS.colors.primaryOrange 
+                      : DS.colors.textGray,
+                  }}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={{ marginBottom: DS.spacing.md }}>
+            <Text style={{ 
+              fontSize: 14, 
+              fontWeight: '500',
+              color: DS.colors.textDark, 
+              marginBottom: DS.spacing.xs 
+            }}>Description *</Text>
+            <TextInput
+              value={newDeliverable.description}
+              onChangeText={(text) => setNewDeliverable({ ...newDeliverable, description: text })}
+              placeholder="Describe the deliverable..."
+              placeholderTextColor={DS.colors.textLight}
+              multiline
+              numberOfLines={3}
+              style={{
+                borderWidth: 1,
+                borderColor: DS.colors.border,
+                borderRadius: DS.borderRadius.sm,
+                padding: DS.spacing.sm,
+                fontSize: 14,
+                color: DS.colors.textDark,
+                minHeight: 80,
+                textAlignVertical: 'top',
+              }}
+            />
+          </View>
+
+          <View style={{ marginBottom: DS.spacing.lg }}>
+            <Text style={{ 
+              fontSize: 14, 
+              fontWeight: '500',
+              color: DS.colors.textDark, 
+              marginBottom: DS.spacing.xs 
+            }}>Quantity</Text>
+            <TextInput
+              value={newDeliverable.quantity.toString()}
+              onChangeText={(text) => {
+                const num = parseInt(text) || 1;
+                setNewDeliverable({ ...newDeliverable, quantity: num > 0 ? num : 1 });
+              }}
+              keyboardType="numeric"
+              placeholder="1"
+              placeholderTextColor={DS.colors.textLight}
+              style={{
+                borderWidth: 1,
+                borderColor: DS.colors.border,
+                borderRadius: DS.borderRadius.sm,
+                padding: DS.spacing.sm,
+                fontSize: 14,
+                color: DS.colors.textDark,
+                width: 100,
+              }}
+            />
+          </View>
+
+          <TouchableOpacity
+            onPress={addDeliverable}
+            disabled={isAddButtonDisabled}
             style={{
-              flex: 1,
+              backgroundColor: isAddButtonDisabled 
+                ? DS.colors.surfaceLight 
+                : DS.colors.primaryOrange,
+              paddingVertical: DS.spacing.sm,
+              paddingHorizontal: DS.spacing.md,
+              borderRadius: DS.borderRadius.sm,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: isAddButtonDisabled ? 0.6 : 1,
+            }}
+          >
+            <Text style={{ 
+              color: isAddButtonDisabled 
+                ? DS.colors.textGray 
+                : DS.colors.textWhite, 
+              fontSize: 14, 
+              fontWeight: '600' 
+            }}>Add Deliverable</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Current Deliverables */}
+        {formData.deliverables.length > 0 && (
+          <View style={{ marginBottom: DS.spacing.md }}>
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: DS.colors.textDark,
+              marginBottom: DS.spacing.sm,
+            }}>Added Deliverables ({formData.deliverables.length})</Text>
+            {formData.deliverables.map((deliverable) => (
+              <View key={deliverable.id} style={{
+                backgroundColor: DS.colors.surface,
+                padding: DS.spacing.sm,
+                borderRadius: DS.borderRadius.sm,
+                marginBottom: DS.spacing.sm,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: DS.colors.border,
+              }}>
+                <View style={{ flex: 1, marginRight: DS.spacing.sm }}>
+                  <Text style={{ 
+                    fontSize: 14, 
+                    fontWeight: '600', 
+                    color: DS.colors.textDark,
+                    marginBottom: 2,
+                  }}>
+                    {deliverable.type} {deliverable.quantity > 1 && `(${deliverable.quantity}x)`}
+                  </Text>
+                  <Text style={{ 
+                    fontSize: 13, 
+                    color: DS.colors.textGray, 
+                    marginTop: 2,
+                  }}>
+                    {deliverable.description}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => removeDeliverable(deliverable.id)}
+                  style={{
+                    padding: DS.spacing.xs,
+                  }}
+                >
+                  <X size={20} color={DS.colors.textGray} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {formData.deliverables.length === 0 && (
+          <View style={{
+            padding: DS.spacing.lg,
+            alignItems: 'center',
+            backgroundColor: DS.colors.surfaceLight,
+            borderRadius: DS.borderRadius.sm,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+            borderStyle: 'dashed',
+            marginBottom: DS.spacing.lg,
+          }}>
+            <Text style={{ 
+              fontSize: 14, 
+              color: DS.colors.textGray, 
+              textAlign: 'center' 
+            }}>
+              No deliverables added yet. Add at least one deliverable to continue.
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderStep4 = () => {
+    const isAddRequirementDisabled = !newRequirement.trim();
+    
+    return (
+      <View>
+        <Text style={{
+          fontSize: 18,
+          fontWeight: '600',
+          color: DS.colors.textDark,
+          marginBottom: DS.spacing.lg,
+        }}>Content & Audience</Text>
+
+        {/* Preferred Content Types */}
+        <View style={{ 
+          marginBottom: DS.spacing.lg,
+          backgroundColor: DS.colors.surface,
+          padding: DS.spacing.md,
+          borderRadius: DS.borderRadius.sm,
+          borderWidth: 1,
+          borderColor: DS.colors.border,
+        }}>
+          <Text style={{
+            fontSize: 14,
+            fontWeight: '600',
+            color: DS.colors.textDark,
+            marginBottom: DS.spacing.md,
+          }}>Preferred Content Types *</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {CONTENT_TYPES.map((type) => {
+              const isSelected = formData.content_type.includes(type);
+              return (
+                <TouchableOpacity
+                  key={type}
+                  onPress={() => toggleContentType(type)}
+                  style={{
+                    paddingHorizontal: DS.spacing.sm,
+                    paddingVertical: DS.spacing.xs,
+                    borderRadius: DS.borderRadius.sm,
+                    borderWidth: 2,
+                    borderColor: isSelected 
+                      ? DS.colors.primaryOrange 
+                      : DS.colors.border,
+                    backgroundColor: isSelected 
+                      ? DS.colors.primaryOrange + '15' 
+                      : 'transparent',
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 13,
+                    fontWeight: isSelected ? '600' : '400',
+                    color: isSelected 
+                      ? DS.colors.primaryOrange 
+                      : DS.colors.textGray,
+                  }}>{type}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Target Audience */}
+        <View style={{ 
+          marginBottom: DS.spacing.lg,
+          backgroundColor: DS.colors.surface,
+          padding: DS.spacing.md,
+          borderRadius: DS.borderRadius.sm,
+          borderWidth: 1,
+          borderColor: DS.colors.border,
+        }}>
+          <Text style={{
+            fontSize: 14,
+            fontWeight: '600',
+            color: DS.colors.textDark,
+            marginBottom: DS.spacing.xs,
+          }}>Target Audience</Text>
+          <TextInput
+            value={formData.target_audience}
+            onChangeText={(text) => setFormData({ ...formData, target_audience: text })}
+            placeholder="e.g., Food enthusiasts in NYC aged 25-40"
+            placeholderTextColor={DS.colors.textLight}
+            style={{
               borderWidth: 1,
               borderColor: DS.colors.border,
               borderRadius: DS.borderRadius.sm,
               padding: DS.spacing.sm,
               fontSize: 14,
-              marginRight: DS.spacing.xs,
+              color: DS.colors.textDark,
+              marginTop: DS.spacing.xs,
             }}
           />
-          <TouchableOpacity
-            onPress={addRequirement}
-            style={{
-              backgroundColor: DS.colors.primary,
-              padding: DS.spacing.sm,
-              borderRadius: DS.borderRadius.sm,
-              justifyContent: 'center',
-            }}
-          >
-            <Plus size={16} color="white" />
-          </TouchableOpacity>
         </View>
 
-        {formData.requirements.map((requirement, index) => (
-          <View key={index} style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: DS.colors.backgroundWhite,
-            padding: DS.spacing.xs,
-            borderRadius: DS.borderRadius.sm,
-            marginBottom: DS.spacing.xs,
+        {/* Additional Requirements */}
+        <View style={{
+          backgroundColor: DS.colors.surface,
+          padding: DS.spacing.md,
+          borderRadius: DS.borderRadius.sm,
+          borderWidth: 1,
+          borderColor: DS.colors.border,
+        }}>
+          <Text style={{
+            fontSize: 14,
+            fontWeight: '600',
+            color: DS.colors.textDark,
+            marginBottom: DS.spacing.md,
+          }}>Additional Requirements</Text>
+
+          <View style={{ 
+            flexDirection: 'row', 
+            marginBottom: DS.spacing.md,
+            gap: DS.spacing.xs,
           }}>
-            <Text style={{ flex: 1, fontSize: 12, color: DS.colors.text }}>
-              • {requirement}
-            </Text>
-            <TouchableOpacity onPress={() => removeRequirement(index)}>
-              <X size={14} color={DS.colors.textLight} />
+            <TextInput
+              value={newRequirement}
+              onChangeText={setNewRequirement}
+              placeholder="Add a requirement..."
+              placeholderTextColor={DS.colors.textLight}
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                borderColor: DS.colors.border,
+                borderRadius: DS.borderRadius.sm,
+                padding: DS.spacing.sm,
+                fontSize: 14,
+                color: DS.colors.textDark,
+              }}
+              onSubmitEditing={addRequirement}
+            />
+            <TouchableOpacity
+              onPress={addRequirement}
+              disabled={isAddRequirementDisabled}
+              style={{
+                backgroundColor: isAddRequirementDisabled
+                  ? DS.colors.surfaceLight
+                  : DS.colors.primaryOrange,
+                padding: DS.spacing.sm,
+                borderRadius: DS.borderRadius.sm,
+                justifyContent: 'center',
+                alignItems: 'center',
+                minWidth: 44,
+                opacity: isAddRequirementDisabled ? 0.6 : 1,
+              }}
+            >
+              <Plus 
+                size={20} 
+                color={isAddRequirementDisabled 
+                  ? DS.colors.textGray 
+                  : DS.colors.textWhite
+                } 
+              />
             </TouchableOpacity>
           </View>
-        ))}
+
+          {formData.requirements.length > 0 && (
+            <View>
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '500',
+                color: DS.colors.textGray,
+                marginBottom: DS.spacing.sm,
+              }}>
+                Requirements ({formData.requirements.length})
+              </Text>
+              {formData.requirements.map((requirement, index) => (
+                <View key={index} style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: DS.colors.surfaceLight,
+                  padding: DS.spacing.sm,
+                  borderRadius: DS.borderRadius.sm,
+                  marginBottom: DS.spacing.xs,
+                  borderWidth: 1,
+                  borderColor: DS.colors.border,
+                }}>
+                  <Text style={{ 
+                    flex: 1, 
+                    fontSize: 13, 
+                    color: DS.colors.textDark,
+                    marginRight: DS.spacing.xs,
+                  }}>
+                    • {requirement}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => removeRequirement(index)}
+                    style={{
+                      padding: DS.spacing.xs,
+                    }}
+                  >
+                    <X size={16} color={DS.colors.textGray} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {formData.requirements.length === 0 && (
+            <Text style={{
+              fontSize: 13,
+              color: DS.colors.textGray,
+              fontStyle: 'italic',
+            }}>
+              No additional requirements added yet
+            </Text>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
+
+  // Render loading state
+  if (loadingState === 'loading') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={DS.colors.primary} />
+        <Text style={{ marginTop: DS.spacing.md, color: DS.colors.text }}>Loading restaurant data...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Render error states
+  if (loadingState === 'no_profile') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background, justifyContent: 'center', alignItems: 'center', padding: DS.spacing.lg }}>
+        <Target size={48} color={DS.colors.warning || '#F59E0B'} />
+        <Text style={{ fontSize: 20, fontWeight: '600', color: DS.colors.text, marginTop: DS.spacing.md, marginBottom: DS.spacing.sm }}>Business Setup Required</Text>
+        <Text style={{ fontSize: 14, color: DS.colors.textLight, textAlign: 'center', marginBottom: DS.spacing.lg }}>{errorMessage}</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: DS.colors.primary, paddingHorizontal: DS.spacing.lg, paddingVertical: DS.spacing.sm, borderRadius: DS.borderRadius.md, marginBottom: DS.spacing.sm }}
+          onPress={() => router.push('/business/setup')}
+        >
+          <Text style={{ color: 'white', fontWeight: '600' }}>Complete Setup</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={{ color: DS.colors.textLight, marginTop: DS.spacing.sm }}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadingState === 'no_restaurant') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background, justifyContent: 'center', alignItems: 'center', padding: DS.spacing.lg }}>
+        <Target size={48} color={DS.colors.warning || '#F59E0B'} />
+        <Text style={{ fontSize: 20, fontWeight: '600', color: DS.colors.text, marginTop: DS.spacing.md, marginBottom: DS.spacing.sm }}>No Restaurant Linked</Text>
+        <Text style={{ fontSize: 14, color: DS.colors.textLight, textAlign: 'center', marginBottom: DS.spacing.lg }}>{errorMessage}</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: DS.colors.primary, paddingHorizontal: DS.spacing.lg, paddingVertical: DS.spacing.sm, borderRadius: DS.borderRadius.md, marginBottom: DS.spacing.sm }}
+          onPress={() => router.push('/restaurant/claim')}
+        >
+          <Text style={{ color: 'white', fontWeight: '600' }}>Claim Restaurant</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={{ color: DS.colors.textLight, marginTop: DS.spacing.sm }}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadingState === 'error') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background, justifyContent: 'center', alignItems: 'center', padding: DS.spacing.lg }}>
+        <X size={48} color={DS.colors.error || '#EF4444'} />
+        <Text style={{ fontSize: 20, fontWeight: '600', color: DS.colors.text, marginTop: DS.spacing.md, marginBottom: DS.spacing.sm }}>Something Went Wrong</Text>
+        <Text style={{ fontSize: 14, color: DS.colors.textLight, textAlign: 'center', marginBottom: DS.spacing.lg }}>{errorMessage}</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: DS.colors.primary, paddingHorizontal: DS.spacing.lg, paddingVertical: DS.spacing.sm, borderRadius: DS.borderRadius.md, marginBottom: DS.spacing.sm }}
+          onPress={loadRestaurantData}
+        >
+          <Text style={{ color: 'white', fontWeight: '600' }}>Retry</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={{ color: DS.colors.textLight, marginTop: DS.spacing.sm }}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
@@ -734,6 +1069,14 @@ export default function CreateCampaign() {
         <View style={{ width: 24 }} />
       </View>
 
+      {/* Restaurant Header */}
+      {restaurantData && (
+        <View style={{ backgroundColor: DS.colors.backgroundWhite, padding: DS.spacing.md, borderBottomWidth: 1, borderBottomColor: DS.colors.border }}>
+          <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: 4 }}>Creating campaign for:</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text }}>{restaurantData.name}</Text>
+        </View>
+      )}
+
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: DS.spacing.md }}>
         {renderStepIndicator()}
         
@@ -746,7 +1089,7 @@ export default function CreateCampaign() {
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
-          {currentStep === 4 && renderStep4()}
+          {/* Removed Step 4 in CM-12 */}
         </View>
       </ScrollView>
 
@@ -779,11 +1122,12 @@ export default function CreateCampaign() {
           disabled={!validateStep(currentStep) || loading}
           style={{
             flex: currentStep > 1 ? 1 : 2,
-            backgroundColor: validateStep(currentStep) ? DS.colors.primary : DS.colors.border,
+            backgroundColor: validateStep(currentStep) ? DS.colors.primaryOrange : '#808080',
             padding: DS.spacing.md,
             borderRadius: DS.borderRadius.sm,
             alignItems: 'center',
             marginLeft: currentStep > 1 ? DS.spacing.xs : 0,
+            opacity: validateStep(currentStep) ? 1 : 0.8,
           }}
         >
           {loading ? (
@@ -791,7 +1135,7 @@ export default function CreateCampaign() {
           ) : (
             <Text style={{ 
               color: 'white', 
-              fontWeight: '600' 
+              fontWeight: '700' 
             }}>
               {currentStep === totalSteps ? 'Create Campaign' : 'Next'}
             </Text>

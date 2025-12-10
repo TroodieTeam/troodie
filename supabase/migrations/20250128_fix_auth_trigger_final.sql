@@ -54,6 +54,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create the trigger with INITIALLY DEFERRED
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
@@ -121,6 +123,8 @@ CREATE POLICY "Enable update for users own profile" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
 -- Also allow service role to do everything (for triggers)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Service role has full access" ON public;
 CREATE POLICY "Service role has full access" ON public.users
   USING (auth.jwt()->>'role' = 'service_role')
   WITH CHECK (auth.jwt()->>'role' = 'service_role');

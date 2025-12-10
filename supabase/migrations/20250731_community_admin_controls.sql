@@ -32,6 +32,8 @@ CREATE INDEX IF NOT EXISTS idx_community_posts_deleted
 ALTER TABLE community_admin_logs ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for community_admin_logs
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can view community admin logs" ON community_admin_logs;
 CREATE POLICY "Admins can view community admin logs" ON community_admin_logs
   FOR SELECT USING (
     EXISTS (
@@ -43,6 +45,8 @@ CREATE POLICY "Admins can view community admin logs" ON community_admin_logs
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can insert admin logs" ON community_admin_logs;
 CREATE POLICY "Admins can insert admin logs" ON community_admin_logs
   FOR INSERT WITH CHECK (
     EXISTS (

@@ -18,26 +18,34 @@ CREATE TABLE IF NOT EXISTS user_events (
 );
 
 -- Create indexes
-CREATE INDEX idx_user_achievements_user_id ON user_achievements(user_id);
-CREATE INDEX idx_user_achievements_achievement_id ON user_achievements(achievement_id);
-CREATE INDEX idx_user_events_user_id ON user_events(user_id);
-CREATE INDEX idx_user_events_type ON user_events(event_type);
-CREATE INDEX idx_user_events_created ON user_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);
+CREATE INDEX IF NOT EXISTS idx_user_events_user_id ON user_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_user_events_created ON user_events(created_at);
 
 -- Enable Row Level Security
 ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_events ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for user_achievements
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own achievements" ON user_achievements;
 CREATE POLICY "Users can view their own achievements" ON user_achievements
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "System can create achievements" ON user_achievements;
 CREATE POLICY "System can create achievements" ON user_achievements
   FOR INSERT WITH CHECK (true); -- Will be restricted by service role
 
 -- RLS Policies for user_events
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own events" ON user_events;
 CREATE POLICY "Users can view their own events" ON user_events
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create their own events" ON user_events;
 CREATE POLICY "Users can create their own events" ON user_events
   FOR INSERT WITH CHECK (auth.uid() = user_id);

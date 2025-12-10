@@ -1,34 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Switch,
-  Image,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { 
-  ArrowLeft,
-  Store,
-  Clock,
-  Phone,
-  Globe,
-  MapPin,
-  DollarSign,
-  Camera,
-  Check,
-  AlertCircle,
-  Mail,
-  Shield,
-} from 'lucide-react-native';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { restaurantImageService } from '@/services/restaurantImageService';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import {
+    AlertCircle,
+    ArrowLeft,
+    Camera,
+    Globe,
+    Mail,
+    MapPin,
+    Phone,
+    Store
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface RestaurantData {
   id: string;
@@ -70,6 +68,7 @@ export default function RestaurantSettings() {
     business_role: '',
   });
   const [editMode, setEditMode] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     loadRestaurantData();
@@ -119,6 +118,57 @@ export default function RestaurantSettings() {
       Alert.alert('Error', 'Failed to load restaurant settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePickCoverImage = async () => {
+    if (!restaurantData) return;
+
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant photo library access to upload images.');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [16, 9], // Cover photo aspect ratio
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return;
+      }
+
+      setUploadingImage(true);
+
+      // Upload image
+      const imageUrl = await restaurantImageService.uploadRestaurantImage(
+        restaurantData.id,
+        result.assets[0].uri,
+        'cover'
+      );
+
+      // Update restaurant with new cover photo URL
+      await restaurantImageService.updateRestaurantImage(
+        restaurantData.id,
+        imageUrl,
+        'cover'
+      );
+
+      // Update local state
+      setRestaurantData(prev => prev ? { ...prev, cover_photo_url: imageUrl } : null);
+
+      Alert.alert('Success', 'Cover photo updated successfully');
+    } catch (error) {
+      console.error('Failed to upload cover photo:', error);
+      Alert.alert('Error', 'Failed to upload cover photo. Please try again.');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -236,6 +286,8 @@ export default function RestaurantSettings() {
             />
             {editMode && (
               <TouchableOpacity
+                onPress={handlePickCoverImage}
+                disabled={uploadingImage}
                 style={{
                   position: 'absolute',
                   bottom: 10,
@@ -243,9 +295,14 @@ export default function RestaurantSettings() {
                   backgroundColor: DS.colors.primary,
                   padding: DS.spacing.xs,
                   borderRadius: DS.borderRadius.sm,
+                  opacity: uploadingImage ? 0.6 : 1,
                 }}
               >
-                <Camera size={20} color="white" />
+                {uploadingImage ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Camera size={20} color="white" />
+                )}
               </TouchableOpacity>
             )}
           </View>

@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase';
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system/legacy';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 export const restaurantImageService = {
   /**
@@ -16,17 +19,30 @@ export const restaurantImageService = {
     try {
       // Generate unique filename
       const timestamp = Date.now();
-      const filename = `${restaurantId}/${imageType}_${timestamp}.jpg`;
+      const randomId = Math.random().toString(36).substring(2, 9);
+      const filename = `${restaurantId}/${imageType}_${timestamp}_${randomId}.jpg`;
 
-      // Convert to blob if needed
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
+      // Process image (resize and compress for React Native)
+      const processedImage = await manipulateAsync(
+        imageUri,
+        imageType === 'cover' 
+          ? [{ resize: { width: 1200 } }] // Cover photos can be larger
+          : [{ resize: { width: 800 } }], // Regular photos smaller
+        { compress: 0.7, format: SaveFormat.JPEG }
+      );
+
+      // Read as base64 and convert to ArrayBuffer (React Native compatible)
+      const base64 = await FileSystem.readAsStringAsync(processedImage.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const arrayBuffer = decode(base64);
 
       // Upload to Supabase storage
       const { data, error } = await supabase.storage
         .from('restaurant-photos')
-        .upload(filename, blob, {
+        .upload(filename, arrayBuffer, {
           contentType: 'image/jpeg',
+          cacheControl: '3600',
           upsert: false,
         });
 

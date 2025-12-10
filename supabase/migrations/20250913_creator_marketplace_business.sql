@@ -38,9 +38,9 @@ CREATE TABLE IF NOT EXISTS campaigns (
 );
 
 -- Indexes for campaigns
-CREATE INDEX idx_campaigns_restaurant ON campaigns(restaurant_id);
-CREATE INDEX idx_campaigns_status ON campaigns(status);
-CREATE INDEX idx_campaigns_dates ON campaigns(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_campaigns_restaurant ON campaigns(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_campaigns_dates ON campaigns(start_date, end_date);
 
 -- =============================================
 -- CAMPAIGN APPLICATIONS TABLE
@@ -68,9 +68,9 @@ CREATE TABLE IF NOT EXISTS campaign_applications (
 );
 
 -- Indexes for applications
-CREATE INDEX idx_applications_campaign ON campaign_applications(campaign_id);
-CREATE INDEX idx_applications_creator ON campaign_applications(creator_id);
-CREATE INDEX idx_applications_status ON campaign_applications(status);
+CREATE INDEX IF NOT EXISTS idx_applications_campaign ON campaign_applications(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_applications_creator ON campaign_applications(creator_id);
+CREATE INDEX IF NOT EXISTS idx_applications_status ON campaign_applications(status);
 
 -- =============================================
 -- PORTFOLIO ITEMS TABLE
@@ -102,9 +102,9 @@ CREATE TABLE IF NOT EXISTS portfolio_items (
 );
 
 -- Indexes for portfolio items
-CREATE INDEX idx_portfolio_creator ON portfolio_items(creator_id);
-CREATE INDEX idx_portfolio_campaign ON portfolio_items(campaign_id);
-CREATE INDEX idx_portfolio_restaurant ON portfolio_items(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_portfolio_creator ON portfolio_items(creator_id);
+CREATE INDEX IF NOT EXISTS idx_portfolio_campaign ON portfolio_items(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_portfolio_restaurant ON portfolio_items(restaurant_id);
 
 -- =============================================
 -- BUSINESS PROFILES TABLE
@@ -127,8 +127,8 @@ CREATE TABLE IF NOT EXISTS business_profiles (
 );
 
 -- Indexes for business profiles
-CREATE INDEX idx_business_profiles_user ON business_profiles(user_id);
-CREATE INDEX idx_business_profiles_restaurant ON business_profiles(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_business_profiles_user ON business_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_business_profiles_restaurant ON business_profiles(restaurant_id);
 
 -- =============================================
 -- CREATOR PROFILES TABLE (if not exists)
@@ -157,8 +157,8 @@ CREATE TABLE IF NOT EXISTS creator_profiles (
 );
 
 -- Indexes for creator profiles
-CREATE INDEX idx_creator_profiles_user ON creator_profiles(user_id);
-CREATE INDEX idx_creator_profiles_status ON creator_profiles(account_status);
+CREATE INDEX IF NOT EXISTS idx_creator_profiles_user ON creator_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_creator_profiles_status ON creator_profiles(account_status);
 
 -- =============================================
 -- RLS POLICIES
@@ -172,48 +172,70 @@ ALTER TABLE business_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE creator_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Campaigns policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view public campaigns" ON campaigns;
 CREATE POLICY "Users can view public campaigns" ON campaigns
   FOR SELECT USING (status IN ('active', 'completed'));
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Business owners can manage their campaigns" ON campaigns;
 CREATE POLICY "Business owners can manage their campaigns" ON campaigns
   FOR ALL USING (owner_id = auth.uid());
 
 -- Applications policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view their applications" ON campaign_applications;
 CREATE POLICY "Creators can view their applications" ON campaign_applications
   FOR SELECT USING (creator_id IN (
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Business owners can view applications to their campaigns" ON campaign_applications;
 CREATE POLICY "Business owners can view applications to their campaigns" ON campaign_applications
   FOR SELECT USING (campaign_id IN (
     SELECT id FROM campaigns WHERE owner_id = auth.uid()
   ));
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can create applications" ON campaign_applications;
 CREATE POLICY "Creators can create applications" ON campaign_applications
   FOR INSERT WITH CHECK (creator_id IN (
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
 
 -- Portfolio items policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view portfolio items" ON portfolio_items;
 CREATE POLICY "Anyone can view portfolio items" ON portfolio_items
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can manage their portfolio" ON portfolio_items;
 CREATE POLICY "Creators can manage their portfolio" ON portfolio_items
   FOR ALL USING (creator_id IN (
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
 
 -- Business profiles policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view business profiles" ON business_profiles;
 CREATE POLICY "Users can view business profiles" ON business_profiles
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can manage their business profile" ON business_profiles;
 CREATE POLICY "Users can manage their business profile" ON business_profiles
   FOR ALL USING (user_id = auth.uid());
 
 -- Creator profiles policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view creator profiles" ON creator_profiles;
 CREATE POLICY "Anyone can view creator profiles" ON creator_profiles
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can manage their creator profile" ON creator_profiles;
 CREATE POLICY "Users can manage their creator profile" ON creator_profiles
   FOR ALL USING (user_id = auth.uid());
 
@@ -237,6 +259,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update spent amount
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_campaign_spent_trigger ON campaign_applications;
 CREATE TRIGGER update_campaign_spent_trigger
 AFTER INSERT OR UPDATE ON campaign_applications
 FOR EACH ROW
@@ -258,6 +282,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update creators count
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_creators_count_trigger ON campaign_applications;
 CREATE TRIGGER update_creators_count_trigger
 AFTER INSERT OR UPDATE OR DELETE ON campaign_applications
 FOR EACH ROW

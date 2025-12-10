@@ -38,41 +38,57 @@ ALTER TABLE user_invite_shares ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_referral_conversions ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own achievements
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own achievements" ON user_achievements;
 CREATE POLICY "Users can view their own achievements"
   ON user_achievements FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Users can view their own referrals
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own referrals" ON user_referrals;
 CREATE POLICY "Users can view their own referrals"
   ON user_referrals FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Users can view their own invite shares
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own invite shares" ON user_invite_shares;
 CREATE POLICY "Users can view their own invite shares"
   ON user_invite_shares FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Users can view their own referral conversions
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own referral conversions" ON user_referral_conversions;
 CREATE POLICY "Users can view their own referral conversions"
   ON user_referral_conversions FOR SELECT
   USING (auth.uid() = referrer_id);
 
 -- Service role can insert achievements
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Service role can insert achievements" ON user_achievements;
 CREATE POLICY "Service role can insert achievements"
   ON user_achievements FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Service role can insert referrals
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Service role can insert referrals" ON user_referrals;
 CREATE POLICY "Service role can insert referrals"
   ON user_referrals FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Service role can insert invite shares
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Service role can insert invite shares" ON user_invite_shares;
 CREATE POLICY "Service role can insert invite shares"
   ON user_invite_shares FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Service role can insert referral conversions
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Service role can insert referral conversions" ON user_referral_conversions;
 CREATE POLICY "Service role can insert referral conversions"
   ON user_referral_conversions FOR INSERT
   WITH CHECK (auth.uid() = referrer_id);
@@ -83,6 +99,6 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'restaurants' AND column_name = 'review_count') 
   THEN
-    ALTER TABLE restaurants ADD COLUMN review_count INTEGER DEFAULT 0;
+    ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0;
   END IF;
 END $$; 

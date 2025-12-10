@@ -82,11 +82,11 @@ CREATE TABLE IF NOT EXISTS creator_applications (
 );
 
 -- Create indexes for creator_applications
-CREATE INDEX idx_creator_applications_user
+CREATE INDEX IF NOT EXISTS idx_creator_applications_user
   ON creator_applications(user_id);
-CREATE INDEX idx_creator_applications_status
+CREATE INDEX IF NOT EXISTS idx_creator_applications_status
   ON creator_applications(status);
-CREATE INDEX idx_creator_applications_submitted
+CREATE INDEX IF NOT EXISTS idx_creator_applications_submitted
   ON creator_applications(submitted_at DESC);
 
 -- =============================================
@@ -111,13 +111,13 @@ CREATE TABLE IF NOT EXISTS review_logs (
 );
 
 -- Indexes for review_logs
-CREATE INDEX idx_review_logs_entity
+CREATE INDEX IF NOT EXISTS idx_review_logs_entity
   ON review_logs(entity_type, entity_id);
-CREATE INDEX idx_review_logs_actor
+CREATE INDEX IF NOT EXISTS idx_review_logs_actor
   ON review_logs(actor_id);
-CREATE INDEX idx_review_logs_created
+CREATE INDEX IF NOT EXISTS idx_review_logs_created
   ON review_logs(created_at DESC);
-CREATE INDEX idx_review_logs_action
+CREATE INDEX IF NOT EXISTS idx_review_logs_action
   ON review_logs(action);
 
 -- =============================================
@@ -217,10 +217,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Attach logging triggers
+-- Drop triggers if they exist to make migration idempotent
+DROP TRIGGER IF EXISTS log_restaurant_claim_reviews ON restaurant_claims;
 CREATE TRIGGER log_restaurant_claim_reviews
 AFTER INSERT OR UPDATE ON restaurant_claims
 FOR EACH ROW EXECUTE FUNCTION log_review_action();
 
+DROP TRIGGER IF EXISTS log_creator_application_reviews ON creator_applications;
 CREATE TRIGGER log_creator_application_reviews
 AFTER INSERT OR UPDATE ON creator_applications
 FOR EACH ROW EXECUTE FUNCTION log_review_action();
@@ -254,6 +257,8 @@ CREATE POLICY "Users can create claims"
     AND status = 'pending'
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can view all claims" ON restaurant_claims;
 CREATE POLICY "Admins can view all claims"
   ON restaurant_claims FOR SELECT
   TO authenticated
@@ -265,6 +270,8 @@ CREATE POLICY "Admins can view all claims"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can update claims" ON restaurant_claims;
 CREATE POLICY "Admins can update claims"
   ON restaurant_claims FOR UPDATE
   TO authenticated
@@ -284,11 +291,15 @@ CREATE POLICY "Admins can update claims"
   );
 
 -- Creator Applications Policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own applications" ON creator_applications;
 CREATE POLICY "Users can view own applications"
   ON creator_applications FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create applications" ON creator_applications;
 CREATE POLICY "Users can create applications"
   ON creator_applications FOR INSERT
   TO authenticated
@@ -302,6 +313,8 @@ CREATE POLICY "Users can create applications"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can view all applications" ON creator_applications;
 CREATE POLICY "Admins can view all applications"
   ON creator_applications FOR SELECT
   TO authenticated
@@ -313,6 +326,8 @@ CREATE POLICY "Admins can view all applications"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can update applications" ON creator_applications;
 CREATE POLICY "Admins can update applications"
   ON creator_applications FOR UPDATE
   TO authenticated
@@ -325,6 +340,8 @@ CREATE POLICY "Admins can update applications"
   );
 
 -- Review Logs Policies (Read-only for admins)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can view review logs" ON review_logs;
 CREATE POLICY "Admins can view review logs"
   ON review_logs FOR SELECT
   TO authenticated
@@ -337,6 +354,8 @@ CREATE POLICY "Admins can view review logs"
   );
 
 -- System can insert review logs via triggers
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "System can insert review logs" ON review_logs;
 CREATE POLICY "System can insert review logs"
   ON review_logs FOR INSERT
   TO authenticated
@@ -458,6 +477,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_creator_applications_updated_at ON creator_applications;
 CREATE TRIGGER update_creator_applications_updated_at
   BEFORE UPDATE ON creator_applications
   FOR EACH ROW

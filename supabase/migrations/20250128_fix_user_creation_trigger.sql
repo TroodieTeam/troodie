@@ -20,6 +20,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create trigger to automatically create public.users record
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -41,6 +43,8 @@ CREATE POLICY "Users can update own profile" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
 -- Policy for users to insert their own profile (fallback)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert own profile" ON public;
 CREATE POLICY "Users can insert own profile" ON public.users
   FOR INSERT WITH CHECK (auth.uid() = id);
 

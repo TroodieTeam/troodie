@@ -265,6 +265,8 @@ CREATE TRIGGER trigger_new_cover_candidate
   EXECUTE FUNCTION trigger_check_new_cover_candidate();
 
 -- Add RLS policy for quality metrics update
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "System can update image quality metrics" ON restaurant_images;
 CREATE POLICY "System can update image quality metrics" ON restaurant_images
   FOR UPDATE
   USING (true)

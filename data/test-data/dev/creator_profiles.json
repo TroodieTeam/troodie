@@ -1,0 +1,22 @@
+{
+  "description": "Creator profiles for testing creator marketplace features",
+  "last_updated": "2025-01-22",
+  "profiles": [
+    {
+      "user_id": "90ace8c5-b26d-434a-bbe9-a9babbec5bad",
+      "user_email": "creator1@troodieapp.com",
+      "profile_id": null,
+      "purpose": "Test creator profile features, discovery, editing",
+      "expected_state": {
+        "open_to_collabs": true,
+        "has_portfolio": true,
+        "portfolio_items": "3-5 images/videos",
+        "has_bio": true,
+        "has_location": true,
+        "has_specialties": true
+      },
+      "query_to_find_id": "SELECT cp.id, cp.user_id, u.email, cp.open_to_collabs FROM creator_profiles cp JOIN users u ON cp.user_id = u.id WHERE u.email = 'creator1@troodieapp.com';"
+    }
+  ]
+}
+

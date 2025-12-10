@@ -30,17 +30,23 @@ CREATE POLICY "public_read_business_profiles" ON business_profiles
 
 -- Policy 2: Users can INSERT their own business profile
 -- WITH CHECK ensures the user_id in the new row matches the authenticated user
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "users_insert_own_business_profile" ON business_profiles;
 CREATE POLICY "users_insert_own_business_profile" ON business_profiles
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Policy 3: Users can UPDATE their own business profile
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "users_update_own_business_profile" ON business_profiles;
 CREATE POLICY "users_update_own_business_profile" ON business_profiles
   FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Policy 4: Users can DELETE their own business profile
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "users_delete_own_business_profile" ON business_profiles;
 CREATE POLICY "users_delete_own_business_profile" ON business_profiles
   FOR DELETE
   USING (auth.uid() = user_id);

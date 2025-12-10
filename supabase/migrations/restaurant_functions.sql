@@ -182,7 +182,7 @@ LEFT JOIN restaurant_saves rs ON r.id = rs.restaurant_id
 GROUP BY r.id;
 
 -- Create index on materialized view
-CREATE UNIQUE INDEX idx_restaurant_popularity_id ON restaurant_popularity(id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_popularity_id ON restaurant_popularity(id);
 
 -- Function to refresh the materialized view (to be called periodically)
 CREATE OR REPLACE FUNCTION refresh_restaurant_popularity()
