@@ -137,41 +137,59 @@ CREATE POLICY "Creators can view their applications" ON campaign_applications
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Business owners can view applications to their campaigns" ON campaign_applications;
 CREATE POLICY "Business owners can view applications to their campaigns" ON campaign_applications
   FOR SELECT USING (campaign_id IN (
     SELECT id FROM campaigns WHERE owner_id = auth.uid() OR creator_id = auth.uid()
   ));
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can create applications" ON campaign_applications;
 CREATE POLICY "Creators can create applications" ON campaign_applications
   FOR INSERT WITH CHECK (creator_id IN (
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Business owners can update applications to their campaigns" ON campaign_applications;
 CREATE POLICY "Business owners can update applications to their campaigns" ON campaign_applications
   FOR UPDATE USING (campaign_id IN (
     SELECT id FROM campaigns WHERE owner_id = auth.uid() OR creator_id = auth.uid()
   ));
 
 -- Portfolio items policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view portfolio items" ON portfolio_items;
 CREATE POLICY "Anyone can view portfolio items" ON portfolio_items
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can manage their portfolio" ON portfolio_items;
 CREATE POLICY "Creators can manage their portfolio" ON portfolio_items
   FOR ALL USING (creator_id IN (
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
 
 -- Business profiles policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view business profiles" ON business_profiles;
 CREATE POLICY "Users can view business profiles" ON business_profiles
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can manage their business profile" ON business_profiles;
 CREATE POLICY "Users can manage their business profile" ON business_profiles
   FOR ALL USING (user_id = auth.uid());
 
 -- Creator profiles policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view creator profiles" ON creator_profiles;
 CREATE POLICY "Anyone can view creator profiles" ON creator_profiles
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can manage their creator profile" ON creator_profiles;
 CREATE POLICY "Users can manage their creator profile" ON creator_profiles
   FOR ALL USING (user_id = auth.uid());
 

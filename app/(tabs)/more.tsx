@@ -6,10 +6,11 @@
 import { DS } from '@/components/design-system/tokens';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAccountType } from '@/hooks/useAccountType';
-import { pushNotificationService } from '@/services/pushNotificationService';
-import { profileService } from '@/services/profileService';
 import { personas } from '@/data/personas';
+import { useAccountType } from '@/hooks/useAccountType';
+import { useCreatorProfileId } from '@/hooks/useCreatorProfileId';
+import { profileService } from '@/services/profileService';
+import { pushNotificationService } from '@/services/pushNotificationService';
 import { PersonaType } from '@/types/onboarding';
 import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import Constants from 'expo-constants';
@@ -29,9 +30,10 @@ import {
   Settings,
   Star,
   Store,
-  Target
+  Target,
+  TrendingUp
 } from 'lucide-react-native';
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -79,6 +81,7 @@ export default function MoreScreen() {
     isBusiness,
     businessProfile
   } = useAccountType();
+  const { profileId: creatorProfileId } = useCreatorProfileId();
 
   // Check if user is admin - using specific admin user IDs
   const ADMIN_USER_IDS = [
@@ -87,6 +90,18 @@ export default function MoreScreen() {
     'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
   ];
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
+  
+  // Debug logging for admin access
+  React.useEffect(() => {
+    if (user?.id) {
+      console.log('[MoreScreen] Admin check:', {
+        user_id: user.id,
+        isAdmin,
+        admin_user_ids: ADMIN_USER_IDS,
+        matches: ADMIN_USER_IDS.includes(user.id),
+      });
+    }
+  }, [user?.id, isAdmin]);
 
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
   const [checkingNotifications, setCheckingNotifications] = React.useState(true);
@@ -263,11 +278,37 @@ export default function MoreScreen() {
 
   // Admin Tools Section
   const adminItems: MenuItem[] = isAdmin ? [
-
+    {
+      id: 'admin-reviews',
+      title: 'Review Queue',
+      subtitle: 'Review pending restaurant claims and creator applications',
+      icon: BarChart3,
+      iconColor: '#FF6B6B',
+      action: () => {
+        console.log('[MoreScreen] Navigating to admin reviews');
+        router.push('/admin/reviews');
+      },
+    },
   ] : [];
 
   // Creator Tools Section
   const creatorItems: MenuItem[] = isCreator ? [
+    {
+      id: 'creator-profile',
+      title: 'Creator Profile',
+      subtitle: creatorProfileId ? 'View and edit your profile' : 'Complete your creator profile',
+      icon: Settings,
+      iconColor: '#6366F1',
+      action: () => {
+        if (creatorProfileId) {
+          // Navigate to view profile, user can edit from there
+          router.push(`/creator/${creatorProfileId}`);
+        } else {
+          // No profile yet, go to edit/create
+          router.push('/creator/profile/edit');
+        }
+      },
+    },
     {
       id: 'explore-campaigns',
       title: 'Explore Campaigns',
@@ -309,13 +350,29 @@ export default function MoreScreen() {
       // badgeCount: newApplications,
     },
     {
-      id: 'business-analytics',
-      title: 'Analytics',
-      subtitle: 'Restaurant performance insights',
+      id: 'discover-creators',
+      title: 'Discover Creators',
+      subtitle: 'Browse and find creators for campaigns',
+      icon: Compass,
+      iconColor: '#6366F1',
+      action: () => router.push('/business/creators/browse'),
+    },
+    {
+      id: 'campaign-analytics',
+      title: 'Campaign Analytics',
+      subtitle: 'Track campaign performance & ROI',
       icon: BarChart3,
       iconColor: '#059669',
       action: () => router.push('/business/analytics'),
     },
+    ...(businessProfile?.restaurant_id ? [{
+      id: 'restaurant-analytics',
+      title: 'Restaurant Analytics',
+      subtitle: 'Saves, mentions & engagement metrics',
+      icon: TrendingUp,
+      iconColor: '#F59E0B',
+      action: () => router.push(`/restaurant/${businessProfile.restaurant_id}/analytics`),
+    }] : []),
     {
       id: 'restaurant-settings',
       title: 'Restaurant Settings',
@@ -410,6 +467,13 @@ export default function MoreScreen() {
 
   // Dynamic section ordering based on account type
   const sections: MenuSection[] = useMemo(() => {
+    // Debug logging for admin section
+    console.log('[MoreScreen] Building sections:', {
+      isAdmin,
+      adminItemsLength: adminItems.length,
+      adminItems,
+    });
+    
     const baseSections: MenuSection[] = [
       // Admin Tools (highest priority for admins)
       ...(adminItems.length > 0 ? [{
@@ -666,7 +730,7 @@ const styles = StyleSheet.create({
   personaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: DS.colors.backgroundGray || '#F5F5F5',
+    backgroundColor: '#F5F5F5',
     paddingHorizontal: DS.spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,

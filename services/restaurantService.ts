@@ -1,8 +1,8 @@
+import { DEFAULT_IMAGES, getRestaurantPlaceholder } from '@/constants/images'
 import { Database, supabase } from '@/lib/supabase'
 import { RestaurantInfo } from '@/types/core'
 import { NetworkError, NotFoundError, ServerError, TimeoutError, isNetworkError } from '@/types/errors'
-import { DEFAULT_IMAGES, getRestaurantPlaceholder } from '@/constants/images'
-import { normalizeCity, isValidCity, deduplicateCities, getCityFilter } from '@/utils/cityNormalization'
+import { deduplicateCities, getCityFilter, isValidCity, normalizeCity } from '@/utils/cityNormalization'
 
 type Restaurant = Database['public']['Tables']['restaurants']['Row']
 type RestaurantInsert = Database['public']['Tables']['restaurants']['Insert']
@@ -422,6 +422,10 @@ export const restaurantService = {
 
   async getTopRatedRestaurants(city?: string) {
     try {
+      // Check if current user is a test user
+      const { data: { user } } = await supabase.auth.getUser();
+      const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      
       // Simple query: Get 10 highest rated restaurants
       let query = supabase
         .from('restaurants')
@@ -429,6 +433,11 @@ export const restaurantService = {
         .not('google_rating', 'is', null)
         .order('google_rating', { ascending: false })
         .limit(10)
+      
+      // Exclude test restaurants if current user is not a test user
+      if (!isCurrentUserTest) {
+        query = query.eq('is_test_restaurant', false);
+      }
       
       // Filter by normalized city match if provided
       if (city && city !== 'All') {
@@ -445,12 +454,17 @@ export const restaurantService = {
       
       // If no restaurants found for the city, try without city filter as fallback
       if ((!data || data.length === 0) && city && city !== 'Charlotte') {
-        const fallbackQuery = supabase
+        let fallbackQuery = supabase
           .from('restaurants')
           .select('*')
           .not('google_rating', 'is', null)
           .order('google_rating', { ascending: false })
           .limit(10)
+        
+        // Exclude test restaurants in fallback too
+        if (!isCurrentUserTest) {
+          fallbackQuery = fallbackQuery.eq('is_test_restaurant', false);
+        }
         
         const { data: fallbackData } = await fallbackQuery
         return fallbackData || []
@@ -541,11 +555,22 @@ export const restaurantService = {
   async getFeaturedRestaurants(limit: number = 10): Promise<Restaurant[]> {
     try {
       return await withRetry(async () => {
-        const { data, error } = await supabase
+        // Check if current user is a test user
+        const { data: { user } } = await supabase.auth.getUser();
+        const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+        
+        let query = supabase
           .from('restaurants')
           .select('*')
           .order('google_rating', { ascending: false, nullsFirst: false })
-          .limit(limit)
+          .limit(limit);
+        
+        // Exclude test restaurants if current user is not a test user
+        if (!isCurrentUserTest) {
+          query = query.eq('is_test_restaurant', false);
+        }
+        
+        const { data, error } = await query
 
         if (error) {
           throw transformError(error)
@@ -582,9 +607,18 @@ export const restaurantService = {
   async getRestaurantsForExplore(searchQuery?: string, limit: number = 200): Promise<Restaurant[]> {
     try {
       return await withRetry(async () => {
+        // Check if current user is a test user
+        const { data: { user } } = await supabase.auth.getUser();
+        const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+        
         let request = supabase
           .from('restaurants')
           .select('*')
+
+        // Exclude test restaurants if current user is not a test user
+        if (!isCurrentUserTest) {
+          request = request.eq('is_test_restaurant', false);
+        }
 
         // If there's a search query, use server-side search
         if (searchQuery && searchQuery.trim()) {

@@ -1,8 +1,5 @@
-import { DS } from '@/components/design-system/tokens';
-import { router, Stack } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { Stack } from 'expo-router';
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
 
 export default function BusinessLayout() {
   return (
@@ -47,6 +44,13 @@ export default function BusinessLayout() {
         }}
       />
       <Stack.Screen
+        name="settings"
+        options={{
+          title: 'Restaurant Settings',
+          headerBackVisible: true,
+        }}
+      />
+      <Stack.Screen
         name="restaurant-settings"
         options={{
           title: 'Restaurant Settings',
@@ -58,6 +62,13 @@ export default function BusinessLayout() {
         options={{
           title: 'Create Campaign',
           presentation: 'modal',
+          headerBackVisible: true,
+        }}
+      />
+      <Stack.Screen
+        name="creators/browse"
+        options={{
+          title: 'Discover Creators',
           headerBackVisible: true,
         }}
       />

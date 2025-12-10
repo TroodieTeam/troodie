@@ -17,10 +17,14 @@ CREATE POLICY "users_can_view_own_profile" ON public.users
   FOR SELECT TO authenticated
   USING (id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "users_can_update_own_profile" ON public;
 CREATE POLICY "users_can_update_own_profile" ON public.users
   FOR UPDATE TO authenticated
   USING (id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "users_can_insert_own_profile" ON public;
 CREATE POLICY "users_can_insert_own_profile" ON public.users
   FOR INSERT TO authenticated
   WITH CHECK (id = auth.uid());

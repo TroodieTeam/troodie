@@ -15,6 +15,8 @@ CREATE POLICY "Anyone can view public restaurant images" ON restaurant_images
   );
 
 -- Authenticated users can insert images
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Authenticated users can insert restaurant images" ON restaurant_images;
 CREATE POLICY "Authenticated users can insert restaurant images" ON restaurant_images
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND (
@@ -24,6 +26,8 @@ CREATE POLICY "Authenticated users can insert restaurant images" ON restaurant_i
   );
 
 -- Users can update their own images or images without an owner
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own restaurant images" ON restaurant_images;
 CREATE POLICY "Users can update their own restaurant images" ON restaurant_images
   FOR UPDATE USING (
     auth.uid() = user_id 
@@ -31,6 +35,8 @@ CREATE POLICY "Users can update their own restaurant images" ON restaurant_image
   );
 
 -- Users can delete their own images
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own restaurant images" ON restaurant_images;
 CREATE POLICY "Users can delete their own restaurant images" ON restaurant_images
   FOR DELETE USING (auth.uid() = user_id);
 

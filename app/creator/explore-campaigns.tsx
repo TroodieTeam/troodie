@@ -38,7 +38,8 @@ interface Campaign {
   restaurant_id: string;
   title: string;
   description: string;
-  requirements: string[];
+  requirements: string[] | null;
+  deliverable_requirements?: any; // JSONB field containing expected deliverables
   budget_cents: number;
   start_date: string;
   end_date: string;
@@ -46,6 +47,7 @@ interface Campaign {
   max_creators: number;
   selected_creators_count: number;
   campaign_type: string;
+  created_at?: string;
   restaurant?: {
     id: string;
     name: string;
@@ -58,11 +60,22 @@ interface Campaign {
   applications?: {
     id: string;
     status: string;
+    creator_id?: string;
   }[];
 }
 
 type FilterType = 'all' | 'local' | 'high-paying' | 'urgent' | 'new';
 type SortType = 'relevance' | 'budget' | 'deadline' | 'newest';
+
+const DELIVERABLE_TYPES = [
+  'Instagram Post',
+  'Instagram Story',
+  'Instagram Reel',
+  'TikTok Video',
+  'YouTube Video',
+  'Blog Article',
+  'Google Review',
+];
 
 export default function ExploreCampaigns() {
   const router = useRouter();
@@ -78,6 +91,12 @@ export default function ExploreCampaigns() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [proposedRate, setProposedRate] = useState('');
+  const [coverLetter, setCoverLetter] = useState('');
+  // Engineering Request: Proposed Deliverables now uses button-based selection
+  // matching app/(tabs)/business/campaigns/create.tsx pattern for consistency
+  const [selectedDeliverables, setSelectedDeliverables] = useState<string[]>([]);
 
   // Filter pills configuration
   const filterOptions: { type: FilterType; label: string; icon: any }[] = [
@@ -99,6 +118,17 @@ export default function ExploreCampaigns() {
         setCampaigns(mockCampaigns);
         setFilteredCampaigns(mockCampaigns);
       } else {
+        // First get creator profile ID to filter applications
+        let creatorProfileId: string | null = null;
+        if (user?.id) {
+          const { data: creatorProfile } = await supabase
+            .from('creator_profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+          creatorProfileId = creatorProfile?.id || null;
+        }
+
         const { data, error } = await supabase
           .from('campaigns')
           .select(`
@@ -114,7 +144,8 @@ export default function ExploreCampaigns() {
             ),
             applications:campaign_applications(
               id,
-              status
+              status,
+              creator_id
             )
           `)
           .eq('status', 'active')
@@ -123,8 +154,24 @@ export default function ExploreCampaigns() {
 
         if (error) throw error;
 
-        setCampaigns(data || []);
-        setFilteredCampaigns(data || []);
+        // Normalize requirements field and filter applications for current user
+        const normalizedData = (data || []).map((campaign: any) => {
+          // Filter applications to only show current user's applications
+          const userApplications = campaign.applications?.filter(
+            (app: any) => app.creator_id === creatorProfileId
+          ) || [];
+
+          return {
+            ...campaign,
+            requirements: Array.isArray(campaign.requirements) 
+              ? campaign.requirements 
+              : (campaign.requirements ? [campaign.requirements] : null),
+            applications: userApplications, // Only show current user's applications
+          };
+        });
+
+        setCampaigns(normalizedData);
+        setFilteredCampaigns(normalizedData);
       }
     } catch (error) {
       console.error('Error fetching campaigns:', error);
@@ -173,7 +220,7 @@ export default function ExploreCampaigns() {
       case 'new':
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        filtered = filtered.filter((c) => new Date(c.created_at) >= sevenDaysAgo);
+        filtered = filtered.filter((c) => c.created_at && new Date(c.created_at) >= sevenDaysAgo);
         break;
     }
 
@@ -186,7 +233,11 @@ export default function ExploreCampaigns() {
         filtered.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime());
         break;
       case 'newest':
-        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        filtered.sort((a, b) => {
+          const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bDate - aDate;
+        });
         break;
       case 'relevance':
       default:
@@ -197,10 +248,44 @@ export default function ExploreCampaigns() {
     setFilteredCampaigns(filtered);
   };
 
-  const handleApply = async (campaign: Campaign) => {
-    if (!user) {
-      Alert.alert('Sign In Required', 'Please sign in to apply for campaigns');
+  const handleApplyClick = (campaign: Campaign) => {
+    // Show application form modal
+    setSelectedCampaign(campaign);
+    setShowApplicationForm(true);
+    // Reset form fields
+    setProposedRate('');
+    setCoverLetter('');
+    setSelectedDeliverables([]);
+  };
+
+  const toggleDeliverable = (type: string) => {
+    setSelectedDeliverables(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!selectedCampaign || !user) {
       return;
+    }
+
+    // Validate form fields (proposed rate is now optional)
+    if (!coverLetter || selectedDeliverables.length === 0) {
+      Alert.alert('Missing Information', 'Please fill in all required fields: why you are interested, and select at least one deliverable.');
+      return;
+    }
+
+    // Validate rate is a number if provided (optional field)
+    let rateCents: number | null = null;
+    if (proposedRate.trim()) {
+      const rateValue = parseFloat(proposedRate);
+      if (isNaN(rateValue) || rateValue <= 0) {
+        Alert.alert('Invalid Rate', 'Please enter a valid rate amount or leave it blank.');
+        return;
+      }
+      rateCents = Math.round(rateValue * 100);
     }
 
     setApplying(true);
@@ -221,31 +306,56 @@ export default function ExploreCampaigns() {
       const { data: existingApp } = await supabase
         .from('campaign_applications')
         .select('id')
-        .eq('campaign_id', campaign.id)
+        .eq('campaign_id', selectedCampaign.id)
         .eq('creator_id', creatorProfile.id)
-        .single();
+        .maybeSingle();
 
       if (existingApp) {
         Alert.alert('Already Applied', 'You have already applied to this campaign');
+        setShowApplicationForm(false);
+        fetchCampaigns(); // Refresh to update UI
         return;
       }
 
-      // Create application
+      // Format deliverables as a readable string
+      const deliverablesText = selectedDeliverables.join(', ');
+
+      // Create application with all required fields
       const { error } = await supabase.from('campaign_applications').insert({
-        campaign_id: campaign.id,
+        campaign_id: selectedCampaign.id,
         creator_id: creatorProfile.id,
         status: 'pending',
+        proposed_rate_cents: rateCents,
+        cover_letter: coverLetter,
+        proposed_deliverables: deliverablesText,
         applied_at: new Date().toISOString(),
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating application:', error);
+        throw error;
+      }
 
-      Alert.alert('Success', 'Application submitted successfully!');
-      setShowCampaignModal(false);
-      fetchCampaigns(); // Refresh to update application status
+      Alert.alert(
+        'Success!', 
+        'Your application has been submitted. You can view it in "My Campaigns".',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowApplicationForm(false);
+              setShowCampaignModal(false);
+              setProposedRate('');
+              setCoverLetter('');
+              setSelectedDeliverables([]);
+              fetchCampaigns(); // Refresh to update application status
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Error applying to campaign:', error);
-      Alert.alert('Error', 'Failed to submit application');
+      Alert.alert('Error', 'Failed to submit application. Please try again.');
     } finally {
       setApplying(false);
     }
@@ -256,7 +366,22 @@ export default function ExploreCampaigns() {
       (new Date(campaign.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
     );
     const spotsLeft = campaign.max_creators - campaign.selected_creators_count;
-    const hasApplied = campaign.applications?.some((app) => app.status === 'pending');
+    // Check if current user has applied (need to check creator_id matches)
+    // For now, check if there are any pending applications - will be filtered by creator_id in query
+    const hasApplied = campaign.applications && campaign.applications.length > 0;
+    
+    // CM-13: Calculate deliverable count
+    let deliverableCount = 0;
+    if (campaign.deliverable_requirements) {
+      try {
+        const requirements = typeof campaign.deliverable_requirements === 'string'
+          ? JSON.parse(campaign.deliverable_requirements)
+          : campaign.deliverable_requirements;
+        deliverableCount = requirements?.deliverables?.length || 0;
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
 
     return (
       <TouchableOpacity
@@ -314,6 +439,15 @@ export default function ExploreCampaigns() {
               <Users size={14} color="#8B5CF6" />
               <Text style={styles.statText}>{spotsLeft} spots</Text>
             </View>
+            {/* CM-13: Deliverable count indicator */}
+            {deliverableCount > 0 && (
+              <View style={styles.statItem}>
+                <Target size={14} color="#EC4899" />
+                <Text style={styles.statText}>
+                  {deliverableCount} deliverable{deliverableCount !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.campaignTags}>
@@ -499,7 +633,49 @@ export default function ExploreCampaigns() {
                     </View>
                   </View>
 
-                  {selectedCampaign.requirements.length > 0 && (
+                  {/* Expected Deliverables Section */}
+                  {selectedCampaign.deliverable_requirements && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Expected Deliverables</Text>
+                      {(() => {
+                        try {
+                          const requirements = typeof selectedCampaign.deliverable_requirements === 'string'
+                            ? JSON.parse(selectedCampaign.deliverable_requirements)
+                            : selectedCampaign.deliverable_requirements;
+                          const deliverablesList = requirements?.deliverables || [];
+                          
+                          if (deliverablesList.length > 0) {
+                            return (
+                              <View style={{ gap: 12 }}>
+                                {deliverablesList.map((deliverable: any, index: number) => (
+                                  <View key={index} style={styles.deliverableCard}>
+                                    <View style={styles.deliverableCardHeader}>
+                                      <Target size={18} color="#FFAD27" />
+                                      <Text style={styles.deliverableType}>
+                                        {deliverable.quantity || 1}× {deliverable.type || 'Social Media Post'}
+                                      </Text>
+                                    </View>
+                                    {deliverable.description && (
+                                      <Text style={styles.deliverableDescription}>
+                                        {deliverable.description}
+                                      </Text>
+                                    )}
+                                  </View>
+                                ))}
+                              </View>
+                            );
+                          }
+                        } catch (e) {
+                          console.error('Error parsing deliverable_requirements:', e);
+                        }
+                        return null;
+                      })()}
+                    </View>
+                  )}
+
+                  {selectedCampaign.requirements && 
+                   Array.isArray(selectedCampaign.requirements) && 
+                   selectedCampaign.requirements.length > 0 && (
                     <View style={styles.modalSection}>
                       <Text style={styles.modalSectionTitle}>Requirements</Text>
                       {selectedCampaign.requirements.map((req, index) => (
@@ -513,20 +689,137 @@ export default function ExploreCampaigns() {
                 </ScrollView>
 
                 <View style={styles.modalFooter}>
-                  <TouchableOpacity
-                    style={styles.applyButton}
-                    onPress={() => handleApply(selectedCampaign)}
-                    disabled={applying}
-                  >
-                    {applying ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
+                  {selectedCampaign.applications && selectedCampaign.applications.length > 0 ? (
+                    <View style={[styles.applyButton, styles.applyButtonDisabled]}>
+                      <Text style={[styles.applyButtonText, { opacity: 0.6 }]}>Already Applied</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.applyButton}
+                      onPress={() => {
+                        setShowCampaignModal(false);
+                        handleApplyClick(selectedCampaign);
+                      }}
+                    >
                       <Text style={styles.applyButtonText}>Apply Now</Text>
-                    )}
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Application Form Modal */}
+      <Modal
+        visible={showApplicationForm}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowApplicationForm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Apply to Campaign</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowApplicationForm(false);
+                  setProposedRate('');
+                  setCoverLetter('');
+                  setSelectedDeliverables([]);
+                }}
+                style={styles.modalClose}
+              >
+                <X size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {selectedCampaign && (
+                <>
+                  <Text style={styles.modalCampaignTitle}>{selectedCampaign.title}</Text>
+                  <Text style={styles.modalDescription}>{selectedCampaign.restaurant?.name}</Text>
+                  
+                  <View style={styles.formSection}>
+                    <Text style={styles.formLabel}>Proposed Rate ($)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="e.g., 100 (optional)"
+                      value={proposedRate}
+                      onChangeText={setProposedRate}
+                      keyboardType="decimal-pad"
+                      placeholderTextColor="#999"
+                    />
+                    <Text style={styles.formHint}>Enter your proposed rate in dollars (optional)</Text>
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.formLabel}>Why you are interested *</Text>
+                    <TextInput
+                      style={[styles.formInput, styles.formTextArea]}
+                      placeholder="Tell the restaurant why you're a great fit for this campaign..."
+                      value={coverLetter}
+                      onChangeText={setCoverLetter}
+                      multiline
+                      numberOfLines={6}
+                      textAlignVertical="top"
+                      placeholderTextColor="#999"
+                    />
+                    <Text style={styles.formHint}>Explain your experience and why you're interested</Text>
+                  </View>
+
+                  <View style={styles.formSection}>
+                    <Text style={styles.formLabel}>Proposed Deliverables *</Text>
+                    {/* Engineering Request: This section now uses button-based selection similar to 
+                        app/(tabs)/business/campaigns/create.tsx for consistency. 
+                        Future improvement: Extract to shared component for full standardization. */}
+                    <View style={styles.deliverablesContainer}>
+                      <View style={styles.deliverablesButtonRow}>
+                        {DELIVERABLE_TYPES.map((type) => {
+                          const isSelected = selectedDeliverables.includes(type);
+                          return (
+                            <TouchableOpacity
+                              key={type}
+                              onPress={() => toggleDeliverable(type)}
+                              style={[
+                                styles.deliverableButton,
+                                isSelected && styles.deliverableButtonSelected
+                              ]}
+                            >
+                              <Text style={[
+                                styles.deliverableButtonText,
+                                isSelected && styles.deliverableButtonTextSelected
+                              ]}>
+                                {type}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                    <Text style={styles.formHint}>Select the types of content you'll create for this campaign</Text>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[
+                  styles.applyButton,
+                  (!coverLetter || selectedDeliverables.length === 0 || applying) && styles.applyButtonDisabled
+                ]}
+                onPress={handleSubmitApplication}
+                disabled={!coverLetter || selectedDeliverables.length === 0 || applying}
+              >
+                {applying ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.applyButtonText}>Submit Application</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -856,6 +1149,36 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
   },
+  deliverableCard: {
+    backgroundColor: '#FFFAF2',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FFE8CC',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  deliverableCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  deliverableType: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#262626',
+    flex: 1,
+  },
+  deliverableDescription: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+    marginTop: 4,
+  },
   modalFooter: {
     padding: 20,
     borderTopWidth: 1,
@@ -867,9 +1190,68 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
+  applyButtonDisabled: {
+    backgroundColor: '#262626',
+  },
   applyButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
+  },
+  formSection: {
+    marginBottom: 24,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: '#000',
+    backgroundColor: '#FFF',
+  },
+  formTextArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  formHint: {
+    fontSize: 12,
+    color: '#8C8C8C',
+    marginTop: 4,
+  },
+  deliverablesContainer: {
+    marginBottom: 8,
+  },
+  deliverablesButtonRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  deliverableButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E8E8E8',
+    backgroundColor: 'transparent',
+  },
+  deliverableButtonSelected: {
+    borderColor: '#FFAD27',
+    backgroundColor: '#FFAD2715',
+  },
+  deliverableButtonText: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#666',
+  },
+  deliverableButtonTextSelected: {
+    fontWeight: '600',
+    color: '#FFAD27',
   },
 });

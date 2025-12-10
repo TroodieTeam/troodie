@@ -146,7 +146,21 @@ export default function ExploreScreen() {
 
   // Posts data management
   const posts = useTabData(
-    () => postService.getExplorePosts({ limit: 50 }),
+    async () => {
+      console.log('[ExploreScreen] Loading posts...');
+      const result = await postService.getExplorePosts({ limit: 50 });
+      console.log('[ExploreScreen] Posts loaded:', result.length);
+      
+      // Log user info for debugging
+      console.log('[ExploreScreen] Posts with user info:', result.map(p => ({
+        postId: p.id,
+        userId: p.user?.id,
+        username: p.user?.username,
+        name: p.user?.name
+      })));
+      
+      return result;
+    },
     (items, query) => {
       const q = query.toLowerCase();
       return items.filter(p =>
@@ -382,9 +396,11 @@ export default function ExploreScreen() {
     }
 
     if (activeTab === 'posts') {
+      const post = item as PostWithUser;
+      
       return (
         <PostCard
-          post={item as PostWithUser}
+          post={post}
           onPress={() => router.push({
             pathname: '/posts/[id]',
             params: { id: item.id }

@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS user_referral_conversions (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_user_referrals_user_id ON user_referrals(user_id);
-CREATE INDEX idx_user_referrals_code ON user_referrals(referral_code);
-CREATE INDEX idx_user_invite_shares_user_id ON user_invite_shares(user_id);
-CREATE INDEX idx_user_referral_conversions_referrer ON user_referral_conversions(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_user_referrals_user_id ON user_referrals(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_referrals_code ON user_referrals(referral_code);
+CREATE INDEX IF NOT EXISTS idx_user_invite_shares_user_id ON user_invite_shares(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_referral_conversions_referrer ON user_referral_conversions(referrer_id);
 
 -- Enable Row Level Security
 ALTER TABLE user_referrals ENABLE ROW LEVEL SECURITY;
@@ -35,22 +35,34 @@ ALTER TABLE user_invite_shares ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_referral_conversions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for user_referrals
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own referrals" ON user_referrals;
 CREATE POLICY "Users can view their own referrals" ON user_referrals
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create their own referrals" ON user_referrals;
 CREATE POLICY "Users can create their own referrals" ON user_referrals
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- RLS Policies for user_invite_shares
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own invite shares" ON user_invite_shares;
 CREATE POLICY "Users can view their own invite shares" ON user_invite_shares
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create their own invite shares" ON user_invite_shares;
 CREATE POLICY "Users can create their own invite shares" ON user_invite_shares
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- RLS Policies for user_referral_conversions
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their referrals" ON user_referral_conversions;
 CREATE POLICY "Users can view their referrals" ON user_referral_conversions
   FOR SELECT USING (auth.uid() = referrer_id OR auth.uid() = referred_user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "System can create referral conversions" ON user_referral_conversions;
 CREATE POLICY "System can create referral conversions" ON user_referral_conversions
   FOR INSERT WITH CHECK (true); -- Will be restricted by service role

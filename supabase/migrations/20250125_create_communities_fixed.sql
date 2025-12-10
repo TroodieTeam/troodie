@@ -112,18 +112,18 @@ CREATE TABLE community_invites (
 );
 
 -- 5. Create indexes for performance
-CREATE INDEX idx_communities_created_by ON communities(created_by);
-CREATE INDEX idx_communities_type ON communities(type);
-CREATE INDEX idx_communities_location ON communities(location);
-CREATE INDEX idx_communities_is_active ON communities(is_active);
+CREATE INDEX IF NOT EXISTS idx_communities_created_by ON communities(created_by);
+CREATE INDEX IF NOT EXISTS idx_communities_type ON communities(type);
+CREATE INDEX IF NOT EXISTS idx_communities_location ON communities(location);
+CREATE INDEX IF NOT EXISTS idx_communities_is_active ON communities(is_active);
 
-CREATE INDEX idx_community_members_user_id ON community_members(user_id);
-CREATE INDEX idx_community_members_community_id ON community_members(community_id);
-CREATE INDEX idx_community_members_role ON community_members(role);
+CREATE INDEX IF NOT EXISTS idx_community_members_user_id ON community_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_community_members_community_id ON community_members(community_id);
+CREATE INDEX IF NOT EXISTS idx_community_members_role ON community_members(role);
 
-CREATE INDEX idx_community_posts_community_id ON community_posts(community_id);
-CREATE INDEX idx_community_posts_user_id ON community_posts(user_id);
-CREATE INDEX idx_community_posts_created_at ON community_posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_community_posts_community_id ON community_posts(community_id);
+CREATE INDEX IF NOT EXISTS idx_community_posts_user_id ON community_posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_community_posts_created_at ON community_posts(created_at DESC);
 
 -- 6. Create views for easier querying
 CREATE VIEW community_details_view AS
@@ -243,14 +243,20 @@ ALTER TABLE community_invites ENABLE ROW LEVEL SECURITY;
 -- 9. RLS Policies
 
 -- Communities policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Communities are viewable by everyone" ON communities;
 CREATE POLICY "Communities are viewable by everyone" 
   ON communities FOR SELECT 
   USING (is_active = TRUE);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create communities" ON communities;
 CREATE POLICY "Users can create communities" 
   ON communities FOR INSERT 
   WITH CHECK (auth.uid() = created_by);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community owners can update their communities" ON communities;
 CREATE POLICY "Community owners can update their communities" 
   ON communities FOR UPDATE 
   USING (
@@ -263,6 +269,8 @@ CREATE POLICY "Community owners can update their communities"
   );
 
 -- Community members policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members are viewable by community members" ON community_members;
 CREATE POLICY "Community members are viewable by community members" 
   ON community_members FOR SELECT 
   USING (
@@ -282,6 +290,8 @@ CREATE POLICY "Community members are viewable by community members"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can join public communities" ON community_members;
 CREATE POLICY "Users can join public communities" 
   ON community_members FOR INSERT 
   WITH CHECK (
@@ -295,6 +305,8 @@ CREATE POLICY "Users can join public communities"
   );
 
 -- Community posts policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community posts are viewable by members" ON community_posts;
 CREATE POLICY "Community posts are viewable by members" 
   ON community_posts FOR SELECT 
   USING (
@@ -307,6 +319,8 @@ CREATE POLICY "Community posts are viewable by members"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can create posts" ON community_posts;
 CREATE POLICY "Community members can create posts" 
   ON community_posts FOR INSERT 
   WITH CHECK (
@@ -319,10 +333,14 @@ CREATE POLICY "Community members can create posts"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own posts" ON community_posts;
 CREATE POLICY "Users can update their own posts" 
   ON community_posts FOR UPDATE 
   USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own posts" ON community_posts;
 CREATE POLICY "Users can delete their own posts" 
   ON community_posts FOR DELETE 
   USING (user_id = auth.uid());

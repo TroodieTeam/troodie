@@ -44,10 +44,14 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. TRIGGERS: Re-attach the Single Source of Truth
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS on_member_change ON public;
 CREATE TRIGGER on_member_change
 AFTER INSERT OR DELETE ON public.community_members
 FOR EACH ROW EXECUTE FUNCTION public.update_community_member_count();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS on_post_community_change ON public;
 CREATE TRIGGER on_post_community_change
 AFTER INSERT OR DELETE ON public.post_communities
 FOR EACH ROW EXECUTE FUNCTION public.update_community_post_count();

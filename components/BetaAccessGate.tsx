@@ -11,8 +11,8 @@ import {
   Linking,
   Modal,
   Platform,
-  ScrollView,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -129,7 +129,7 @@ export function BetaAccessGate({
               ]}
               value={passcode}
               onChangeText={handlePasscodeChange}
-              placeholder="Enter code (e.g. TROODIE2025)"
+              placeholder="Enter code"
               placeholderTextColor={DS.colors.textGray + '80'}
               autoCapitalize="characters"
               autoCorrect={false}

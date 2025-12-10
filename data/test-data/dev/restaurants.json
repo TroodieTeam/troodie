@@ -1,0 +1,46 @@
+{
+  "description": "Test restaurants for development environment",
+  "last_updated": "2025-01-22",
+  "restaurants": [
+    {
+      "id": null,
+      "name": "Restaurant 1 (Unclaimed)",
+      "status": "unclaimed",
+      "purpose": "Test restaurant claiming flow",
+      "notes": "Use this restaurant to test the claim verification process. Should be unclaimed initially.",
+      "usage": [
+        "Sign in as business1@troodieapp.com",
+        "Navigate to More tab → 'Claim Your Restaurant'",
+        "Enter beta passcode: TROODIE2025",
+        "Search for and select this restaurant",
+        "Complete claim verification"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Restaurant 2 (Claimed)",
+      "status": "claimed",
+      "claimed_by": "business1@troodieapp.com",
+      "purpose": "Test restaurant owner features on already-claimed restaurant",
+      "requirements": [
+        "At least 10+ saves from various users",
+        "Several posts mentioning the restaurant",
+        "Creator posts from creator1@troodieapp.com",
+        "Posts with likes/comments for engagement metrics"
+      ],
+      "usage": [
+        "Sign in as business1@troodieapp.com",
+        "Navigate to restaurant profile",
+        "Test analytics dashboard (CM-6)",
+        "Test editable details (CM-8)",
+        "Test campaign creation (CM-7)",
+        "Test creator browsing (CM-9)"
+      ]
+    }
+  ],
+  "query_to_find_ids": {
+    "all_restaurants": "SELECT r.id, r.name, r.city, r.state, CASE WHEN bp.id IS NOT NULL THEN 'Claimed' ELSE 'Unclaimed' END as status, u.email as claimed_by FROM restaurants r LEFT JOIN business_profiles bp ON bp.restaurant_id = r.id LEFT JOIN users u ON bp.user_id = u.id ORDER BY r.name;",
+    "claimed_by_business1": "SELECT r.id, r.name, r.city, r.state, bp.verified FROM restaurants r JOIN business_profiles bp ON bp.restaurant_id = r.id JOIN users u ON bp.user_id = u.id WHERE u.email = 'business1@troodieapp.com';"
+  }
+}
+

@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS post_communities (
 );
 
 -- Add indexes for performance
-CREATE INDEX idx_post_communities_post_id ON post_communities(post_id);
-CREATE INDEX idx_post_communities_community_id ON post_communities(community_id);
-CREATE INDEX idx_post_communities_added_by ON post_communities(added_by);
-CREATE INDEX idx_post_communities_added_at ON post_communities(added_at DESC);
+CREATE INDEX IF NOT EXISTS idx_post_communities_post_id ON post_communities(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_communities_community_id ON post_communities(community_id);
+CREATE INDEX IF NOT EXISTS idx_post_communities_added_by ON post_communities(added_by);
+CREATE INDEX IF NOT EXISTS idx_post_communities_added_at ON post_communities(added_at DESC);
 
 -- Enable Row Level Security
 ALTER TABLE post_communities ENABLE ROW LEVEL SECURITY;
@@ -25,6 +25,8 @@ ALTER TABLE post_communities ENABLE ROW LEVEL SECURITY;
 -- RLS Policies
 
 -- Users can view cross-posted content in communities they're members of
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Members can view community posts" ON post_communities;
 CREATE POLICY "Members can view community posts"
   ON post_communities FOR SELECT
   USING (
@@ -43,6 +45,8 @@ CREATE POLICY "Members can view community posts"
   );
 
 -- Post authors can add their posts to communities they're members of
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Authors can cross-post to their communities" ON post_communities;
 CREATE POLICY "Authors can cross-post to their communities"
   ON post_communities FOR INSERT
   WITH CHECK (
@@ -66,6 +70,8 @@ CREATE POLICY "Authors can cross-post to their communities"
   );
 
 -- Post authors can remove their posts from communities
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Authors can remove cross-posts" ON post_communities;
 CREATE POLICY "Authors can remove cross-posts"
   ON post_communities FOR DELETE
   USING (
@@ -77,6 +83,8 @@ CREATE POLICY "Authors can remove cross-posts"
   );
 
 -- Community admins/moderators can remove posts from their communities
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community admins can manage posts" ON post_communities;
 CREATE POLICY "Community admins can manage posts"
   ON post_communities FOR DELETE
   USING (
@@ -277,6 +285,8 @@ BEGIN
 END;
 $$;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_notify_cross_post ON post_communities;
 CREATE TRIGGER trigger_notify_cross_post
   AFTER INSERT ON post_communities
   FOR EACH ROW
@@ -299,6 +309,8 @@ BEGIN
 END;
 $$;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_update_community_activity ON post_communities;
 CREATE TRIGGER trigger_update_community_activity
   AFTER INSERT ON post_communities
   FOR EACH ROW

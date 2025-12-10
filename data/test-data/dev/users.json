@@ -1,0 +1,31 @@
+{
+  "description": "Test user accounts for development environment",
+  "last_updated": "2025-01-22",
+  "users": [
+    {
+      "id": "30e818f9-a28d-4ab2-824f-725a1d5b8956",
+      "email": "consumer1@troodieapp.com",
+      "account_type": "consumer",
+      "is_creator": false,
+      "purpose": "Test consumer → creator upgrade flow, general app features",
+      "otp": "000000"
+    },
+    {
+      "id": "90ace8c5-b26d-434a-bbe9-a9babbec5bad",
+      "email": "creator1@troodieapp.com",
+      "account_type": "creator",
+      "is_creator": true,
+      "purpose": "Test creator features, campaigns, deliverables, portfolio uploads",
+      "otp": "000000"
+    },
+    {
+      "id": "5b9d6a94-de0d-4bbb-a666-b1797fdd7b4b",
+      "email": "business1@troodieapp.com",
+      "account_type": "business",
+      "is_creator": false,
+      "purpose": "Test campaign creation, deliverable review, restaurant management, analytics",
+      "otp": "000000"
+    }
+  ]
+}
+

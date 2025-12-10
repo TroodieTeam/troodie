@@ -57,17 +57,17 @@ CREATE TABLE post_saves (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_posts_user_id ON posts(user_id);
-CREATE INDEX idx_posts_restaurant_id ON posts(restaurant_id);
-CREATE INDEX idx_posts_created_at ON posts(created_at DESC);
-CREATE INDEX idx_posts_privacy ON posts(privacy);
-CREATE INDEX idx_posts_is_trending ON posts(is_trending);
-CREATE INDEX idx_post_likes_post_id ON post_likes(post_id);
-CREATE INDEX idx_post_likes_user_id ON post_likes(user_id);
-CREATE INDEX idx_post_comments_post_id ON post_comments(post_id);
-CREATE INDEX idx_post_comments_user_id ON post_comments(user_id);
-CREATE INDEX idx_post_saves_post_id ON post_saves(post_id);
-CREATE INDEX idx_post_saves_user_id ON post_saves(user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_restaurant_id ON posts(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_privacy ON posts(privacy);
+CREATE INDEX IF NOT EXISTS idx_posts_is_trending ON posts(is_trending);
+CREATE INDEX IF NOT EXISTS idx_post_likes_post_id ON post_likes(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_likes_user_id ON post_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_comments_post_id ON post_comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_comments_user_id ON post_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_saves_post_id ON post_saves(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_saves_user_id ON post_saves(user_id);
 
 -- Row Level Security (RLS) policies
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
@@ -76,12 +76,18 @@ ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_saves ENABLE ROW LEVEL SECURITY;
 
 -- Posts policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view public posts" ON posts;
 CREATE POLICY "Users can view public posts" ON posts
   FOR SELECT USING (privacy = 'public');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own posts" ON posts;
 CREATE POLICY "Users can view their own posts" ON posts
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view friends' posts" ON posts;
 CREATE POLICY "Users can view friends' posts" ON posts
   FOR SELECT USING (
     privacy = 'friends' AND 
@@ -92,45 +98,71 @@ CREATE POLICY "Users can view friends' posts" ON posts
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create their own posts" ON posts;
 CREATE POLICY "Users can create their own posts" ON posts
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own posts" ON posts;
 CREATE POLICY "Users can update their own posts" ON posts
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own posts" ON posts;
 CREATE POLICY "Users can delete their own posts" ON posts
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Post likes policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view post likes" ON post_likes;
 CREATE POLICY "Users can view post likes" ON post_likes
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can like posts" ON post_likes;
 CREATE POLICY "Users can like posts" ON post_likes
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can unlike their own likes" ON post_likes;
 CREATE POLICY "Users can unlike their own likes" ON post_likes
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Post comments policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view post comments" ON post_comments;
 CREATE POLICY "Users can view post comments" ON post_comments
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create comments" ON post_comments;
 CREATE POLICY "Users can create comments" ON post_comments
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own comments" ON post_comments;
 CREATE POLICY "Users can update their own comments" ON post_comments
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own comments" ON post_comments;
 CREATE POLICY "Users can delete their own comments" ON post_comments
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Post saves policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own saves" ON post_saves;
 CREATE POLICY "Users can view their own saves" ON post_saves
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can save posts" ON post_saves;
 CREATE POLICY "Users can save posts" ON post_saves
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can unsave their own saves" ON post_saves;
 CREATE POLICY "Users can unsave their own saves" ON post_saves
   FOR DELETE USING (auth.uid() = user_id);
 
@@ -178,14 +210,20 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Triggers for updating counts
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_post_likes_count_trigger ON post_likes;
 CREATE TRIGGER update_post_likes_count_trigger
   AFTER INSERT OR DELETE ON post_likes
   FOR EACH ROW EXECUTE FUNCTION update_post_likes_count();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_post_comments_count_trigger ON post_comments;
 CREATE TRIGGER update_post_comments_count_trigger
   AFTER INSERT OR DELETE ON post_comments
   FOR EACH ROW EXECUTE FUNCTION update_post_comments_count();
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_post_saves_count_trigger ON post_saves;
 CREATE TRIGGER update_post_saves_count_trigger
   AFTER INSERT OR DELETE ON post_saves
   FOR EACH ROW EXECUTE FUNCTION update_post_saves_count();

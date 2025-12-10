@@ -1,0 +1,9 @@
+{
+  "results": {},
+  "byType": {
+    "CREATE_TRIGGER": [],
+    "CREATE_INDEX": [],
+    "ALTER_TABLE_ADD_COLUMN": [],
+    "CREATE_POLICY": []
+  }
+}

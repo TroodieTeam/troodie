@@ -8,6 +8,7 @@
 
 import config from '@/lib/config';
 import * as FileSystem from 'expo-file-system/legacy';
+import { VideoOptimizationService } from './videoOptimizationService';
 
 export interface CloudinaryUploadProgress {
   bytesUploaded: number;
@@ -297,7 +298,6 @@ export class CloudinaryVideoService {
         return false;
       }
       
-      const { VideoOptimizationService } = await import('./videoOptimizationService');
       const metadata = await VideoOptimizationService.getVideoMetadata(videoUri);
       
       const sizeMB = metadata.fileSize / 1024 / 1024;

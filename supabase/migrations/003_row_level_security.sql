@@ -21,39 +21,61 @@ ALTER TABLE user_onboarding ENABLE ROW LEVEL SECURITY;
 ALTER TABLE favorite_spots ENABLE ROW LEVEL SECURITY;
 
 -- Users table policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view public profiles" ON users;
 CREATE POLICY "Users can view public profiles" ON users
     FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own profile" ON users;
 CREATE POLICY "Users can update own profile" ON users
     FOR UPDATE USING (auth.uid() = id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert own profile" ON users;
 CREATE POLICY "Users can insert own profile" ON users
     FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- User relationships policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view relationships" ON user_relationships;
 CREATE POLICY "Anyone can view relationships" ON user_relationships
     FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create their own follows" ON user_relationships;
 CREATE POLICY "Users can create their own follows" ON user_relationships
     FOR INSERT WITH CHECK (auth.uid() = follower_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own follows" ON user_relationships;
 CREATE POLICY "Users can delete their own follows" ON user_relationships
     FOR DELETE USING (auth.uid() = follower_id);
 
 -- Restaurants policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view restaurants" ON restaurants;
 CREATE POLICY "Anyone can view restaurants" ON restaurants
     FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Authenticated users can create restaurants" ON restaurants;
 CREATE POLICY "Authenticated users can create restaurants" ON restaurants
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Restaurant owners can update their restaurants" ON restaurants;
 CREATE POLICY "Restaurant owners can update their restaurants" ON restaurants
     FOR UPDATE USING (auth.uid() = owner_id OR is_claimed = false);
 
 -- Boards policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Public boards are viewable by all" ON boards;
 CREATE POLICY "Public boards are viewable by all" ON boards
     FOR SELECT USING (type = 'free');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Private boards viewable by members" ON boards;
 CREATE POLICY "Private boards viewable by members" ON boards
     FOR SELECT USING (
         type = 'private' AND (
@@ -66,6 +88,8 @@ CREATE POLICY "Private boards viewable by members" ON boards
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Paid boards viewable by subscribers" ON boards;
 CREATE POLICY "Paid boards viewable by subscribers" ON boards
     FOR SELECT USING (
         type = 'paid' AND (
@@ -80,16 +104,24 @@ CREATE POLICY "Paid boards viewable by subscribers" ON boards
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create boards" ON boards;
 CREATE POLICY "Users can create boards" ON boards
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can update their boards" ON boards;
 CREATE POLICY "Board owners can update their boards" ON boards
     FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can delete their boards" ON boards;
 CREATE POLICY "Board owners can delete their boards" ON boards
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Board collaborators policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board members can view collaborators" ON board_collaborators;
 CREATE POLICY "Board members can view collaborators" ON board_collaborators
     FOR SELECT USING (
         EXISTS (
@@ -104,6 +136,8 @@ CREATE POLICY "Board members can view collaborators" ON board_collaborators
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can add collaborators" ON board_collaborators;
 CREATE POLICY "Board owners can add collaborators" ON board_collaborators
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -113,6 +147,8 @@ CREATE POLICY "Board owners can add collaborators" ON board_collaborators
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can remove collaborators" ON board_collaborators;
 CREATE POLICY "Board owners can remove collaborators" ON board_collaborators
     FOR DELETE USING (
         EXISTS (
@@ -123,6 +159,8 @@ CREATE POLICY "Board owners can remove collaborators" ON board_collaborators
     );
 
 -- Board restaurants policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view board restaurants for public boards" ON board_restaurants;
 CREATE POLICY "Anyone can view board restaurants for public boards" ON board_restaurants
     FOR SELECT USING (
         EXISTS (
@@ -132,6 +170,8 @@ CREATE POLICY "Anyone can view board restaurants for public boards" ON board_res
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board members can view board restaurants" ON board_restaurants;
 CREATE POLICY "Board members can view board restaurants" ON board_restaurants
     FOR SELECT USING (
         EXISTS (
@@ -146,6 +186,8 @@ CREATE POLICY "Board members can view board restaurants" ON board_restaurants
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board members can add restaurants" ON board_restaurants;
 CREATE POLICY "Board members can add restaurants" ON board_restaurants
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -161,9 +203,13 @@ CREATE POLICY "Board members can add restaurants" ON board_restaurants
     );
 
 -- Restaurant saves policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Public saves are viewable by all" ON restaurant_saves;
 CREATE POLICY "Public saves are viewable by all" ON restaurant_saves
     FOR SELECT USING (privacy = 'public');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Friends can view friends-only saves" ON restaurant_saves;
 CREATE POLICY "Friends can view friends-only saves" ON restaurant_saves
     FOR SELECT USING (
         privacy = 'friends' AND 
@@ -174,19 +220,29 @@ CREATE POLICY "Friends can view friends-only saves" ON restaurant_saves
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own saves" ON restaurant_saves;
 CREATE POLICY "Users can view own saves" ON restaurant_saves
     FOR SELECT USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create own saves" ON restaurant_saves;
 CREATE POLICY "Users can create own saves" ON restaurant_saves
     FOR INSERT WITH CHECK (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own saves" ON restaurant_saves;
 CREATE POLICY "Users can update own saves" ON restaurant_saves
     FOR UPDATE USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete own saves" ON restaurant_saves;
 CREATE POLICY "Users can delete own saves" ON restaurant_saves
     FOR DELETE USING (user_id = auth.uid());
 
 -- Save boards policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Save owners can manage board associations" ON save_boards;
 CREATE POLICY "Save owners can manage board associations" ON save_boards
     FOR ALL USING (
         EXISTS (
@@ -197,6 +253,8 @@ CREATE POLICY "Save owners can manage board associations" ON save_boards
     );
 
 -- Save interactions policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view interactions on public saves" ON save_interactions;
 CREATE POLICY "Anyone can view interactions on public saves" ON save_interactions
     FOR SELECT USING (
         EXISTS (
@@ -206,13 +264,19 @@ CREATE POLICY "Anyone can view interactions on public saves" ON save_interaction
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create interactions" ON save_interactions;
 CREATE POLICY "Users can create interactions" ON save_interactions
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete own interactions" ON save_interactions;
 CREATE POLICY "Users can delete own interactions" ON save_interactions
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Comments policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view comments on public saves" ON comments;
 CREATE POLICY "Anyone can view comments on public saves" ON comments
     FOR SELECT USING (
         EXISTS (
@@ -222,19 +286,29 @@ CREATE POLICY "Anyone can view comments on public saves" ON comments
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create comments" ON comments;
 CREATE POLICY "Users can create comments" ON comments
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own comments" ON comments;
 CREATE POLICY "Users can update own comments" ON comments
     FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete own comments" ON comments;
 CREATE POLICY "Users can delete own comments" ON comments
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Communities policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Public communities viewable by all" ON communities;
 CREATE POLICY "Public communities viewable by all" ON communities
     FOR SELECT USING (type = 'public');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can view private communities" ON communities;
 CREATE POLICY "Community members can view private communities" ON communities
     FOR SELECT USING (
         type IN ('private', 'paid') AND
@@ -246,13 +320,19 @@ CREATE POLICY "Community members can view private communities" ON communities
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create communities" ON communities;
 CREATE POLICY "Users can create communities" ON communities
     FOR INSERT WITH CHECK (auth.uid() = admin_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community admins can update" ON communities;
 CREATE POLICY "Community admins can update" ON communities
     FOR UPDATE USING (auth.uid() = admin_id);
 
 -- Community members policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can view member list" ON community_members;
 CREATE POLICY "Community members can view member list" ON community_members
     FOR SELECT USING (
         EXISTS (
@@ -263,6 +343,8 @@ CREATE POLICY "Community members can view member list" ON community_members
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can join public communities" ON community_members;
 CREATE POLICY "Users can join public communities" ON community_members
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -273,6 +355,8 @@ CREATE POLICY "Users can join public communities" ON community_members
     );
 
 -- Community posts policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can view posts" ON community_posts;
 CREATE POLICY "Community members can view posts" ON community_posts
     FOR SELECT USING (
         EXISTS (
@@ -283,6 +367,8 @@ CREATE POLICY "Community members can view posts" ON community_posts
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can create posts" ON community_posts;
 CREATE POLICY "Community members can create posts" ON community_posts
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -294,9 +380,13 @@ CREATE POLICY "Community members can create posts" ON community_posts
     );
 
 -- Campaigns policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Active campaigns are public" ON campaigns;
 CREATE POLICY "Active campaigns are public" ON campaigns
     FOR SELECT USING (status = 'active');
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Campaign parties can view all details" ON campaigns;
 CREATE POLICY "Campaign parties can view all details" ON campaigns
     FOR SELECT USING (
         auth.uid() = creator_id OR
@@ -307,6 +397,8 @@ CREATE POLICY "Campaign parties can view all details" ON campaigns
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators and restaurants can create campaigns" ON campaigns;
 CREATE POLICY "Creators and restaurants can create campaigns" ON campaigns
     FOR INSERT WITH CHECK (
         auth.uid() = creator_id OR
@@ -318,41 +410,65 @@ CREATE POLICY "Creators and restaurants can create campaigns" ON campaigns
     );
 
 -- Notifications policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
 CREATE POLICY "Users can view own notifications" ON notifications
     FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "System can create notifications" ON notifications;
 CREATE POLICY "System can create notifications" ON notifications
     FOR INSERT WITH CHECK (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
 CREATE POLICY "Users can update own notifications" ON notifications
     FOR UPDATE USING (auth.uid() = user_id);
 
 -- User preferences policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own preferences" ON user_preferences;
 CREATE POLICY "Users can view own preferences" ON user_preferences
     FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own preferences" ON user_preferences;
 CREATE POLICY "Users can update own preferences" ON user_preferences
     FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create own preferences" ON user_preferences;
 CREATE POLICY "Users can create own preferences" ON user_preferences
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- User onboarding policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own onboarding" ON user_onboarding;
 CREATE POLICY "Users can view own onboarding" ON user_onboarding
     FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create own onboarding" ON user_onboarding;
 CREATE POLICY "Users can create own onboarding" ON user_onboarding
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own onboarding" ON user_onboarding;
 CREATE POLICY "Users can update own onboarding" ON user_onboarding
     FOR UPDATE USING (auth.uid() = user_id);
 
 -- Favorite spots policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own favorite spots" ON favorite_spots;
 CREATE POLICY "Users can view own favorite spots" ON favorite_spots
     FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create own favorite spots" ON favorite_spots;
 CREATE POLICY "Users can create own favorite spots" ON favorite_spots
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete own favorite spots" ON favorite_spots;
 CREATE POLICY "Users can delete own favorite spots" ON favorite_spots
     FOR DELETE USING (auth.uid() = user_id);

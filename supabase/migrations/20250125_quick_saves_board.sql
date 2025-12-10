@@ -85,6 +85,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create trigger to create Quick Saves board when a new user is created
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS create_quick_saves_on_signup_trigger ON auth;
 CREATE TRIGGER create_quick_saves_on_signup_trigger
 AFTER INSERT ON auth.users
 FOR EACH ROW
@@ -120,6 +122,8 @@ GRANT EXECUTE ON FUNCTION get_quick_saves_board TO authenticated;
 GRANT SELECT ON quick_saves_boards TO authenticated;
 
 -- 8. Add RLS policy for Quick Saves visibility (users can only see their own)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can only view their own Quick Saves board" ON boards;
 CREATE POLICY "Users can only view their own Quick Saves board" ON boards
   FOR SELECT
   USING (
