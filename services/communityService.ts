@@ -57,9 +57,17 @@ class CommunityService {
     if (cached) return cached;
 
     try {
-      // Check if current user is a test user
+      // Check if current user is a test user or admin
       const { data: { user } } = await supabase.auth.getUser();
       const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      
+      // Admin user IDs (same as in more.tsx)
+      const ADMIN_USER_IDS = [
+        'b08d9600-358d-4be9-9552-4607d9f50227',
+        '31744191-f7c0-44a4-8673-10b34ccbb87f',
+        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
+      ];
+      const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
       
       let query = supabase
         .from('communities')
@@ -67,8 +75,9 @@ class CommunityService {
         .eq('is_active', true)
         .order('member_count', { ascending: false });
 
-      // Exclude communities created by test users if current user is not a test user
-      if (!isCurrentUserTest) {
+      // Exclude communities created by test users if current user is not a test user AND not an admin
+      // Admins should see all communities including test ones
+      if (!isCurrentUserTest && !isAdmin) {
         // Get test user IDs
         const { data: testUsers } = await supabase
           .from('users')
