@@ -11,11 +11,11 @@
 
 import { supabase } from '@/lib/supabase';
 import type {
-  ReviewAction,
-  PendingDeliverableSummary,
-  DeliverableSubmission,
-  DeliverableStatistics
+    DeliverableStatistics,
+    DeliverableSubmission,
+    PendingDeliverableSummary
 } from '@/types/deliverableRequirements';
+import { processDeliverablePayout } from './payoutService';
 
 // ============================================================================
 // TYPES
@@ -71,7 +71,16 @@ export async function approveDeliverable(
     }
 
     // Trigger payment processing
-    // TODO: Call payment service to process creator payment
+    try {
+      const payoutResult = await processDeliverablePayout(params.deliverable_id);
+      if (!payoutResult.success && payoutResult.error !== 'Creator needs to complete Stripe onboarding') {
+        console.error('Error processing payout:', payoutResult.error);
+        // Don't fail the approval if payout fails - it will be retried
+      }
+    } catch (payoutError) {
+      console.error('Error triggering payout:', payoutError);
+      // Don't fail the approval if payout fails - it will be retried
+    }
 
     return { data: data as DeliverableSubmission, error: null };
   } catch (error) {
@@ -367,8 +376,21 @@ export async function triggerAutoApproval(): Promise<{
       return { data: null, error };
     }
 
+    // Process payouts for auto-approved deliverables
+    if (data && Array.isArray(data)) {
+      for (const approved of data) {
+        try {
+          const payoutResult = await processDeliverablePayout(approved.deliverable_id);
+          if (!payoutResult.success && payoutResult.error !== 'Creator needs to complete Stripe onboarding') {
+            console.error(`Error processing payout for deliverable ${approved.deliverable_id}:`, payoutResult.error);
+          }
+        } catch (payoutError) {
+          console.error(`Error triggering payout for deliverable ${approved.deliverable_id}:`, payoutError);
+        }
+      }
+    }
+
     // TODO: Send notifications to creators and restaurants about auto-approvals
-    // TODO: Trigger payment processing for auto-approved deliverables
 
     return { data, error: null };
   } catch (error) {
