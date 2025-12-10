@@ -134,6 +134,15 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
     setIsSubmitting(true);
     setSubmissionStatus('idle');
 
+    let photoUrl = null;
+
+    if (placeDetails.photos && placeDetails.photos.length > 0) {
+      const photoReference = placeDetails.photos[0].photo_reference;
+      const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY; 
+      
+      photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`;
+    }
+
     try {
 
       // Use Supabase's functions.invoke which handles auth automatically
@@ -143,6 +152,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
           address: placeDetails.formatted_address,
           placeId: placeDetails.place_id,
           placeDetails: placeDetails,
+          image: photoUrl,
         },
       });
 

@@ -111,7 +111,7 @@ export default {
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
-      googlePlacesApiKey: process.env.GOOGLE_MAPS_API_KEY,
+      googlePlacesApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
       cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
       cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
