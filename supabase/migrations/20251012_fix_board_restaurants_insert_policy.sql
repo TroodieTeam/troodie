@@ -47,6 +47,8 @@ CREATE POLICY "authenticated_users_can_update" ON board_restaurants
   );
 
 -- DELETE: Users can delete entries they added or if they own the board
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "authenticated_users_can_delete" ON board_restaurants;
 CREATE POLICY "authenticated_users_can_delete" ON board_restaurants
   FOR DELETE
   TO authenticated

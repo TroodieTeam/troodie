@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { Alert } from 'react-native';
 
 /**
  * Restaurant Claim Service
@@ -34,9 +33,35 @@ class RestaurantClaimService {
    */
   async submitRestaurantClaim(request: SubmitClaimRequest) {
     try {
+      console.log('[RestaurantClaimService] Starting claim submission', {
+        restaurant_id: request.restaurant_id,
+        ownership_proof_type: request.ownership_proof_type,
+      });
+
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('Not authenticated');
+      if (userError || !user) {
+        console.error('[RestaurantClaimService] Authentication error:', userError);
+        throw new Error('Not authenticated');
+      }
+
+      console.log('[RestaurantClaimService] User authenticated', {
+        user_id: user.id,
+        email: user.email,
+      });
+
+      // Check current account type before claim
+      const { data: userBefore, error: userBeforeError } = await supabase
+        .from('users')
+        .select('account_type, is_restaurant')
+        .eq('id', user.id)
+        .single();
+
+      console.log('[RestaurantClaimService] User account state BEFORE claim:', {
+        account_type: userBefore?.account_type,
+        is_restaurant: userBefore?.is_restaurant,
+        error: userBeforeError,
+      });
 
       // Check for existing claims by this user for this restaurant
       const { data: existingClaim, error: checkError } = await supabase
@@ -46,6 +71,11 @@ class RestaurantClaimService {
         .eq('restaurant_id', request.restaurant_id)
         .in('status', ['pending', 'approved'])
         .single();
+
+      console.log('[RestaurantClaimService] Existing claim check:', {
+        existingClaim,
+        checkError,
+      });
 
       if (existingClaim && !checkError) {
         if (existingClaim.status === 'pending') {
@@ -59,9 +89,17 @@ class RestaurantClaimService {
       // Check if restaurant is already claimed by someone else
       const { data: restaurant, error: restaurantError } = await supabase
         .from('restaurants')
-        .select('id, name, owner_id')
+        .select('id, name, owner_id, is_claimed')
         .eq('id', request.restaurant_id)
         .single();
+
+      console.log('[RestaurantClaimService] Restaurant check:', {
+        restaurant_id: restaurant?.id,
+        restaurant_name: restaurant?.name,
+        owner_id: restaurant?.owner_id,
+        is_claimed: restaurant?.is_claimed,
+        error: restaurantError,
+      });
 
       if (restaurantError) {
         throw new Error('Restaurant not found');
@@ -78,27 +116,75 @@ class RestaurantClaimService {
         .eq('id', user.id)
         .single();
 
+      console.log('[RestaurantClaimService] User profile:', {
+        email: userProfile?.email,
+        business_email: request.business_email,
+      });
+
       // Create the claim in pending state
+      const claimData = {
+        user_id: user.id,
+        restaurant_id: request.restaurant_id,
+        status: 'pending',
+        email: request.business_email || userProfile?.email || user.email,
+        ownership_proof_type: request.ownership_proof_type,
+        ownership_proof_url: request.ownership_proof_url,
+        business_phone: request.business_phone,
+        additional_notes: request.additional_notes,
+        submitted_at: new Date().toISOString()
+      };
+
+      console.log('[RestaurantClaimService] Creating claim with data:', claimData);
+
       const { data: claim, error: claimError } = await supabase
         .from('restaurant_claims')
-        .insert({
-          user_id: user.id,
-          restaurant_id: request.restaurant_id,
-          status: 'pending',
-          email: request.business_email || userProfile?.email || user.email,
-          ownership_proof_type: request.ownership_proof_type,
-          ownership_proof_url: request.ownership_proof_url,
-          business_phone: request.business_phone,
-          additional_notes: request.additional_notes,
-          submitted_at: new Date().toISOString()
-        })
+        .insert(claimData)
         .select()
         .single();
 
       if (claimError) {
-        console.error('Error creating claim:', claimError);
+        console.error('[RestaurantClaimService] Error creating claim:', {
+          error: claimError,
+          code: claimError.code,
+          message: claimError.message,
+          details: claimError.details,
+          hint: claimError.hint,
+        });
         throw new Error('Failed to submit claim. Please try again.');
       }
+
+      console.log('[RestaurantClaimService] Claim created successfully:', {
+        claim_id: claim.id,
+        status: claim.status,
+        restaurant_id: claim.restaurant_id,
+        user_id: claim.user_id,
+      });
+
+      // Check account type AFTER claim creation
+      const { data: userAfter, error: userAfterError } = await supabase
+        .from('users')
+        .select('account_type, is_restaurant, account_upgraded_at')
+        .eq('id', user.id)
+        .single();
+
+      console.log('[RestaurantClaimService] User account state AFTER claim creation:', {
+        account_type: userAfter?.account_type,
+        is_restaurant: userAfter?.is_restaurant,
+        account_upgraded_at: userAfter?.account_upgraded_at,
+        error: userAfterError,
+      });
+
+      // Check if business profile was created
+      const { data: businessProfile, error: bpError } = await supabase
+        .from('business_profiles')
+        .select('id, restaurant_id, verification_status')
+        .eq('user_id', user.id)
+        .single();
+
+      console.log('[RestaurantClaimService] Business profile check:', {
+        businessProfile,
+        error: bpError,
+      });
 
       return {
         claim_id: claim.id,
@@ -109,7 +195,7 @@ class RestaurantClaimService {
         message: 'Your claim has been submitted and is pending review.'
       };
     } catch (error) {
-      console.error('RestaurantClaimService.submitClaim error:', error);
+      console.error('[RestaurantClaimService] submitClaim error:', error);
       throw error;
     }
   }

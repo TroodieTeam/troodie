@@ -136,6 +136,8 @@ ON platform_managed_campaigns(campaign_manager_user_id);
 ALTER TABLE platform_managed_campaigns ENABLE ROW LEVEL SECURITY;
 
 -- Only admins can see platform_managed_campaigns details
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can view platform campaigns" ON platform_managed_campaigns;
 CREATE POLICY "Admins can view platform campaigns"
   ON platform_managed_campaigns FOR SELECT
   USING (
@@ -146,6 +148,8 @@ CREATE POLICY "Admins can view platform campaigns"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Admins can manage platform campaigns" ON platform_managed_campaigns;
 CREATE POLICY "Admins can manage platform campaigns"
   ON platform_managed_campaigns FOR ALL
   USING (

@@ -36,13 +36,13 @@ CREATE TABLE IF NOT EXISTS public.blocked_users (
 );
 
 -- Create indexes for better query performance
-CREATE INDEX idx_reports_reporter_id ON public.reports(reporter_id);
-CREATE INDEX idx_reports_target ON public.reports(target_type, target_id);
-CREATE INDEX idx_reports_status ON public.reports(status);
-CREATE INDEX idx_reports_created_at ON public.reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_reporter_id ON public.reports(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_reports_target ON public.reports(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON public.reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON public.reports(created_at DESC);
 
-CREATE INDEX idx_blocked_users_blocker ON public.blocked_users(blocker_id);
-CREATE INDEX idx_blocked_users_blocked ON public.blocked_users(blocked_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_users_blocker ON public.blocked_users(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_users_blocked ON public.blocked_users(blocked_id);
 
 -- Enable Row Level Security
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
@@ -50,12 +50,16 @@ ALTER TABLE public.blocked_users ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for reports table
 -- Users can create reports
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create reports" ON public;
 CREATE POLICY "Users can create reports" ON public.reports
     FOR INSERT 
     TO authenticated
     WITH CHECK (auth.uid() = reporter_id);
 
 -- Users can view their own reports
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own reports" ON public;
 CREATE POLICY "Users can view own reports" ON public.reports
     FOR SELECT
     TO authenticated
@@ -69,18 +73,24 @@ CREATE POLICY "Users can view own reports" ON public.reports
 
 -- RLS Policies for blocked_users table
 -- Users can block other users
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can block others" ON public;
 CREATE POLICY "Users can block others" ON public.blocked_users
     FOR INSERT
     TO authenticated
     WITH CHECK (auth.uid() = blocker_id);
 
 -- Users can unblock users they've blocked
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can unblock" ON public;
 CREATE POLICY "Users can unblock" ON public.blocked_users
     FOR DELETE
     TO authenticated
     USING (auth.uid() = blocker_id);
 
 -- Users can view their own block list
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own blocks" ON public;
 CREATE POLICY "Users can view own blocks" ON public.blocked_users
     FOR SELECT
     TO authenticated
@@ -166,6 +176,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_reports_updated_at ON public.reports;
 CREATE TRIGGER update_reports_updated_at BEFORE UPDATE ON public.reports
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -195,6 +207,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_user_report_counts ON public.reports;
 CREATE TRIGGER update_user_report_counts
 AFTER INSERT ON public.reports
 FOR EACH ROW EXECUTE FUNCTION public.update_report_counts();

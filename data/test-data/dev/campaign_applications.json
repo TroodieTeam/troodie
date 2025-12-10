@@ -1,0 +1,16 @@
+{
+  "description": "Test campaign applications for development environment",
+  "last_updated": "2025-01-22",
+  "applications": [
+    {
+      "id": null,
+      "campaign_id": null,
+      "creator_id": null,
+      "creator_email": "creator1@troodieapp.com",
+      "status": "pending",
+      "purpose": "Test application review and acceptance flow",
+      "query_to_find_id": "SELECT ca.id, ca.campaign_id, ca.creator_id, ca.status, cp.user_id, u.email FROM campaign_applications ca JOIN creator_profiles cp ON ca.creator_id = cp.id JOIN users u ON cp.user_id = u.id WHERE u.email = 'creator1@troodieapp.com' ORDER BY ca.created_at DESC LIMIT 1;"
+    }
+  ]
+}
+

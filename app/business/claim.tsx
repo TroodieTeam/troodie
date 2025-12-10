@@ -1,26 +1,26 @@
 import { BetaAccessGate } from '@/components/BetaAccessGate';
-import { restaurantClaimService } from '@/services/restaurantClaimService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { restaurantClaimService } from '@/services/restaurantClaimService';
 import { useRouter } from 'expo-router';
 import {
-    ArrowLeft,
-    Building,
-    CheckCircle2,
-    Mail,
-    Phone,
+  ArrowLeft,
+  Building,
+  CheckCircle2,
+  Mail,
+  Phone,
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 type ClaimStep = 'search' | 'contact' | 'pending';
@@ -144,11 +144,20 @@ export default function ClaimRestaurantSimple() {
       return;
     }
 
+    console.log('[ClaimRestaurant] Starting claim submission', {
+      user_id: user.id,
+      user_email: user.email,
+      restaurant_id: selectedRestaurant?.id,
+      restaurant_name: selectedRestaurant?.name,
+      contact_email: contactInfo.email,
+    });
+
     setLoading(true);
 
     try {
       let restaurantId = selectedRestaurant?.id;
       if (!restaurantId) {
+        console.log('[ClaimRestaurant] Creating new restaurant record');
         const { data: newRestaurant, error: restaurantError } = await supabase
           .from('restaurants')
           .insert({
@@ -159,20 +168,62 @@ export default function ClaimRestaurantSimple() {
           .select()
           .single();
 
-        if (restaurantError) throw new Error('Failed to create restaurant record');
+        if (restaurantError) {
+          console.error('[ClaimRestaurant] Error creating restaurant:', restaurantError);
+          throw new Error('Failed to create restaurant record');
+        }
         restaurantId = newRestaurant.id;
+        console.log('[ClaimRestaurant] Restaurant created:', { restaurant_id: restaurantId });
       }
-      await restaurantClaimService.submitRestaurantClaim({
+
+      console.log('[ClaimRestaurant] Submitting claim via service');
+      const result = await restaurantClaimService.submitRestaurantClaim({
         restaurant_id: restaurantId!,
         business_email: contactInfo.email,
         business_phone: contactInfo.phone,
         ownership_proof_type: 'other',
         additional_notes: 'Claimed via mobile simplified flow' 
       });
+
+      console.log('[ClaimRestaurant] Claim submitted successfully:', result);
+
+      // Verify account type after claim
+      const { data: userAfter, error: userAfterError } = await supabase
+        .from('users')
+        .select('account_type, is_restaurant, account_upgraded_at')
+        .eq('id', user.id)
+        .single();
+
+      console.log('[ClaimRestaurant] User account state after claim:', {
+        account_type: userAfter?.account_type,
+        is_restaurant: userAfter?.is_restaurant,
+        account_upgraded_at: userAfter?.account_upgraded_at,
+        error: userAfterError,
+      });
+
+      // Check claim status
+      const { data: claimStatus, error: claimStatusError } = await supabase
+        .from('restaurant_claims')
+        .select('id, status, verified_at, reviewed_at')
+        .eq('id', result.claim_id)
+        .single();
+
+      console.log('[ClaimRestaurant] Claim status:', {
+        claim_id: result.claim_id,
+        status: claimStatus?.status,
+        verified_at: claimStatus?.verified_at,
+        reviewed_at: claimStatus?.reviewed_at,
+        error: claimStatusError,
+      });
+
       setCurrentStep('pending');
 
     } catch (error: any) {
-      console.error('Error in claim process:', error);
+      console.error('[ClaimRestaurant] Error in claim process:', {
+        error,
+        message: error.message,
+        stack: error.stack,
+      });
       let displayMessage = 'Failed to submit claim. Please try again.';
       
       if (error.message.includes('already claimed')) {

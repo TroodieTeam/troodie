@@ -77,6 +77,8 @@ WITH CHECK (
 );
 
 -- Users can update their own avatar
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own avatar" ON storage;
 CREATE POLICY "Users can update their own avatar"
 ON storage.objects FOR UPDATE
 USING (
@@ -85,6 +87,8 @@ USING (
 );
 
 -- Users can delete their own avatar
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own avatar" ON storage;
 CREATE POLICY "Users can delete their own avatar"
 ON storage.objects FOR DELETE
 USING (

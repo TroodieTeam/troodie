@@ -77,6 +77,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Step 4: Recreate the trigger
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_follow_notification ON user_relationships;
 CREATE TRIGGER trigger_follow_notification
 AFTER INSERT ON user_relationships
 FOR EACH ROW
@@ -116,6 +118,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Drop trigger if it exists to make migration idempotent (already dropped above, but keeping for consistency)
+DROP TRIGGER IF EXISTS trigger_like_notification ON save_interactions;
 CREATE TRIGGER trigger_like_notification
 AFTER INSERT ON save_interactions
 FOR EACH ROW
@@ -155,6 +159,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Drop trigger if it exists to make migration idempotent (already dropped above, but keeping for consistency)
+DROP TRIGGER IF EXISTS trigger_comment_notification ON comments;
 CREATE TRIGGER trigger_comment_notification
 AFTER INSERT ON comments
 FOR EACH ROW

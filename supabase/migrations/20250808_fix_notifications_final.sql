@@ -17,12 +17,16 @@ TO authenticated
 WITH CHECK (true);
 
 -- Users can only see their own notifications
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users read own notifications" ON notifications;
 CREATE POLICY "Users read own notifications" 
 ON notifications FOR SELECT 
 TO authenticated
 USING (auth.uid() = user_id);
 
 -- Users can only update their own notifications
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users update own notifications" ON notifications;
 CREATE POLICY "Users update own notifications" 
 ON notifications FOR UPDATE 
 TO authenticated
@@ -30,6 +34,8 @@ USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
 -- Users can only delete their own notifications
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users delete own notifications" ON notifications;
 CREATE POLICY "Users delete own notifications" 
 ON notifications FOR DELETE 
 TO authenticated

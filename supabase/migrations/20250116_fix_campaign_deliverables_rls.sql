@@ -14,6 +14,8 @@ CREATE POLICY "Admins can update campaign deliverables" ON campaign_deliverables
   );
 
 -- Business owners can update deliverables for their campaigns
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Business owners can update campaign deliverables" ON campaign_deliverables;
 CREATE POLICY "Business owners can update campaign deliverables" ON campaign_deliverables
   FOR UPDATE USING (
     campaign_id IN (

@@ -1,0 +1,263 @@
+{
+  "date": "2025-12-06",
+  "description": "Production database schema snapshot - tables, columns, triggers, indexes, and foreign keys",
+  "tables": [
+    {
+      "table_schema": "auth",
+      "table_name": "audit_log_entries"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "flow_state"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "identities"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "instances"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "mfa_amr_claims"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "mfa_challenges"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "mfa_factors"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "oauth_authorizations"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "oauth_clients"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "oauth_consents"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "one_time_tokens"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "refresh_tokens"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "saml_providers"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "saml_relay_states"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "schema_migrations"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "sessions"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "sso_domains"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "sso_providers"
+    },
+    {
+      "table_schema": "auth",
+      "table_name": "users"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "blocked_users"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "board_collaborators"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "board_members"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "board_restaurants"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "board_subscriptions"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "boards"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "business_profiles"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "campaign_applications"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "campaign_deliverables"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "campaigns"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "comments"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "communities"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "community_invites"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "community_members"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "community_posts"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "creator_profiles"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "external_content_sources"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "favorite_spots"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "notification_preferences"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "notifications"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "post_comments"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "post_communities"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "post_likes"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "post_saves"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "posts"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "push_tokens"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "reports"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "restaurant_images"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "restaurant_mentions"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "restaurant_saves"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "restaurant_visits"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "restaurants"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "save_boards"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "save_interactions"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "share_analytics"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "spatial_ref_sys"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_achievements"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_events"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_invite_shares"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_onboarding"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_preferences"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_referral_conversions"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_referrals"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "user_relationships"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "users"
+    }
+  ],
+  "note": "Full schema details including columns, triggers, indexes, and foreign keys are available in separate queries. This is a summary of table names only."
+}

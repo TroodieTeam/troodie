@@ -18,19 +18,19 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock, Plus, Search, SlidersHorizontal, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
-  DeviceEventEmitter,
-  Dimensions,
-  FlatList,
-  Image,
-  Pressable,
-  RefreshControl,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    DeviceEventEmitter,
+    Dimensions,
+    FlatList,
+    Image,
+    Pressable,
+    RefreshControl,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 type TabType = 'restaurants' | 'posts' | 'communities';
@@ -156,7 +156,21 @@ export default function ExploreScreen() {
 
   // Posts data management
   const posts = useTabData(
-    () => postService.getExplorePosts({ limit: 50 }),
+    async () => {
+      console.log('[ExploreScreen] Loading posts...');
+      const result = await postService.getExplorePosts({ limit: 50 });
+      console.log('[ExploreScreen] Posts loaded:', result.length);
+      
+      // Log user info for debugging
+      console.log('[ExploreScreen] Posts with user info:', result.map(p => ({
+        postId: p.id,
+        userId: p.user?.id,
+        username: p.user?.username,
+        name: p.user?.name
+      })));
+      
+      return result;
+    },
     (items, query) => {
       const q = query.toLowerCase();
       return items.filter(p =>

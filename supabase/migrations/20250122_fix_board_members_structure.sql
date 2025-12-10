@@ -11,7 +11,7 @@ BEGIN
     -- Check if user_id column exists
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'board_members' AND column_name = 'user_id') THEN
       -- Add user_id column if it doesn't exist
-      ALTER TABLE board_members ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+      ALTER TABLE board_members ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
       
       -- Update existing rows if needed (this is a fallback, shouldn't be needed)
       UPDATE board_members SET user_id = auth.uid() WHERE user_id IS NULL;
@@ -59,20 +59,28 @@ CREATE POLICY "Users can view board members for their own boards" ON board_membe
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own board memberships" ON board_members;
 CREATE POLICY "Users can view their own board memberships" ON board_members
   FOR SELECT USING (user_id = auth.uid());
 
 -- Allow any authenticated user to insert board members (controlled by application logic)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Allow board member insertion" ON board_members;
 CREATE POLICY "Allow board member insertion" ON board_members
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Allow board owners to update members
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Allow member updates by board owners" ON board_members;
 CREATE POLICY "Allow member updates by board owners" ON board_members
   FOR UPDATE USING (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())
   );
 
 -- Allow board owners to remove members
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Allow member removal by board owners" ON board_members;
 CREATE POLICY "Allow member removal by board owners" ON board_members
   FOR DELETE USING (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())

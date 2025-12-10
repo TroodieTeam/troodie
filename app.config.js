@@ -64,7 +64,7 @@ export default {
   expo: {
     name: "Troodie",
     slug: "troodie",
-    version: "1.0.6",
+    version: "1.0.7",
     orientation: "portrait",
     icon: "./assets/images/troodie_icon_logo.jpg",
     scheme: "troodie",
@@ -73,7 +73,7 @@ export default {
     ios: {
       supportsTablet: false,
       bundleIdentifier: "com.troodie.troodie.com",
-      buildNumber: "1",
+      buildNumber: "2",
       infoPlist: {
         NSLocationWhenInUseUsageDescription: "Troodie uses your location to show nearby restaurants and recommendations.",
         NSCameraUsageDescription: "Troodie uses your camera to take photos of restaurants and food.",

@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import {
-    CreateNotificationParams,
-    Notification,
-    NotificationInsert,
-    NotificationServiceInterface,
-    PushNotification
+  CreateNotificationParams,
+  Notification,
+  NotificationInsert,
+  NotificationServiceInterface,
+  PushNotification
 } from '@/types/notifications';
 
 export class NotificationService implements NotificationServiceInterface {
@@ -15,6 +15,32 @@ export class NotificationService implements NotificationServiceInterface {
   async createNotification(params: CreateNotificationParams): Promise<Notification> {
     const { userId, type, title, message, data, relatedId, relatedType, priority = 1, expiresAt } = params;
     
+    // Try using the SECURITY DEFINER function first (bypasses RLS)
+    const { data: notificationId, error: functionError } = await supabase
+      .rpc('create_notification', {
+        p_user_id: userId,
+        p_type: type,
+        p_title: title,
+        p_message: message,
+        p_data: data || {},
+        p_related_id: relatedId || null,
+        p_related_type: relatedType || null
+      });
+
+    // If function exists and succeeded, fetch the notification
+    if (!functionError && notificationId) {
+      const { data: notification, error: fetchError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('id', notificationId)
+        .single();
+
+      if (!fetchError && notification) {
+        return notification;
+      }
+    }
+
+    // Fallback to direct insert (for backwards compatibility)
     const notificationData: NotificationInsert = {
       user_id: userId,
       type,

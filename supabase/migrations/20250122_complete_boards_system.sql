@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS board_members (
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'boards' AND column_name = 'is_private') THEN
-    ALTER TABLE boards ADD COLUMN is_private BOOLEAN DEFAULT false;
+    ALTER TABLE boards ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT false;
   END IF;
 END $$;
 
@@ -84,20 +84,28 @@ CREATE POLICY "Anyone can view public boards" ON boards
 CREATE POLICY "Users can view their own boards" ON boards
   FOR SELECT USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Members can view their boards" ON boards;
 CREATE POLICY "Members can view their boards" ON boards
   FOR SELECT USING (
     id IN (SELECT board_id FROM board_members WHERE user_id = auth.uid())
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create their own boards" ON boards;
 CREATE POLICY "Users can create their own boards" ON boards
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own boards" ON boards;
 CREATE POLICY "Users can update their own boards" ON boards
   FOR UPDATE USING (
     user_id = auth.uid()
     OR id IN (SELECT board_id FROM board_members WHERE user_id = auth.uid() AND role = 'owner')
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own boards" ON boards;
 CREATE POLICY "Users can delete their own boards" ON boards
   FOR DELETE USING (
     user_id = auth.uid()
@@ -105,60 +113,86 @@ CREATE POLICY "Users can delete their own boards" ON boards
   );
 
 -- 7. CREATE BOARD_MEMBERS POLICIES (simplified to avoid recursion)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view board members for public boards" ON board_members;
 CREATE POLICY "Anyone can view board members for public boards" ON board_members
   FOR SELECT USING (
     board_id IN (SELECT id FROM boards WHERE is_private = false)
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view board members for their own boards" ON board_members;
 CREATE POLICY "Users can view board members for their own boards" ON board_members
   FOR SELECT USING (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own board memberships" ON board_members;
 CREATE POLICY "Users can view their own board memberships" ON board_members
   FOR SELECT USING (user_id = auth.uid());
 
 -- Allow any authenticated user to insert board members (controlled by application logic)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Allow board member insertion" ON board_members;
 CREATE POLICY "Allow board member insertion" ON board_members
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Allow board owners to update members
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Allow member updates by board owners" ON board_members;
 CREATE POLICY "Allow member updates by board owners" ON board_members
   FOR UPDATE USING (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())
   );
 
 -- Allow board owners to remove members
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Allow member removal by board owners" ON board_members;
 CREATE POLICY "Allow member removal by board owners" ON board_members
   FOR DELETE USING (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())
   );
 
 -- 8. CREATE BOARD_RESTAURANTS POLICIES (simplified to avoid recursion)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view restaurants in public boards" ON board_restaurants;
 CREATE POLICY "Anyone can view restaurants in public boards" ON board_restaurants
   FOR SELECT USING (
     board_id IN (SELECT id FROM boards WHERE is_private = false)
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view restaurants in their own boards" ON board_restaurants;
 CREATE POLICY "Users can view restaurants in their own boards" ON board_restaurants
   FOR SELECT USING (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view restaurants in boards they're members of" ON board_restaurants;
 CREATE POLICY "Users can view restaurants in boards they're members of" ON board_restaurants
   FOR SELECT USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can add restaurants to their own boards" ON board_restaurants;
 CREATE POLICY "Users can add restaurants to their own boards" ON board_restaurants
   FOR INSERT WITH CHECK (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can add restaurants to boards they're members of" ON board_restaurants;
 CREATE POLICY "Users can add restaurants to boards they're members of" ON board_restaurants
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own restaurant entries" ON board_restaurants;
 CREATE POLICY "Users can update their own restaurant entries" ON board_restaurants
   FOR UPDATE USING (added_by = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Board owners can delete restaurants" ON board_restaurants;
 CREATE POLICY "Board owners can delete restaurants" ON board_restaurants
   FOR DELETE USING (
     board_id IN (SELECT id FROM boards WHERE user_id = auth.uid())

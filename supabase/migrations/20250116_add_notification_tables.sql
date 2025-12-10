@@ -78,16 +78,20 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create triggers for updated_at
+-- Drop triggers if they exist to make migration idempotent
+DROP TRIGGER IF EXISTS update_notification_emails_updated_at ON public.notification_emails;
 CREATE TRIGGER update_notification_emails_updated_at
   BEFORE UPDATE ON public.notification_emails
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_push_tokens_updated_at ON public.push_tokens;
 CREATE TRIGGER update_push_tokens_updated_at
   BEFORE UPDATE ON public.push_tokens
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON public.notifications;
 CREATE TRIGGER update_notifications_updated_at
   BEFORE UPDATE ON public.notifications
   FOR EACH ROW
@@ -125,36 +129,52 @@ ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for notifications
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public;
 CREATE POLICY "Users can view their own notifications"
   ON public.notifications FOR SELECT
   USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public;
 CREATE POLICY "Users can update their own notifications"
   ON public.notifications FOR UPDATE
   USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own notifications" ON public;
 CREATE POLICY "Users can delete their own notifications"
   ON public.notifications FOR DELETE
   USING (auth.uid() = user_id);
 
 -- RLS Policies for push_tokens
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own push tokens" ON public;
 CREATE POLICY "Users can view their own push tokens"
   ON public.push_tokens FOR SELECT
   USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert their own push tokens" ON public;
 CREATE POLICY "Users can insert their own push tokens"
   ON public.push_tokens FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own push tokens" ON public;
 CREATE POLICY "Users can update their own push tokens"
   ON public.push_tokens FOR UPDATE
   USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own push tokens" ON public;
 CREATE POLICY "Users can delete their own push tokens"
   ON public.push_tokens FOR DELETE
   USING (auth.uid() = user_id);
 
 -- RLS Policies for notification_emails (admin only)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Only admins can view notification emails" ON public;
 CREATE POLICY "Only admins can view notification emails"
   ON public.notification_emails FOR SELECT
   USING (

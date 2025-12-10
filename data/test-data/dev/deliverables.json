@@ -1,0 +1,27 @@
+{
+  "description": "Test deliverables for development environment",
+  "last_updated": "2025-01-22",
+  "deliverables": [
+    {
+      "id": null,
+      "campaign_id": null,
+      "creator_id": null,
+      "status": "pending_review",
+      "purpose": "Test deliverable review and auto-approval (CM-5)",
+      "test_scenarios": [
+        {
+          "name": "Auto-approval test",
+          "setup": "Set submitted_at to 73 hours ago",
+          "expected": "Status changes to auto_approved after cron runs"
+        },
+        {
+          "name": "URL validation test",
+          "setup": "Submit with various URL formats",
+          "expected": "All supported formats validate correctly"
+        }
+      ],
+      "query_to_find_id": "SELECT cd.id, cd.campaign_id, cd.creator_id, cd.status, cd.submitted_at, cd.auto_approved_at FROM campaign_deliverables cd JOIN creator_profiles cp ON cd.creator_id = cp.id JOIN users u ON cp.user_id = u.id WHERE u.email = 'creator1@troodieapp.com' ORDER BY cd.created_at DESC LIMIT 1;"
+    }
+  ]
+}
+

@@ -20,9 +20,13 @@ CREATE INDEX IF NOT EXISTS idx_restaurant_mentions_created_at ON restaurant_ment
 ALTER TABLE restaurant_mentions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Anyone can view restaurant mentions" ON restaurant_mentions;
 CREATE POLICY "Anyone can view restaurant mentions" ON restaurant_mentions
   FOR SELECT USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create mentions in their comments" ON restaurant_mentions;
 CREATE POLICY "Users can create mentions in their comments" ON restaurant_mentions
   FOR INSERT WITH CHECK (
     EXISTS (

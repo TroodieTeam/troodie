@@ -24,6 +24,8 @@ CREATE POLICY "Community members viewable by anyone for public communities"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members viewable by member for private communities" ON community_members;
 CREATE POLICY "Community members viewable by member for private communities" 
   ON community_members FOR SELECT 
   USING (
@@ -45,6 +47,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Communities - fix the update policy to avoid recursion
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community owners can update their communities" ON communities;
 CREATE POLICY "Community owners can update their communities" 
   ON communities FOR UPDATE 
   USING (
@@ -52,6 +56,8 @@ CREATE POLICY "Community owners can update their communities"
   );
 
 -- Community posts - avoid recursion by checking membership directly
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community posts viewable by members" ON community_posts;
 CREATE POLICY "Community posts viewable by members" 
   ON community_posts FOR SELECT 
   USING (
@@ -75,6 +81,8 @@ CREATE POLICY "Community posts viewable by members"
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can create posts" ON community_posts;
 CREATE POLICY "Community members can create posts" 
   ON community_posts FOR INSERT 
   WITH CHECK (

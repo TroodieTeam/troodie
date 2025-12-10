@@ -10,11 +10,11 @@ import {
     PostWithUser,
     TrendingPost
 } from '@/types/post';
-import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
-import { restaurantImageSyncService } from './restaurantImageSyncService';
-import { moderationService } from './moderationService';
-import { restaurantVisitService } from './restaurantVisitService';
 import { eventBus, EVENTS } from '@/utils/eventBus';
+import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
+import { moderationService } from './moderationService';
+import { restaurantImageSyncService } from './restaurantImageSyncService';
+import { restaurantVisitService } from './restaurantVisitService';
 
 class PostService {
   /**
@@ -461,12 +461,25 @@ class PostService {
    * Get posts for explore feed with filters
    */
   async getExplorePosts(filters: ExploreFilters = {}): Promise<PostWithUser[]> {
+    console.log('[PostService.getExplorePosts] Starting fetch with filters:', filters);
+    
     // Get blocked users list first
     const blockedUserIds = await moderationService.getBlockedUsers();
+    console.log('[PostService.getExplorePosts] Blocked user IDs:', blockedUserIds.length);
     
     // Get current user ID for checking likes/saves
     const { data: { user } } = await supabase.auth.getUser();
     const currentUserId = user?.id;
+    const currentUserEmail = user?.email;
+    
+    // Check if current user is a test user (for logging only - we always filter test users)
+    const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+    console.log('[PostService.getExplorePosts] Current user:', {
+      id: currentUserId,
+      email: currentUserEmail,
+      isTestUser: isCurrentUserTest,
+      note: 'Test users are always filtered from explore feed'
+    });
     
     let query = supabase
       .from('posts')
@@ -476,6 +489,31 @@ class PostService {
     // Exclude posts from blocked users
     if (blockedUserIds.length > 0) {
       query = query.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
+      console.log('[PostService.getExplorePosts] Applied blocked users filter:', blockedUserIds.length, 'users');
+    }
+
+    // ALWAYS exclude posts from test users (test accounts should never be visible in explore)
+    // Get test user IDs
+    const { data: testUsers, error: testUsersError } = await supabase
+      .from('users')
+      .select('id, email, is_test_account')
+      .eq('is_test_account', true);
+    
+    if (testUsersError) {
+      console.error('[PostService.getExplorePosts] Error fetching test users:', testUsersError);
+    }
+    
+    console.log('[PostService.getExplorePosts] Found test users:', testUsers?.length || 0);
+    if (testUsers && testUsers.length > 0) {
+      const testUserIds = testUsers.map(u => u.id);
+      console.log('[PostService.getExplorePosts] Test user IDs to exclude:', testUserIds);
+      console.log('[PostService.getExplorePosts] Test user emails:', testUsers.map(u => u.email));
+      
+      // Use .not() with 'in' operator - correct Supabase syntax
+      query = query.not('user_id', 'in', `(${testUserIds.join(',')})`);
+      console.log('[PostService.getExplorePosts] Applied test user filter to query (always filtering test users)');
+    } else {
+      console.log('[PostService.getExplorePosts] No test users found - no filter needed');
     }
 
     // Apply filters
@@ -494,10 +532,14 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
+      console.error('[PostService.getExplorePosts] Error fetching posts:', postsError);
       throw postsError;
     }
 
+    console.log('[PostService.getExplorePosts] Fetched posts count:', postsData?.length || 0);
+    
     if (!postsData || postsData.length === 0) {
+      console.log('[PostService.getExplorePosts] No posts found');
       return [];
     }
 
@@ -506,23 +548,67 @@ class PostService {
     const restaurantIds = [...new Set(postsData.map(post => post.restaurant_id).filter(id => id))];
     const postIds = postsData.map(post => post.id);
     
-    // Fetch user data
+    console.log('[PostService.getExplorePosts] Unique user IDs in posts:', userIds.length);
+    console.log('[PostService.getExplorePosts] Unique restaurant IDs in posts:', restaurantIds.length);
+    
+    // Fetch user data (always filter test users as a safety check)
     const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('*')
-      .in('id', userIds);
+      .in('id', userIds)
+      .eq('is_test_account', false); // Always exclude test users
+    
+    if (usersError) {
+      console.error('[PostService.getExplorePosts] Error fetching users:', usersError);
+      throw usersError;
+    }
+    
+    console.log('[PostService.getExplorePosts] Fetched users count:', usersData?.length || 0);
+    
+    // Log any test users that might have slipped through
+    if (usersData) {
+      const testUsersInResults = usersData.filter(u => u.is_test_account === true);
+      if (testUsersInResults.length > 0) {
+        console.warn('[PostService.getExplorePosts] ⚠️ WARNING: Test users found in results:', 
+          testUsersInResults.map(u => ({ 
+            id: u.id, 
+            email: u.email, 
+            username: u.username,
+            is_test_account: u.is_test_account 
+          }))
+        );
+      }
+      
+      // Log user emails for debugging
+      console.log('[PostService.getExplorePosts] User details in results:', 
+        usersData.map(u => ({ 
+          id: u.id, 
+          email: u.email, 
+          username: u.username,
+          is_test_account: u.is_test_account 
+        }))
+      );
+    }
+    
+    // Create a map of raw user data for logging
+    const rawUsersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
     if (usersError) {
       throw usersError;
     }
 
-    // Fetch restaurant data
+    // Fetch restaurant data (exclude test restaurants if current user is not a test user)
     let restaurantsMap = new Map();
     if (restaurantIds.length > 0) {
-      const { data: restaurantsData } = await supabase
+      let restaurantQuery = supabase
         .from('restaurants')
         .select('id, name, address, cuisine_types, price_range, cover_photo_url')
         .in('id', restaurantIds);
+      
+      // Always exclude test restaurants
+      restaurantQuery = restaurantQuery.eq('is_test_restaurant', false);
+      
+      const { data: restaurantsData } = await restaurantQuery;
       
       if (restaurantsData) {
         restaurantsMap = new Map(restaurantsData.map(r => [r.id, r]));
@@ -561,35 +647,63 @@ class PostService {
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
     // Combine posts with user and restaurant data, including like/save status
-    const result = postsData.map(post => {
-      const userData = usersMap.get(post.user_id);
-      const restaurantData = restaurantsMap.get(post.restaurant_id);
-      const transformedPost = {
-        ...post,
-        user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: restaurantData ? {
-          id: restaurantData.id,
-          name: restaurantData.name,
-          image: restaurantData.cover_photo_url || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
-          cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
-          rating: post.rating || 0,
-          location: restaurantData.address || 'Location',
-          priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : null,
-        is_liked_by_user: currentUserId ? likedPostIds.has(post.id) : false,
-        is_saved_by_user: currentUserId ? savedPostIds.has(post.id) : false,
-      };
-      
-      console.log('[PostService.getExplorePosts] Post transformed:', {
-        postId: transformedPost.id,
-        comments_count: transformedPost.comments_count,
-        likes_count: transformedPost.likes_count,
-        saves_count: transformedPost.saves_count,
-        raw_comments_count: post.comments_count,
-      });
-      
-      return transformedPost;
-    });
+    const result = postsData
+      .map(post => {
+        const userData = usersMap.get(post.user_id);
+        const rawUserData = rawUsersMap.get(post.user_id);
+        
+        // Skip posts from test users (final safety check - always filter)
+        if (rawUserData && rawUserData.is_test_account === true) {
+          console.warn('[PostService.getExplorePosts] ⚠️ Filtering out post from test user:', {
+            postId: post.id,
+            userId: post.user_id,
+            userEmail: rawUserData.email,
+            username: rawUserData.username,
+            is_test_account: rawUserData.is_test_account
+          });
+          return null;
+        }
+        
+        const restaurantData = restaurantsMap.get(post.restaurant_id);
+        return {
+          ...post,
+          user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
+          restaurant: restaurantData ? {
+            id: restaurantData.id,
+            name: restaurantData.name,
+            image: restaurantData.cover_photo_url || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+            cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
+            rating: post.rating || 0,
+            location: restaurantData.address || 'Location',
+            priceRange: restaurantData.price_range || post.price_range || '$$',
+          } : null,
+          is_liked_by_user: currentUserId ? likedPostIds.has(post.id) : false,
+          is_saved_by_user: currentUserId ? savedPostIds.has(post.id) : false,
+        };
+      })
+      .filter((post): post is PostWithUser => post !== null);
+    
+    console.log('[PostService.getExplorePosts] Final result count after filtering:', result.length);
+    console.log('[PostService.getExplorePosts] Final usernames in result:', 
+      result.map(p => ({ username: p.user?.username, name: p.user?.name, id: p.user?.id }))
+    );
+    
+    // Final check - log any test users that made it through
+    const finalTestUsers = result
+      .map(p => {
+        const rawUser = rawUsersMap.get(p.user_id);
+        return rawUser && rawUser.is_test_account === true ? {
+          postId: p.id,
+          userId: p.user_id,
+          email: rawUser.email,
+          username: rawUser.username
+        } : null;
+      })
+      .filter(Boolean);
+    
+    if (finalTestUsers.length > 0) {
+      console.error('[PostService.getExplorePosts] ❌ ERROR: Test users in final result:', finalTestUsers);
+    }
     
     return result;
   }

@@ -76,35 +76,35 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'creator_profiles' 
                 AND column_name = 'display_name') THEN
-    ALTER TABLE creator_profiles ADD COLUMN display_name VARCHAR(100);
+    ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS display_name VARCHAR(100);
   END IF;
   
   -- Add location column if it doesn't exist
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'creator_profiles' 
                 AND column_name = 'location') THEN
-    ALTER TABLE creator_profiles ADD COLUMN location VARCHAR(255);
+    ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
   END IF;
   
   -- Add food_specialties column if it doesn't exist
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'creator_profiles' 
                 AND column_name = 'food_specialties') THEN
-    ALTER TABLE creator_profiles ADD COLUMN food_specialties TEXT[] DEFAULT '{}';
+    ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS food_specialties TEXT[] DEFAULT '{}';
   END IF;
   
   -- Add portfolio_uploaded column to track if user has uploaded portfolio
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'creator_profiles' 
                 AND column_name = 'portfolio_uploaded') THEN
-    ALTER TABLE creator_profiles ADD COLUMN portfolio_uploaded BOOLEAN DEFAULT false;
+    ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS portfolio_uploaded BOOLEAN DEFAULT false;
   END IF;
   
   -- Add instant_approved column for MVP (all creators instantly approved)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'creator_profiles' 
                 AND column_name = 'instant_approved') THEN
-    ALTER TABLE creator_profiles ADD COLUMN instant_approved BOOLEAN DEFAULT true;
+    ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS instant_approved BOOLEAN DEFAULT true;
   END IF;
 END $$;
 
@@ -117,21 +117,21 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'business_profiles' 
                 AND column_name = 'business_email') THEN
-    ALTER TABLE business_profiles ADD COLUMN business_email VARCHAR(255);
+    ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS business_email VARCHAR(255);
   END IF;
   
   -- Add business_role column
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'business_profiles' 
                 AND column_name = 'business_role') THEN
-    ALTER TABLE business_profiles ADD COLUMN business_role VARCHAR(100);
+    ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS business_role VARCHAR(100);
   END IF;
   
   -- Add verification_method column
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'business_profiles' 
                 AND column_name = 'verification_method') THEN
-    ALTER TABLE business_profiles ADD COLUMN verification_method VARCHAR(50);
+    ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS verification_method VARCHAR(50);
   END IF;
 END $$;
 
@@ -448,10 +448,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Portfolio items policies
 ALTER TABLE creator_portfolio_items ENABLE ROW LEVEL SECURITY;
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Portfolio items are viewable by everyone" ON creator_portfolio_items;
 CREATE POLICY "Portfolio items are viewable by everyone"
   ON creator_portfolio_items FOR SELECT
   USING (true);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can manage their own portfolio items" ON creator_portfolio_items;
 CREATE POLICY "Users can manage their own portfolio items"
   ON creator_portfolio_items FOR ALL
   USING (
@@ -463,14 +467,20 @@ CREATE POLICY "Users can manage their own portfolio items"
 -- Restaurant claims policies
 ALTER TABLE restaurant_claims ENABLE ROW LEVEL SECURITY;
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own claims" ON restaurant_claims;
 CREATE POLICY "Users can view their own claims"
   ON restaurant_claims FOR SELECT
   USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can create claims" ON restaurant_claims;
 CREATE POLICY "Users can create claims"
   ON restaurant_claims FOR INSERT
   WITH CHECK (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their pending claims" ON restaurant_claims;
 CREATE POLICY "Users can update their pending claims"
   ON restaurant_claims FOR UPDATE
   USING (user_id = auth.uid() AND status = 'pending');
@@ -478,6 +488,8 @@ CREATE POLICY "Users can update their pending claims"
 -- Onboarding progress policies
 ALTER TABLE creator_onboarding_progress ENABLE ROW LEVEL SECURITY;
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can manage their own onboarding progress" ON creator_onboarding_progress;
 CREATE POLICY "Users can manage their own onboarding progress"
   ON creator_onboarding_progress FOR ALL
   USING (user_id = auth.uid());

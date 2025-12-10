@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  Alert,
-  ActivityIndicator,
-  SafeAreaView,
-  Modal,
-  TextInput,
-} from 'react-native';
 import { adminReviewService } from '@/services/adminReviewService';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function AdminReviewsScreen() {
   const [filters, setFilters] = useState({
@@ -68,6 +68,12 @@ export default function AdminReviewsScreen() {
 
   const handleApprove = async (item: any, notes?: string) => {
     try {
+      console.log('[AdminReviews] Starting approval:', {
+        itemId: item.id,
+        itemType: item.type,
+        itemDetails: item.details,
+      });
+
       setLoading(true);
       if (item.type === 'restaurant_claim') {
         await adminReviewService.approveRestaurantClaim(item.id, {
@@ -84,6 +90,12 @@ export default function AdminReviewsScreen() {
       setShowReviewModal(false);
       fetchReviews();
     } catch (error: any) {
+      console.error('[AdminReviews] Approval error:', {
+        error,
+        message: error.message,
+        itemId: item.id,
+        itemType: item.type,
+      });
       Alert.alert('Error', error.message || 'Failed to approve item');
     } finally {
       setLoading(false);
@@ -119,16 +131,10 @@ export default function AdminReviewsScreen() {
   };
 
   const renderQueueItem = (item: any) => {
-    const isExpanded = expandedItem === item.id;
-
     return (
-      <TouchableOpacity
-        key={item.id}
-        style={styles.queueItem}
-        onPress={() => setExpandedItem(isExpanded ? null : item.id)}
-      >
+      <View key={item.id} style={styles.queueItem}>
         <View style={styles.itemHeader}>
-          <View style={styles.itemBadges}>
+          <View style={styles.itemLeft}>
             <View style={[styles.typeBadge,
               { backgroundColor: item.type === 'restaurant_claim' ? '#FFE5E5' : '#E5F9F6' }
             ]}>
@@ -142,56 +148,35 @@ export default function AdminReviewsScreen() {
               {formatDistanceToNow(new Date(item.submitted_at), { addSuffix: true })}
             </Text>
           </View>
-          <Ionicons
-            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color="#666"
-          />
         </View>
 
         <Text style={styles.itemTitle}>
           {item.type === 'restaurant_claim'
             ? item.details?.restaurant_name || 'Restaurant Claim'
-            : `Creator: ${item.user_name}`}
+            : item.user_name || 'Creator Application'}
         </Text>
 
         <Text style={styles.itemSubtitle}>
-          Submitted by: {item.user_name} ({item.user_email})
+          {item.user_email}
         </Text>
 
-        {isExpanded && (
-          <View style={styles.expandedContent}>
-            <View style={styles.detailsSection}>
-              {item.type === 'restaurant_claim' ? (
-                <>
-                  <Text style={styles.detailText}>
-                    Proof Type: {item.details?.ownership_proof_type}
-                  </Text>
-                  <Text style={styles.detailText}>
-                    Business Email: {item.details?.business_email}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.detailText}>
-                    Followers: {item.details?.follower_count?.toLocaleString() || 'N/A'}
-                  </Text>
-                  <Text style={styles.detailText}>
-                    Platforms: {item.details?.platforms?.join(', ') || 'N/A'}
-                  </Text>
-                </>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={styles.reviewButton}
-              onPress={() => handleReviewItem(item)}
-            >
-              <Text style={styles.reviewButtonText}>Review</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </TouchableOpacity>
+        <View style={styles.itemActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.approveButton]}
+            onPress={() => handleApprove(item)}
+          >
+            <Ionicons name="checkmark-circle" size={16} color="#fff" />
+            <Text style={styles.actionButtonText}>Approve</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.rejectButton]}
+            onPress={() => handleReviewItem(item)}
+          >
+            <Ionicons name="close-circle" size={16} color="#fff" />
+            <Text style={styles.actionButtonText}>Review</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
@@ -200,47 +185,52 @@ export default function AdminReviewsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={20} color="#333" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.title}>Review Queue</Text>
           <Text style={styles.subtitle}>
-            {data.total} pending submissions
+            {data.total} pending
           </Text>
         </View>
+        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={20} color="#666" />
+        </TouchableOpacity>
       </View>
 
-      {/* Filter Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterContainer}
-      >
-        <TouchableOpacity
-          style={[styles.filterTab, filters.type === 'all' && styles.filterTabActive]}
-          onPress={() => setFilters({ ...filters, type: 'all' })}
+      {/* Filter Tabs - Compact */}
+      <View style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
         >
-          <Text style={[styles.filterTabText, filters.type === 'all' && styles.filterTabTextActive]}>
-            All Types
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, filters.type === 'restaurant_claim' && styles.filterTabActive]}
-          onPress={() => setFilters({ ...filters, type: 'restaurant_claim' })}
-        >
-          <Text style={[styles.filterTabText, filters.type === 'restaurant_claim' && styles.filterTabTextActive]}>
-            Restaurants
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, filters.type === 'creator_application' && styles.filterTabActive]}
-          onPress={() => setFilters({ ...filters, type: 'creator_application' })}
-        >
-          <Text style={[styles.filterTabText, filters.type === 'creator_application' && styles.filterTabTextActive]}>
-            Creators
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity
+            style={[styles.filterTab, filters.type === 'all' && styles.filterTabActive]}
+            onPress={() => setFilters({ ...filters, type: 'all' })}
+          >
+            <Text style={[styles.filterTabText, filters.type === 'all' && styles.filterTabTextActive]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, filters.type === 'restaurant_claim' && styles.filterTabActive]}
+            onPress={() => setFilters({ ...filters, type: 'restaurant_claim' })}
+          >
+            <Text style={[styles.filterTabText, filters.type === 'restaurant_claim' && styles.filterTabTextActive]}>
+              Restaurants
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, filters.type === 'creator_application' && styles.filterTabActive]}
+            onPress={() => setFilters({ ...filters, type: 'creator_application' })}
+          >
+            <Text style={[styles.filterTabText, filters.type === 'creator_application' && styles.filterTabTextActive]}>
+              Creators
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       {/* Queue Items */}
       <ScrollView
@@ -419,145 +409,146 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e5e5e5',
     flexDirection: 'row',
     alignItems: 'center',
   },
   backButton: {
-    marginRight: 16,
+    marginRight: 12,
+    padding: 4,
   },
   headerContent: {
     flex: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginTop: 4,
+    marginTop: 2,
+  },
+  refreshButton: {
+    padding: 4,
   },
   filterContainer: {
     backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e5e5e5',
   },
-  filterTab: {
+  filterContent: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    gap: 8,
+  },
+  filterTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f5f5f5',
   },
   filterTabActive: {
     backgroundColor: '#FFAD27',
   },
   filterTabText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     fontWeight: '500',
   },
   filterTabTextActive: {
     color: '#fff',
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
-    padding: 16,
   },
   loadingContainer: {
-    padding: 40,
+    padding: 60,
     alignItems: 'center',
   },
   emptyContainer: {
-    padding: 40,
+    padding: 60,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginTop: 16,
+    marginTop: 12,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#999',
     marginTop: 4,
   },
   queueItem: {
     backgroundColor: '#fff',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 8,
   },
-  itemBadges: {
+  itemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   typeBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   typeBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   timeText: {
     fontSize: 11,
-    color: '#666',
+    color: '#999',
   },
   itemTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#000',
     marginBottom: 4,
   },
   itemSubtitle: {
     fontSize: 13,
     color: '#666',
+    marginBottom: 12,
   },
-  expandedContent: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+  itemActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  detailsSection: {
-    marginBottom: 16,
-  },
-  detailText: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 4,
-  },
-  reviewButton: {
-    backgroundColor: '#FFAD27',
-    paddingVertical: 12,
-    borderRadius: 8,
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
   },
-  reviewButtonText: {
+  approveButton: {
+    backgroundColor: '#10B981',
+  },
+  rejectButton: {
+    backgroundColor: '#EF4444',
+  },
+  actionButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
 
