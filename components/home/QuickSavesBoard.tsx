@@ -1,16 +1,18 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { useRouter, useFocusEffect } from 'expo-router'
+import { RestaurantCard } from '@/components/cards/RestaurantCard'
+import { designTokens } from '@/constants/designTokens'
+import { theme } from '@/constants/theme'
 import { useAuth } from '@/contexts/AuthContext'
 import { boardService } from '@/services/boardService'
 import { boardServiceExtended } from '@/services/boardServiceExtended'
+import { restaurantFavoriteService } from '@/services/restaurantFavoriteService'
 import { restaurantService } from '@/services/restaurantService'
+import { restaurantVisitService } from '@/services/restaurantVisitService'
 import { BoardRestaurant } from '@/types/board'
 import { RestaurantInfo } from '@/types/core'
-import { RestaurantCard } from '@/components/cards/RestaurantCard'
-import { theme } from '@/constants/theme'
-import { designTokens } from '@/constants/designTokens'
 import { eventBus, EVENTS } from '@/utils/eventBus'
+import { useFocusEffect, useRouter } from 'expo-router'
+import React, { useCallback, useEffect, useState } from 'react'
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 
 interface QuickSavesBoardProps {
   onRestaurantPress?: (restaurantId: string) => void
@@ -21,6 +23,8 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
   const [saves, setSaves] = useState<Array<BoardRestaurant & { restaurant?: RestaurantInfo }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [visited, setVisited] = useState<Set<string>>(new Set())
   const { user } = useAuth()
   const router = useRouter()
 
@@ -33,12 +37,12 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
 
       // First try to get Your Saves restaurants
       let quickSaves = await boardService.getQuickSavesRestaurants(user.id, 10)
-      
+
       // If no Quick Saves board, get ALL saves (limited to 10 most recent)
       if (quickSaves.length === 0) {
         quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 10)
       }
-      
+
       // Load restaurant details for each save
       const savesWithRestaurants = await Promise.all(
         quickSaves.map(async (save) => {
@@ -59,22 +63,39 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
     }
   }, [user?.id])
 
+  const loadUserStatus = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      const [favs, visits] = await Promise.all([
+        restaurantFavoriteService.getUserFavorites(user.id),
+        restaurantVisitService.getUserVisitedRestaurants(user.id)
+      ])
+      setFavorites(new Set(favs))
+      setVisited(new Set(visits))
+    } catch (error) {
+      console.error('Error loading user status:', error)
+    }
+  }, [user?.id])
+
   useEffect(() => {
     loadQuickSaves()
+    loadUserStatus()
   }, [user?.id, refreshTrigger])
 
   // Reload data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadQuickSaves()
-    }, [loadQuickSaves])
+      loadUserStatus()
+    }, [loadQuickSaves, loadUserStatus])
   )
 
   // Listen for save events
   useEffect(() => {
     const unsubscribeQuickSaves = eventBus.on(EVENTS.QUICK_SAVES_UPDATED, loadQuickSaves)
     const unsubscribeSaved = eventBus.on(EVENTS.RESTAURANT_SAVED, loadQuickSaves)
-    
+
     return () => {
       unsubscribeQuickSaves()
       unsubscribeSaved()
@@ -141,9 +162,9 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
           <Text style={styles.viewAllText}>View All</Text>
         </TouchableOpacity>
       </View>
-      
-      <ScrollView 
-        horizontal 
+
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -153,6 +174,8 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
               <RestaurantCard
                 restaurant={save.restaurant}
                 onPress={() => handleRestaurantPress(save.restaurant_id)}
+                isFavorited={favorites.has(save.restaurant_id)}
+                isVisited={visited.has(save.restaurant_id)}
               />
             </View>
           )
@@ -187,7 +210,7 @@ const styles = {
   },
   restaurantCard: {
     marginRight: 12,
-    width: 240, // Reduced width for compact cards
+    width: 300, // Reduced width for compact cards
   },
   loadingContainer: {
     height: 200,
