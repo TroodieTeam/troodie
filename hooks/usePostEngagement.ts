@@ -67,6 +67,7 @@ export function usePostEngagement({
   // Subscriptions cleanup
   const unsubscribeStats = useRef<(() => void) | null>(null);
   const unsubscribeComments = useRef<(() => void) | null>(null);
+  const unsubscribeCommentDeletes = useRef<(() => void) | null>(null);
 
   // Track last optimistic update timestamp
   const lastOptimisticUpdate = useRef<number>(0);
@@ -74,18 +75,33 @@ export function usePostEngagement({
   // Track last initialized postId to prevent unnecessary resets
   const lastPostIdRef = useRef<string | null>(null);
   const lastInitialIsLikedRef = useRef<boolean | undefined>(undefined);
+  const lastInitialStatsRef = useRef<PostEngagementStats | null>(null);
   
   useEffect(() => {
     const isNewPost = lastPostIdRef.current !== postId;
     const isLikedStatusChanged = lastInitialIsLikedRef.current !== initialIsLiked;
     
-    // Only initialize if this is a new post OR if like status changed (from server refresh)
-    if (!isNewPost && !isLikedStatusChanged) return;
+    // Check if stats have changed (for when post loads and initialStats becomes available)
+    const lastStats = lastInitialStatsRef.current;
+    const statsChanged = lastStats && initialStats && (
+      lastStats.likes_count !== initialStats.likes_count ||
+      lastStats.comments_count !== initialStats.comments_count ||
+      lastStats.saves_count !== initialStats.saves_count ||
+      lastStats.share_count !== initialStats.share_count
+    );
+    
+    // Initialize if new post, like status changed, OR stats changed (post just loaded)
+    if (!isNewPost && !isLikedStatusChanged && !statsChanged && lastInitialStatsRef.current) {
+      // Already initialized and nothing changed - don't re-initialize
+      // Realtime subscriptions handle all updates after initialization
+      return;
+    }
     
     lastPostIdRef.current = postId;
     lastInitialIsLikedRef.current = initialIsLiked;
+    lastInitialStatsRef.current = initialStats;
     
-    // Always use initial stats if provided (from server)
+    // Initialize from props (server data) - this is the source of truth on mount
     if (initialStats) {
       setLikesCount(initialStats.likes_count || 0);
       setCommentsCount(initialStats.comments_count || 0);
@@ -93,7 +109,6 @@ export function usePostEngagement({
       setShareCount(initialStats.share_count || 0);
     }
     
-    // Always use initialIsLiked/initialIsSaved if provided (from server) - this is the source of truth
     if (initialIsLiked !== undefined) {
       setIsLiked(initialIsLiked);
     }
@@ -101,14 +116,13 @@ export function usePostEngagement({
       setIsSaved(initialIsSaved);
     }
     
+    // Fallback to cache if no initial values provided
     if (!user?.id) return;
     
-    // Only use cache if initial values weren't provided (fallback)
     const cachedLike = enhancedPostEngagementService.getCachedLikeStatus(postId, user.id);
     const cachedSave = enhancedPostEngagementService.getCachedSaveStatus(postId, user.id);
     const cachedStats = enhancedPostEngagementService.getCachedStats(postId);
     
-    // Use cache only if initial values weren't provided
     if (initialIsLiked === undefined && cachedLike !== undefined) {
       setIsLiked(cachedLike);
     }
@@ -136,22 +150,19 @@ export function usePostEngagement({
         filter: `id=eq.${postId}`
       },
       (data: any) => {
-        // Only update if data is newer than our last optimistic update
-        const serverTimestamp = new Date(data.updated_at || Date.now()).getTime();
-        if (serverTimestamp > lastOptimisticUpdate.current) {
-          setLikesCount(data.likes_count || 0);
-          setCommentsCount(data.comments_count || 0);
-          setSavesCount(data.saves_count || 0);
-          setShareCount(data.share_count || 0);
-        }
+        // Realtime is the source of truth - database triggers ensure counts are correct
+        setLikesCount(data.likes_count || 0);
+        setCommentsCount(data.comments_count || 0);
+        setSavesCount(data.saves_count || 0);
+        setShareCount(data.share_count || 0);
       },
       {
-        ignoreUserId: user.id, // Don't override our own optimistic updates
-        minTimestamp: lastOptimisticUpdate.current
+        ignoreUserId: user.id // Don't process our own actions
       }
     );
 
-    // Subscribe to comments
+    // Subscribe to comment INSERT events (for comment list updates only)
+    // Count updates come from posts table UPDATE subscription above
     unsubscribeComments.current = realtimeManager.subscribe(
       `post-comments-${postId}`,
       {
@@ -160,13 +171,30 @@ export function usePostEngagement({
         filter: `post_id=eq.${postId}`
       },
       (comment: any) => {
+        // Only update comment list - count is handled by posts table UPDATE
         setComments((prev) => {
-          // Check if comment already exists (optimistic update)
           const exists = prev.some(c => c.id === comment.id);
           if (exists) return prev;
           return [comment, ...prev];
         });
-        setCommentsCount((prev) => prev + 1);
+      },
+      {
+        ignoreUserId: user.id
+      }
+    );
+
+    // Subscribe to comment DELETE events (for comment list updates only)
+    // Count updates come from posts table UPDATE subscription above
+    unsubscribeCommentDeletes.current = realtimeManager.subscribe(
+      `post-comments-delete-${postId}`,
+      {
+        table: 'post_comments',
+        event: 'DELETE',
+        filter: `post_id=eq.${postId}`
+      },
+      (oldComment: any) => {
+        // Only update comment list - count is handled by posts table UPDATE
+        setComments((prev) => prev.filter(c => c.id !== oldComment.id));
       },
       {
         ignoreUserId: user.id
@@ -176,6 +204,7 @@ export function usePostEngagement({
     return () => {
       unsubscribeStats.current?.();
       unsubscribeComments.current?.();
+      unsubscribeCommentDeletes.current?.();
     };
   }, [postId, enableRealtime, user?.id]);
   

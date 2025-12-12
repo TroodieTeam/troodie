@@ -22,11 +22,11 @@ import {
   View,
 } from 'react-native';
 import { MenuButton } from './common/MenuButton';
+import { ImageViewer } from './ImageViewer';
 import { ReportModal } from './modals/ReportModal';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
-import { ImageViewer } from './ImageViewer';
-import { VideoViewer } from './VideoViewer';
 import { VideoThumbnail } from './VideoThumbnail';
+import { VideoViewer } from './VideoViewer';
 
 interface PostCardProps {
   post: PostWithUser;
