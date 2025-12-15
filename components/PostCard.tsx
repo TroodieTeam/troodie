@@ -10,7 +10,7 @@ import { PostWithUser } from '@/types/post';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -22,11 +22,11 @@ import {
   View,
 } from 'react-native';
 import { MenuButton } from './common/MenuButton';
+import { ImageViewer } from './ImageViewer';
 import { ReportModal } from './modals/ReportModal';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
-import { ImageViewer } from './ImageViewer';
-import { VideoViewer } from './VideoViewer';
 import { VideoThumbnail } from './VideoThumbnail';
+import { VideoViewer } from './VideoViewer';
 
 interface PostCardProps {
   post: PostWithUser;
@@ -64,6 +64,14 @@ export function PostCard({
   const [showVideoViewer, setShowVideoViewer] = useState(false);
   const [videoViewerIndex, setVideoViewerIndex] = useState(0);
   
+  // Memoize initial stats to prevent unnecessary re-initialization
+  const initialStats = useMemo(() => ({
+    likes_count: post.likes_count,
+    comments_count: post.comments_count,
+    saves_count: post.saves_count,
+    share_count: post.share_count || 0,
+  }), [post.likes_count, post.comments_count, post.saves_count, post.share_count]);
+
   // Use the enhanced post engagement hook
   const {
     isLiked,
@@ -77,16 +85,12 @@ export function PostCard({
     toggleSave,
   } = usePostEngagement({
     postId: post.id,
-    initialStats: {
-      likes_count: post.likes_count,
-      comments_count: post.comments_count,
-      saves_count: post.saves_count,
-      share_count: post.share_count || 0,
-    },
+    initialStats,
     initialIsLiked: post.is_liked_by_user || false,
     initialIsSaved: post.is_saved_by_user || false,
     enableRealtime: true,
   });
+
 
   const handleLike = async () => {
     if (isLoading) return;
@@ -101,7 +105,9 @@ export function PostCard({
   };
 
   const handleComment = () => {
-    onComment?.(post.id);
+    // Navigate to comments modal
+    router.push(`/posts/${post.id}/comments`);
+    onComment?.(post.id); // Still call callback for backwards compatibility
   };
 
   const handleShare = async () => {
