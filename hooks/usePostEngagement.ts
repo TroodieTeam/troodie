@@ -300,6 +300,12 @@ export function usePostEngagement({
         // Recalculate like count from actual data using unified service
         const count = await engagementService.likes.getCount(postId);
         setLikesCount(count);
+        
+        // Emit event so ExploreScreen and other components can update
+        eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, {
+          postId,
+          likesCount: count
+        });
       },
       {
         ignoreUserId: user.id

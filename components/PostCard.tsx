@@ -94,9 +94,12 @@ export function PostCard({
 
   const handleLike = async () => {
     if (isLoading) return;
-    const wasLiked = isLiked;
+    const previousIsLiked = isLiked;
     await toggleLike();
-    onLike?.(post.id, !wasLiked);
+    // Like updates are handled via event bus (POST_ENGAGEMENT_CHANGED)
+    // Call onLike callback for any parent component side effects if needed
+    // Pass the new state (opposite of previous)
+    onLike?.(post.id, !previousIsLiked);
   };
 
   const handleSave = async () => {

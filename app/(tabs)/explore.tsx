@@ -457,14 +457,9 @@ export default function ExploreScreen() {
             pathname: '/posts/[id]',
             params: { id: item.id }
           })}
-          onLike={(postId, liked) => {
-            updatePostItem(postId, (post) => ({
-              ...post,
-              is_liked_by_user: liked,
-              likes_count: liked 
-                ? (post.likes_count || 0) + 1 
-                : Math.max((post.likes_count || 1) - 1, 0)
-            }));
+          onLike={() => {
+            // Like updates are handled via event bus (POST_ENGAGEMENT_CHANGED)
+            // No manual update needed - event bus listener will update the post
           }}
           onComment={() => {}}
           onSave={() => {}}
