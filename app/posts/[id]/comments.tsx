@@ -81,12 +81,6 @@ export default function PostCommentsModal() {
     enableRealtime: true, // Always enable realtime for accurate counts
   });
 
-  // Log like state changes for debugging
-  useEffect(() => {
-    if (__DEV__ && post?.id) {
-      console.log(`[Comments] 💚 Like state - postId: ${post.id.substring(0, 8)}..., isLiked: ${isLiked}, likesCount: ${likesCount}, initialIsLiked: ${post.is_liked_by_user}`);
-    }
-  }, [isLiked, likesCount, post?.id, post?.is_liked_by_user]);
 
   // Load post data (recalculates counts from actual data)
   useEffect(() => {
@@ -888,32 +882,16 @@ export default function PostCommentsModal() {
       <View style={styles.reactionBar}>
         <TouchableOpacity 
           style={styles.reactionButton} 
-          onPress={() => {
-            if (__DEV__) {
-              console.log(`[Comments] ❤️ Like button pressed - current isLiked: ${isLiked}, current count: ${likesCount}`);
-            }
-            toggleLike();
-          }}
+          onPress={toggleLike}
           disabled={isLoading}
           activeOpacity={0.7}
         >
-          {(() => {
-            const iconName = isLiked ? 'heart' : 'heart-outline';
-            const iconColor = isLiked ? '#FF4444' : designTokens.colors.textMedium;
-            if (__DEV__) {
-              console.log(`[Comments] 🎨 Rendering heart - isLiked: ${isLiked}, iconName: ${iconName}, iconColor: ${iconColor}, count: ${likesCount}`);
-            }
-            return (
-              <>
-                <Ionicons
-                  name={iconName}
-                  size={20}
-                  color={iconColor}
-                />
-                <Text style={styles.reactionCount}>{likesCount}</Text>
-              </>
-            );
-          })()}
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={20}
+            color={isLiked ? '#FF4444' : designTokens.colors.textMedium}
+          />
+          <Text style={styles.reactionCount}>{likesCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 

@@ -110,9 +110,6 @@ export function usePostEngagement({
       
       // Initialize like/save status
       if (initialIsLiked !== undefined) {
-        if (__DEV__) {
-          console.log(`[usePostEngagement] 🔄 Initializing isLiked: ${initialIsLiked} for postId: ${postId.substring(0, 8)}...`);
-        }
         setIsLiked(initialIsLiked);
       }
       if (initialIsSaved !== undefined) {
@@ -170,9 +167,6 @@ export function usePostEngagement({
     // This prevents stale initialStats from overwriting fresh optimistic/server updates
     const timeSinceOptimistic = Date.now() - (lastOptimisticUpdate.current || 0);
     if (timeSinceOptimistic < 3000) {
-      if (__DEV__) {
-        console.log(`[usePostEngagement] ⏭️ Skipping sync - recent optimistic update (${timeSinceOptimistic}ms ago)`);
-      }
       return;
     }
     
@@ -194,9 +188,6 @@ export function usePostEngagement({
     const shouldSync = hasSignificantDiff || !hasReceivedRealtimeUpdate.current || timeSinceRealtime > 2000;
     
     if (shouldSync) {
-      if (__DEV__) {
-        console.log(`[usePostEngagement] 🔄 Syncing from initialStats - likes: ${likesCount} → ${initialStats.likes_count}, comments: ${commentsCount} → ${initialStats.comments_count}`);
-      }
       if (initialStats.likes_count !== undefined) setLikesCount(initialStats.likes_count);
       if (initialStats.comments_count !== undefined) setCommentsCount(initialStats.comments_count);
       if (initialStats.saves_count !== undefined) setSavesCount(initialStats.saves_count);
@@ -324,17 +315,11 @@ export function usePostEngagement({
         // This prevents realtime from overwriting our own optimistic updates
         const timeSinceOptimistic = Date.now() - (lastOptimisticUpdate.current || 0);
         if (timeSinceOptimistic < 2000) {
-          if (__DEV__) {
-            console.log(`[usePostEngagement] ⏭️ Skipping realtime like update - recent optimistic update (${timeSinceOptimistic}ms ago)`);
-          }
           return;
         }
         
         // Recalculate like count from actual data using unified service
         const count = await engagementService.likes.getCount(postId);
-        if (__DEV__) {
-          console.log(`[usePostEngagement] 📡 Realtime like update - count: ${count}`);
-        }
         setLikesCount(count);
         
         // Emit event so ExploreScreen and other components can update
@@ -365,14 +350,8 @@ export function usePostEngagement({
       return;
     }
 
-    // Capture current state at the moment of call (before any async operations)
     const previousIsLiked = isLiked;
     const previousCount = likesCount;
-
-    if (__DEV__) {
-      console.log(`[usePostEngagement] 🔄 toggleLike called - postId: ${postId.substring(0, 8)}..., previousIsLiked: ${previousIsLiked}, previousCount: ${previousCount}`);
-      console.log(`[usePostEngagement] 📌 Current hook state - isLiked: ${isLiked}, likesCount: ${likesCount}`);
-    }
 
     // Update optimistic timestamp to prevent realtime from overwriting
     lastOptimisticUpdate.current = Date.now();
@@ -383,20 +362,11 @@ export function usePostEngagement({
         user.id,
         {
           onOptimisticUpdate: (toggleResult) => {
-            if (__DEV__) {
-              console.log(`[usePostEngagement] ⚡ Optimistic update - isLiked: ${toggleResult.isLiked}, likesCount: ${toggleResult.likesCount}`);
-            }
             if (toggleResult.isLiked !== undefined) {
               setIsLiked(toggleResult.isLiked);
-              if (__DEV__) {
-                console.log(`[usePostEngagement] ✅ setIsLiked(${toggleResult.isLiked}) called`);
-              }
             }
             if (toggleResult.likesCount !== undefined) {
               setLikesCount(toggleResult.likesCount);
-              if (__DEV__) {
-                console.log(`[usePostEngagement] ✅ setLikesCount(${toggleResult.likesCount}) called`);
-              }
             }
             
             eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
@@ -406,9 +376,6 @@ export function usePostEngagement({
             });
           },
           onError: (error) => {
-            if (__DEV__) {
-              console.log(`[usePostEngagement] ❌ Like toggle error - rolling back to previousIsLiked: ${previousIsLiked}, previousCount: ${previousCount}`);
-            }
             setIsLiked(previousIsLiked);
             setLikesCount(previousCount);
             eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
@@ -422,23 +389,13 @@ export function usePostEngagement({
         }
       );
 
-      if (__DEV__) {
-        console.log(`[usePostEngagement] ✅ Server response - success: ${result.success}, isLiked: ${result.isLiked}, likesCount: ${result.likesCount}`);
-      }
-
       // Update state with server response
       if (result.success) {
         if (result.isLiked !== undefined) {
           setIsLiked(result.isLiked);
-          if (__DEV__) {
-            console.log(`[usePostEngagement] ✅ Server setIsLiked(${result.isLiked}) called`);
-          }
         }
         if (result.likesCount !== undefined) {
           setLikesCount(result.likesCount);
-          if (__DEV__) {
-            console.log(`[usePostEngagement] ✅ Server setLikesCount(${result.likesCount}) called`);
-          }
         }
         
         eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
@@ -448,9 +405,6 @@ export function usePostEngagement({
         });
       }
     } catch (error) {
-      if (__DEV__) {
-        console.log(`[usePostEngagement] ❌ Exception - rolling back to previousIsLiked: ${previousIsLiked}, previousCount: ${previousCount}`, error);
-      }
       setIsLiked(previousIsLiked);
       setLikesCount(previousCount);
       eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
