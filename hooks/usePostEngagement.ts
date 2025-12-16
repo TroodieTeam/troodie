@@ -166,6 +166,16 @@ export function usePostEngagement({
   useEffect(() => {
     if (!initialStats || lastPostIdRef.current !== postId) return;
     
+    // CRITICAL: Don't sync if we just did an optimistic update (within last 3 seconds)
+    // This prevents stale initialStats from overwriting fresh optimistic/server updates
+    const timeSinceOptimistic = Date.now() - (lastOptimisticUpdate.current || 0);
+    if (timeSinceOptimistic < 3000) {
+      if (__DEV__) {
+        console.log(`[usePostEngagement] ⏭️ Skipping sync - recent optimistic update (${timeSinceOptimistic}ms ago)`);
+      }
+      return;
+    }
+    
     // Check if stats have changed significantly (more than 1 difference indicates real update)
     const commentsDiff = initialStats.comments_count !== undefined ? Math.abs(initialStats.comments_count - commentsCount) : 0;
     const likesDiff = initialStats.likes_count !== undefined ? Math.abs(initialStats.likes_count - likesCount) : 0;
@@ -184,6 +194,9 @@ export function usePostEngagement({
     const shouldSync = hasSignificantDiff || !hasReceivedRealtimeUpdate.current || timeSinceRealtime > 2000;
     
     if (shouldSync) {
+      if (__DEV__) {
+        console.log(`[usePostEngagement] 🔄 Syncing from initialStats - likes: ${likesCount} → ${initialStats.likes_count}, comments: ${commentsCount} → ${initialStats.comments_count}`);
+      }
       if (initialStats.likes_count !== undefined) setLikesCount(initialStats.likes_count);
       if (initialStats.comments_count !== undefined) setCommentsCount(initialStats.comments_count);
       if (initialStats.saves_count !== undefined) setSavesCount(initialStats.saves_count);
@@ -307,8 +320,21 @@ export function usePostEngagement({
         filter: `post_id=eq.${postId}`
       },
       async (_data: any, eventType: string) => {
+        // Don't update if we just did an optimistic update (within last 2 seconds)
+        // This prevents realtime from overwriting our own optimistic updates
+        const timeSinceOptimistic = Date.now() - (lastOptimisticUpdate.current || 0);
+        if (timeSinceOptimistic < 2000) {
+          if (__DEV__) {
+            console.log(`[usePostEngagement] ⏭️ Skipping realtime like update - recent optimistic update (${timeSinceOptimistic}ms ago)`);
+          }
+          return;
+        }
+        
         // Recalculate like count from actual data using unified service
         const count = await engagementService.likes.getCount(postId);
+        if (__DEV__) {
+          console.log(`[usePostEngagement] 📡 Realtime like update - count: ${count}`);
+        }
         setLikesCount(count);
         
         // Emit event so ExploreScreen and other components can update
