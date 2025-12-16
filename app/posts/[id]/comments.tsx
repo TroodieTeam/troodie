@@ -897,12 +897,23 @@ export default function PostCommentsModal() {
           disabled={isLoading}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name={isLiked ? 'heart' : 'heart-outline'}
-            size={20}
-            color={isLiked ? '#FF4444' : designTokens.colors.textMedium}
-          />
-          <Text style={styles.reactionCount}>{likesCount}</Text>
+          {(() => {
+            const iconName = isLiked ? 'heart' : 'heart-outline';
+            const iconColor = isLiked ? '#FF4444' : designTokens.colors.textMedium;
+            if (__DEV__) {
+              console.log(`[Comments] 🎨 Rendering heart - isLiked: ${isLiked}, iconName: ${iconName}, iconColor: ${iconColor}, count: ${likesCount}`);
+            }
+            return (
+              <>
+                <Ionicons
+                  name={iconName}
+                  size={20}
+                  color={iconColor}
+                />
+                <Text style={styles.reactionCount}>{likesCount}</Text>
+              </>
+            );
+          })()}
         </TouchableOpacity>
 
         <TouchableOpacity 

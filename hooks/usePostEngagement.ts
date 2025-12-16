@@ -57,6 +57,13 @@ export function usePostEngagement({
   const [savesCount, setSavesCount] = useState(initialStats?.saves_count || 0);
   const [shareCount, setShareCount] = useState(initialStats?.share_count || 0);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Log state changes for debugging
+  useEffect(() => {
+    if (__DEV__ && postId) {
+      console.log(`[usePostEngagement] 📊 State update - postId: ${postId.substring(0, 8)}..., isLiked: ${isLiked}, likesCount: ${likesCount}`);
+    }
+  }, [isLiked, likesCount, postId]);
   
   // Comments state
   const [comments, setComments] = useState<CommentWithUser[]>([]);
@@ -332,11 +339,13 @@ export function usePostEngagement({
       return;
     }
 
+    // Capture current state at the moment of call (before any async operations)
     const previousIsLiked = isLiked;
     const previousCount = likesCount;
 
     if (__DEV__) {
       console.log(`[usePostEngagement] 🔄 toggleLike called - postId: ${postId.substring(0, 8)}..., previousIsLiked: ${previousIsLiked}, previousCount: ${previousCount}`);
+      console.log(`[usePostEngagement] 📌 Current hook state - isLiked: ${isLiked}, likesCount: ${likesCount}`);
     }
 
     // Update optimistic timestamp to prevent realtime from overwriting
@@ -353,9 +362,15 @@ export function usePostEngagement({
             }
             if (toggleResult.isLiked !== undefined) {
               setIsLiked(toggleResult.isLiked);
+              if (__DEV__) {
+                console.log(`[usePostEngagement] ✅ setIsLiked(${toggleResult.isLiked}) called`);
+              }
             }
             if (toggleResult.likesCount !== undefined) {
               setLikesCount(toggleResult.likesCount);
+              if (__DEV__) {
+                console.log(`[usePostEngagement] ✅ setLikesCount(${toggleResult.likesCount}) called`);
+              }
             }
             
             eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
@@ -389,9 +404,15 @@ export function usePostEngagement({
       if (result.success) {
         if (result.isLiked !== undefined) {
           setIsLiked(result.isLiked);
+          if (__DEV__) {
+            console.log(`[usePostEngagement] ✅ Server setIsLiked(${result.isLiked}) called`);
+          }
         }
         if (result.likesCount !== undefined) {
           setLikesCount(result.likesCount);
+          if (__DEV__) {
+            console.log(`[usePostEngagement] ✅ Server setLikesCount(${result.likesCount}) called`);
+          }
         }
         
         eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
