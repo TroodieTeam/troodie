@@ -58,13 +58,6 @@ export function usePostEngagement({
   const [shareCount, setShareCount] = useState(initialStats?.share_count || 0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Log state changes for debugging
-  useEffect(() => {
-    if (__DEV__ && postId) {
-      console.log(`[usePostEngagement] 📊 State update - postId: ${postId.substring(0, 8)}..., isLiked: ${isLiked}, likesCount: ${likesCount}`);
-    }
-  }, [isLiked, likesCount, postId]);
-  
   // Comments state
   const [comments, setComments] = useState<CommentWithUser[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
