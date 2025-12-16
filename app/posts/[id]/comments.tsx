@@ -76,6 +76,8 @@ export default function PostCommentsModal() {
   } = usePostEngagement({
     postId: id || '',
     initialStats,
+    initialIsLiked: post?.is_liked_by_user || false,
+    initialIsSaved: post?.is_saved_by_user || false,
     enableRealtime: true, // Always enable realtime for accurate counts
   });
 
@@ -1292,3 +1294,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+

@@ -172,3 +172,4 @@ useFocusEffect(
 2. **Single service** - Only `commentService` reads/writes comments
 3. **Realtime is authoritative** - Subscribe to actual data changes
 4. **Recalculate on navigation** - Use `useFocusEffect` to reload fresh data
+

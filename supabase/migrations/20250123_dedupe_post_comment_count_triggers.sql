@@ -142,3 +142,4 @@ SET comments_count = (
   FROM post_comments 
   WHERE post_comments.post_id = posts.id
 );
+

@@ -29,3 +29,4 @@ WHERE NOT EXISTS (
   WHERE name = 'Prod Test Claiming Restaurant'
     AND is_test_restaurant = true
 );
+

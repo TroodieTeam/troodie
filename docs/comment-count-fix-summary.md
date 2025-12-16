@@ -83,3 +83,4 @@ These services should NOT be used for comments:
 - ❌ `postEngagementService.getPostComments()` - Use `commentService` instead
 - ❌ `enhancedPostEngagementService` comment methods - Use `commentService` instead
 - ❌ Direct queries to `post_comments` - Use `commentService` instead
+

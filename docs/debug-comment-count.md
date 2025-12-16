@@ -125,3 +125,4 @@ WHERE post_id = '<POST_ID_FROM_ABOVE>';
    SELECT prosrc FROM pg_proc WHERE proname = 'update_post_comments_count';
    -- Look for: SET updated_at = NOW()
    ```
+
