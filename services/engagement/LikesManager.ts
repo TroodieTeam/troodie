@@ -22,12 +22,19 @@ export class LikesManager {
     const currentlyLiked = await this.isLiked(postId, userId);
     const optimisticState = !currentlyLiked;
 
+    if (__DEV__) {
+      console.log(`[LikesManager] 🔄 toggle - postId: ${postId.substring(0, 8)}..., userId: ${userId.substring(0, 8)}..., currentlyLiked: ${currentlyLiked}, optimisticState: ${optimisticState}`);
+    }
+
     // Optimistic update
     this.cache.setLikeStatus(postId, userId, optimisticState);
     this.cache.updateLikesCount(postId, optimisticState ? 1 : -1);
 
     // Notify UI immediately
     const currentCount = this.cache.getLikesCount(postId);
+    if (__DEV__) {
+      console.log(`[LikesManager] ⚡ Optimistic update - optimisticState: ${optimisticState}, currentCount: ${currentCount}`);
+    }
     options?.onOptimisticUpdate?.({
       success: true,
       isLiked: optimisticState,
@@ -36,8 +43,14 @@ export class LikesManager {
 
     try {
       if (currentlyLiked) {
+        if (__DEV__) {
+          console.log(`[LikesManager] 🗑️ Removing like...`);
+        }
         await this.removeLike(postId, userId);
       } else {
+        if (__DEV__) {
+          console.log(`[LikesManager] ➕ Adding like...`);
+        }
         await this.addLike(postId, userId);
       }
 
@@ -49,12 +62,19 @@ export class LikesManager {
       const serverIsLiked = await this.isLiked(postId, userId);
       this.cache.setLikeStatus(postId, userId, serverIsLiked);
 
+      if (__DEV__) {
+        console.log(`[LikesManager] ✅ Server response - serverIsLiked: ${serverIsLiked}, serverCount: ${serverCount}`);
+      }
+
       return {
         success: true,
         isLiked: serverIsLiked,
         likesCount: serverCount
       };
     } catch (error) {
+      if (__DEV__) {
+        console.log(`[LikesManager] ❌ Error - rolling back to currentlyLiked: ${currentlyLiked}`, error);
+      }
       // Rollback optimistic update
       this.cache.setLikeStatus(postId, userId, currentlyLiked);
       this.cache.updateLikesCount(postId, currentlyLiked ? 1 : -1);

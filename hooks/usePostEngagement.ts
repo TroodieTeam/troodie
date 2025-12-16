@@ -103,6 +103,9 @@ export function usePostEngagement({
       
       // Initialize like/save status
       if (initialIsLiked !== undefined) {
+        if (__DEV__) {
+          console.log(`[usePostEngagement] 🔄 Initializing isLiked: ${initialIsLiked} for postId: ${postId.substring(0, 8)}...`);
+        }
         setIsLiked(initialIsLiked);
       }
       if (initialIsSaved !== undefined) {
@@ -332,6 +335,10 @@ export function usePostEngagement({
     const previousIsLiked = isLiked;
     const previousCount = likesCount;
 
+    if (__DEV__) {
+      console.log(`[usePostEngagement] 🔄 toggleLike called - postId: ${postId.substring(0, 8)}..., previousIsLiked: ${previousIsLiked}, previousCount: ${previousCount}`);
+    }
+
     // Update optimistic timestamp to prevent realtime from overwriting
     lastOptimisticUpdate.current = Date.now();
 
@@ -341,6 +348,9 @@ export function usePostEngagement({
         user.id,
         {
           onOptimisticUpdate: (toggleResult) => {
+            if (__DEV__) {
+              console.log(`[usePostEngagement] ⚡ Optimistic update - isLiked: ${toggleResult.isLiked}, likesCount: ${toggleResult.likesCount}`);
+            }
             if (toggleResult.isLiked !== undefined) {
               setIsLiked(toggleResult.isLiked);
             }
@@ -355,6 +365,9 @@ export function usePostEngagement({
             });
           },
           onError: (error) => {
+            if (__DEV__) {
+              console.log(`[usePostEngagement] ❌ Like toggle error - rolling back to previousIsLiked: ${previousIsLiked}, previousCount: ${previousCount}`);
+            }
             setIsLiked(previousIsLiked);
             setLikesCount(previousCount);
             eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 
@@ -367,6 +380,10 @@ export function usePostEngagement({
           }
         }
       );
+
+      if (__DEV__) {
+        console.log(`[usePostEngagement] ✅ Server response - success: ${result.success}, isLiked: ${result.isLiked}, likesCount: ${result.likesCount}`);
+      }
 
       // Update state with server response
       if (result.success) {
@@ -384,6 +401,9 @@ export function usePostEngagement({
         });
       }
     } catch (error) {
+      if (__DEV__) {
+        console.log(`[usePostEngagement] ❌ Exception - rolling back to previousIsLiked: ${previousIsLiked}, previousCount: ${previousCount}`, error);
+      }
       setIsLiked(previousIsLiked);
       setLikesCount(previousCount);
       eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, { 

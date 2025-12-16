@@ -81,6 +81,13 @@ export default function PostCommentsModal() {
     enableRealtime: true, // Always enable realtime for accurate counts
   });
 
+  // Log like state changes for debugging
+  useEffect(() => {
+    if (__DEV__ && post?.id) {
+      console.log(`[Comments] 💚 Like state - postId: ${post.id.substring(0, 8)}..., isLiked: ${isLiked}, likesCount: ${likesCount}, initialIsLiked: ${post.is_liked_by_user}`);
+    }
+  }, [isLiked, likesCount, post?.id, post?.is_liked_by_user]);
+
   // Load post data (recalculates counts from actual data)
   useEffect(() => {
     if (id) {
@@ -881,7 +888,12 @@ export default function PostCommentsModal() {
       <View style={styles.reactionBar}>
         <TouchableOpacity 
           style={styles.reactionButton} 
-          onPress={toggleLike}
+          onPress={() => {
+            if (__DEV__) {
+              console.log(`[Comments] ❤️ Like button pressed - current isLiked: ${isLiked}, current count: ${likesCount}`);
+            }
+            toggleLike();
+          }}
           disabled={isLoading}
           activeOpacity={0.7}
         >
