@@ -105,29 +105,124 @@ export const DeliverableCard: React.FC<DeliverableCardProps> = ({
         </TouchableOpacity>
       </View>
 
-      {expanded && (
+      {expanded ? (
         <View style={{ borderTopWidth: 1, borderColor: DS.colors.borderLight, padding: DS.spacing.md, backgroundColor: DS.colors.surfaceLight }}>
-          {deliverable.caption && (
+          {/* Post URL */}
+          {deliverable.platform_post_url ? (
+            <View style={{ marginBottom: DS.spacing.md }}>
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 4 }}>Post URL</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (deliverable.platform_post_url) {
+                    Linking.openURL(deliverable.platform_post_url);
+                  }
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: DS.colors.surface, padding: DS.spacing.sm, borderRadius: DS.borderRadius.md, borderWidth: 1, borderColor: DS.colors.border }}
+              >
+                <ExternalLink size={14} color={DS.colors.primaryOrange} style={{ marginRight: DS.spacing.xs }} />
+                <Text style={{ ...DS.typography.body, color: DS.colors.primaryOrange, flex: 1 }} numberOfLines={1}>
+                  {deliverable.platform_post_url || ''}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {/* Screenshot Preview (if not already shown in header) */}
+          {deliverable.thumbnail_url ? (
+            <View style={{ marginBottom: DS.spacing.md }}>
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 4 }}>Content Preview</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (deliverable.platform_post_url) {
+                    Linking.openURL(deliverable.platform_post_url);
+                  }
+                }}
+                activeOpacity={0.9}
+                style={{ borderRadius: DS.borderRadius.md, overflow: 'hidden', backgroundColor: DS.colors.surfaceLight, maxHeight: 400 }}
+              >
+                <Image 
+                  source={{ uri: deliverable.thumbnail_url }} 
+                  style={{ width: '100%', aspectRatio: 9/16, maxHeight: 400 }} 
+                  resizeMode="contain" 
+                />
+                {deliverable.platform_post_url ? (
+                  <View style={{ position: 'absolute', bottom: DS.spacing.sm, right: DS.spacing.sm, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: DS.borderRadius.sm, flexDirection: 'row', alignItems: 'center' }}>
+                    <ExternalLink size={12} color="white" style={{ marginRight: 4 }} />
+                    <Text style={{ ...DS.typography.caption, color: 'white' }}>View Post</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {/* Caption */}
+          {deliverable.caption ? (
             <View style={{ marginBottom: DS.spacing.md }}>
               <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 4 }}>Caption</Text>
-              <Text style={{ ...DS.typography.body, color: DS.colors.textDark }}>{deliverable.caption}</Text>
+              <Text style={{ ...DS.typography.body, color: DS.colors.textDark, lineHeight: 20 }}>{String(deliverable.caption)}</Text>
             </View>
-          )}
-          
-          {(deliverable.views_count || deliverable.likes_count) && (
-            <View style={{ flexDirection: 'row', gap: DS.spacing.lg }}>
-              <View>
-                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Views</Text>
-                <Text style={{ ...DS.typography.body, fontWeight: '600' }}>{deliverable.views_count?.toLocaleString() || '-'}</Text>
-              </View>
-              <View>
-                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Likes</Text>
-                <Text style={{ ...DS.typography.body, fontWeight: '600' }}>{deliverable.likes_count?.toLocaleString() || '-'}</Text>
+          ) : null}
+
+          {/* Engagement Metrics */}
+          {(deliverable.views_count || deliverable.likes_count || deliverable.comments_count || deliverable.shares_count) ? (
+            <View style={{ marginBottom: DS.spacing.md, padding: DS.spacing.md, backgroundColor: DS.colors.surface, borderRadius: DS.borderRadius.md }}>
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: DS.spacing.sm }}>Engagement Metrics</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {deliverable.views_count !== undefined && deliverable.views_count !== null ? (
+                  <View style={{ flex: 1, minWidth: '45%', marginBottom: DS.spacing.sm }}>
+                    <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Views</Text>
+                    <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>{String(deliverable.views_count.toLocaleString())}</Text>
+                  </View>
+                ) : null}
+                {deliverable.likes_count !== undefined && deliverable.likes_count !== null ? (
+                  <View style={{ flex: 1, minWidth: '45%', marginBottom: DS.spacing.sm }}>
+                    <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Likes</Text>
+                    <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>{String(deliverable.likes_count.toLocaleString())}</Text>
+                  </View>
+                ) : null}
+                {deliverable.comments_count !== undefined && deliverable.comments_count !== null ? (
+                  <View style={{ flex: 1, minWidth: '45%', marginBottom: DS.spacing.sm }}>
+                    <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Comments</Text>
+                    <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>{String(deliverable.comments_count.toLocaleString())}</Text>
+                  </View>
+                ) : null}
+                {deliverable.shares_count !== undefined && deliverable.shares_count !== null ? (
+                  <View style={{ flex: 1, minWidth: '45%', marginBottom: DS.spacing.sm }}>
+                    <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Shares</Text>
+                    <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>{String(deliverable.shares_count.toLocaleString())}</Text>
+                  </View>
+                ) : null}
+                {deliverable.engagement_rate !== undefined && deliverable.engagement_rate !== null ? (
+                  <View style={{ flex: 1, minWidth: '45%', marginBottom: DS.spacing.sm }}>
+                    <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Engagement Rate</Text>
+                    <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>{String(deliverable.engagement_rate.toFixed(1))}%</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
-          )}
+          ) : null}
+
+          {/* Review Feedback */}
+          {deliverable.restaurant_feedback ? (
+            <View style={{ marginTop: DS.spacing.sm, padding: DS.spacing.md, backgroundColor: '#F0F9FF', borderRadius: DS.borderRadius.md, borderWidth: 1, borderColor: '#BAE6FD' }}>
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 4 }}>Review Feedback</Text>
+              <Text style={{ ...DS.typography.body, color: DS.colors.textDark }}>{String(deliverable.restaurant_feedback)}</Text>
+            </View>
+          ) : null}
+
+          {/* Submission Date */}
+          <View style={{ marginTop: DS.spacing.sm }}>
+            <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>
+              Submitted: {new Date(deliverable.submitted_at).toLocaleString()}
+            </Text>
+            {deliverable.reviewed_at ? (
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginTop: 2 }}>
+                Reviewed: {new Date(deliverable.reviewed_at).toLocaleString()}
+              </Text>
+            ) : null}
+          </View>
         </View>
-      )}
+      ) : null}
 
       {/* Actions */}
       {isPending && (

@@ -1,7 +1,7 @@
 import { DS } from '@/components/design-system/tokens';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertCircle, ArrowLeft, Edit } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -56,6 +56,14 @@ export default function CampaignDetail() {
     handleSubmitRating,
     handleWithdrawInvitation
   } = useCampaignActions(campaign, loadCampaignData, setDeliverables, setApplications);
+
+  // Refresh campaign data when screen comes into focus
+  // This ensures budget and deliverable counts are updated after approval
+  useFocusEffect(
+    useCallback(() => {
+      loadCampaignData();
+    }, [loadCampaignData])
+  );
 
   // Loading State
   if (loading) {
