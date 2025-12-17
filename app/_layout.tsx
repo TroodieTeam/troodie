@@ -189,6 +189,7 @@ function InnerLayout() {
             <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="posts/[id]/comments" options={{ headerShown: false }} />
             <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="find-friends" options={{ headerShown: false }} />
             <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />

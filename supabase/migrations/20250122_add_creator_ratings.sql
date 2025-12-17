@@ -36,3 +36,4 @@ COMMENT ON COLUMN campaign_applications.rated_at IS
 
 
 
+

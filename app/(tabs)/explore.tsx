@@ -19,7 +19,6 @@ import { Lock, Plus, Search, SlidersHorizontal, Users } from 'lucide-react-nativ
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  DeviceEventEmitter,
   Dimensions,
   FlatList,
   Image,
@@ -78,12 +77,21 @@ const useTabData = <T extends { id: string }>(
   });
 
   const load = async (searchQuery?: string) => {
+    if (__DEV__) {
+      console.log(`[useTabData] Loading, searchQuery: ${searchQuery || 'none'}, current data length: ${state.data.length}`);
+    }
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const data = await loadFn(searchQuery);
       const processedData = shouldRandomize && !searchQuery ? shuffleArray(data) : data;
+      if (__DEV__) {
+        console.log(`[useTabData] Loaded ${processedData.length} items, setting state...`);
+      }
       setState({ data: processedData, filtered: processedData, loading: false, error: null });
     } catch (err: any) {
+      if (__DEV__) {
+        console.error(`[useTabData] Error loading:`, err);
+      }
       setState(prev => ({ ...prev, loading: false, error: err }));
     }
   };
@@ -147,18 +155,7 @@ export default function ExploreScreen() {
   // Posts data management
   const posts = useTabData(
     async () => {
-      console.log('[ExploreScreen] Loading posts...');
       const result = await postService.getExplorePosts({ limit: 50 });
-      console.log('[ExploreScreen] Posts loaded:', result.length);
-      
-      // Log user info for debugging
-      console.log('[ExploreScreen] Posts with user info:', result.map(p => ({
-        postId: p.id,
-        userId: p.user?.id,
-        username: p.user?.username,
-        name: p.user?.name
-      })));
-      
       return result;
     },
     (items, query) => {
@@ -198,6 +195,32 @@ export default function ExploreScreen() {
     // Simply reload the posts, the backend will filter out blocked users
     posts.load();
   }, []);
+
+  // Listen to engagement changes to update post list
+  // This ensures posts update when you navigate back from comments modal
+  useEffect(() => {
+    const unsubscribe = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, (data: { postId: string; commentsCount?: number; likesCount?: number; savesCount?: number; isLiked?: boolean }) => {
+      if (!data.postId) return;
+      
+      // Check if post exists in current list
+      const postExists = posts.data.some(p => p.id === data.postId);
+      if (!postExists) {
+        return;
+      }
+      
+      if (data.commentsCount !== undefined || data.likesCount !== undefined || data.savesCount !== undefined) {
+        updatePostItem(data.postId, (post) => ({
+          ...post,
+          comments_count: data.commentsCount !== undefined ? data.commentsCount : post.comments_count,
+          likes_count: data.likesCount !== undefined ? data.likesCount : post.likes_count,
+          saves_count: data.savesCount !== undefined ? data.savesCount : post.saves_count,
+          is_liked_by_user: data.isLiked !== undefined ? data.isLiked : post.is_liked_by_user
+        }));
+      }
+    });
+
+    return unsubscribe;
+  }, [updatePostItem, posts.data]);
 
   // Handle post deletion - refresh posts to remove deleted post
   const handlePostDeleted = useCallback((postId: string) => {
@@ -267,8 +290,39 @@ export default function ExploreScreen() {
   }, [activeTab]);
 
   // Reload and re-randomize restaurants when screen comes into focus
+  // NOTE: Posts tab does NOT reload on focus - PostCard components use usePostEngagement
+  // hook which has realtime subscriptions that keep counts updated automatically
+  // However, we refresh engagement stats for visible posts when returning from comments modal
   useFocusEffect(
     useCallback(() => {
+      if (activeTab === 'posts' && posts.data.length === 0 && !posts.loading) {
+        // CRITICAL FIX: If posts are empty when navigating back, reload them
+        posts.load();
+      }
+      
+      // When returning to posts tab, refresh engagement stats for visible posts
+      // This ensures counts are accurate after creating comments
+      if (activeTab === 'posts' && posts.data.length > 0 && user?.id) {
+        const { engagementService } = require('@/services/engagement');
+        const visiblePostIds = posts.data.slice(0, 20).map(p => p.id); // Refresh first 20 visible posts
+        
+        engagementService.batchGetEngagementStats(visiblePostIds, user.id).then((statsMap) => {
+          statsMap.forEach((stats, postId) => {
+            updatePostItem(postId, (post) => ({
+              ...post,
+              comments_count: stats.comments_count || post.comments_count,
+              likes_count: stats.likes_count || post.likes_count,
+              saves_count: stats.saves_count || post.saves_count,
+              share_count: stats.share_count || post.share_count,
+              is_liked_by_user: stats.is_liked_by_user,
+              is_saved_by_user: stats.is_saved_by_user
+            }));
+          });
+        }).catch((error) => {
+          console.error('[ExploreScreen] Error refreshing engagement stats:', error);
+        });
+      }
+      
       // Reload restaurants if we're on the restaurants tab and have already loaded once
       if (activeTab === 'restaurants' && hasInitiallyLoaded) {
         const performReRandomization = async () => {
@@ -281,11 +335,9 @@ export default function ExploreScreen() {
         };
         performReRandomization();
       }
-      // Always refresh posts when posts tab becomes visible to reflect deletions/creations
-      else if (activeTab === 'posts') {
-        posts.load();
-      }
-    }, [activeTab, hasInitiallyLoaded])
+      // Posts tab: Reload if empty (data was lost) - realtime subscriptions handle updates for existing posts
+      // Communities tab: NO reload on focus - data is stable
+    }, [activeTab, hasInitiallyLoaded, posts.data.length, posts.loading])
   );
 
   // Filter on search change
@@ -405,14 +457,9 @@ export default function ExploreScreen() {
             pathname: '/posts/[id]',
             params: { id: item.id }
           })}
-          onLike={(postId, liked) => {
-            updatePostItem(postId, (post) => ({
-              ...post,
-              is_liked_by_user: liked,
-              likes_count: liked 
-                ? (post.likes_count || 0) + 1 
-                : Math.max((post.likes_count || 1) - 1, 0)
-            }));
+          onLike={() => {
+            // Like updates are handled via event bus (POST_ENGAGEMENT_CHANGED)
+            // No manual update needed - event bus listener will update the post
           }}
           onComment={() => {}}
           onSave={() => {}}
@@ -495,54 +542,10 @@ export default function ExploreScreen() {
     );
   }, [activeTab, router, isUserMember, handleJoinCommunity]);
 
-  // Listen for post engagement changes (likes, saves) from detail screen or other sources
-  useEffect(() => {
-    const unsubscribeEngagement = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, async ({ 
-      postId, 
-      isLiked, 
-      likesCount 
-    }: { 
-      postId: string; 
-      isLiked?: boolean; 
-      likesCount?: number; 
-    }) => {
-      if (isLiked !== undefined || likesCount !== undefined) {
-        updatePostItem(postId, (item) => ({
-          ...item,
-          likes_count: likesCount !== undefined ? likesCount : item.likes_count ?? 0,
-          is_liked_by_user: isLiked !== undefined ? isLiked : item.is_liked_by_user ?? false,
-        }));
-      }
-      
-      try {
-        const freshPost = await postService.getPostById(postId);
-        if (freshPost) {
-          updatePostItem(postId, (item) => ({
-            ...item,
-            likes_count: likesCount !== undefined ? likesCount : (freshPost.likes_count ?? item.likes_count ?? 0),
-            is_liked_by_user: isLiked !== undefined ? isLiked : (freshPost.is_liked_by_user ?? item.is_liked_by_user ?? false),
-            comments_count: freshPost.comments_count ?? item.comments_count ?? 0,
-            saves_count: freshPost.saves_count ?? item.saves_count ?? 0,
-            is_saved_by_user: freshPost.is_saved_by_user ?? item.is_saved_by_user ?? false,
-          }));
-        }
-      } catch (error) {
-        console.error('Error refreshing post data:', error);
-      }
-    });
-
-    const subscription = DeviceEventEmitter.addListener('post-comment-added', ({ postId }: { postId: string }) => {
-      updatePostItem(postId, (item) => ({
-        ...item,
-        comments_count: (item.comments_count || 0) + 1,
-      }));
-    });
-
-    return () => {
-      unsubscribeEngagement();
-      subscription.remove();
-    };
-  }, [updatePostItem]);
+  // REMOVED: Event-based updates for post engagement
+  // PostCard components use usePostEngagement hook which has realtime subscriptions
+  // to the posts table. These subscriptions automatically update comment counts,
+  // likes, saves, etc. No need for manual event handling or state management here.
 
   const EmptyComponent = useCallback(() => {
     if (currentTab.error) {

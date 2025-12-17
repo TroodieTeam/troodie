@@ -1,14 +1,14 @@
 import { supabase } from '@/lib/supabase';
 import { RestaurantInfo, UserInfo } from '@/types/core';
 import {
-  ExploreFilters,
-  Post,
-  PostCreationData,
-  PostSearchFilters,
-  PostStats,
-  PostUpdate,
-  PostWithUser,
-  TrendingPost
+    ExploreFilters,
+    Post,
+    PostCreationData,
+    PostSearchFilters,
+    PostStats,
+    PostUpdate,
+    PostWithUser,
+    TrendingPost
 } from '@/types/post';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
@@ -17,6 +17,32 @@ import { restaurantImageSyncService } from './restaurantImageSyncService';
 import { restaurantVisitService } from './restaurantVisitService';
 
 class PostService {
+  /**
+   * @deprecated Use engagementService.batchGetEngagementStats() instead
+   * This method is kept temporarily for backward compatibility during migration
+   */
+  private async calculateEngagementCounts(postIds: string[]): Promise<{
+    commentCounts: Map<string, number>;
+    likeCounts: Map<string, number>;
+    saveCounts: Map<string, number>;
+  }> {
+    // Use unified engagement service for accurate counts
+    const { engagementService } = await import('@/services/engagement');
+    const statsMap = await engagementService.batchGetEngagementStats(postIds);
+    
+    const commentCounts = new Map<string, number>();
+    const likeCounts = new Map<string, number>();
+    const saveCounts = new Map<string, number>();
+    
+    statsMap.forEach((stats, postId) => {
+      commentCounts.set(postId, stats.comments_count || 0);
+      likeCounts.set(postId, stats.likes_count || 0);
+      saveCounts.set(postId, stats.saves_count || 0);
+    });
+    
+    return { commentCounts, likeCounts, saveCounts };
+  }
+
   /**
    * Get a single post by ID
    */
@@ -287,31 +313,19 @@ class PostService {
       }
     }
 
-    // Check if current user has liked/saved this post
-    let isLiked = false;
-    let isSaved = false;
-    
-    if (currentUserId) {
-      // Check like status
-      const { data: likeData } = await supabase
-        .from('post_likes')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', currentUserId)
-        .maybeSingle();
-      
-      isLiked = !!likeData;
-      
-      // Check save status
-      const { data: saveData } = await supabase
-        .from('post_saves')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', currentUserId)
-        .maybeSingle();
-      
-      isSaved = !!saveData;
-    }
+    // Get engagement stats using unified service (single source of truth)
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStats = await engagementService.getEngagementStats(postId, currentUserId || undefined);
+
+    // Override stale column values with actual counts
+    postData.comments_count = engagementStats.comments_count || 0;
+    postData.likes_count = engagementStats.likes_count || 0;
+    postData.saves_count = engagementStats.saves_count || 0;
+    postData.share_count = engagementStats.share_count || 0;
+
+    // Use engagement service for user-specific status
+    const isLiked = engagementStats.is_liked_by_user || false;
+    const isSaved = engagementStats.is_saved_by_user || false;
 
     // Transform to PostWithUser format
     return {
@@ -419,6 +433,24 @@ class PostService {
       }
     }
 
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
+
     return postsData.map(post => {
       const restaurantData = restaurantsMap.get(post.restaurant_id);
       return {
@@ -443,25 +475,13 @@ class PostService {
    * Get posts for explore feed with filters
    */
   async getExplorePosts(filters: ExploreFilters = {}): Promise<PostWithUser[]> {
-    console.log('[PostService.getExplorePosts] Starting fetch with filters:', filters);
-    
     // Get blocked users list first
     const blockedUserIds = await moderationService.getBlockedUsers();
-    console.log('[PostService.getExplorePosts] Blocked user IDs:', blockedUserIds.length);
     
     // Get current user ID for checking likes/saves
     const { data: { user } } = await supabase.auth.getUser();
     const currentUserId = user?.id;
     const currentUserEmail = user?.email;
-    
-    // Check if current user is a test user (for logging only - we always filter test users)
-    const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
-    console.log('[PostService.getExplorePosts] Current user:', {
-      id: currentUserId,
-      email: currentUserEmail,
-      isTestUser: isCurrentUserTest,
-      note: 'Test users are always filtered from explore feed'
-    });
     
     let query = supabase
       .from('posts')
@@ -471,7 +491,6 @@ class PostService {
     // Exclude posts from blocked users
     if (blockedUserIds.length > 0) {
       query = query.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
-      console.log('[PostService.getExplorePosts] Applied blocked users filter:', blockedUserIds.length, 'users');
     }
 
     // ALWAYS exclude posts from test users (test accounts should never be visible in explore)
@@ -482,20 +501,14 @@ class PostService {
       .eq('is_test_account', true);
     
     if (testUsersError) {
-      console.error('[PostService.getExplorePosts] Error fetching test users:', testUsersError);
+      // Silently continue - test user filtering is best-effort
     }
     
-    console.log('[PostService.getExplorePosts] Found test users:', testUsers?.length || 0);
     if (testUsers && testUsers.length > 0) {
       const testUserIds = testUsers.map(u => u.id);
-      console.log('[PostService.getExplorePosts] Test user IDs to exclude:', testUserIds);
-      console.log('[PostService.getExplorePosts] Test user emails:', testUsers.map(u => u.email));
       
       // Use .not() with 'in' operator - correct Supabase syntax
       query = query.not('user_id', 'in', `(${testUserIds.join(',')})`);
-      console.log('[PostService.getExplorePosts] Applied test user filter to query (always filtering test users)');
-    } else {
-      console.log('[PostService.getExplorePosts] No test users found - no filter needed');
     }
 
     // Apply filters
@@ -514,14 +527,10 @@ class PostService {
     const { data: postsData, error: postsError } = await query.order('created_at', { ascending: false });
 
     if (postsError) {
-      console.error('[PostService.getExplorePosts] Error fetching posts:', postsError);
       throw postsError;
     }
-
-    console.log('[PostService.getExplorePosts] Fetched posts count:', postsData?.length || 0);
     
     if (!postsData || postsData.length === 0) {
-      console.log('[PostService.getExplorePosts] No posts found');
       return [];
     }
 
@@ -529,9 +538,36 @@ class PostService {
     const userIds = [...new Set(postsData.map(post => post.user_id))];
     const restaurantIds = [...new Set(postsData.map(post => post.restaurant_id).filter(id => id))];
     const postIds = postsData.map(post => post.id);
+
+    // Get engagement stats using unified service (single source of truth)
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values (always accurate, no stale data)
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        const calculatedComments = stats.comments_count || 0;
+        const calculatedLikes = stats.likes_count || 0;
+        const calculatedSaves = stats.saves_count || 0;
+        
+        if (__DEV__) {
+          const postIdShort = post.id.substring(0, 8) + '...';
+          console.log(`[postService.getExplorePosts] Post ${postIdShort}: comments=${calculatedComments} (was ${post.comments_count}), likes=${calculatedLikes}, saves=${calculatedSaves}`);
+        }
+        
+        post.comments_count = calculatedComments;
+        post.likes_count = calculatedLikes;
+        post.saves_count = calculatedSaves;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
     
-    console.log('[PostService.getExplorePosts] Unique user IDs in posts:', userIds.length);
-    console.log('[PostService.getExplorePosts] Unique restaurant IDs in posts:', restaurantIds.length);
+    if (__DEV__) {
+      console.log(`[postService.getExplorePosts] ✅ Returning ${postsData.length} posts with calculated counts`);
+    }
     
     // Fetch user data (always filter test users as a safety check)
     const { data: usersData, error: usersError } = await supabase
@@ -541,35 +577,7 @@ class PostService {
       .eq('is_test_account', false); // Always exclude test users
     
     if (usersError) {
-      console.error('[PostService.getExplorePosts] Error fetching users:', usersError);
       throw usersError;
-    }
-    
-    console.log('[PostService.getExplorePosts] Fetched users count:', usersData?.length || 0);
-    
-    // Log any test users that might have slipped through
-    if (usersData) {
-      const testUsersInResults = usersData.filter(u => u.is_test_account === true);
-      if (testUsersInResults.length > 0) {
-        console.warn('[PostService.getExplorePosts] ⚠️ WARNING: Test users found in results:', 
-          testUsersInResults.map(u => ({ 
-            id: u.id, 
-            email: u.email, 
-            username: u.username,
-            is_test_account: u.is_test_account 
-          }))
-        );
-      }
-      
-      // Log user emails for debugging
-      console.log('[PostService.getExplorePosts] User details in results:', 
-        usersData.map(u => ({ 
-          id: u.id, 
-          email: u.email, 
-          username: u.username,
-          is_test_account: u.is_test_account 
-        }))
-      );
     }
     
     // Create a map of raw user data for logging
@@ -636,13 +644,6 @@ class PostService {
         
         // Skip posts from test users (final safety check - always filter)
         if (rawUserData && rawUserData.is_test_account === true) {
-          console.warn('[PostService.getExplorePosts] ⚠️ Filtering out post from test user:', {
-            postId: post.id,
-            userId: post.user_id,
-            userEmail: rawUserData.email,
-            username: rawUserData.username,
-            is_test_account: rawUserData.is_test_account
-          });
           return null;
         }
         
@@ -664,28 +665,6 @@ class PostService {
         };
       })
       .filter((post): post is PostWithUser => post !== null);
-    
-    console.log('[PostService.getExplorePosts] Final result count after filtering:', result.length);
-    console.log('[PostService.getExplorePosts] Final usernames in result:', 
-      result.map(p => ({ username: p.user?.username, name: p.user?.name, id: p.user?.id }))
-    );
-    
-    // Final check - log any test users that made it through
-    const finalTestUsers = result
-      .map(p => {
-        const rawUser = rawUsersMap.get(p.user_id);
-        return rawUser && rawUser.is_test_account === true ? {
-          postId: p.id,
-          userId: p.user_id,
-          email: rawUser.email,
-          username: rawUser.username
-        } : null;
-      })
-      .filter(Boolean);
-    
-    if (finalTestUsers.length > 0) {
-      console.error('[PostService.getExplorePosts] ❌ ERROR: Test users in final result:', finalTestUsers);
-    }
     
     return result;
   }
@@ -784,6 +763,24 @@ class PostService {
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
+
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
       return {
@@ -880,6 +877,24 @@ class PostService {
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
+
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
       return {
@@ -934,38 +949,20 @@ class PostService {
 
   /**
    * Check if user has liked a post
+   * @deprecated Use engagementService.likes.isLiked() instead
    */
   async isPostLikedByUser(postId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('post_likes')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      // Handle error silently
-    }
-
-    return !!data;
+    const { engagementService } = await import('@/services/engagement');
+    return engagementService.likes.isLiked(postId, userId);
   }
 
   /**
    * Check if user has saved a post
+   * @deprecated Use engagementService.saves.isSaved() instead
    */
   async isPostSavedByUser(postId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('post_saves')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      // Handle error silently
-    }
-
-    return !!data;
+    const { engagementService } = await import('@/services/engagement');
+    return engagementService.saves.isSaved(postId, userId);
   }
 
   /**
@@ -1037,6 +1034,24 @@ class PostService {
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
+
     // Combine posts with user data
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
@@ -1084,6 +1099,24 @@ class PostService {
 
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
+
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
 
     // Combine posts with user data
     return postsData.map(post => {
