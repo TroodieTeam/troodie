@@ -111,7 +111,9 @@ export default function SubmitDeliverable() {
         description: data.description,
         requirements: data.requirements || [],
         deliverables: [],
-        payout_per_creator: data.budget_cents / data.max_creators / 100,
+        // Since we only support 1 creator per campaign, payout_per_creator = total budget
+        // Convert cents to dollars: budget_cents / 100
+        payout_per_creator: data.budget_cents ? data.budget_cents / 100 : 0,
         deadline: new Date(data.end_date),
       };
       
