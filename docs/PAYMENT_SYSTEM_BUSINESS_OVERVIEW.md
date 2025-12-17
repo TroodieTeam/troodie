@@ -143,3 +143,4 @@ Once live, we can track:
 ---
 
 **Bottom Line:** This system enables restaurants to easily pay for creator marketing campaigns and creators to receive fast, automatic payouts - all while generating platform revenue through a transparent 10% fee. The entire flow is automated, secure, and designed for scale.
+

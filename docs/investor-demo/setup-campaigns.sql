@@ -65,3 +65,4 @@ BEGIN
     RAISE NOTICE '❌ Business or restaurant not found. Run setup-business.sql first.';
   END IF;
 END $$;
+
