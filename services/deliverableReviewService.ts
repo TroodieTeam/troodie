@@ -11,11 +11,11 @@
 
 import { supabase } from '@/lib/supabase';
 import type {
-  ReviewAction,
-  PendingDeliverableSummary,
-  DeliverableSubmission,
-  DeliverableStatistics
+    DeliverableStatistics,
+    DeliverableSubmission,
+    PendingDeliverableSummary
 } from '@/types/deliverableRequirements';
+import { processDeliverablePayout } from './payoutService';
 
 // ============================================================================
 // TYPES
@@ -52,15 +52,83 @@ export async function approveDeliverable(
   params: ApproveDeliverableParams
 ): Promise<{ data: DeliverableSubmission | null; error: Error | null }> {
   try {
+    // First, get the deliverable to find campaign_id
+    const { data: deliverable, error: deliverableError } = await supabase
+      .from('campaign_deliverables')
+      .select('campaign_id, payment_amount_cents')
+      .eq('id', params.deliverable_id)
+      .single();
+
+    if (deliverableError || !deliverable) {
+      console.error('Error fetching deliverable:', deliverableError);
+      return { data: null, error: deliverableError as Error };
+    }
+
+    // Get campaign payment amount to set payment_amount_cents if not already set
+    let paymentAmountCents = deliverable.payment_amount_cents;
+    
+    // If payment_amount_cents is not set or is 0, calculate it from campaign payment or budget
+    if (!paymentAmountCents || paymentAmountCents === 0) {
+      // First, try to get from campaign_payments (preferred source)
+      const { data: campaignPayment } = await supabase
+        .from('campaign_payments')
+        .select('creator_payout_cents, amount_cents, status')
+        .eq('campaign_id', deliverable.campaign_id)
+        .eq('status', 'succeeded')
+        .single();
+
+      if (campaignPayment) {
+        // Use creator_payout_cents if available (amount after platform fee)
+        // Otherwise fallback to amount_cents (full amount, no platform fee deducted)
+        // Use nullish coalescing to ensure we get a number, not null/undefined
+        paymentAmountCents = campaignPayment.creator_payout_cents ?? campaignPayment.amount_cents ?? 0;
+      } else {
+        // Fallback to campaign budget if no payment record exists
+        // This handles cases where payment hasn't been processed yet but we still want to approve
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('budget_cents')
+          .eq('id', deliverable.campaign_id)
+          .single();
+        
+        if (campaign?.budget_cents && campaign.budget_cents > 0) {
+          paymentAmountCents = campaign.budget_cents;
+        } else {
+          // If we still don't have an amount, log error but don't fail approval
+          // The payout will fail later with a clear error message
+          console.error('[approveDeliverable] No payment amount found for deliverable:', {
+            deliverable_id: params.deliverable_id,
+            campaign_id: deliverable.campaign_id,
+            existing_payment_amount_cents: deliverable.payment_amount_cents,
+            has_campaign_payment: !!campaignPayment,
+            campaign_budget_cents: campaign?.budget_cents,
+          });
+          // Set to 0 as a sentinel value - payout will fail with clear error
+          paymentAmountCents = 0;
+        }
+      }
+    }
+
+    // Update deliverable with approval status and payment amount
+    const updateData: any = {
+      status: 'approved',
+      reviewer_id: params.reviewer_id,
+      reviewed_at: new Date().toISOString(),
+      restaurant_feedback: params.feedback,
+      updated_at: new Date().toISOString()
+    };
+
+    // Always update payment_amount_cents if it wasn't already set or was 0
+    // This ensures we have a value even if it's 0 (which will cause payout to fail with clear error)
+    // Ensure paymentAmountCents is a number (not null/undefined)
+    const finalPaymentAmountCents = paymentAmountCents ?? 0;
+    if (!deliverable.payment_amount_cents || deliverable.payment_amount_cents === 0) {
+      updateData.payment_amount_cents = finalPaymentAmountCents;
+    }
+
     const { data, error } = await supabase
       .from('campaign_deliverables')
-      .update({
-        status: 'approved',
-        reviewed_by: params.reviewer_id,
-        reviewed_at: new Date().toISOString(),
-        restaurant_feedback: params.feedback,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', params.deliverable_id)
       .select('*')
       .single();
@@ -71,7 +139,27 @@ export async function approveDeliverable(
     }
 
     // Trigger payment processing
-    // TODO: Call payment service to process creator payment
+    console.log('[DeliverableReview] 🚀 Triggering payout after approval', {
+      deliverable_id: params.deliverable_id,
+      payment_amount_cents: updateData.payment_amount_cents,
+    });
+    
+    try {
+      const payoutResult = await processDeliverablePayout(params.deliverable_id);
+      if (!payoutResult.success) {
+        if (payoutResult.error === 'Creator needs to complete Stripe onboarding') {
+          console.log('[DeliverableReview] ⏸️ Payout deferred - creator needs onboarding');
+        } else {
+          console.error('[DeliverableReview] ❌ Payout failed:', payoutResult.error);
+          // Don't fail the approval if payout fails - it will be retried
+        }
+      } else {
+        console.log('[DeliverableReview] ✅ Payout initiated successfully');
+      }
+    } catch (payoutError) {
+      console.error('[DeliverableReview] ❌ Exception triggering payout:', payoutError);
+      // Don't fail the approval if payout fails - it will be retried
+    }
 
     return { data: data as DeliverableSubmission, error: null };
   } catch (error) {
@@ -98,7 +186,7 @@ export async function rejectDeliverable(
       .from('campaign_deliverables')
       .update({
         status: 'rejected',
-        reviewed_by: params.reviewer_id,
+        reviewer_id: params.reviewer_id,
         reviewed_at: new Date().toISOString(),
         restaurant_feedback: params.feedback,
         updated_at: new Date().toISOString()
@@ -145,7 +233,7 @@ export async function requestChanges(
       .from('campaign_deliverables')
       .update({
         status: 'needs_revision',
-        reviewed_by: params.reviewer_id,
+        reviewer_id: params.reviewer_id,
         reviewed_at: new Date().toISOString(),
         restaurant_feedback: fullFeedback,
         updated_at: new Date().toISOString()
@@ -367,8 +455,21 @@ export async function triggerAutoApproval(): Promise<{
       return { data: null, error };
     }
 
+    // Process payouts for auto-approved deliverables
+    if (data && Array.isArray(data)) {
+      for (const approved of data) {
+        try {
+          const payoutResult = await processDeliverablePayout(approved.deliverable_id);
+          if (!payoutResult.success && payoutResult.error !== 'Creator needs to complete Stripe onboarding') {
+            console.error(`Error processing payout for deliverable ${approved.deliverable_id}:`, payoutResult.error);
+          }
+        } catch (payoutError) {
+          console.error(`Error triggering payout for deliverable ${approved.deliverable_id}:`, payoutError);
+        }
+      }
+    }
+
     // TODO: Send notifications to creators and restaurants about auto-approvals
-    // TODO: Trigger payment processing for auto-approved deliverables
 
     return { data, error: null };
   } catch (error) {

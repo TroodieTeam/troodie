@@ -1,7 +1,7 @@
-import { Share, Platform } from 'react-native';
-import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
 import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
+import { Platform, Share } from 'react-native';
 
 export interface ShareContent {
   type: 'board' | 'post' | 'profile' | 'restaurant';

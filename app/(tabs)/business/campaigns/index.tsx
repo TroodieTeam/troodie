@@ -3,9 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  AlertCircle,
+  Calendar,
   ChevronLeft,
-  Clock,
   DollarSign,
+  FileText,
   Plus,
   Target,
   Users
@@ -16,7 +18,6 @@ import {
   Alert,
   FlatList,
   RefreshControl,
-  ScrollView,
   Text,
   TouchableOpacity,
   View
@@ -60,7 +61,6 @@ export default function ManageCampaigns() {
     filterCampaigns();
   }, [selectedFilter, campaigns]);
 
-  // Refresh campaigns when screen comes into focus (e.g., returning from campaign detail)
   useFocusEffect(
     useCallback(() => {
       loadCampaigns();
@@ -69,31 +69,21 @@ export default function ManageCampaigns() {
 
   const loadCampaigns = async () => {
     try {
-      if (!user?.id) {
-        return;
-      }
+      if (!user?.id) return;
 
-      // Check if user is admin
       const ADMIN_USER_IDS = [
         'b08d9600-358d-4be9-9552-4607d9f50227',
         '31744191-f7c0-44a4-8673-10b34ccbb87f',
-        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
+        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599'
       ];
       const isAdmin = ADMIN_USER_IDS.includes(user.id);
 
-      // Get campaigns - admins see all, regular users see only their own
       let query = supabase
         .from('campaigns')
         .select(`
           *,
-          campaign_applications (
-            id,
-            status
-          ),
-          campaign_deliverables (
-            id,
-            status
-          )
+          campaign_applications (id, status),
+          campaign_deliverables (id, status)
         `);
 
       if (!isAdmin) {
@@ -102,11 +92,8 @@ export default function ManageCampaigns() {
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      // Process campaigns with counts
       const processedCampaigns = data?.map(campaign => {
         const pendingApps = campaign.campaign_applications?.filter(
           (a: any) => a.status === 'pending'
@@ -118,7 +105,7 @@ export default function ManageCampaigns() {
 
         return {
           id: campaign.id,
-          name: campaign.title || campaign.name, // Use title first, fallback to name
+          name: campaign.title || campaign.name,
           status: campaign.status,
           budget_cents: campaign.budget_cents,
           spent_amount_cents: campaign.spent_amount_cents || 0,
@@ -158,107 +145,105 @@ export default function ManageCampaigns() {
   };
 
   const filters = [
-    { id: 'all', label: 'All', count: campaigns.length },
-    { id: 'active', label: 'Active', count: campaigns.filter(c => c.status === 'active').length },
-    { id: 'draft', label: 'Drafts', count: campaigns.filter(c => c.status === 'draft').length },
-    { id: 'completed', label: 'Completed', count: campaigns.filter(c => c.status === 'completed').length },
+    { id: 'all', label: 'All' },
+    { id: 'active', label: 'Active' },
+    { id: 'draft', label: 'Drafts' },
+    { id: 'completed', label: 'Completed' },
   ];
 
   const renderCampaignItem = ({ item }: { item: Campaign }) => {
     const isTestCampaign = item.name?.toLowerCase().includes('test campaign for rating') || 
                            item.name?.toLowerCase().includes('cm-16');
     return (
-    <CampaignListItem
-      campaign={item}
-      onPress={() => router.push(`/business/campaigns/${item.id}`)}
+      <CampaignListItem
+        campaign={item}
+        onPress={() => router.push(`/business/campaigns/${item.id}`)}
         isTestCampaign={isTestCampaign}
-    />
-  );
+      />
+    );
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
-      {/* Header */}
+      {/* Modern Header */}
       <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: DS.spacing.md,
-        backgroundColor: DS.colors.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: DS.colors.border,
+        paddingHorizontal: DS.spacing.lg,
+        paddingTop: DS.spacing.md,
+        paddingBottom: DS.spacing.sm,
+        backgroundColor: DS.colors.background,
       }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ChevronLeft size={24} color={DS.colors.textDark} />
-        </TouchableOpacity>
-        <Text style={{
-          fontSize: 18,
-          fontWeight: '600',
-          color: DS.colors.textDark,
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: DS.spacing.md,
         }}>
-          Manage Campaigns
+          <TouchableOpacity 
+            onPress={() => router.back()}
+            style={{
+              padding: DS.spacing.xs,
+              marginLeft: -DS.spacing.xs,
+            }}
+          >
+            <ChevronLeft size={28} color={DS.colors.textDark} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => router.push('/business/campaigns/create')}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: DS.borderRadius.full,
+              backgroundColor: DS.colors.primaryOrange,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: DS.colors.primaryOrange,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <Plus size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+        <Text style={{ ...DS.typography.h1, color: DS.colors.textDark }}>
+          Campaigns
         </Text>
-        <TouchableOpacity onPress={() => router.push('/business/campaigns/create')}>
-          <Plus size={24} color={DS.colors.primaryOrange} />
-        </TouchableOpacity>
       </View>
 
-      {/* Filter Tabs */}
-      <View style={{
-        backgroundColor: DS.colors.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: DS.colors.border,
-      }}>
-        <ScrollView
+      {/* Modern Filter Pills */}
+      <View style={{ marginBottom: DS.spacing.md }}>
+        <FlatList
+          data={filters}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ 
-            paddingHorizontal: DS.spacing.md,
-            paddingVertical: DS.spacing.sm,
-          }}
-        >
-          {filters.map((filter, index) => (
-            <TouchableOpacity
-              key={filter.id}
-              style={{
-                paddingBottom: DS.spacing.sm,
-                marginRight: DS.spacing.lg,
-                borderBottomWidth: 2,
-                borderBottomColor: selectedFilter === filter.id 
-                  ? DS.colors.primaryOrange 
-                  : 'transparent',
-              }}
-              onPress={() => setSelectedFilter(filter.id)}
-            >
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}>
+          contentContainerStyle={{ paddingHorizontal: DS.spacing.lg, gap: DS.spacing.sm }}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => {
+            const isActive = selectedFilter === item.id;
+            return (
+              <TouchableOpacity
+                onPress={() => setSelectedFilter(item.id)}
+                style={{
+                  paddingHorizontal: DS.spacing.lg,
+                  paddingVertical: DS.spacing.sm,
+                  borderRadius: DS.borderRadius.full,
+                  backgroundColor: isActive ? DS.colors.textDark : DS.colors.surface,
+                  borderWidth: 1,
+                  borderColor: isActive ? DS.colors.textDark : DS.colors.border,
+                }}
+              >
                 <Text style={{
-                  fontSize: 15,
-                  fontWeight: selectedFilter === filter.id ? '600' : '400',
-                  color: selectedFilter === filter.id 
-                    ? DS.colors.textDark 
-                    : DS.colors.textLight,
+                  ...DS.typography.button,
+                  color: isActive ? DS.colors.textWhite : DS.colors.textDark,
+                  fontSize: 13,
                 }}>
-                  {filter.label}
+                  {item.label}
                 </Text>
-                {filter.count > 0 && (
-                  <Text style={{
-                    marginLeft: 6,
-                    fontSize: 15,
-                    fontWeight: '600',
-                    color: selectedFilter === filter.id 
-                      ? DS.colors.textDark 
-                      : DS.colors.textLight,
-                  }}>
-                    {filter.count}
-                  </Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              </TouchableOpacity>
+            );
+          }}
+        />
       </View>
 
       {/* Campaigns List */}
@@ -274,9 +259,9 @@ export default function ManageCampaigns() {
           keyExtractor={(item) => item.id}
           renderItem={renderCampaignItem}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={DS.colors.primaryOrange} />
           }
-          contentContainerStyle={{ padding: DS.spacing.md }}
+          contentContainerStyle={{ padding: DS.spacing.lg, gap: DS.spacing.lg, paddingBottom: 100 }}
         />
       )}
     </SafeAreaView>
@@ -284,29 +269,46 @@ export default function ManageCampaigns() {
 }
 
 const CampaignListItem = ({ campaign, onPress, isTestCampaign = false }: { campaign: Campaign; onPress: () => void; isTestCampaign?: boolean }) => {
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'active': return '#10B981';
-      case 'draft': return '#6B7280';
-      case 'completed': return '#3B82F6';
-      case 'paused': return '#F59E0B';
-      default: return '#6B7280';
+      case 'active': return { color: DS.colors.success, label: 'Active', bg: '#DCFCE7' };
+      case 'draft': return { color: DS.colors.textGray, label: 'Draft', bg: '#F3F4F6' };
+      case 'completed': return { color: DS.colors.info, label: 'Completed', bg: '#DBEAFE' };
+      case 'paused': return { color: DS.colors.warning, label: 'Paused', bg: '#FEF3C7' };
+      default: return { color: DS.colors.textGray, label: status, bg: '#F3F4F6' };
     }
   };
 
   const getDaysText = () => {
     if (campaign.status === 'draft') return 'Not started';
     if (campaign.status === 'completed') return 'Ended';
+    if (!campaign.end_date) return 'No end date';
     
     const now = new Date();
-    const end = new Date(campaign.end_date);
-    const days = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const endDateStr = campaign.end_date;
+    let end: Date;
     
-    if (days > 0) return `${days} days left`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+      const [year, month, day] = endDateStr.split('-').map(Number);
+      end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    } else {
+      end = new Date(endDateStr);
+      if (isNaN(end.getTime())) return 'Invalid date';
+      if (!endDateStr.includes('T') && !endDateStr.includes(' ')) {
+        end.setHours(23, 59, 59, 999);
+      }
+    }
+    
+    const diffMs = end.getTime() - now.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (days < 0) return 'Ended';
     if (days === 0) return 'Ending today';
-    return 'Ended';
+    if (days === 1) return '1 day left';
+    return `${days} days left`;
   };
 
+  const statusConfig = getStatusConfig(campaign.status);
   const budget = campaign.budget_cents / 100;
   const spent = campaign.spent_amount_cents / 100;
   const deliverableProgress = campaign.total_deliverables > 0 
@@ -317,299 +319,127 @@ const CampaignListItem = ({ campaign, onPress, isTestCampaign = false }: { campa
     <TouchableOpacity
       style={{
         backgroundColor: DS.colors.surface,
-        borderRadius: DS.borderRadius.lg,
+        borderRadius: DS.borderRadius.xl,
         padding: DS.spacing.lg,
-        marginBottom: DS.spacing.md,
         ...DS.shadows.sm,
+        borderWidth: 1,
+        borderColor: DS.colors.border,
       }}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.9}
     >
-      {/* Test Campaign Banner */}
       {isTestCampaign && (
         <View style={{
-          backgroundColor: DS.colors.warning + '15',
-          borderLeftWidth: 3,
-          borderLeftColor: DS.colors.warning,
-          padding: DS.spacing.sm,
+          backgroundColor: '#FFFBEB',
+          paddingVertical: DS.spacing.xs,
+          paddingHorizontal: DS.spacing.sm,
           marginBottom: DS.spacing.md,
-          borderRadius: DS.borderRadius.xs,
+          borderRadius: DS.borderRadius.sm,
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: '#FCD34D',
         }}>
-          <Text style={{
-            fontSize: DS.typography.caption.fontSize,
-            fontWeight: '600',
-            color: DS.colors.warning,
-          }}>
-            ⭐ Test Campaign - Use this for rating flow testing
+          <AlertCircle size={14} color={DS.colors.warning} style={{ marginRight: 6 }} />
+          <Text style={{ ...DS.typography.caption, color: DS.colors.warning, fontWeight: '600' }}>
+            Test Mode
           </Text>
         </View>
       )}
 
-      {/* Campaign Title and Status */}
-      <View style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: DS.spacing.md,
-      }}>
-        <Text style={{
-          ...DS.typography.h3,
-          color: DS.colors.textDark,
-          flex: 1,
-          marginRight: DS.spacing.sm,
-        }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: DS.spacing.lg }}>
+        <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, flex: 1, marginRight: DS.spacing.md }}>
           {campaign.name}
         </Text>
         <View style={{
-          backgroundColor: getStatusColor(campaign.status) + '15',
+          backgroundColor: statusConfig.bg,
           paddingHorizontal: DS.spacing.sm,
-          paddingVertical: DS.spacing.xs,
-          borderRadius: DS.borderRadius.sm,
+          paddingVertical: 4,
+          borderRadius: DS.borderRadius.full,
         }}>
-        <Text style={{
-            ...DS.typography.caption,
-          fontWeight: '600',
-          color: getStatusColor(campaign.status),
-          textTransform: 'uppercase',
-        }}>
-          {campaign.status}
-        </Text>
+          <Text style={{ ...DS.typography.caption, color: statusConfig.color, fontWeight: '700', textTransform: 'uppercase' }}>
+            {statusConfig.label}
+          </Text>
         </View>
       </View>
 
-      {/* Stats Grid */}
-      <View style={{
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginBottom: DS.spacing.md,
-        gap: DS.spacing.md,
-      }}>
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          flex: 1,
-          minWidth: '45%',
-        }}>
-          <View style={{
-            width: 32,
-            height: 32,
-            borderRadius: DS.borderRadius.sm,
-            backgroundColor: DS.colors.surfaceLight,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: DS.spacing.sm,
-        }}>
-            <Users size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              ...DS.typography.metadata,
-              color: DS.colors.textGray,
-            }}>
-              Creators
+      {/* Metrics Row */}
+      <View style={{ flexDirection: 'row', gap: DS.spacing.xl, marginBottom: DS.spacing.lg }}>
+        <View>
+          <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Budget</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <DollarSign size={14} color={DS.colors.textDark} style={{ marginRight: 2 }} />
+            <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
+              {spent.toLocaleString()} <Text style={{ color: DS.colors.textLight }}>/ {budget.toLocaleString()}</Text>
             </Text>
-          <Text style={{
-              ...DS.typography.body,
-              fontWeight: '600',
-            color: DS.colors.textDark,
-          }}>
-              {campaign.selected_creators_count}/{campaign.max_creators}
-          </Text>
           </View>
         </View>
-        
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          flex: 1,
-          minWidth: '45%',
-        }}>
-          <View style={{
-            width: 32,
-            height: 32,
-            borderRadius: DS.borderRadius.sm,
-            backgroundColor: DS.colors.surfaceLight,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: DS.spacing.sm,
-          }}>
-            <DollarSign size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              ...DS.typography.metadata,
-              color: DS.colors.textGray,
-            }}>
-              Budget
+        <View>
+          <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Time Remaining</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Calendar size={14} color={DS.colors.textDark} style={{ marginRight: 4 }} />
+            <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
+              {getDaysText()}
             </Text>
-          <Text style={{
-              ...DS.typography.body,
-              fontWeight: '600',
-            color: DS.colors.textDark,
-          }}>
-            ${spent.toLocaleString()}/${budget.toLocaleString()}
-          </Text>
-          </View>
-        </View>
-
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          flex: 1,
-          minWidth: '45%',
-        }}>
-          <View style={{
-            width: 32,
-            height: 32,
-            borderRadius: DS.borderRadius.sm,
-            backgroundColor: DS.colors.surfaceLight,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: DS.spacing.sm,
-          }}>
-            <Clock size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              ...DS.typography.metadata,
-              color: DS.colors.textGray,
-            }}>
-              Time Left
-            </Text>
-          <Text style={{
-              ...DS.typography.body,
-              fontWeight: '600',
-            color: DS.colors.textDark,
-          }}>
-            {getDaysText()}
-          </Text>
           </View>
         </View>
       </View>
 
-      {/* Deliverables Progress */}
+      {/* Progress */}
       {campaign.total_deliverables > 0 && (
-        <View style={{
-          marginTop: DS.spacing.sm,
-          paddingTop: DS.spacing.md,
-          borderTopWidth: 1,
-          borderTopColor: DS.colors.borderLight,
-        }}>
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: DS.spacing.xs,
-          }}>
-            <Text style={{
-              ...DS.typography.metadata,
-              color: DS.colors.textGray,
-            }}>
-              Deliverables Progress
-            </Text>
-            <Text style={{
-              ...DS.typography.metadata,
-              fontWeight: '600',
-              color: DS.colors.textDark,
-            }}>
-              {campaign.delivered_content_count}/{campaign.total_deliverables}
+        <View style={{ marginBottom: DS.spacing.lg }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Deliverables</Text>
+            <Text style={{ ...DS.typography.caption, fontWeight: '600', color: DS.colors.textDark }}>
+              {campaign.delivered_content_count} / {campaign.total_deliverables}
             </Text>
           </View>
-      <View style={{
-        height: 6,
-        backgroundColor: DS.colors.surfaceLight,
-            borderRadius: DS.borderRadius.xs,
-        overflow: 'hidden',
-      }}>
-        <View style={{
-          height: '100%',
-          width: `${Math.min(deliverableProgress, 100)}%`,
+          <View style={{ height: 6, backgroundColor: DS.colors.surfaceLight, borderRadius: DS.borderRadius.full, overflow: 'hidden' }}>
+            <View style={{
+              height: '100%',
+              width: `${Math.min(deliverableProgress, 100)}%`,
               backgroundColor: DS.colors.success,
-              borderRadius: DS.borderRadius.xs,
-        }} />
-      </View>
+              borderRadius: DS.borderRadius.full,
+            }} />
+          </View>
         </View>
       )}
 
-      {/* Action Badges */}
+      {/* Actions */}
       {(campaign.pending_applications_count > 0 || campaign.pending_deliverables_count > 0) && (
-        <View style={{
-          marginTop: DS.spacing.md,
-          paddingTop: DS.spacing.md,
-          borderTopWidth: 1,
-          borderTopColor: DS.colors.borderLight,
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: DS.spacing.sm,
-        }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: DS.spacing.sm, paddingTop: DS.spacing.md, borderTopWidth: 1, borderColor: DS.colors.borderLight }}>
           {campaign.pending_applications_count > 0 && (
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: DS.colors.error + '10',
-              paddingHorizontal: DS.spacing.sm,
-              paddingVertical: DS.spacing.xs,
-              borderRadius: DS.borderRadius.sm,
+              backgroundColor: '#FEF2F2',
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              borderRadius: DS.borderRadius.md,
+              borderWidth: 1,
+              borderColor: '#FECACA',
             }}>
-              <View style={{
-                backgroundColor: DS.colors.error,
-                borderRadius: DS.borderRadius.full,
-                width: 20,
-                height: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: DS.spacing.xs,
-              }}>
-                <Text style={{
-                  color: 'white',
-                  ...DS.typography.caption,
-                  fontWeight: '700',
-                }}>
-                  {campaign.pending_applications_count}
-                </Text>
-              </View>
-              <Text style={{
-                ...DS.typography.metadata,
-                color: DS.colors.textDark,
-                fontWeight: '500',
-              }}>
-                New application{campaign.pending_applications_count > 1 ? 's' : ''}
+              <Users size={14} color={DS.colors.error} style={{ marginRight: 6 }} />
+              <Text style={{ ...DS.typography.caption, color: DS.colors.error, fontWeight: '600' }}>
+                {campaign.pending_applications_count} New Application{campaign.pending_applications_count > 1 ? 's' : ''}
               </Text>
             </View>
           )}
-          
           {campaign.pending_deliverables_count > 0 && (
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: DS.colors.warning + '10',
-              paddingHorizontal: DS.spacing.sm,
-              paddingVertical: DS.spacing.xs,
-              borderRadius: DS.borderRadius.sm,
+              backgroundColor: '#FFFBEB',
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              borderRadius: DS.borderRadius.md,
+              borderWidth: 1,
+              borderColor: '#FDE68A',
             }}>
-              <View style={{
-                backgroundColor: DS.colors.warning,
-                borderRadius: DS.borderRadius.full,
-                width: 20,
-                height: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: DS.spacing.xs,
-              }}>
-                <Text style={{
-                  color: 'white',
-                  ...DS.typography.caption,
-                  fontWeight: '700',
-                }}>
-                  {campaign.pending_deliverables_count}
-                </Text>
-              </View>
-              <Text style={{
-                ...DS.typography.metadata,
-                color: DS.colors.textDark,
-                fontWeight: '500',
-              }}>
-                Pending deliverable{campaign.pending_deliverables_count > 1 ? 's' : ''}
+              <FileText size={14} color={DS.colors.warning} style={{ marginRight: 6 }} />
+              <Text style={{ ...DS.typography.caption, color: DS.colors.warning, fontWeight: '600' }}>
+                {campaign.pending_deliverables_count} Pending Review
               </Text>
             </View>
           )}
@@ -623,88 +453,56 @@ const EmptyState = ({ filter, onCreate }: { filter: string; onCreate: () => void
   const getEmptyMessage = () => {
     switch (filter) {
       case 'active':
-        return {
-          title: 'No active campaigns',
-          message: 'Create a campaign to start working with creators',
-          icon: Target,
-        };
+        return { title: 'No active campaigns', message: 'Launch a campaign to start working with creators.' };
       case 'draft':
-        return {
-          title: 'No draft campaigns',
-          message: 'All your campaigns are published',
-          icon: Target,
-        };
+        return { title: 'No drafts', message: 'You have no unfinished campaigns.' };
       case 'completed':
-        return {
-          title: 'No completed campaigns yet',
-          message: 'Your active campaigns will appear here when they end',
-          icon: Target,
-        };
+        return { title: 'No history', message: 'Completed campaigns will show up here.' };
       default:
-        return {
-          title: 'No campaigns yet',
-          message: 'Create your first campaign to get started',
-          icon: Target,
-        };
+        return { title: 'Start your first campaign', message: 'Create a campaign to connect with local creators and grow your business.' };
     }
   };
 
-  const { title, message, icon: Icon } = getEmptyMessage();
+  const { title, message } = getEmptyMessage();
 
   return (
-    <View style={{
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: DS.spacing.lg,
-    }}>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: DS.spacing.xl, marginTop: 40 }}>
       <View style={{
         width: 80,
         height: 80,
-        borderRadius: 40,
+        borderRadius: DS.borderRadius.full,
         backgroundColor: DS.colors.surfaceLight,
-        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: DS.spacing.md,
-      }}>
-        <Icon size={40} color={DS.colors.textLight} />
-      </View>
-      <Text style={{
-        fontSize: 20,
-        fontWeight: '600',
-        color: DS.colors.textDark,
-        marginBottom: DS.spacing.xs,
-      }}>
-        {title}
-      </Text>
-      <Text style={{
-        fontSize: 14,
-        color: DS.colors.textLight,
-        textAlign: 'center',
+        justifyContent: 'center',
         marginBottom: DS.spacing.lg,
       }}>
+        <Target size={32} color={DS.colors.textLight} />
+      </View>
+      <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.sm }}>
+        {title}
+      </Text>
+      <Text style={{ ...DS.typography.body, color: DS.colors.textGray, textAlign: 'center', marginBottom: DS.spacing.xl }}>
         {message}
       </Text>
       {filter !== 'completed' && (
         <TouchableOpacity
           style={{
             backgroundColor: DS.colors.primaryOrange,
-            paddingHorizontal: DS.spacing.lg,
+            paddingHorizontal: DS.spacing.xl,
             paddingVertical: DS.spacing.md,
-            borderRadius: DS.borderRadius.sm,
+            borderRadius: DS.borderRadius.lg,
             flexDirection: 'row',
             alignItems: 'center',
+            shadowColor: DS.colors.primaryOrange,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 4,
           }}
           onPress={onCreate}
-          activeOpacity={0.7}
         >
-          <Plus size={20} color="white" />
-          <Text style={{
-            color: 'white',
-            fontSize: 16,
-            fontWeight: '600',
-            marginLeft: DS.spacing.xs,
-          }}>
+          <Plus size={20} color="white" style={{ marginRight: 8 }} />
+          <Text style={{ ...DS.typography.button, color: 'white' }}>
             Create Campaign
           </Text>
         </TouchableOpacity>

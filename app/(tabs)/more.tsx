@@ -22,6 +22,7 @@ import {
   Building,
   ChevronRight,
   Compass,
+  DollarSign,
   FileText,
   HelpCircle,
   Lock,
@@ -324,6 +325,22 @@ export default function MoreScreen() {
       icon: Target,
       iconColor: '#8B5CF6',
       action: () => router.push('/creator/campaigns'),
+    },
+    {
+      id: 'my-deliverables',
+      title: 'My Deliverables',
+      subtitle: 'View and manage your submitted content',
+      icon: FileText,
+      iconColor: '#3B82F6',
+      action: () => router.push('/creator/deliverables'),
+    },
+    {
+      id: 'creator-payments',
+      title: 'Payments & Earnings',
+      subtitle: 'View earnings and manage payouts',
+      icon: DollarSign,
+      iconColor: '#10B981',
+      action: () => router.push('/creator/payments'),
     },
   ] : [];
 

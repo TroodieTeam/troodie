@@ -4,34 +4,34 @@ import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import {
-  acceptInvitation,
-  declineInvitation,
-  getInvitationsForCreator,
-  type CampaignInvitation
+    acceptInvitation,
+    declineInvitation,
+    getInvitationsForCreator,
+    type CampaignInvitation
 } from '@/services/campaignInvitationService';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
-  Check,
-  Clock,
-  DollarSign,
-  Filter,
-  MapPin,
-  Target,
-  X
+    Check,
+    Clock,
+    DollarSign,
+    Filter,
+    MapPin,
+    Target,
+    X
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -172,34 +172,46 @@ export default function MyCampaigns() {
       const { data, error } = await query;
       
       if (error) throw error;
-      
-      console.log('[Campaigns] Raw data from Supabase:', data);
-      console.log('[Campaigns] Number of campaigns:', data?.length);
 
       // Transform data
-      let transformedCampaigns = data?.map(campaign => ({
-        id: campaign.id,
-        restaurant_id: campaign.restaurant_id,
-        restaurant_name: campaign.restaurants?.name || 'Unknown Restaurant',
-        restaurant_image: campaign.restaurants?.cover_photo_url || campaign.restaurants?.photos?.[0],
-        title: campaign.title,
-        description: campaign.description,
-        requirements: campaign.requirements || [],
-        deliverables: campaign.deliverables || [],
-        payout_per_creator: campaign.payout_per_creator,
-        deadline: new Date(campaign.end_date),
-        location: campaign.location,
-        categories: campaign.categories || [],
-        status: campaign.status,
-        creator_status: campaign.campaign_applications?.[0]?.status,
-        applied_at: campaign.campaign_applications?.[0]?.applied_at ? 
-          new Date(campaign.campaign_applications[0].applied_at) : undefined,
-        deliverables_status: {},
-        has_deliverables_submitted: campaign.campaign_deliverables && campaign.campaign_deliverables.length > 0,
-        deliverable_status: campaign.campaign_deliverables?.[0]?.status,
-      })) || [];
-      
-      console.log('[Campaigns] Final transformed campaigns:', transformedCampaigns);
+      let transformedCampaigns = data?.map(campaign => {
+        // Calculate payout_per_creator from budget_cents
+        // Since we only support 1 creator per campaign, payout_per_creator = total budget
+        // Convert cents to dollars: budget_cents / 100
+        let payoutPerCreator: number;
+        if (campaign.budget_cents != null) {
+          // Total budget is the payout (1 creator per campaign)
+          payoutPerCreator = campaign.budget_cents / 100;
+        } else if (campaign.payout_per_creator != null) {
+          // Fallback: use stored payout_per_creator if budget_cents is not available
+          payoutPerCreator = campaign.payout_per_creator;
+        } else {
+          payoutPerCreator = 0;
+        }
+        
+        return {
+          id: campaign.id,
+          restaurant_id: campaign.restaurant_id,
+          restaurant_name: campaign.restaurants?.name || 'Unknown Restaurant',
+          restaurant_image: campaign.restaurants?.cover_photo_url || campaign.restaurants?.photos?.[0],
+          title: campaign.title,
+          description: campaign.description,
+          requirements: campaign.requirements || [],
+          deliverables: campaign.deliverables || [],
+          payout_per_creator: payoutPerCreator || 0,
+          deadline: new Date(campaign.end_date),
+          location: campaign.location,
+          categories: campaign.categories || [],
+          status: campaign.status,
+          creator_status: campaign.campaign_applications?.[0]?.status,
+          applied_at: campaign.campaign_applications?.[0]?.applied_at ? 
+            new Date(campaign.campaign_applications[0].applied_at) : undefined,
+          deliverables_status: {},
+          has_deliverables_submitted: campaign.campaign_deliverables && campaign.campaign_deliverables.length > 0,
+          deliverable_status: campaign.campaign_deliverables?.[0]?.status,
+        };
+      }) || [];
+
       setCampaigns(transformedCampaigns);
     } catch (error) {
       console.error('Error loading campaigns:', error);
@@ -461,7 +473,11 @@ export default function MyCampaigns() {
           </View>
         </View>
         <View style={styles.campaignPayout}>
-          <Text style={styles.payoutAmount}>${campaign.payout_per_creator}</Text>
+          <Text style={styles.payoutAmount}>
+            ${typeof campaign.payout_per_creator === 'number' 
+              ? campaign.payout_per_creator.toFixed(0) 
+              : '0'}
+          </Text>
           {campaign.creator_status && (
             <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(campaign.creator_status)}20` }]}>
               <Text style={[styles.statusTextBadge, { color: getStatusColor(campaign.creator_status) }]}>
