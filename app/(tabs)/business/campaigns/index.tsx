@@ -7,8 +7,7 @@ import {
   Clock,
   DollarSign,
   Plus,
-  Target,
-  Users
+  Target
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -298,13 +297,65 @@ const CampaignListItem = ({ campaign, onPress, isTestCampaign = false }: { campa
     if (campaign.status === 'draft') return 'Not started';
     if (campaign.status === 'completed') return 'Ended';
     
-    const now = new Date();
-    const end = new Date(campaign.end_date);
-    const days = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    // Handle null/undefined end_date
+    if (!campaign.end_date) {
+      if (__DEV__) {
+        console.log('[TimeLeft] Missing end_date', { campaignId: campaign.id });
+      }
+      return 'No end date';
+    }
     
-    if (days > 0) return `${days} days left`;
-    if (days === 0) return 'Ending today';
-    return 'Ended';
+    const now = new Date();
+    const endDateStr = campaign.end_date;
+    
+    // Parse end_date - handle date-only strings (YYYY-MM-DD) vs full datetime
+    let end: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+      // Date-only string: parse as UTC and set to end of day UTC
+      const [year, month, day] = endDateStr.split('-').map(Number);
+      end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    } else {
+      // Full datetime string: parse and set to end of day in same timezone
+      end = new Date(endDateStr);
+      if (isNaN(end.getTime())) {
+        if (__DEV__) {
+          console.log('[TimeLeft] Invalid end_date', { campaignId: campaign.id, endDate: endDateStr });
+        }
+        return 'Invalid date';
+      }
+      // If it's a full datetime, use it as-is; otherwise set to end of day
+      if (!endDateStr.includes('T') && !endDateStr.includes(' ')) {
+        end.setHours(23, 59, 59, 999);
+      }
+    }
+    
+    const diffMs = end.getTime() - now.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    // Concise tracing
+    if (__DEV__) {
+      console.log('[TimeLeft]', {
+        campaignId: campaign.id,
+        endDate: endDateStr,
+        endDateParsed: end.toISOString(),
+        now: now.toISOString(),
+        diffMs,
+        days,
+        hours: Math.floor(diffMs / (1000 * 60 * 60)),
+        minutes: Math.floor(diffMs / (1000 * 60)),
+      });
+    }
+    
+    if (days < 0) return 'Ended';
+    if (days === 0) {
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (hours > 0) return `${hours}h left`;
+      const minutes = Math.floor(diffMs / (1000 * 60));
+      if (minutes > 0) return `${minutes}m left`;
+      return 'Ending soon';
+    }
+    if (days === 1) return '1 day left';
+    return `${days} days left`;
   };
 
   const budget = campaign.budget_cents / 100;
@@ -384,40 +435,6 @@ const CampaignListItem = ({ campaign, onPress, isTestCampaign = false }: { campa
         marginBottom: DS.spacing.md,
         gap: DS.spacing.md,
       }}>
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          flex: 1,
-          minWidth: '45%',
-        }}>
-          <View style={{
-            width: 32,
-            height: 32,
-            borderRadius: DS.borderRadius.sm,
-            backgroundColor: DS.colors.surfaceLight,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: DS.spacing.sm,
-        }}>
-            <Users size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              ...DS.typography.metadata,
-              color: DS.colors.textGray,
-            }}>
-              Creators
-            </Text>
-          <Text style={{
-              ...DS.typography.body,
-              fontWeight: '600',
-            color: DS.colors.textDark,
-          }}>
-              {campaign.selected_creators_count}/{campaign.max_creators}
-          </Text>
-          </View>
-        </View>
-        
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',

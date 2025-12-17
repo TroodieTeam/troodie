@@ -4,7 +4,8 @@ import config from './config';
 // Initialize Stripe client
 // Note: Stripe secret key should be stored server-side only
 // For client-side operations, use Stripe.js or React Native Stripe SDK
-// This file is for server-side operations (Edge Functions)
+// This file is for server-side operations (Edge Functions) ONLY
+// DO NOT import this file in React Native client code
 
 let stripeInstance: Stripe | null = null;
 
@@ -25,42 +26,21 @@ export function getStripeClient(): Stripe {
   return stripeInstance;
 }
 
-// Platform fee percentage (10%)
-export const PLATFORM_FEE_PERCENT = 10;
+// Platform fee removed - creators receive full payment amount
+// Keeping these functions for backward compatibility but they return 0 fee / full amount
 
-// Calculate platform fee in cents
+// Calculate platform fee in cents (always 0)
 export function calculatePlatformFee(amountCents: number): number {
-  return Math.round(amountCents * PLATFORM_FEE_PERCENT / 100);
+  return 0;
 }
 
-// Calculate creator payout amount (after platform fee)
+// Calculate creator payout amount (full amount, no fee deduction)
 export function calculateCreatorPayout(amountCents: number): number {
-  return amountCents - calculatePlatformFee(amountCents);
+  return amountCents;
 }
 
-// Stripe Connect account types
-export type StripeAccountType = 'business' | 'creator';
+// Re-export types from stripeTypes.ts for backward compatibility
+export type {
+    PaymentIntentStatus, StripeAccountStatus, StripeAccountType, TransferStatus
+} from './stripeTypes';
 
-// Stripe account status
-export type StripeAccountStatus = 
-  | 'pending'
-  | 'restricted'
-  | 'enabled'
-  | 'disabled';
-
-// Payment intent status
-export type PaymentIntentStatus = 
-  | 'requires_payment_method'
-  | 'requires_confirmation'
-  | 'requires_action'
-  | 'processing'
-  | 'requires_capture'
-  | 'canceled'
-  | 'succeeded';
-
-// Transfer status
-export type TransferStatus = 
-  | 'pending'
-  | 'paid'
-  | 'failed'
-  | 'canceled';

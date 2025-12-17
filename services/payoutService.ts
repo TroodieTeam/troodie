@@ -1,8 +1,8 @@
-import { calculateCreatorPayout, getStripeClient } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 import { notificationService } from './notificationService';
 
-const stripe = getStripeClient();
+// Client-safe version - Stripe SDK operations should be done via Edge Functions
+// This file provides database-only operations for React Native client
 
 export interface PayoutResult {
   success: boolean;
@@ -56,10 +56,10 @@ export async function processDeliverablePayout(
       };
     }
 
-    // Get campaign title for notifications
+    // Get campaign title and business_id for notifications and transaction record
     const { data: campaign } = await supabase
       .from('campaigns')
-      .select('title')
+      .select('title, business_id')
       .eq('id', deliverable.campaign_id)
       .single();
 
@@ -128,81 +128,39 @@ export async function processDeliverablePayout(
       };
     }
 
-    // Calculate payout amount (use deliverable payment_amount_cents if set, otherwise calculate)
-    const payoutAmountCents = deliverable.payment_amount_cents || 
-      calculateCreatorPayout(campaignPayment.amount_cents);
+    // Calculate payout amount (use deliverable payment_amount_cents if set, otherwise use full campaign payment amount)
+    // Creators receive full amount (no platform fee)
+    const payoutAmountCents = deliverable.payment_amount_cents || campaignPayment.amount_cents;
 
-    // Create Stripe Transfer to creator
-    const transfer = await stripe.transfers.create({
-      amount: payoutAmountCents,
-      currency: 'usd',
-      destination: deliverable.creator_profiles.stripe_account_id,
-      description: `Payout for deliverable ${deliverableId}`,
-      metadata: {
-        deliverable_id: deliverableId,
-        creator_id: deliverable.creator_id,
-        campaign_id: deliverable.campaign_id,
-      },
-    });
+    // Call Edge Function to create Stripe Transfer
+    const { data: transferResult, error: transferError } = await supabase.functions.invoke(
+      'stripe-process-payout',
+      {
+        body: {
+          deliverableId,
+          creatorId: deliverable.creator_id,
+          campaignId: deliverable.campaign_id,
+          amountCents: payoutAmountCents,
+          stripeAccountId: deliverable.creator_profiles.stripe_account_id,
+        },
+      }
+    );
 
-    // Update deliverable payment status
-    const { error: updateError } = await supabase
-      .from('campaign_deliverables')
-      .update({
-        payment_status: 'processing',
-        payment_transaction_id: transfer.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', deliverableId);
-
-    if (updateError) {
-      console.error('Error updating deliverable:', updateError);
-      // Try to reverse the transfer if possible
+    if (transferError || !transferResult?.success) {
+      console.error('Error creating transfer:', transferError || transferResult?.error);
       return {
         success: false,
-        error: 'Failed to update deliverable payment status',
+        error: transferResult?.error || transferError?.message || 'Failed to create transfer',
       };
     }
 
-    // Get campaign and business info for transaction record
-    const { data: campaign } = await supabase
-      .from('campaigns')
-      .select('business_id')
-      .eq('id', deliverable.campaign_id)
-      .single();
-
-    // Create transaction record
-    const { data: transaction, error: transactionError } = await supabase
-      .from('payment_transactions')
-      .insert({
-        campaign_id: deliverable.campaign_id,
-        deliverable_id: deliverableId,
-        creator_id: deliverable.creator_id,
-        business_id: campaign?.business_id,
-        stripe_transfer_id: transfer.id,
-        amount_cents: payoutAmountCents,
-        platform_fee_cents: 0, // Fee already deducted from campaign payment
-        creator_amount_cents: payoutAmountCents,
-        transaction_type: 'payout',
-        status: 'processing',
-      })
-      .select()
-      .single();
-
-    if (transactionError) {
-      console.error('Error creating transaction record:', transactionError);
-    }
-
-    // Send payout processing notification (will be updated to "received" when transfer completes)
-    if (campaign && deliverable.creator_profiles?.user_id) {
-      // Note: We'll send the "received" notification from the webhook handler
-      // when transfer.paid event is received
-    }
+    const transferId = transferResult.transferId;
+    const transactionId = transferResult.transactionId;
 
     return {
       success: true,
-      transferId: transfer.id,
-      transactionId: transaction?.id,
+      transferId,
+      transactionId,
     };
   } catch (error) {
     console.error('Error processing payout:', error);

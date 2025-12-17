@@ -1,8 +1,8 @@
-import { calculateCreatorPayout, calculatePlatformFee, getStripeClient } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 import { notificationService } from './notificationService';
 
-const stripe = getStripeClient();
+// Client-safe version - Stripe SDK operations should be done via Edge Functions
+// This file provides database-only operations for React Native client
 
 export interface PaymentIntentResult {
   success: boolean;
@@ -19,83 +19,71 @@ export interface PaymentConfirmationResult {
 
 /**
  * Create a payment intent for a campaign
+ * NOTE: This should be called via Edge Function, not directly from client
+ * Client should call: supabase.functions.invoke('stripe-create-payment-intent', {...})
  */
 export async function createCampaignPaymentIntent(
   campaignId: string,
   businessId: string,
   amountCents: number
 ): Promise<PaymentIntentResult> {
+  // This function requires Stripe SDK - should be moved to Edge Function
+  // For now, call Edge Function
   try {
-    // Get campaign details
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .select('id, restaurant_id, title')
-      .eq('id', campaignId)
-      .single();
-
-    if (campaignError || !campaign) {
-      return {
-        success: false,
-        error: 'Campaign not found',
-      };
-    }
-
-    // Calculate fees
-    const platformFeeCents = calculatePlatformFee(amountCents);
-    const creatorPayoutCents = calculateCreatorPayout(amountCents);
-
-    // Create Stripe Payment Intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountCents,
-      currency: 'usd',
-      metadata: {
-        campaign_id: campaignId,
-        business_id: businessId,
-        restaurant_id: campaign.restaurant_id,
-        platform_fee_cents: platformFeeCents.toString(),
-        creator_payout_cents: creatorPayoutCents.toString(),
-      },
-      description: `Campaign: ${campaign.title}`,
+    console.log('[paymentService] Calling stripe-create-payment-intent Edge Function...', {
+      campaignId,
+      businessId,
+      amountCents,
     });
 
-    // Store payment record
-    const { error: insertError } = await supabase
-      .from('campaign_payments')
-      .insert({
-        campaign_id: campaignId,
-        business_id: businessId,
-        restaurant_id: campaign.restaurant_id,
-        stripe_payment_intent_id: paymentIntent.id,
-        amount_cents: amountCents,
-        platform_fee_cents: platformFeeCents,
-        creator_payout_cents: creatorPayoutCents,
-        status: 'pending',
-      });
-
-    if (insertError) {
-      console.error('Error storing payment:', insertError);
+    // Ensure we have a valid session before calling Edge Function
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session) {
+      console.error('[paymentService] ❌ No valid session:', sessionError);
       return {
         success: false,
-        error: 'Failed to store payment record',
+        error: 'Authentication session missing. Please sign in again.',
       };
     }
 
-    // Update campaign with payment intent ID
-    await supabase
-      .from('campaigns')
-      .update({
-        payment_intent_id: paymentIntent.id,
-        payment_status: 'pending',
-      })
-      .eq('id', campaignId);
+    console.log('[paymentService] ✅ Session validated, calling Edge Function...');
+
+    const { data, error } = await supabase.functions.invoke('stripe-create-payment-intent', {
+      body: {
+        campaignId,
+        businessId,
+        amountCents,
+      },
+    });
+
+    if (error) {
+      console.error('[paymentService] ❌ Edge Function error:', {
+        message: error.message,
+        name: error.name,
+        status: (error as any)?.status,
+        context: (error as any)?.context,
+      });
+      return {
+        success: false,
+        error: error.message || 'Failed to create payment intent',
+      };
+    }
+
+    console.log('[paymentService] ✅ Edge Function response:', {
+      success: data?.success,
+      paymentIntentId: data?.paymentIntentId,
+      hasClientSecret: !!data?.clientSecret,
+      error: data?.error,
+    });
 
     return {
-      success: true,
-      paymentIntentId: paymentIntent.id,
-      clientSecret: paymentIntent.client_secret || undefined,
+      success: data?.success || false,
+      paymentIntentId: data?.paymentIntentId,
+      clientSecret: data?.clientSecret,
+      error: data?.error,
     };
   } catch (error) {
-    console.error('Error creating payment intent:', error);
+    console.error('[paymentService] ❌ Exception creating payment intent:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create payment intent',
@@ -104,108 +92,18 @@ export async function createCampaignPaymentIntent(
 }
 
 /**
- * Handle successful payment (called from webhook)
+ * Handle successful payment (called from webhook/Edge Function)
+ * NOTE: This should only be called server-side (Edge Functions)
  */
 export async function handlePaymentSuccess(
   paymentIntentId: string
 ): Promise<PaymentConfirmationResult> {
-  try {
-    // Get payment record
-    const { data: payment, error: paymentError } = await supabase
-      .from('campaign_payments')
-      .select('*')
-      .eq('stripe_payment_intent_id', paymentIntentId)
-      .single();
-
-    if (paymentError || !payment) {
-      return {
-        success: false,
-        error: 'Payment record not found',
-      };
-    }
-
-    // Verify payment intent status with Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (paymentIntent.status !== 'succeeded') {
-      return {
-        success: false,
-        error: `Payment not succeeded. Status: ${paymentIntent.status}`,
-      };
-    }
-
-    // Update payment record
-    const { error: updateError } = await supabase
-      .from('campaign_payments')
-      .update({
-        status: 'succeeded',
-        paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', payment.id);
-
-    if (updateError) {
-      console.error('Error updating payment:', updateError);
-      return {
-        success: false,
-        error: 'Failed to update payment record',
-      };
-    }
-
-    // Update campaign status
-    await supabase
-      .from('campaigns')
-      .update({
-        payment_status: 'paid',
-        paid_at: new Date().toISOString(),
-        status: 'active', // Activate campaign when payment succeeds
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', payment.campaign_id);
-
-    // Create transaction record
-    await supabase
-      .from('payment_transactions')
-      .insert({
-        campaign_id: payment.campaign_id,
-        business_id: payment.business_id,
-        stripe_payment_intent_id: paymentIntentId,
-        amount_cents: payment.amount_cents,
-        platform_fee_cents: payment.platform_fee_cents,
-        creator_amount_cents: payment.creator_payout_cents,
-        transaction_type: 'payment',
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      });
-
-    // Get campaign title for notification
-    const { data: campaign } = await supabase
-      .from('campaigns')
-      .select('title')
-      .eq('id', payment.campaign_id)
-      .single();
-
-    // Send success notification to business
-    if (campaign) {
-      await notificationService.createPaymentSuccessNotification(
-        payment.business_id,
-        payment.campaign_id,
-        campaign.title,
-        payment.amount_cents
-      );
-    }
-
-    return {
-      success: true,
-      paymentId: payment.id,
-    };
-  } catch (error) {
-    console.error('Error handling payment success:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to handle payment success',
-    };
-  }
+  // This function requires Stripe SDK - should only be called from Edge Functions
+  // Webhook handler already handles this, so this is mainly for reference
+  return {
+    success: false,
+    error: 'handlePaymentSuccess should only be called from Edge Functions/webhooks',
+  };
 }
 
 /**
@@ -259,9 +157,11 @@ export async function handlePaymentFailure(paymentIntentId: string): Promise<voi
 
 /**
  * Get payment status for a campaign
+ * Returns comprehensive payment information including verification status
  */
 export async function getCampaignPaymentStatus(campaignId: string) {
-  const { data } = await supabase
+  // Get payment record
+  const { data: payment, error: paymentError } = await supabase
     .from('campaign_payments')
     .select('*')
     .eq('campaign_id', campaignId)
@@ -269,5 +169,48 @@ export async function getCampaignPaymentStatus(campaignId: string) {
     .limit(1)
     .single();
 
-  return data;
+  // Get campaign payment status
+  const { data: campaign, error: campaignError } = await supabase
+    .from('campaigns')
+    .select('payment_status, paid_at, payment_intent_id')
+    .eq('id', campaignId)
+    .single();
+
+  // Get transaction record
+  const { data: transaction } = await supabase
+    .from('payment_transactions')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .eq('transaction_type', 'payment')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  // Determine verification status
+  let verificationStatus: 'charged' | 'pending' | 'failed' | 'not_found' = 'not_found';
+  let isCharged = false;
+
+  if (payment) {
+    if (payment.status === 'succeeded' && campaign?.payment_status === 'paid') {
+      verificationStatus = 'charged';
+      isCharged = true;
+    } else if (payment.status === 'pending' || payment.status === 'processing') {
+      verificationStatus = 'pending';
+    } else if (payment.status === 'failed') {
+      verificationStatus = 'failed';
+    }
+  }
+
+  return {
+    payment,
+    campaign: campaign ? {
+      payment_status: campaign.payment_status,
+      paid_at: campaign.paid_at,
+      payment_intent_id: campaign.payment_intent_id,
+    } : null,
+    transaction,
+    verificationStatus,
+    isCharged,
+    error: paymentError || campaignError,
+  };
 }

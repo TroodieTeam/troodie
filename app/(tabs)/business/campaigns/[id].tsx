@@ -2,33 +2,35 @@ import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getInvitationsForCampaign, withdrawInvitation, type CampaignInvitation } from '@/services/campaignInvitationService';
+import { createCampaignPaymentIntent, getCampaignPaymentStatus } from '@/services/paymentService';
 import { canRateApplication, rateCreator } from '@/services/ratingService';
+import { useStripe } from '@stripe/stripe-react-native';
+import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    ArrowLeft,
-    Clock,
-    DollarSign,
-    Edit,
-    ExternalLink,
-    Mail,
-    Star,
-    Target,
-    Users,
-    X
+  ArrowLeft,
+  Clock,
+  DollarSign,
+  Edit,
+  ExternalLink,
+  Mail,
+  Star,
+  Target,
+  Users,
+  X
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Linking,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,6 +40,8 @@ interface CampaignDetail {
   title?: string;
   description: string;
   status: string;
+  payment_status?: string;
+  payment_intent_id?: string;
   budget_cents: number;
   spent_amount_cents: number;
   start_date: string;
@@ -124,6 +128,7 @@ export default function CampaignDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
@@ -132,6 +137,7 @@ export default function CampaignDetail() {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [invitations, setInvitations] = useState<CampaignInvitation[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'content' | 'deliverables' | 'invitations'>('overview');
+  const [processingPayment, setProcessingPayment] = useState(false);
   
   // Rating modal state (CM-16)
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
@@ -318,6 +324,13 @@ export default function CampaignDetail() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
+    // If activating a pending campaign, check payment status first
+    if (newStatus === 'active' && campaign?.status === 'pending') {
+      await handleResumeCampaign();
+      return;
+    }
+
+    // For other status changes (pause, end, etc.), proceed normally
     try {
       const { error } = await supabase
         .from('campaigns')
@@ -330,6 +343,292 @@ export default function CampaignDetail() {
       loadCampaignData();
     } catch (error) {
       Alert.alert('Error', 'Failed to update campaign status');
+    }
+  };
+
+  const handleResumeCampaign = async () => {
+    if (!campaign || !user?.id || processingPayment) {
+      return;
+    }
+
+    try {
+      setProcessingPayment(true);
+      console.log('[Resume Campaign] Starting payment flow for campaign:', campaign.id);
+
+      // Check if Stripe Payment Sheet is available
+      if (!initPaymentSheet || !presentPaymentSheet) {
+        console.warn('[Resume Campaign] ⚠️ Stripe Payment Sheet not available (native module required)');
+        Alert.alert(
+          'Payment Not Available',
+          'Payment functionality requires a native app build. Please rebuild your app to enable payments.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Check current payment status
+      console.log('[Resume Campaign] Checking payment status...');
+      const paymentStatus = await getCampaignPaymentStatus(campaign.id);
+      
+      console.log('[Resume Campaign] Payment status:', {
+        verificationStatus: paymentStatus.verificationStatus,
+        isCharged: paymentStatus.isCharged,
+        paymentStatus: paymentStatus.campaign?.payment_status,
+        hasPaymentIntent: !!paymentStatus.campaign?.payment_intent_id,
+      });
+
+      // If already paid, activate campaign immediately
+      if (paymentStatus.isCharged && paymentStatus.campaign?.payment_status === 'paid') {
+        console.log('[Resume Campaign] ✅ Payment already confirmed, activating campaign');
+        const { error } = await supabase
+          .from('campaigns')
+          .update({ status: 'active' })
+          .eq('id', campaign.id);
+
+        if (error) throw error;
+
+        Alert.alert(
+          'Campaign Activated',
+          'Your campaign is now active! Creators can now apply.',
+          [{ text: 'OK', onPress: () => loadCampaignData() }]
+        );
+        return;
+      }
+
+      // Ensure we have a valid session before calling Edge Function
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        console.error('[Resume Campaign] ❌ No valid session:', sessionError);
+        Alert.alert(
+          'Authentication Error',
+          'Please sign in again to complete payment.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      console.log('[Resume Campaign] ✅ Session validated');
+
+      // Create or reuse payment intent
+      console.log('[Resume Campaign] Creating payment intent...', {
+        campaignId: campaign.id,
+        businessId: user.id,
+        amountCents: campaign.budget_cents,
+      });
+
+      const paymentResult = await createCampaignPaymentIntent(
+        campaign.id,
+        user.id,
+        campaign.budget_cents
+      );
+
+      if (!paymentResult.success || !paymentResult.paymentIntentId) {
+        console.error('[Resume Campaign] ❌ Payment intent creation failed:', paymentResult.error);
+        Alert.alert(
+          'Payment Setup Failed',
+          paymentResult.error || 'Failed to create payment intent. Please try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      console.log('[Resume Campaign] ✅ Payment intent created:', {
+        paymentIntentId: paymentResult.paymentIntentId,
+        clientSecret: paymentResult.clientSecret ? 'present' : 'missing',
+      });
+
+      // Present Stripe Payment Sheet to collect payment
+      if (paymentResult.clientSecret) {
+        console.log('[Resume Campaign] Initializing Payment Sheet...');
+        
+        // Initialize Payment Sheet
+        // Get proper returnURL for Stripe redirects - must match urlScheme in StripeProvider
+        // Stripe requires a path component, so we use '/payment-return' or similar
+        let returnURL: string;
+        try {
+          // Use the same method as StripeProvider in _layout.tsx
+          // For Expo dev: Linking.createURL('/--/') returns exp://.../--/
+          // For production: Linking.createURL('') returns troodie://
+          // We need to add a path component for Stripe
+          const baseURL = Linking.createURL('');
+          if (baseURL && baseURL.includes('://')) {
+            // If it already has a path, use it; otherwise add one
+            if (baseURL.split('://')[1] && baseURL.split('://')[1].length > 0) {
+              returnURL = baseURL;
+            } else {
+              // Add path component for Stripe redirect
+              returnURL = `${baseURL}payment-return`;
+            }
+          } else {
+            // Fallback: construct manually
+            returnURL = 'troodie://payment-return';
+          }
+        } catch (error) {
+          console.error('[Resume Campaign] Error creating returnURL:', error);
+          // Fallback to app scheme with path
+          returnURL = 'troodie://payment-return';
+        }
+
+        console.log('[Resume Campaign] Using returnURL:', returnURL);
+
+        const { error: initError } = await initPaymentSheet({
+          merchantDisplayName: 'Troodie',
+          paymentIntentClientSecret: paymentResult.clientSecret,
+          returnURL,
+        });
+
+        if (initError) {
+          console.error('[Resume Campaign] ❌ Payment Sheet initialization failed:', initError);
+          Alert.alert(
+            'Payment Setup Error',
+            initError.message || 'Failed to initialize payment. Please try again.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+
+        console.log('[Resume Campaign] ✅ Payment Sheet initialized, presenting...');
+
+        // Present Payment Sheet
+        const { error: paymentError } = await presentPaymentSheet();
+
+        if (paymentError) {
+          console.error('[Resume Campaign] ❌ Payment failed:', paymentError);
+          
+          // Handle user cancellation vs actual error
+          if (paymentError.code === 'Canceled') {
+            Alert.alert(
+              'Payment Cancelled',
+              'Payment was cancelled. You can complete payment later to activate your campaign.',
+              [{ text: 'OK' }]
+            );
+          } else {
+            Alert.alert(
+              'Payment Failed',
+              paymentError.message || 'Payment could not be processed. Please try again.',
+              [{ text: 'OK' }]
+            );
+          }
+          // Campaign stays in 'pending' status - they can retry payment later
+          return;
+        }
+
+        // Payment successful! Wait a moment for webhook to process, then check status
+        console.log('[Resume Campaign] ✅ Payment successful! Waiting for webhook confirmation...');
+        
+        // Poll for payment confirmation (webhook may take a moment)
+        let attempts = 0;
+        const maxAttempts = 20; // Increased to 20 seconds (webhooks can take 5-15 seconds)
+        let paymentConfirmed = false;
+
+        while (attempts < maxAttempts && !paymentConfirmed) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          attempts++;
+          
+          console.log(`[Resume Campaign] Polling attempt ${attempts}/${maxAttempts}...`);
+          const updatedStatus = await getCampaignPaymentStatus(campaign.id);
+          
+          console.log('[Resume Campaign] Payment status check:', {
+            attempt: attempts,
+            verificationStatus: updatedStatus.verificationStatus,
+            isCharged: updatedStatus.isCharged,
+            paymentStatus: updatedStatus.campaign?.payment_status,
+            paymentRecordStatus: updatedStatus.payment?.status,
+            hasPayment: !!updatedStatus.payment,
+            hasCampaign: !!updatedStatus.campaign,
+          });
+          
+          if (updatedStatus.isCharged && updatedStatus.campaign?.payment_status === 'paid') {
+            console.log('[Resume Campaign] ✅ Payment confirmed via webhook!');
+            paymentConfirmed = true;
+            break;
+          }
+          
+          // Also check if payment record shows succeeded (webhook might have updated payment but not campaign yet)
+          if (updatedStatus.payment?.status === 'succeeded' && updatedStatus.campaign?.payment_status !== 'paid') {
+            console.log('[Resume Campaign] ⚠️ Payment record shows succeeded but campaign not updated yet. Webhook may still be processing...');
+          }
+        }
+
+        if (paymentConfirmed) {
+          // Update campaign status to active (webhook should have done this, but ensure it's set)
+          const { error: updateError } = await supabase
+            .from('campaigns')
+            .update({ status: 'active' })
+            .eq('id', campaign.id);
+
+          if (updateError) {
+            console.error('[Resume Campaign] ❌ Failed to activate campaign:', updateError);
+            Alert.alert(
+              'Payment Successful',
+              'Payment was successful, but there was an error activating your campaign. Please refresh the page.',
+              [{ text: 'OK', onPress: () => loadCampaignData() }]
+            );
+          } else {
+            console.log('[Resume Campaign] ✅ Campaign activated successfully');
+            Alert.alert(
+              'Payment Successful',
+              'Your campaign is now active! Creators can now apply.',
+              [{ text: 'OK', onPress: () => loadCampaignData() }]
+            );
+          }
+        } else {
+          // Payment processed but webhook hasn't confirmed yet
+          // Check one more time if payment record exists with succeeded status
+          const finalCheck = await getCampaignPaymentStatus(campaign.id);
+          console.log('[Resume Campaign] Final status check after polling:', {
+            paymentStatus: finalCheck.payment?.status,
+            campaignPaymentStatus: finalCheck.campaign?.payment_status,
+            isCharged: finalCheck.isCharged,
+          });
+          
+          // If payment record shows succeeded but campaign isn't paid, manually update it
+          if (finalCheck.payment?.status === 'succeeded' && finalCheck.campaign?.payment_status !== 'paid') {
+            console.log('[Resume Campaign] ⚠️ Payment succeeded but campaign not updated. Manually updating...');
+            const { error: manualUpdateError } = await supabase
+              .from('campaigns')
+              .update({
+                payment_status: 'paid',
+                paid_at: finalCheck.payment.paid_at || new Date().toISOString(),
+                status: 'active',
+              })
+              .eq('id', campaign.id);
+            
+            if (!manualUpdateError) {
+              console.log('[Resume Campaign] ✅ Manually activated campaign after payment confirmation');
+              Alert.alert(
+                'Payment Successful',
+                'Your campaign is now active! Creators can now apply.',
+                [{ text: 'OK', onPress: () => loadCampaignData() }]
+              );
+              return;
+            }
+          }
+          
+          Alert.alert(
+            'Payment Processing',
+            'Your payment is being processed. The campaign will be activated automatically once payment is confirmed. You can refresh this page in a moment.',
+            [{ text: 'OK', onPress: () => loadCampaignData() }]
+          );
+        }
+      } else {
+        // Fallback if no clientSecret (shouldn't happen, but handle gracefully)
+        console.warn('[Resume Campaign] ⚠️ No clientSecret returned');
+        Alert.alert(
+          'Payment Processing',
+          'Payment processing has been initiated. Your campaign will be activated once payment is confirmed.',
+          [{ text: 'OK', onPress: () => loadCampaignData() }]
+        );
+      }
+    } catch (error) {
+      console.error('[Resume Campaign] ❌ Error in payment flow:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process payment. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -469,10 +768,109 @@ export default function CampaignDetail() {
 
   const getDaysRemaining = () => {
     if (!campaign) return 0;
-    const end = new Date(campaign.end_date);
+    if (campaign.status === 'completed') return 0;
+    
+    // Handle null/undefined end_date
+    if (!campaign.end_date) {
+      if (__DEV__) {
+        console.log('[TimeLeft] Missing end_date', { campaignId: campaign.id });
+      }
+      return 0;
+    }
+    
     const now = new Date();
-    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+    const endDateStr = campaign.end_date;
+    
+    // Parse end_date - handle date-only strings (YYYY-MM-DD) vs full datetime
+    let end: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+      // Date-only string: parse as UTC and set to end of day UTC
+      const [year, month, day] = endDateStr.split('-').map(Number);
+      end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    } else {
+      // Full datetime string: parse and set to end of day in same timezone
+      end = new Date(endDateStr);
+      if (isNaN(end.getTime())) {
+        if (__DEV__) {
+          console.log('[TimeLeft] Invalid end_date', { campaignId: campaign.id, endDate: endDateStr });
+        }
+        return 0;
+      }
+      // If it's a full datetime, use it as-is; otherwise set to end of day
+      if (!endDateStr.includes('T') && !endDateStr.includes(' ')) {
+        end.setHours(23, 59, 59, 999);
+      }
+    }
+    
+    const diffMs = end.getTime() - now.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    // Concise tracing
+    if (__DEV__) {
+      console.log('[TimeLeft]', {
+        campaignId: campaign.id,
+        endDate: endDateStr,
+        endDateParsed: end.toISOString(),
+        now: now.toISOString(),
+        diffMs,
+        days,
+        hours: Math.floor(diffMs / (1000 * 60 * 60)),
+        minutes: Math.floor(diffMs / (1000 * 60)),
+      });
+    }
+    
+    return days > 0 ? days : 0;
+  };
+
+  const getTimeLeftText = () => {
+    if (!campaign) return '0d';
+    if (campaign.status === 'completed') return 'Ended';
+    if (campaign.status === 'draft') return 'Not started';
+    
+    // Handle null/undefined end_date
+    if (!campaign.end_date) {
+      if (__DEV__) {
+        console.log('[TimeLeft] Missing end_date', { campaignId: campaign.id });
+      }
+      return 'No date';
+    }
+    
+    const now = new Date();
+    const endDateStr = campaign.end_date;
+    
+    // Parse end_date - handle date-only strings (YYYY-MM-DD) vs full datetime
+    let end: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+      // Date-only string: parse as UTC and set to end of day UTC
+      const [year, month, day] = endDateStr.split('-').map(Number);
+      end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    } else {
+      // Full datetime string: parse and set to end of day in same timezone
+      end = new Date(endDateStr);
+      if (isNaN(end.getTime())) {
+        if (__DEV__) {
+          console.log('[TimeLeft] Invalid end_date', { campaignId: campaign.id, endDate: endDateStr });
+        }
+        return 'Invalid';
+      }
+      // If it's a full datetime, use it as-is; otherwise set to end of day
+      if (!endDateStr.includes('T') && !endDateStr.includes(' ')) {
+        end.setHours(23, 59, 59, 999);
+      }
+    }
+    
+    const diffMs = end.getTime() - now.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (days < 0) return 'Ended';
+    if (days === 0) {
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (hours > 0) return `${hours}h`;
+      const minutes = Math.floor(diffMs / (1000 * 60));
+      if (minutes > 0) return `${minutes}m`;
+      return 'Ending';
+    }
+    return `${days}d`;
   };
 
   if (loading) {
@@ -683,40 +1081,6 @@ export default function CampaignDetail() {
                   justifyContent: 'center',
                   marginRight: DS.spacing.sm,
                 }}>
-                  <Users size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{
-                    ...DS.typography.metadata,
-                    color: DS.colors.textGray,
-                  }}>
-                    Creators
-                  </Text>
-                  <Text style={{
-                    ...DS.typography.body,
-                    fontWeight: '600',
-                    color: DS.colors.textDark,
-                  }}>
-                  {campaign.selected_creators_count}/{campaign.max_creators}
-                </Text>
-                </View>
-              </View>
-              
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                flex: 1,
-                minWidth: '30%',
-              }}>
-                <View style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: DS.borderRadius.sm,
-                  backgroundColor: DS.colors.surfaceLight,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: DS.spacing.sm,
-                }}>
                   <Clock size={DS.layout.iconSize.sm} color={DS.colors.primaryOrange} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -731,7 +1095,7 @@ export default function CampaignDetail() {
                     fontWeight: '600',
                     color: DS.colors.textDark,
                   }}>
-                    {getDaysRemaining()}d
+                    {getTimeLeftText()}
                 </Text>
                 </View>
               </View>
@@ -860,18 +1224,30 @@ export default function CampaignDetail() {
             {campaign.status === 'pending' && (
               <TouchableOpacity
                 style={{
-                  backgroundColor: DS.colors.success,
+                  backgroundColor: processingPayment ? DS.colors.borderLight : DS.colors.success,
                   padding: DS.spacing.md,
                   borderRadius: DS.borderRadius.sm,
                   alignItems: 'center',
                   marginBottom: DS.spacing.lg,
+                  opacity: processingPayment ? 0.6 : 1,
                 }}
                 onPress={() => handleStatusChange('active')}
+                disabled={processingPayment}
               >
-                <Text style={{ 
-                  color: 'white', 
-                  ...DS.typography.button,
-                }}>Resume Campaign</Text>
+                {processingPayment ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="white" style={{ marginRight: DS.spacing.xs }} />
+                    <Text style={{ 
+                      color: 'white', 
+                      ...DS.typography.button,
+                    }}>Processing Payment...</Text>
+                  </View>
+                ) : (
+                  <Text style={{ 
+                    color: 'white', 
+                    ...DS.typography.button,
+                  }}>Resume Campaign</Text>
+                )}
               </TouchableOpacity>
             )}
 

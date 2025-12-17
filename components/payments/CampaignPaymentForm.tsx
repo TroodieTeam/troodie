@@ -27,8 +27,7 @@ export default function CampaignPaymentForm({
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
 
   const amountDollars = (amountCents / 100).toFixed(2);
-  const platformFeeCents = Math.round(amountCents * 0.1);
-  const platformFeeDollars = (platformFeeCents / 100).toFixed(2);
+  // No platform fee - creators receive full payment amount
   const totalCents = amountCents;
   const totalDollars = (totalCents / 100).toFixed(2);
 
@@ -222,17 +221,6 @@ export default function CampaignPaymentForm({
         >
           <Text style={{ color: DS.colors.textLight }}>Campaign Budget</Text>
           <Text style={{ color: DS.colors.text, fontWeight: '500' }}>${amountDollars}</Text>
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: DS.spacing.sm,
-          }}
-        >
-          <Text style={{ color: DS.colors.textLight }}>Platform Fee (10%)</Text>
-          <Text style={{ color: DS.colors.text, fontWeight: '500' }}>${platformFeeDollars}</Text>
         </View>
 
         <View

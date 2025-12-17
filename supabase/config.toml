@@ -1,0 +1,12 @@
+# Supabase Configuration
+# This file configures Edge Functions and other Supabase settings
+
+[functions.stripe-redirect]
+# Disable JWT verification for Stripe redirects
+# Stripe redirects don't include auth headers, so we need to make this function public
+verify_jwt = false
+
+[functions.stripe-webhook]
+# Disable JWT verification for Stripe webhooks
+# Stripe webhooks are signed but don't include user auth tokens
+verify_jwt = false

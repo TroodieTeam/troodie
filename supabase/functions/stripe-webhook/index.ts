@@ -15,6 +15,14 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
 
 serve(async (req) => {
+  // Webhook endpoint - must be public (no auth required)
+  // Stripe webhooks are authenticated via signature verification, not JWT
+  console.log('[Webhook] Request received:', {
+    method: req.method,
+    hasStripeSignature: !!req.headers.get('stripe-signature'),
+    userAgent: req.headers.get('user-agent'),
+  });
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -25,6 +33,7 @@ serve(async (req) => {
   try {
     const signature = req.headers.get('stripe-signature');
     if (!signature) {
+      console.error('[Webhook] ❌ No Stripe signature header found');
       return new Response(JSON.stringify({ error: 'No signature' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -35,16 +44,22 @@ serve(async (req) => {
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      // Use constructEventAsync for Deno/Edge Functions (async context required)
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
+      console.error('[Webhook] ❌ Signature verification failed:', err);
       return new Response(JSON.stringify({ error: 'Invalid signature' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Processing webhook event: ${event.type}`);
+    console.log(`[Webhook] Processing webhook event: ${event.type}`, {
+      eventId: event.id,
+      eventType: event.type,
+      created: event.created,
+      livemode: event.livemode,
+    });
 
     // Handle different event types
     switch (event.type) {
@@ -93,29 +108,83 @@ serve(async (req) => {
 });
 
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
-  console.log('Payment succeeded:', paymentIntent.id);
+  console.log('[Webhook] ✅ Payment succeeded:', {
+    paymentIntentId: paymentIntent.id,
+    amount: paymentIntent.amount,
+    currency: paymentIntent.currency,
+    campaignId: paymentIntent.metadata.campaign_id,
+    businessId: paymentIntent.metadata.business_id,
+    status: paymentIntent.status,
+  });
+
+  // First, check if payment record exists
+  console.log('[Webhook] Checking for existing payment record...');
+  const { data: existingPayment, error: checkError } = await supabase
+    .from('campaign_payments')
+    .select('*')
+    .eq('stripe_payment_intent_id', paymentIntent.id)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('[Webhook] ❌ Error checking for payment record:', checkError);
+  }
+
+  if (!existingPayment) {
+    console.error('[Webhook] ❌ No payment record found for payment intent:', paymentIntent.id);
+    console.log('[Webhook] Searching for any payment records with similar IDs...');
+    // Try to find payment records for this campaign
+    if (paymentIntent.metadata.campaign_id) {
+      const { data: campaignPayments } = await supabase
+        .from('campaign_payments')
+        .select('id, stripe_payment_intent_id, campaign_id, status, created_at')
+        .eq('campaign_id', paymentIntent.metadata.campaign_id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      console.log('[Webhook] Recent payment records for campaign:', campaignPayments);
+    }
+    return;
+  }
+
+  console.log('[Webhook] Found payment record:', {
+    id: existingPayment.id,
+    campaignId: existingPayment.campaign_id,
+    currentStatus: existingPayment.status,
+    paymentIntentId: existingPayment.stripe_payment_intent_id,
+  });
 
   // Update campaign payment status
-  const { error: updateError } = await supabase
+  console.log('[Webhook] Updating campaign_payments table...');
+  const { data: paymentRecord, error: updateError } = await supabase
     .from('campaign_payments')
     .update({
       status: 'succeeded',
       paid_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq('stripe_payment_intent_id', paymentIntent.id);
+    .eq('stripe_payment_intent_id', paymentIntent.id)
+    .select('campaign_id')
+    .single();
 
   if (updateError) {
-    console.error('Error updating payment:', updateError);
+    console.error('[Webhook] ❌ Error updating campaign_payments:', {
+      error: updateError,
+      code: updateError.code,
+      message: updateError.message,
+      details: updateError.details,
+      hint: updateError.hint,
+    });
     return;
   }
 
+  console.log('[Webhook] ✅ Payment record updated:', paymentRecord);
+
   // Update campaign status
-  const campaignId = paymentIntent.metadata.campaign_id;
+  const campaignId = paymentIntent.metadata.campaign_id || paymentRecord?.campaign_id;
   const businessId = paymentIntent.metadata.business_id;
   
   if (campaignId) {
-    await supabase
+    console.log('[Webhook] Activating campaign:', campaignId);
+    const { error: campaignUpdateError } = await supabase
       .from('campaigns')
       .update({
         payment_status: 'paid',
@@ -125,6 +194,12 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
       })
       .eq('id', campaignId);
 
+    if (campaignUpdateError) {
+      console.error('[Webhook] ❌ Error updating campaign status:', campaignUpdateError);
+    } else {
+      console.log('[Webhook] ✅ Campaign activated:', campaignId);
+    }
+
     // Create transaction record
     await supabase
       .from('payment_transactions')
@@ -133,8 +208,8 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
         business_id: businessId,
         stripe_payment_intent_id: paymentIntent.id,
         amount_cents: paymentIntent.amount,
-        platform_fee_cents: parseInt(paymentIntent.metadata.platform_fee_cents || '0'),
-        creator_amount_cents: parseInt(paymentIntent.metadata.creator_payout_cents || '0'),
+        platform_fee_cents: 0, // No platform fee - creators receive full amount
+        creator_amount_cents: parseInt(paymentIntent.metadata.creator_payout_cents || paymentIntent.amount.toString()),
         transaction_type: 'payment',
         status: 'completed',
         completed_at: new Date().toISOString(),
