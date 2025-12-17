@@ -52,7 +52,7 @@ BEGIN
   -- Find or create a test campaign (use first holiday campaign or create new)
   SELECT id INTO v_campaign_id
   FROM campaigns
-  WHERE business_id = v_user_id
+  WHERE owner_id = v_user_id
     AND title LIKE '%Holiday%'
   LIMIT 1;
 
@@ -94,7 +94,7 @@ BEGIN
       v_campaign_id := gen_random_uuid();
       INSERT INTO campaigns (
         id,
-        business_id,
+        owner_id,
         restaurant_id,
         title,
         description,
@@ -157,7 +157,7 @@ SELECT
   c.status
 FROM public.users u
 JOIN public.stripe_accounts sa ON sa.user_id = u.id AND sa.account_type = 'business'
-LEFT JOIN campaigns c ON c.business_id = u.id AND c.payment_status = 'unpaid'
+LEFT JOIN campaigns c ON c.owner_id = u.id AND c.payment_status = 'unpaid'
 WHERE u.email = 'test-business1@bypass.com'
 ORDER BY c.created_at DESC
 LIMIT 1;

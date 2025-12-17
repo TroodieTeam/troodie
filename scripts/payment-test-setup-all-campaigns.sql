@@ -93,7 +93,7 @@ BEGIN
   -- Campaign 1: Holiday Latte Crawl ☕✨
   INSERT INTO campaigns (
     id,
-    business_id,
+    owner_id,
     restaurant_id,
     title,
     description,
@@ -125,14 +125,14 @@ Required CTA:
     NOW()
   WHERE NOT EXISTS (
     SELECT 1 FROM campaigns 
-    WHERE business_id = v_user_id 
+    WHERE owner_id = v_user_id 
       AND title = 'Holiday Latte Crawl ☕✨'
   );
 
   -- Campaign 2: Cozy Winter Date Night Pick ❄️❤️
   INSERT INTO campaigns (
     id,
-    business_id,
+    owner_id,
     restaurant_id,
     title,
     description,
@@ -164,14 +164,14 @@ Required CTA:
     NOW()
   WHERE NOT EXISTS (
     SELECT 1 FROM campaigns 
-    WHERE business_id = v_user_id 
+    WHERE owner_id = v_user_id 
       AND title = 'Cozy Winter Date Night Pick ❄️❤️'
   );
 
   -- Campaign 3: Festive Cocktails Tour 🍹🎄
   INSERT INTO campaigns (
     id,
-    business_id,
+    owner_id,
     restaurant_id,
     title,
     description,
@@ -203,14 +203,14 @@ Required CTA:
     NOW()
   WHERE NOT EXISTS (
     SELECT 1 FROM campaigns 
-    WHERE business_id = v_user_id 
+    WHERE owner_id = v_user_id 
       AND title = 'Festive Cocktails Tour 🍹🎄'
   );
 
   -- Campaign 4: Best Holiday Dessert in Charlotte 🎂✨
   INSERT INTO campaigns (
     id,
-    business_id,
+    owner_id,
     restaurant_id,
     title,
     description,
@@ -242,14 +242,14 @@ Required CTA:
     NOW()
   WHERE NOT EXISTS (
     SELECT 1 FROM campaigns 
-    WHERE business_id = v_user_id 
+    WHERE owner_id = v_user_id 
       AND title = 'Best Holiday Dessert in Charlotte 🎂✨'
   );
 
   -- Campaign 5: My Favorite Black-Owned Spot for the Holidays 🎁🔥
   INSERT INTO campaigns (
     id,
-    business_id,
+    owner_id,
     restaurant_id,
     title,
     description,
@@ -281,14 +281,14 @@ Required CTA:
     NOW()
   WHERE NOT EXISTS (
     SELECT 1 FROM campaigns 
-    WHERE business_id = v_user_id 
+    WHERE owner_id = v_user_id 
       AND title = 'My Favorite Black-Owned Spot for the Holidays 🎁🔥'
   );
 
   -- Campaign 6: Winter Warm-Up: Soup / Ramen / Pho Season 🍜❄️
   INSERT INTO campaigns (
     id,
-    business_id,
+    owner_id,
     restaurant_id,
     title,
     description,
@@ -320,7 +320,7 @@ Required CTA:
     NOW()
   WHERE NOT EXISTS (
     SELECT 1 FROM campaigns 
-    WHERE business_id = v_user_id 
+    WHERE owner_id = v_user_id 
       AND title = 'Winter Warm-Up: Soup / Ramen / Pho Season 🍜❄️'
   );
 
@@ -340,7 +340,7 @@ SELECT
   c.payment_status,
   u.email as business_email
 FROM campaigns c
-JOIN users u ON c.business_id = u.id
+JOIN users u ON c.owner_id = u.id
 WHERE c.title LIKE '%Holiday%' 
    OR c.title LIKE '%Winter%' 
    OR c.title LIKE '%Festive%'

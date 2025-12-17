@@ -293,7 +293,7 @@ ORDER BY created_at DESC;
 
 #### Test Case 1.1: First-Time Business Stripe Onboarding
 
-**Status:** ✅ Tested  
+**Status:** ✅ **COMPLETED**  
 **Objective:** Verify business can connect Stripe account when creating first paid campaign
 
 **⚠️ Setup Required:** Run setup script before testing:
@@ -355,7 +355,7 @@ WHERE u.email = 'test-business1@bypass.com'
 
 #### Test Case 1.2: Business Stripe Onboarding Refresh
 
-**Status:** ✅ Tested  
+**Status:** ✅ **COMPLETED**  
 **Objective:** Verify business can complete incomplete onboarding
 
 **⚠️ Setup Required:** Run setup script before testing:
@@ -395,7 +395,7 @@ WHERE u.email = 'test-business1@bypass.com'
 
 #### Test Case 2.1: Successful Campaign Payment
 
-**Status:** ✅ Tested  
+**Status:** ✅ **COMPLETED**  
 **Objective:** Verify business can pay for campaign and campaign activates
 
 **⚠️ Setup Required:** Run setup script before testing:
@@ -474,6 +474,7 @@ LIMIT 1;
 
 #### Test Case 2.2: Failed Payment Handling
 
+**Status:** ✅ Tested  
 **Objective:** Verify failed payments are handled correctly
 
 **⚠️ Setup Required:** Use same setup as Test Case 2.1:
@@ -529,6 +530,7 @@ LIMIT 1;
 
 #### Test Case 2.3: Payment Retry After Failure
 
+**Status:** ✅ **COMPLETED**  
 **Objective:** Verify business can retry failed payment
 
 **⚠️ Setup Required:** 
@@ -626,11 +628,14 @@ WHERE u.email = 'test-creator1@bypass.com'
 
 **Objective:** Verify creator is prompted to onboard when deliverable approved without Stripe account
 
-**⚠️ Setup Required:** 
+**⚠️ Setup Required:** Run setup script before testing:
 ```sql
--- Run scripts/payment-test-setup-creator-onboarding.sql (for test-creator2@bypass.com)
--- Then manually create a paid campaign and deliverable, or use existing data
--- Ensure deliverable is approved but creator has no Stripe account
+-- Run this script in Supabase SQL Editor:
+-- scripts/payment-test-setup-creator-onboarding-after-approval.sql
+-- This sets up:
+-- - test-creator2@bypass.com with NO Stripe account
+-- - Paid campaign from test-business1@bypass.com
+-- - Approved deliverable with payment_status = 'pending_onboarding'
 ```
 
 **Prerequisites:**
@@ -667,6 +672,7 @@ WHERE u.email = 'test-creator2@bypass.com'
 
 **Post-Test Cleanup:**
 ```sql
+-- Reset test-creator2@bypass.com Stripe account and deliverable for next test
 -- Run scripts/payment-test-reset-creator-onboarding.sql (for test-creator2@bypass.com)
 -- Or run scripts/payment-test-reset-all.sql to reset everything
 ```
@@ -677,6 +683,7 @@ WHERE u.email = 'test-creator2@bypass.com'
 
 #### Test Case 4.1: Successful Automatic Payout
 
+**Status:** ✅ **COMPLETED** (December 17, 2025)  
 **Objective:** Verify payout processes automatically when deliverable approved
 
 **⚠️ Setup Required:** Run setup script before testing:
@@ -747,11 +754,32 @@ LIMIT 1;
 ```
 
 **Success Criteria:**
-- Transfer created in Stripe
-- Full amount transferred (no fee)
-- Status updated correctly
-- Notification sent
-- Transaction logged
+- ✅ Transfer created in Stripe
+- ✅ Full amount transferred (no fee)
+- ✅ Status updated correctly
+- ✅ Notification sent
+- ✅ Transaction logged
+
+**Test Results (December 17, 2025):**
+- ✅ `approveDeliverable()` correctly sets `payment_amount_cents` from `campaign_payments.creator_payout_cents` or `campaigns.budget_cents`
+- ✅ `processDeliverablePayout()` automatically invoked after approval
+- ✅ Stripe transfer created successfully (`tr_1SfNzQDt5lHC2XMOrtrFF47N`)
+- ✅ Payment transaction record created in `payment_transactions` table
+- ✅ Deliverable `payment_status` updated to `'processing'`
+- ✅ All validation checks pass (creator onboarding, campaign payment, amount > 0)
+- ✅ Error handling improved with detailed logging
+
+**Known Issues Fixed:**
+- ✅ Fixed `reviewer_id` column name (was incorrectly using `reviewed_by`)
+- ✅ Fixed `payment_amount_cents` calculation to use `budget_cents` correctly (1 creator per campaign)
+- ✅ Fixed `handleDeliverableStatusChange` to use proper service functions instead of direct DB updates
+- ✅ Added comprehensive tracing logs for debugging payout flow
+
+**⚠️ Payment Model Consideration:**
+Currently, payouts happen per deliverable upon approval. Consideration for future:
+- **Option A:** Pay once when campaign is completed (all deliverables approved)
+- **Option B:** Lock deliverables after campaign payment to prevent changes
+- **Current Model:** Pay per deliverable as approved (working as implemented)
 
 **Post-Test Cleanup:**
 ```sql
@@ -1158,6 +1186,7 @@ See: https://stripe.com/docs/testing#cards
 | 1.2 - Incomplete Onboarding | `scripts/payment-test-setup-incomplete-onboarding.sql` | Create incomplete Stripe account |
 | 2.1 - Campaign Payment | `scripts/payment-test-setup-campaign-payment.sql` | Setup completed Stripe account + unpaid campaign |
 | 3.1 - Creator Onboarding | `scripts/payment-test-setup-creator-onboarding.sql` | Remove Stripe account, ensure creator account type |
+| 3.2 - Creator Onboarding After Approval | `scripts/payment-test-setup-creator-onboarding-after-approval.sql` | Setup approved deliverable + creator without Stripe account |
 | 4.1 - Payout Processing | `scripts/payment-test-setup-payout-processing.sql` | Setup paid campaign + deliverable ready for approval |
 | All Campaigns | `scripts/payment-test-setup-all-campaigns.sql` | Create all 6 holiday test campaigns |
 
@@ -1168,6 +1197,7 @@ See: https://stripe.com/docs/testing#cards
 | 1.1 - Business Onboarding | `scripts/payment-test-reset-business-onboarding.sql` | Remove Stripe account |
 | 2.1 - Campaign Payment | `scripts/payment-test-reset-campaign-payment.sql` | Remove payments, reset campaigns to unpaid |
 | 3.1 - Creator Onboarding | `scripts/payment-test-reset-creator-onboarding.sql` | Remove Stripe account, reset creator profile |
+| 3.2 - Creator Onboarding After Approval | `scripts/payment-test-reset-creator-onboarding.sql` | Remove Stripe account, reset creator profile and deliverable status |
 | 4.1 - Payout Processing | `scripts/payment-test-reset-payout-processing.sql` | Reset deliverables, remove payout transactions |
 | Complete Reset | `scripts/payment-test-reset-all.sql` | Reset ALL payment test data |
 
@@ -1202,5 +1232,29 @@ See: https://stripe.com/docs/testing#cards
 
 ---
 
-**Last Updated:** January 17, 2025  
-**Status:** Ready for Testing
+**Last Updated:** December 17, 2025  
+**Status:** ✅ Core Payment Flow Tested & Working
+
+## Recent Updates (December 17, 2025)
+
+### ✅ Completed Test Cases
+- **Test Case 4.1: Successful Automatic Payout** - ✅ **VERIFIED WORKING**
+  - Payout automatically triggers on deliverable approval
+  - Stripe transfer created successfully
+  - Payment transaction records created
+  - All validation checks passing
+
+### 🔧 Fixes Applied
+- Fixed `reviewer_id` column name issue
+- Fixed `payment_amount_cents` calculation (now uses `budget_cents` correctly)
+- Updated `handleDeliverableStatusChange` to use proper service functions
+- Added comprehensive tracing logs
+- Improved Edge Function error handling
+
+### ⚠️ Payment Model Consideration
+See `docs/PAYMENT_MODEL_CONSIDERATION.md` for discussion on:
+- Current: Pay per deliverable upon approval
+- Alternative: Pay once when campaign completed
+- Alternative: Lock deliverables after payment
+
+**Recommendation:** Keep current model + add deliverable locking mechanism

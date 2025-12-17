@@ -85,7 +85,7 @@ BEGIN
     payment_intent_id = NULL,
     paid_at = NULL,
     updated_at = NOW()
-  WHERE business_id IN (
+  WHERE owner_id IN (
     COALESCE(v_business1_user_id, '00000000-0000-0000-0000-000000000000'::uuid),
     COALESCE(v_business2_user_id, '00000000-0000-0000-0000-000000000000'::uuid)
   );

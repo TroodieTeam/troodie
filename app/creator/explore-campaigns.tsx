@@ -3,33 +3,32 @@ import { mockCampaigns } from '@/data/mockCampaigns';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft,
-  Building,
-  Calendar,
-  Clock,
-  DollarSign,
-  Filter,
-  MapPin,
-  Search,
-  Sparkles,
-  Star,
-  Target,
-  Users,
-  X
+    ArrowLeft,
+    Building,
+    Calendar,
+    Clock,
+    DollarSign,
+    Filter,
+    MapPin,
+    Search,
+    Sparkles,
+    Star,
+    Target,
+    X
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -41,7 +40,7 @@ interface Campaign {
   requirements: string[] | null;
   deliverable_requirements?: any; // JSONB field containing expected deliverables
   budget_cents: number;
-  start_date: string;
+  start_date: string | null;
   end_date: string;
   status: string;
   max_creators: number;
@@ -67,16 +66,6 @@ interface Campaign {
 type FilterType = 'all' | 'local' | 'high-paying' | 'urgent' | 'new';
 type SortType = 'relevance' | 'budget' | 'deadline' | 'newest';
 
-const DELIVERABLE_TYPES = [
-  'Instagram Post',
-  'Instagram Story',
-  'Instagram Reel',
-  'TikTok Video',
-  'YouTube Video',
-  'Blog Article',
-  'Google Review',
-];
-
 export default function ExploreCampaigns() {
   const router = useRouter();
   const { user } = useAuth();
@@ -92,11 +81,7 @@ export default function ExploreCampaigns() {
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [applying, setApplying] = useState(false);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
-  const [proposedRate, setProposedRate] = useState('');
-  const [coverLetter, setCoverLetter] = useState('');
-  // Engineering Request: Proposed Deliverables now uses button-based selection
-  // matching app/(tabs)/business/campaigns/create.tsx pattern for consistency
-  const [selectedDeliverables, setSelectedDeliverables] = useState<string[]>([]);
+  const [coverLetter, setCoverLetter] = useState(''); // Optional brief message
 
   // Filter pills configuration
   const filterOptions: { type: FilterType; label: string; icon: any }[] = [
@@ -253,17 +238,7 @@ export default function ExploreCampaigns() {
     setSelectedCampaign(campaign);
     setShowApplicationForm(true);
     // Reset form fields
-    setProposedRate('');
     setCoverLetter('');
-    setSelectedDeliverables([]);
-  };
-
-  const toggleDeliverable = (type: string) => {
-    setSelectedDeliverables(prev =>
-      prev.includes(type)
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
   };
 
   const handleSubmitApplication = async () => {
@@ -271,22 +246,7 @@ export default function ExploreCampaigns() {
       return;
     }
 
-    // Validate form fields (proposed rate is now optional)
-    if (!coverLetter || selectedDeliverables.length === 0) {
-      Alert.alert('Missing Information', 'Please fill in all required fields: why you are interested, and select at least one deliverable.');
-      return;
-    }
-
-    // Validate rate is a number if provided (optional field)
-    let rateCents: number | null = null;
-    if (proposedRate.trim()) {
-      const rateValue = parseFloat(proposedRate);
-      if (isNaN(rateValue) || rateValue <= 0) {
-        Alert.alert('Invalid Rate', 'Please enter a valid rate amount or leave it blank.');
-        return;
-      }
-      rateCents = Math.round(rateValue * 100);
-    }
+    // Cover letter is optional - no validation needed
 
     setApplying(true);
     try {
@@ -317,17 +277,15 @@ export default function ExploreCampaigns() {
         return;
       }
 
-      // Format deliverables as a readable string
-      const deliverablesText = selectedDeliverables.join(', ');
-
-      // Create application with all required fields
+      // Create application - campaigns have fixed budget and requirements
+      // No need for proposed rate or deliverables since they're already set
       const { error } = await supabase.from('campaign_applications').insert({
         campaign_id: selectedCampaign.id,
         creator_id: creatorProfile.id,
         status: 'pending',
-        proposed_rate_cents: rateCents,
-        cover_letter: coverLetter,
-        proposed_deliverables: deliverablesText,
+        proposed_rate_cents: null, // Not used - campaign has fixed budget
+        cover_letter: coverLetter.trim() || null, // Optional brief message
+        proposed_deliverables: null, // Not used - campaign has fixed requirements
         applied_at: new Date().toISOString(),
       });
 
@@ -345,9 +303,7 @@ export default function ExploreCampaigns() {
             onPress: () => {
               setShowApplicationForm(false);
               setShowCampaignModal(false);
-              setProposedRate('');
               setCoverLetter('');
-              setSelectedDeliverables([]);
               fetchCampaigns(); // Refresh to update application status
             }
           }
@@ -365,7 +321,6 @@ export default function ExploreCampaigns() {
     const daysLeft = Math.ceil(
       (new Date(campaign.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
     );
-    const spotsLeft = campaign.max_creators - campaign.selected_creators_count;
     // Check if current user has applied (need to check creator_id matches)
     // For now, check if there are any pending applications - will be filtered by creator_id in query
     const hasApplied = campaign.applications && campaign.applications.length > 0;
@@ -428,16 +383,12 @@ export default function ExploreCampaigns() {
             <View style={styles.statItem}>
               <DollarSign size={14} color="#10B981" />
               <Text style={styles.statText}>
-                ${campaign.max_creators > 0 ? ((campaign.budget_cents / campaign.max_creators) / 100).toFixed(0) : (campaign.budget_cents / 100).toFixed(0)}
+                ${(campaign.budget_cents / 100).toFixed(0)}
               </Text>
             </View>
             <View style={styles.statItem}>
               <Clock size={14} color="#F59E0B" />
               <Text style={styles.statText}>{daysLeft}d left</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Users size={14} color="#8B5CF6" />
-              <Text style={styles.statText}>{spotsLeft} spots</Text>
             </View>
             {/* CM-13: Deliverable count indicator */}
             {deliverableCount > 0 && (
@@ -446,19 +397,6 @@ export default function ExploreCampaigns() {
                 <Text style={styles.statText}>
                   {deliverableCount} deliverable{deliverableCount !== 1 ? 's' : ''}
                 </Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.campaignTags}>
-            {campaign.campaign_type && (
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>{campaign.campaign_type.replace(/_/g, ' ')}</Text>
-              </View>
-            )}
-            {campaign.restaurant?.cuisine_types?.[0] && (
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>{campaign.restaurant.cuisine_types[0]}</Text>
               </View>
             )}
           </View>
@@ -617,7 +555,7 @@ export default function ExploreCampaigns() {
                       <View>
                         <Text style={styles.modalStatLabel}>Budget</Text>
                         <Text style={styles.modalStatValue}>
-                          ${selectedCampaign.max_creators > 0 ? ((selectedCampaign.budget_cents / selectedCampaign.max_creators) / 100).toFixed(0) : (selectedCampaign.budget_cents / 100).toFixed(0)}
+                          ${(selectedCampaign.budget_cents / 100).toFixed(0)}
                         </Text>
                       </View>
                     </View>
@@ -626,8 +564,28 @@ export default function ExploreCampaigns() {
                       <View>
                         <Text style={styles.modalStatLabel}>Duration</Text>
                         <Text style={styles.modalStatValue}>
-                          {new Date(selectedCampaign.start_date).toLocaleDateString()} -
-                          {new Date(selectedCampaign.end_date).toLocaleDateString()}
+                          {(() => {
+                            const startDate = selectedCampaign.start_date 
+                              ? new Date(selectedCampaign.start_date) 
+                              : null;
+                            const endDate = selectedCampaign.end_date 
+                              ? new Date(selectedCampaign.end_date) 
+                              : null;
+                            
+                            // Check if dates are valid
+                            const isValidStart = startDate && !isNaN(startDate.getTime());
+                            const isValidEnd = endDate && !isNaN(endDate.getTime());
+                            
+                            if (isValidStart && isValidEnd) {
+                              return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+                            } else if (isValidEnd) {
+                              return `Until ${endDate.toLocaleDateString()}`;
+                            } else if (isValidStart) {
+                              return `From ${startDate.toLocaleDateString()}`;
+                            } else {
+                              return 'Duration not specified';
+                            }
+                          })()}
                         </Text>
                       </View>
                     </View>
@@ -725,9 +683,7 @@ export default function ExploreCampaigns() {
               <TouchableOpacity
                 onPress={() => {
                   setShowApplicationForm(false);
-                  setProposedRate('');
                   setCoverLetter('');
-                  setSelectedDeliverables([]);
                 }}
                 style={styles.modalClose}
               >
@@ -741,64 +697,64 @@ export default function ExploreCampaigns() {
                   <Text style={styles.modalCampaignTitle}>{selectedCampaign.title}</Text>
                   <Text style={styles.modalDescription}>{selectedCampaign.restaurant?.name}</Text>
                   
+                  {/* Campaign Requirements - Read Only */}
                   <View style={styles.formSection}>
-                    <Text style={styles.formLabel}>Proposed Rate ($)</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., 100 (optional)"
-                      value={proposedRate}
-                      onChangeText={setProposedRate}
-                      keyboardType="decimal-pad"
-                      placeholderTextColor="#999"
-                    />
-                    <Text style={styles.formHint}>Enter your proposed rate in dollars (optional)</Text>
+                    <Text style={styles.formLabel}>Campaign Requirements</Text>
+                    <View style={styles.requirementsBox}>
+                      {selectedCampaign.requirements && Array.isArray(selectedCampaign.requirements) && selectedCampaign.requirements.length > 0 ? (
+                        selectedCampaign.requirements.map((req: string, idx: number) => (
+                          <Text key={idx} style={styles.requirementText}>• {req}</Text>
+                        ))
+                      ) : selectedCampaign.deliverable_requirements ? (
+                        (() => {
+                          try {
+                            const reqs = typeof selectedCampaign.deliverable_requirements === 'string' 
+                              ? JSON.parse(selectedCampaign.deliverable_requirements)
+                              : selectedCampaign.deliverable_requirements;
+                            if (reqs?.deliverables && Array.isArray(reqs.deliverables)) {
+                              return reqs.deliverables.map((del: any, idx: number) => (
+                                <Text key={idx} style={styles.requirementText}>
+                                  • {del.quantity || 1}× {del.type || 'Content'} {del.description ? `- ${del.description}` : ''}
+                                </Text>
+                              ));
+                            }
+                            return <Text style={styles.requirementText}>See campaign details for requirements</Text>;
+                          } catch {
+                            return <Text style={styles.requirementText}>See campaign details for requirements</Text>;
+                          }
+                        })()
+                      ) : (
+                        <Text style={styles.requirementText}>No specific requirements listed</Text>
+                      )}
+                    </View>
+                    <Text style={styles.formHint}>These are the fixed requirements for this campaign</Text>
                   </View>
 
+                  {/* Payment Info */}
                   <View style={styles.formSection}>
-                    <Text style={styles.formLabel}>Why you are interested *</Text>
+                    <Text style={styles.formLabel}>Payment</Text>
+                    <View style={styles.paymentBox}>
+                      <Text style={styles.paymentAmount}>
+                        ${((selectedCampaign.budget_cents || 0) / 100).toFixed(2)}
+                      </Text>
+                      <Text style={styles.formHint}>Fixed payout for this campaign</Text>
+                    </View>
+                  </View>
+
+                  {/* Optional Message */}
+                  <View style={styles.formSection}>
+                    <Text style={styles.formLabel}>Optional Message</Text>
                     <TextInput
                       style={[styles.formInput, styles.formTextArea]}
-                      placeholder="Tell the restaurant why you're a great fit for this campaign..."
+                      placeholder="Add a brief message (optional)..."
                       value={coverLetter}
                       onChangeText={setCoverLetter}
                       multiline
-                      numberOfLines={6}
+                      numberOfLines={4}
                       textAlignVertical="top"
                       placeholderTextColor="#999"
                     />
-                    <Text style={styles.formHint}>Explain your experience and why you're interested</Text>
-                  </View>
-
-                  <View style={styles.formSection}>
-                    <Text style={styles.formLabel}>Proposed Deliverables *</Text>
-                    {/* Engineering Request: This section now uses button-based selection similar to 
-                        app/(tabs)/business/campaigns/create.tsx for consistency. 
-                        Future improvement: Extract to shared component for full standardization. */}
-                    <View style={styles.deliverablesContainer}>
-                      <View style={styles.deliverablesButtonRow}>
-                        {DELIVERABLE_TYPES.map((type) => {
-                          const isSelected = selectedDeliverables.includes(type);
-                          return (
-                            <TouchableOpacity
-                              key={type}
-                              onPress={() => toggleDeliverable(type)}
-                              style={[
-                                styles.deliverableButton,
-                                isSelected && styles.deliverableButtonSelected
-                              ]}
-                            >
-                              <Text style={[
-                                styles.deliverableButtonText,
-                                isSelected && styles.deliverableButtonTextSelected
-                              ]}>
-                                {type}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                    <Text style={styles.formHint}>Select the types of content you'll create for this campaign</Text>
+                    <Text style={styles.formHint}>Optional: Add context about why you're interested</Text>
                   </View>
                 </>
               )}
@@ -808,10 +764,10 @@ export default function ExploreCampaigns() {
               <TouchableOpacity
                 style={[
                   styles.applyButton,
-                  (!coverLetter || selectedDeliverables.length === 0 || applying) && styles.applyButtonDisabled
+                  applying && styles.applyButtonDisabled
                 ]}
                 onPress={handleSubmitApplication}
-                disabled={!coverLetter || selectedDeliverables.length === 0 || applying}
+                disabled={applying}
               >
                 {applying ? (
                   <ActivityIndicator size="small" color="#FFF" />
@@ -1253,5 +1209,33 @@ const styles = StyleSheet.create({
   deliverableButtonTextSelected: {
     fontWeight: '600',
     color: '#FFAD27',
+  },
+  requirementsBox: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    marginBottom: 8,
+  },
+  requirementText: {
+    fontSize: 14,
+    color: '#262626',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  paymentBox: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 8,
+  },
+  paymentAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E40AF',
+    marginBottom: 4,
   },
 });

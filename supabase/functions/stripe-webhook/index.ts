@@ -291,25 +291,125 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
 }
 
 async function handleTransferCreated(transfer: Stripe.Transfer) {
-  console.log('Transfer created:', transfer.id);
-  // Transfer created - status is already set to processing in payoutService
+  console.log('[Webhook] Transfer created:', transfer.id);
+
+  // Ensure payment_transactions record exists and is properly linked
+  // This handles cases where the record might not have been created or needs updating
+  const { data: existingTransaction } = await supabase
+    .from('payment_transactions')
+    .select('id, status, creator_id')
+    .eq('stripe_transfer_id', transfer.id)
+    .maybeSingle();
+
+  if (!existingTransaction) {
+    // Try to find deliverable by transfer ID in metadata
+    const deliverableId = transfer.metadata?.deliverable_id;
+    const creatorId = transfer.metadata?.creator_id;
+    const campaignId = transfer.metadata?.campaign_id;
+
+    if (deliverableId && creatorId && campaignId) {
+      console.log('[Webhook] Creating missing payment_transactions record from transfer metadata');
+      
+      // Get campaign business_id
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('business_id')
+        .eq('id', campaignId)
+        .single();
+
+      // Create the transaction record
+      const { error: createError } = await supabase
+        .from('payment_transactions')
+        .insert({
+          campaign_id: campaignId,
+          deliverable_id: deliverableId,
+          creator_id: creatorId,
+          business_id: campaign?.business_id,
+          stripe_transfer_id: transfer.id,
+          amount_cents: transfer.amount,
+          platform_fee_cents: 0,
+          creator_amount_cents: transfer.amount,
+          transaction_type: 'payout',
+          status: 'processing',
+        });
+
+      if (createError) {
+        console.error('[Webhook] ❌ Error creating payment_transactions record:', createError);
+      } else {
+        console.log('[Webhook] ✅ Created payment_transactions record for transfer:', transfer.id);
+      }
+    } else {
+      console.warn('[Webhook] ⚠️ Transfer created but missing metadata (deliverable_id, creator_id, campaign_id)');
+    }
+  } else {
+    // Ensure status is set to processing if it's not already
+    if (existingTransaction.status !== 'processing' && existingTransaction.status !== 'completed') {
+      await supabase
+        .from('payment_transactions')
+        .update({
+          status: 'processing',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingTransaction.id);
+      console.log('[Webhook] ✅ Updated payment_transactions status to processing');
+    }
+  }
 }
 
 async function handleTransferPaid(transfer: Stripe.Transfer) {
-  console.log('Transfer paid:', transfer.id);
+  console.log('[Webhook] Transfer paid:', transfer.id);
+
+  // First, update the payment_transactions record
+  const { data: transaction, error: transactionUpdateError } = await supabase
+    .from('payment_transactions')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('stripe_transfer_id', transfer.id)
+    .select('deliverable_id, creator_id, campaign_id, creator_amount_cents')
+    .single();
+
+  if (transactionUpdateError) {
+    console.error('[Webhook] ❌ Error updating payment_transactions:', transactionUpdateError);
+  } else {
+    console.log('[Webhook] ✅ Updated payment_transactions to completed:', transaction?.id);
+  }
 
   // Update deliverable payment status
-  const { data: deliverable } = await supabase
-    .from('campaign_deliverables')
-    .select(`
-      id,
-      creator_id,
-      campaign_id,
-      payment_amount_cents,
-      creator_profiles!inner(user_id)
-    `)
-    .eq('payment_transaction_id', transfer.id)
-    .single();
+  // Try to find by payment_transaction_id first (most reliable)
+  let deliverable = null;
+  
+  if (transaction?.deliverable_id) {
+    // Use transaction's deliverable_id if available
+    const { data } = await supabase
+      .from('campaign_deliverables')
+      .select(`
+        id,
+        creator_id,
+        campaign_id,
+        payment_amount_cents,
+        creator_profiles!inner(user_id)
+      `)
+      .eq('id', transaction.deliverable_id)
+      .single();
+    deliverable = data;
+  } else {
+    // Fallback: find by payment_transaction_id field
+    const { data } = await supabase
+      .from('campaign_deliverables')
+      .select(`
+        id,
+        creator_id,
+        campaign_id,
+        payment_amount_cents,
+        creator_profiles!inner(user_id)
+      `)
+      .eq('payment_transaction_id', transfer.id)
+      .single();
+    deliverable = data;
+  }
 
   if (deliverable) {
     await supabase
@@ -321,6 +421,8 @@ async function handleTransferPaid(transfer: Stripe.Transfer) {
       })
       .eq('id', deliverable.id);
 
+    console.log('[Webhook] ✅ Updated deliverable payment_status to completed:', deliverable.id);
+
     // Get campaign title for notification
     const { data: campaign } = await supabase
       .from('campaigns')
@@ -330,9 +432,8 @@ async function handleTransferPaid(transfer: Stripe.Transfer) {
 
     // Send payout received notification
     if (campaign && deliverable.creator_profiles?.user_id) {
-      const payoutAmount = deliverable.payment_amount_cents || transfer.amount;
+      const payoutAmount = deliverable.payment_amount_cents || transaction?.creator_amount_cents || transfer.amount;
       
-      // Import notification service (using RPC call since we're in Edge Function)
       await supabase.rpc('create_notification', {
         p_user_id: deliverable.creator_profiles.user_id,
         p_type: 'system',
@@ -348,18 +449,12 @@ async function handleTransferPaid(transfer: Stripe.Transfer) {
         p_related_id: deliverable.id,
         p_related_type: 'deliverable',
       });
+      
+      console.log('[Webhook] ✅ Sent payment received notification to creator');
     }
+  } else {
+    console.warn('[Webhook] ⚠️ Could not find deliverable for transfer:', transfer.id);
   }
-
-  // Update transaction record
-  await supabase
-    .from('payment_transactions')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('stripe_transfer_id', transfer.id);
 }
 
 async function handleTransferFailed(transfer: Stripe.Transfer) {
@@ -430,9 +525,16 @@ async function handleTransferFailed(transfer: Stripe.Transfer) {
 }
 
 async function handleAccountUpdated(account: Stripe.Account) {
-  console.log('Account updated:', account.id);
+  console.log('[Webhook] Account updated:', {
+    accountId: account.id,
+    detailsSubmitted: account.details_submitted,
+    chargesEnabled: account.charges_enabled,
+    payoutsEnabled: account.payouts_enabled,
+    metadata: account.metadata,
+  });
 
-  await supabase
+  // Update stripe_accounts table
+  const { error: updateError } = await supabase
     .from('stripe_accounts')
     .update({
       stripe_account_status: account.details_submitted ? 'enabled' : 'pending',
@@ -441,25 +543,193 @@ async function handleAccountUpdated(account: Stripe.Account) {
     })
     .eq('stripe_account_id', account.id);
 
+  if (updateError) {
+    console.error('[Webhook] ❌ Error updating stripe_accounts:', updateError);
+  } else {
+    console.log('[Webhook] ✅ Updated stripe_accounts for account:', account.id);
+  }
+
   // Update creator_profiles or business_profiles based on metadata
   const accountType = account.metadata?.account_type;
   const userId = account.metadata?.user_id;
 
   if (userId && accountType) {
     if (accountType === 'creator') {
-      await supabase
+      // Get creator profile ID first to check current state
+      const { data: creatorProfileBefore } = await supabase
+        .from('creator_profiles')
+        .select('stripe_onboarding_completed')
+        .eq('user_id', userId)
+        .single();
+      
+      const wasCompleted = creatorProfileBefore?.stripe_onboarding_completed || false;
+      
+      const { error: creatorError } = await supabase
         .from('creator_profiles')
         .update({
+          stripe_account_id: account.id,
           stripe_onboarding_completed: account.details_submitted || false,
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId);
+
+      if (creatorError) {
+        console.error('[Webhook] ❌ Error updating creator_profiles:', creatorError);
+      } else {
+        console.log('[Webhook] ✅ Updated creator_profiles for user:', userId);
+        
+        // If onboarding just completed (wasn't completed before, but is now), retry payouts
+        if (account.details_submitted && !wasCompleted) {
+          console.log('[Webhook] Onboarding just completed - checking for pending payouts...');
+          
+          // Get creator profile ID
+          const { data: creatorProfile } = await supabase
+            .from('creator_profiles')
+            .select('id')
+            .eq('user_id', userId)
+            .single();
+          
+          if (creatorProfile) {
+            // Find deliverables with pending_onboarding status
+            const { data: pendingDeliverables } = await supabase
+              .from('campaign_deliverables')
+              .select('id, campaign_id')
+              .eq('creator_id', creatorProfile.id)
+              .eq('payment_status', 'pending_onboarding')
+              .in('status', ['approved', 'auto_approved']);
+            
+            if (pendingDeliverables && pendingDeliverables.length > 0) {
+              console.log(`[Webhook] Found ${pendingDeliverables.length} deliverables waiting for payout - triggering retry...`);
+              
+              // Trigger payout processing for each deliverable
+              for (const deliverable of pendingDeliverables) {
+                try {
+                  const { data: payoutResult, error: payoutError } = await supabase.functions.invoke(
+                    'stripe-process-payout',
+                    {
+                      body: {
+                        deliverableId: deliverable.id,
+                        creatorId: creatorProfile.id,
+                        campaignId: deliverable.campaign_id,
+                      },
+                    }
+                  );
+                  
+                  if (payoutError || !payoutResult?.success) {
+                    console.error(`[Webhook] Failed to process payout for deliverable ${deliverable.id}:`, payoutError || payoutResult?.error);
+                  } else {
+                    console.log(`[Webhook] ✅ Payout triggered for deliverable ${deliverable.id}`);
+                  }
+                } catch (error) {
+                  console.error(`[Webhook] Error triggering payout for deliverable ${deliverable.id}:`, error);
+                }
+              }
+            } else {
+              console.log('[Webhook] No pending deliverables found for payout retry');
+            }
+          }
+        }
+      }
     } else if (accountType === 'business') {
-      await supabase
+      const { error: businessError } = await supabase
         .from('business_profiles')
         .update({
+          stripe_account_id: account.id,
           stripe_onboarding_completed: account.details_submitted || false,
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId);
+
+      if (businessError) {
+        console.error('[Webhook] ❌ Error updating business_profiles:', businessError);
+      } else {
+        console.log('[Webhook] ✅ Updated business_profiles for user:', userId);
+      }
+    }
+  } else {
+    // Try to find user by stripe_account_id if metadata missing
+    console.log('[Webhook] ⚠️ No metadata found, searching for user by stripe_account_id...');
+    const { data: stripeAccount } = await supabase
+      .from('stripe_accounts')
+      .select('user_id, account_type')
+      .eq('stripe_account_id', account.id)
+      .single();
+
+    if (stripeAccount) {
+      const profileTable = stripeAccount.account_type === 'creator' ? 'creator_profiles' : 'business_profiles';
+      
+      // Check if onboarding was completed before update
+      let wasCompleted = false;
+      if (stripeAccount.account_type === 'creator') {
+        const { data: profileBefore } = await supabase
+          .from('creator_profiles')
+          .select('stripe_onboarding_completed')
+          .eq('user_id', stripeAccount.user_id)
+          .single();
+        wasCompleted = profileBefore?.stripe_onboarding_completed || false;
+      }
+      
+      const { error: profileError } = await supabase
+        .from(profileTable)
+        .update({
+          stripe_account_id: account.id,
+          stripe_onboarding_completed: account.details_submitted || false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', stripeAccount.user_id);
+
+      if (profileError) {
+        console.error(`[Webhook] ❌ Error updating ${profileTable}:`, profileError);
+      } else {
+        console.log(`[Webhook] ✅ Updated ${profileTable} for user:`, stripeAccount.user_id);
+        
+        // If creator onboarding just completed, retry pending payouts
+        if (stripeAccount.account_type === 'creator' && account.details_submitted && !wasCompleted) {
+          console.log('[Webhook] Creator onboarding completed - checking for pending payouts...');
+          
+          const { data: creatorProfile } = await supabase
+            .from('creator_profiles')
+            .select('id')
+            .eq('user_id', stripeAccount.user_id)
+            .single();
+          
+          if (creatorProfile) {
+            const { data: pendingDeliverables } = await supabase
+              .from('campaign_deliverables')
+              .select('id, campaign_id')
+              .eq('creator_id', creatorProfile.id)
+              .eq('payment_status', 'pending_onboarding')
+              .in('status', ['approved', 'auto_approved']);
+            
+            if (pendingDeliverables && pendingDeliverables.length > 0) {
+              console.log(`[Webhook] Found ${pendingDeliverables.length} deliverables - triggering payout retry...`);
+              
+              for (const deliverable of pendingDeliverables) {
+                try {
+                  const { data: payoutResult, error: payoutError } = await supabase.functions.invoke(
+                    'stripe-process-payout',
+                    {
+                      body: {
+                        deliverableId: deliverable.id,
+                        creatorId: creatorProfile.id,
+                        campaignId: deliverable.campaign_id,
+                      },
+                    }
+                  );
+                  
+                  if (payoutError || !payoutResult?.success) {
+                    console.error(`[Webhook] Payout retry failed for ${deliverable.id}:`, payoutError || payoutResult?.error);
+                  } else {
+                    console.log(`[Webhook] ✅ Payout retry triggered for ${deliverable.id}`);
+                  }
+                } catch (error) {
+                  console.error(`[Webhook] Error retrying payout for ${deliverable.id}:`, error);
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

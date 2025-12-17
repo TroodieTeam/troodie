@@ -29,12 +29,58 @@ export async function createStripeAccount(
   accountType: StripeAccountType,
   email: string
 ): Promise<StripeAccountResult> {
-  // This function requires Stripe SDK - should be moved to Edge Function
-  // For now, return error directing to use Edge Function
-  return {
-    success: false,
-    error: 'createStripeAccount must be called via Edge Function. Use supabase.functions.invoke("stripe-create-account")',
-  };
+  try {
+    // Ensure we have a valid session before calling Edge Function
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session) {
+      console.error('[stripeService] ❌ No valid session:', sessionError);
+      return {
+        success: false,
+        error: 'Authentication session missing. Please sign in again.',
+      };
+    }
+
+    console.log('[stripeService] Calling stripe-create-account Edge Function...', {
+      userId,
+      accountType,
+      email,
+    });
+
+    const { data, error } = await supabase.functions.invoke('stripe-create-account', {
+      body: {
+        userId,
+        accountType,
+        email,
+      },
+    });
+
+    if (error) {
+      console.error('[stripeService] ❌ Edge Function error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to create Stripe account',
+      };
+    }
+
+    console.log('[stripeService] ✅ Edge Function response:', {
+      success: data?.success,
+      accountId: data?.accountId,
+      hasOnboardingLink: !!data?.onboardingLink,
+    });
+
+    return {
+      success: data?.success || false,
+      accountId: data?.accountId,
+      onboardingLink: data?.onboardingLink,
+      error: data?.error,
+    };
+  } catch (error) {
+    console.error('[stripeService] ❌ Exception creating Stripe account:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create Stripe account',
+    };
+  }
 }
 
 /**
@@ -66,11 +112,62 @@ export async function getOnboardingLink(
       };
     }
 
-    // No valid link - should call Edge Function to create new one
-    return {
-      success: false,
-      error: 'No valid onboarding link. Call Edge Function to create new link.',
-    };
+    // No valid link - call Edge Function to create new one
+    try {
+      // Ensure we have a valid session before calling Edge Function
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        return {
+          success: false,
+          error: 'Authentication session missing. Please sign in again.',
+        };
+      }
+
+      console.log('[stripeService] Calling stripe-create-account to refresh onboarding link...', {
+        accountId,
+        userId,
+        accountType,
+      });
+
+      // Get user email for Edge Function (required field)
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData?.user?.email || '';
+
+      const { data, error } = await supabase.functions.invoke('stripe-create-account', {
+        body: {
+          userId,
+          accountType,
+          email: userEmail, // Edge Function requires email field
+        },
+      });
+
+      if (error) {
+        console.error('[stripeService] ❌ Error refreshing onboarding link:', error);
+        return {
+          success: false,
+          error: error.message || 'Failed to refresh onboarding link',
+        };
+      }
+
+      if (data?.success && data?.onboardingLink) {
+        return {
+          success: true,
+          accountId,
+          onboardingLink: data.onboardingLink,
+        };
+      }
+
+      return {
+        success: false,
+        error: data?.error || 'Failed to refresh onboarding link',
+      };
+    } catch (error) {
+      console.error('[stripeService] ❌ Exception refreshing onboarding link:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to refresh onboarding link',
+      };
+    }
   } catch (error) {
     console.error('Error getting onboarding link:', error);
     return {
@@ -88,10 +185,7 @@ export async function checkAccountStatus(
   userId: string,
   accountType: StripeAccountType
 ): Promise<AccountStatusResult> {
-  console.log('[stripeService] checkAccountStatus called', { userId, accountType });
-  
   try {
-    console.log('[stripeService] Querying stripe_accounts table...');
     const { data: account, error } = await supabase
       .from('stripe_accounts')
       .select('stripe_account_id, stripe_account_status, onboarding_completed')
@@ -99,15 +193,7 @@ export async function checkAccountStatus(
       .eq('account_type', accountType)
       .single();
 
-    console.log('[stripeService] stripe_accounts query result:', { 
-      hasData: !!account, 
-      error: error?.message,
-      accountId: account?.stripe_account_id,
-      onboardingCompleted: account?.onboarding_completed 
-    });
-
     if (error || !account) {
-      console.log('[stripeService] No Stripe account found');
       return {
         success: false,
         error: 'Stripe account not found',
@@ -119,51 +205,33 @@ export async function checkAccountStatus(
     
     try {
       if (accountType === 'creator') {
-        console.log('[stripeService] Querying creator_profiles...');
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('creator_profiles')
           .select('stripe_onboarding_completed')
           .eq('user_id', userId)
           .single();
         
-        console.log('[stripeService] creator_profiles query result:', { 
-          hasData: !!profile, 
-          error: profileError?.message,
-          onboardingCompleted: profile?.stripe_onboarding_completed 
-        });
-        
         profileOnboardingCompleted = profile?.stripe_onboarding_completed ?? account.onboarding_completed;
       } else if (accountType === 'business') {
-        console.log('[stripeService] Querying business_profiles...');
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('business_profiles')
           .select('stripe_onboarding_completed')
           .eq('user_id', userId)
           .single();
         
-        console.log('[stripeService] business_profiles query result:', { 
-          hasData: !!profile, 
-          error: profileError?.message,
-          onboardingCompleted: profile?.stripe_onboarding_completed 
-        });
-        
         profileOnboardingCompleted = profile?.stripe_onboarding_completed ?? account.onboarding_completed;
       }
     } catch (profileError) {
-      console.error('[stripeService] Error querying profile table (non-fatal):', profileError);
       // Don't fail the whole check if profile query fails - use account status
       profileOnboardingCompleted = account.onboarding_completed;
     }
 
-    const result = {
+    return {
       success: true,
       accountId: account.stripe_account_id,
       status: account.stripe_account_status || 'pending',
       onboardingCompleted: profileOnboardingCompleted || false,
     };
-    
-    console.log('[stripeService] checkAccountStatus returning:', result);
-    return result;
   } catch (error) {
     console.error('[stripeService] Error checking account status:', error);
     console.error('[stripeService] Error details:', {

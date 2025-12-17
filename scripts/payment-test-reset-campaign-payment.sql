@@ -23,7 +23,7 @@ BEGIN
   -- Remove payment records for test campaigns
   DELETE FROM campaign_payments
   WHERE campaign_id IN (
-    SELECT id FROM campaigns WHERE business_id = v_user_id
+    SELECT id FROM campaigns WHERE owner_id = v_user_id
   );
 
   -- Remove transaction records
@@ -39,7 +39,7 @@ BEGIN
     payment_intent_id = NULL,
     paid_at = NULL,
     updated_at = NOW()
-  WHERE business_id = v_user_id
+  WHERE owner_id = v_user_id
     AND payment_status IN ('paid', 'succeeded');
 
   RAISE NOTICE 'Reset complete: Campaigns ready for next payment test';
@@ -55,6 +55,6 @@ SELECT
   COUNT(cp.id) as payment_count
 FROM campaigns c
 LEFT JOIN campaign_payments cp ON cp.campaign_id = c.id
-WHERE c.business_id = (SELECT id FROM users WHERE email = 'test-business1@bypass.com')
+WHERE c.owner_id = (SELECT id FROM users WHERE email = 'test-business1@bypass.com')
 GROUP BY c.id, c.title, c.payment_status, c.status;
 -- Expected: payment_status = 'unpaid', payment_count = 0

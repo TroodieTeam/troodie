@@ -1,17 +1,17 @@
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { checkAccountStatus } from '@/services/stripeService';
+import { processDeliverablePayout } from '@/services/payoutService';
+import { checkAccountStatus, createStripeAccount, getOnboardingLink } from '@/services/stripeService';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, CheckCircle, Clock, DollarSign, XCircle } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, Clock, RefreshCw, XCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator, Alert, Linking, RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +23,16 @@ interface PayoutTransaction {
   completed_at: string | null;
   campaign_id: string;
   campaign_title?: string;
+}
+
+interface PendingDeliverable {
+  id: string;
+  campaign_id: string;
+  campaign_title?: string;
+  payment_amount_cents: number;
+  payment_status: string;
+  status: string;
+  submitted_at: string;
 }
 
 export default function CreatorPaymentsDashboard() {
@@ -38,8 +48,12 @@ export default function CreatorPaymentsDashboard() {
     onboardingCompleted: false,
   });
   const [transactions, setTransactions] = useState<PayoutTransaction[]>([]);
+  const [pendingDeliverables, setPendingDeliverables] = useState<PendingDeliverable[]>([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [pendingEarnings, setPendingEarnings] = useState(0);
+  const [connectingAccount, setConnectingAccount] = useState(false);
+  const [refreshingStatus, setRefreshingStatus] = useState(false);
+  const [processingPayout, setProcessingPayout] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -49,7 +63,7 @@ export default function CreatorPaymentsDashboard() {
     if (!user?.id) return;
 
     setLoading(true);
-    await Promise.all([checkAccount(), loadTransactions(), loadEarnings()]);
+    await Promise.all([checkAccount(), loadTransactions(), loadEarnings(), loadPendingDeliverables()]);
     setLoading(false);
   };
 
@@ -115,6 +129,52 @@ export default function CreatorPaymentsDashboard() {
     }
   };
 
+  const loadPendingDeliverables = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data: creatorProfile } = await supabase
+        .from('creator_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!creatorProfile) return;
+
+      // Get deliverables waiting for payout (pending_onboarding or processing)
+      const { data: deliverables } = await supabase
+        .from('campaign_deliverables')
+        .select(`
+          id,
+          campaign_id,
+          payment_amount_cents,
+          payment_status,
+          status,
+          submitted_at,
+          campaigns(title)
+        `)
+        .eq('creator_id', creatorProfile.id)
+        .in('payment_status', ['pending_onboarding', 'processing', 'pending'])
+        .in('status', ['approved', 'auto_approved'])
+        .order('submitted_at', { ascending: false });
+
+      if (deliverables) {
+        const formatted = deliverables.map((d) => ({
+          id: d.id,
+          campaign_id: d.campaign_id,
+          campaign_title: (d.campaigns as any)?.title,
+          payment_amount_cents: d.payment_amount_cents || 0,
+          payment_status: d.payment_status,
+          status: d.status,
+          submitted_at: d.submitted_at,
+        }));
+        setPendingDeliverables(formatted);
+      }
+    } catch (error) {
+      console.error('Error loading pending deliverables:', error);
+    }
+  };
+
   const loadEarnings = async () => {
     if (!user?.id) return;
 
@@ -146,8 +206,22 @@ export default function CreatorPaymentsDashboard() {
         .eq('transaction_type', 'payout')
         .eq('status', 'processing');
 
-      const pendingTotal = pending?.reduce((sum, t) => sum + (t.creator_amount_cents || t.amount_cents), 0) || 0;
-      setPendingEarnings(pendingTotal);
+      const pendingTransactions = pending?.reduce((sum, t) => sum + (t.creator_amount_cents || t.amount_cents), 0) || 0;
+      
+      // Get pending deliverables amounts
+      const { data: deliverables } = await supabase
+        .from('campaign_deliverables')
+        .select('payment_amount_cents')
+        .eq('creator_id', creatorProfile.id)
+        .in('payment_status', ['pending_onboarding', 'processing', 'pending'])
+        .in('status', ['approved', 'auto_approved']);
+
+      const pendingDeliverablesAmount = deliverables?.reduce(
+        (sum, d) => sum + (d.payment_amount_cents || 0),
+        0
+      ) || 0;
+      
+      setPendingEarnings(pendingTransactions + pendingDeliverablesAmount);
     } catch (error) {
       console.error('Error loading earnings:', error);
     }
@@ -157,6 +231,171 @@ export default function CreatorPaymentsDashboard() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
+  };
+
+  const handleManualRefresh = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'User information is missing');
+      return;
+    }
+
+    setRefreshingStatus(true);
+    try {
+      console.log('[Payments] Manually refreshing account status from Stripe...');
+      
+      // Ensure we have a valid session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        Alert.alert('Authentication Error', 'Please sign in again');
+        return;
+      }
+
+      // Call Edge Function to refresh status from Stripe API
+      const { data, error } = await supabase.functions.invoke('stripe-refresh-account-status', {
+        body: {
+          accountType: 'creator',
+        },
+      });
+
+      if (error || !data?.success) {
+        console.error('[Payments] Refresh failed:', error || data?.error);
+        Alert.alert('Refresh Failed', error?.message || data?.error || 'Could not refresh status');
+        return;
+      }
+
+      console.log('[Payments] Refresh success:', data);
+      
+      // Update local state
+      const wasCompleted = accountStatus.onboardingCompleted;
+      setAccountStatus({
+        hasAccount: true,
+        onboardingCompleted: data.onboardingCompleted || false,
+      });
+
+      if (data.onboardingCompleted) {
+        // Reload data to get fresh state
+        await loadData();
+        
+        Alert.alert('Success', 'Payment account is now connected! Payouts will process automatically.');
+        
+        // If onboarding just completed, the webhook should trigger automatic payout retry
+        // But we can also manually trigger if webhook is delayed
+        if (!wasCompleted) {
+          console.log('[Payments] Onboarding completed - webhook should trigger payout retry automatically');
+        }
+      } else {
+        Alert.alert('Info', 'Onboarding still in progress. Please complete it on Stripe.');
+      }
+    } catch (error) {
+      console.error('[Payments] Refresh error:', error);
+      Alert.alert('Error', 'Failed to refresh account status');
+    } finally {
+      setRefreshingStatus(false);
+    }
+  };
+
+  const handleRetryPayout = async (deliverableId: string) => {
+    if (!user?.id) {
+      Alert.alert('Error', 'User information is missing');
+      return;
+    }
+
+    setProcessingPayout(deliverableId);
+    try {
+      console.log('[Payments] Retrying payout for deliverable:', deliverableId);
+      console.log('[Payments] Current account status:', accountStatus);
+      
+      // First, ensure we have the latest account status
+      if (!accountStatus.onboardingCompleted) {
+        console.log('[Payments] Account not completed, refreshing status first...');
+        await checkAccount();
+        
+        // Check again after refresh
+        const latestStatus = await checkAccountStatus(user.id, 'creator');
+        if (!latestStatus.onboardingCompleted) {
+          Alert.alert('Account Not Ready', 'Please complete Stripe onboarding first.');
+          return;
+        }
+      }
+      
+      const result = await processDeliverablePayout(deliverableId);
+      
+      if (result.success) {
+        console.log('[Payments] ✅ Payout processing started:', result);
+        Alert.alert(
+          'Success', 
+          'Payout processing started! The payment will appear in your account once Stripe completes the transfer (usually within 1-2 business days).'
+        );
+        // Reload data to show updated status
+        await loadData();
+      } else {
+        console.error('[Payments] ❌ Payout retry failed:', result.error);
+        Alert.alert('Error', result.error || 'Failed to process payout');
+      }
+    } catch (error) {
+      console.error('[Payments] Error retrying payout:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to retry payout');
+    } finally {
+      setProcessingPayout(null);
+    }
+  };
+
+  const handleDirectConnect = async () => {
+    if (!user?.id || !user?.email) {
+      Alert.alert('Error', 'User information is missing');
+      return;
+    }
+
+    setConnectingAccount(true);
+    try {
+      // Check if account exists and get onboarding link
+      const statusResult = await checkAccountStatus(user.id, 'creator');
+      let link: string | null = null;
+
+      if (statusResult.success && statusResult.accountId) {
+        // Account exists, try to get onboarding link from database first
+        const linkResult = await getOnboardingLink(statusResult.accountId, user.id, 'creator');
+        if (linkResult.success && linkResult.onboardingLink) {
+          link = linkResult.onboardingLink;
+        } else {
+          // No valid link, call Edge Function to refresh (getOnboardingLink handles this now)
+          const refreshResult = await getOnboardingLink(statusResult.accountId, user.id, 'creator');
+          if (refreshResult.success && refreshResult.onboardingLink) {
+            link = refreshResult.onboardingLink;
+          }
+        }
+      }
+
+      if (!link) {
+        // Create new account
+        console.log('[Payments] Creating new Stripe account...');
+        const result = await createStripeAccount(user.id, 'creator', user.email);
+        if (result.success && result.onboardingLink) {
+          link = result.onboardingLink;
+        } else {
+          Alert.alert('Error', result.error || 'Failed to create payment account');
+          return;
+        }
+      }
+
+      if (link) {
+        console.log('[Payments] Opening Stripe onboarding link...');
+        // Open Stripe onboarding link directly
+        const canOpen = await Linking.canOpenURL(link);
+        if (canOpen) {
+          await Linking.openURL(link);
+        } else {
+          Alert.alert('Error', 'Cannot open Stripe link');
+        }
+      } else {
+        Alert.alert('Error', 'No onboarding link available. Please try again.');
+      }
+    } catch (error) {
+      console.error('[Payments] Error connecting account:', error);
+      Alert.alert('Error', 'Failed to connect payment account. Please try again.');
+    } finally {
+      setConnectingAccount(false);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -214,30 +453,80 @@ export default function CreatorPaymentsDashboard() {
               padding: DS.spacing.md,
               borderRadius: DS.borderRadius.md,
               marginBottom: DS.spacing.lg,
-              flexDirection: 'row',
-              alignItems: 'center',
             }}
           >
-            <Clock size={20} color="#92400E" style={{ marginRight: DS.spacing.sm }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: '#92400E', fontWeight: '600', marginBottom: 4 }}>
-                Payment Account Not Connected
-              </Text>
-              <Text style={{ color: '#92400E', fontSize: 12 }}>
-                Connect your bank account to receive payments
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: DS.spacing.md }}>
+              <Clock size={20} color="#92400E" style={{ marginRight: DS.spacing.sm, marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#92400E', fontWeight: '600', marginBottom: 4, fontSize: 15 }}>
+                  Payment Account Not Connected
+                </Text>
+                <Text style={{ color: '#92400E', fontSize: 13, lineHeight: 18 }}>
+                  Connect your bank account to receive payments
+                </Text>
+              </View>
             </View>
             <TouchableOpacity
-              onPress={() => router.push('/creator/payments/onboarding')}
+              onPress={handleDirectConnect}
+              disabled={connectingAccount}
+              activeOpacity={0.8}
               style={{
                 backgroundColor: '#92400E',
-                paddingHorizontal: DS.spacing.md,
-                paddingVertical: DS.spacing.sm,
+                paddingVertical: DS.spacing.md,
+                paddingHorizontal: DS.spacing.lg,
                 borderRadius: DS.borderRadius.sm,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                marginBottom: DS.spacing.sm,
               }}
             >
-              <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>Connect</Text>
+              {connectingAccount ? (
+                <>
+                  <ActivityIndicator color="white" size="small" style={{ marginRight: DS.spacing.sm }} />
+                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>
+                    Connecting...
+                  </Text>
+                </>
+              ) : (
+                <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>
+                  Connect Bank Account
+                </Text>
+              )}
             </TouchableOpacity>
+            
+            {/* Manual refresh button - show if account exists but not completed */}
+            {accountStatus.hasAccount && (
+              <TouchableOpacity
+                onPress={handleManualRefresh}
+                disabled={refreshingStatus}
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: 'transparent',
+                  borderWidth: 1,
+                  borderColor: '#92400E',
+                  paddingVertical: DS.spacing.sm,
+                  paddingHorizontal: DS.spacing.lg,
+                  borderRadius: DS.borderRadius.sm,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                }}
+              >
+                {refreshingStatus ? (
+                  <>
+                    <ActivityIndicator color="#92400E" size="small" style={{ marginRight: DS.spacing.sm }} />
+                    <Text style={{ color: '#92400E', fontWeight: '600', fontSize: 14 }}>
+                      Refreshing...
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={{ color: '#92400E', fontWeight: '600', fontSize: 14 }}>
+                    Refresh Status
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -254,12 +543,9 @@ export default function CreatorPaymentsDashboard() {
               marginBottom: DS.spacing.lg,
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.md }}>
-              <DollarSign size={24} color={DS.colors.primary} style={{ marginRight: DS.spacing.sm }} />
-              <Text style={{ fontSize: 18, fontWeight: '700', color: DS.colors.text }}>
-                Earnings Summary
-              </Text>
-            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: DS.colors.text, marginBottom: DS.spacing.md }}>
+              Earnings Summary
+            </Text>
 
             <View style={{ marginBottom: DS.spacing.md }}>
               <Text style={{ fontSize: 12, color: DS.colors.textLight, marginBottom: DS.spacing.xs }}>
@@ -288,6 +574,100 @@ export default function CreatorPaymentsDashboard() {
             )}
           </View>
 
+          {/* Pending Payments (Waiting for Payout) */}
+          {pendingDeliverables.length > 0 && (
+            <View style={{ marginBottom: DS.spacing.lg }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: DS.colors.text,
+                  marginBottom: DS.spacing.md,
+                }}
+              >
+                Pending Payments
+              </Text>
+
+              {pendingDeliverables.map((deliverable) => {
+                const isPendingOnboarding = deliverable.payment_status === 'pending_onboarding';
+                const canRetry = accountStatus.onboardingCompleted && isPendingOnboarding;
+
+                return (
+                  <View
+                    key={deliverable.id}
+                    style={{
+                      backgroundColor: DS.colors.backgroundWhite,
+                      borderRadius: DS.borderRadius.md,
+                      padding: DS.spacing.md,
+                      marginBottom: DS.spacing.sm,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: isPendingOnboarding ? '#FEF3C720' : '#3B82F620',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginRight: DS.spacing.md,
+                      }}
+                    >
+                      {isPendingOnboarding ? (
+                        <Clock size={20} color="#F59E0B" />
+                      ) : (
+                        <RefreshCw size={20} color="#3B82F6" />
+                      )}
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
+                        {deliverable.campaign_title || 'Campaign Payment'}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: DS.colors.textLight, marginTop: 2 }}>
+                        {new Date(deliverable.submitted_at).toLocaleDateString()}
+                      </Text>
+                      {isPendingOnboarding && !accountStatus.onboardingCompleted && (
+                        <Text style={{ fontSize: 11, color: '#F59E0B', marginTop: 4 }}>
+                          Complete Stripe setup to receive payment
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={{ alignItems: 'flex-end', marginRight: DS.spacing.sm }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: DS.colors.text }}>
+                        ${((deliverable.payment_amount_cents || 0) / 100).toFixed(2)}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: isPendingOnboarding ? '#F59E0B' : '#3B82F6', marginTop: 2 }}>
+                        {isPendingOnboarding ? 'Waiting' : 'Processing'}
+                      </Text>
+                    </View>
+
+                    {canRetry && (
+                      <TouchableOpacity
+                        onPress={() => handleRetryPayout(deliverable.id)}
+                        disabled={processingPayout === deliverable.id}
+                        style={{
+                          padding: DS.spacing.sm,
+                          borderRadius: DS.borderRadius.sm,
+                          backgroundColor: DS.colors.primaryOrange,
+                        }}
+                      >
+                        {processingPayout === deliverable.id ? (
+                          <ActivityIndicator color="white" size="small" />
+                        ) : (
+                          <RefreshCw size={16} color="white" />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
           {/* Payment History */}
           <View style={{ marginBottom: DS.spacing.lg }}>
             <Text
@@ -301,7 +681,7 @@ export default function CreatorPaymentsDashboard() {
               Payment History
             </Text>
 
-            {transactions.length === 0 ? (
+            {transactions.length === 0 && pendingDeliverables.length === 0 ? (
               <View
                 style={{
                   backgroundColor: DS.colors.backgroundWhite,

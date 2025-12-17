@@ -2,7 +2,7 @@
 -- Payment Test Setup: Creator Stripe Onboarding
 -- Test Case: 3.1 - Creator Stripe Onboarding Before Deliverable Approval
 -- =============================================
--- Purpose: Prepare test-creator1@bypass.com for Stripe onboarding testing
+-- Purpose: Prepare test-creator2@bypass.com for Stripe onboarding testing
 -- Run this BEFORE testing creator Stripe onboarding
 
 DO $$
@@ -16,10 +16,10 @@ BEGIN
   WHERE email = 'test-creator1@bypass.com';
 
   IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'User test-creator1@bypass.com not found';
+    RAISE EXCEPTION 'User test-creator2@bypass.com not found';
   END IF;
 
-  RAISE NOTICE 'Setting up test-creator1@bypass.com for Stripe onboarding test';
+  RAISE NOTICE 'Setting up test-creator2@bypass.com for Stripe onboarding test';
 
   -- Get creator profile ID
   SELECT id INTO v_creator_profile_id
@@ -53,7 +53,7 @@ BEGIN
 
   RAISE NOTICE 'Removed existing Stripe account (if any)';
   RAISE NOTICE 'Reset creator profile Stripe fields';
-  RAISE NOTICE 'Setup complete: test-creator1@bypass.com is ready for Stripe onboarding test';
+  RAISE NOTICE 'Setup complete: test-creator2@bypass.com is ready for Stripe onboarding test';
   RAISE NOTICE 'Expected state: No Stripe account, creator account type, ready to onboard';
 
 END $$;

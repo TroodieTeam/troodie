@@ -202,7 +202,7 @@ export default function CreatorPaymentOnboarding() {
             <Text
               style={{
                 fontSize: 16,
-                color: DS.colors.textLight,
+                color: DS.colors.textDark,
                 lineHeight: 24,
               }}
             >
@@ -236,22 +236,22 @@ export default function CreatorPaymentOnboarding() {
           <View style={{ marginBottom: DS.spacing.lg }}>
             <Text
               style={{
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: '600',
-                color: DS.colors.text,
-                marginBottom: DS.spacing.sm,
+                color: DS.colors.textDark,
+                marginBottom: DS.spacing.md,
               }}
             >
               What you'll need:
             </Text>
             <View style={{ marginLeft: DS.spacing.sm }}>
-              <Text style={{ color: DS.colors.textLight, marginBottom: DS.spacing.xs }}>
+              <Text style={{ color: DS.colors.textDark, fontSize: 15, marginBottom: DS.spacing.sm, lineHeight: 22 }}>
                 • Bank account information
               </Text>
-              <Text style={{ color: DS.colors.textLight, marginBottom: DS.spacing.xs }}>
+              <Text style={{ color: DS.colors.textDark, fontSize: 15, marginBottom: DS.spacing.sm, lineHeight: 22 }}>
                 • Social Security Number (for tax reporting)
               </Text>
-              <Text style={{ color: DS.colors.textLight }}>
+              <Text style={{ color: DS.colors.textDark, fontSize: 15, lineHeight: 22 }}>
                 • Personal information for verification
               </Text>
             </View>
@@ -260,21 +260,24 @@ export default function CreatorPaymentOnboarding() {
           <TouchableOpacity
             onPress={handleConnectAccount}
             disabled={loading}
+            activeOpacity={0.8}
             style={{
-              backgroundColor: DS.colors.primary,
-              padding: DS.spacing.md,
+              backgroundColor: DS.colors.primaryOrange,
+              padding: DS.spacing.lg,
               borderRadius: DS.borderRadius.md,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center',
+              ...DS.shadows.md,
+              marginBottom: DS.spacing.md,
             }}
           >
             {loading ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color="white" size="small" />
             ) : (
               <>
-                <CreditCard size={20} color="white" style={{ marginRight: DS.spacing.sm }} />
-                <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
+                <CreditCard size={22} color="white" style={{ marginRight: DS.spacing.sm }} />
+                <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>
                   Connect Bank Account
                 </Text>
               </>
@@ -283,10 +286,11 @@ export default function CreatorPaymentOnboarding() {
 
           <Text
             style={{
-              marginTop: DS.spacing.md,
-              fontSize: 12,
-              color: DS.colors.textLight,
+              marginTop: DS.spacing.sm,
+              fontSize: 13,
+              color: DS.colors.textGray,
               textAlign: 'center',
+              lineHeight: 18,
             }}
           >
             By connecting your account, you agree to Stripe's Terms of Service

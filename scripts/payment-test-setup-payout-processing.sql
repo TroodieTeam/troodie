@@ -109,7 +109,7 @@ BEGIN
   -- Find or create a paid campaign
   SELECT id INTO v_campaign_id
   FROM campaigns
-  WHERE business_id = v_business_user_id
+  WHERE owner_id = v_business_user_id
     AND payment_status = 'paid'
   LIMIT 1;
 
@@ -149,7 +149,7 @@ BEGIN
       v_campaign_id := gen_random_uuid();
       INSERT INTO campaigns (
         id,
-        business_id,
+        owner_id,
         restaurant_id,
         title,
         description,
@@ -226,6 +226,7 @@ BEGIN
     -- Check if there's a campaign application
     DECLARE
       v_application_id UUID;
+      v_campaign_restaurant_id UUID;
     BEGIN
       SELECT id INTO v_application_id
       FROM campaign_applications
@@ -243,19 +244,24 @@ BEGIN
           creator_id,
           status,
           proposed_rate_cents,
-          applied_at,
-          created_at,
-          updated_at
+          applied_at
         ) VALUES (
           v_application_id,
           v_campaign_id,
           v_creator_profile_id,
           'accepted',
           5000,
-          NOW(),
-          NOW(),
           NOW()
         );
+      END IF;
+
+      -- Get restaurant_id from campaign (required field)
+      SELECT restaurant_id INTO v_campaign_restaurant_id
+      FROM campaigns
+      WHERE id = v_campaign_id;
+      
+      IF v_campaign_restaurant_id IS NULL THEN
+        RAISE EXCEPTION 'Campaign restaurant_id not found';
       END IF;
 
       v_deliverable_id := gen_random_uuid();
@@ -264,7 +270,10 @@ BEGIN
         campaign_id,
         campaign_application_id,
         creator_id,
-        platform,
+        restaurant_id,
+        content_type,
+        content_url,
+        social_platform,
         platform_post_url,
         caption,
         status,
@@ -278,8 +287,11 @@ BEGIN
         v_campaign_id,
         v_application_id,
         v_creator_profile_id,
-        'instagram',
-        'https://instagram.com/p/test123',
+        v_campaign_restaurant_id,
+        'reel', -- content_type (required)
+        'https://instagram.com/p/test123', -- content_url (required)
+        'instagram', -- social_platform
+        'https://instagram.com/p/test123', -- platform_post_url
         'Test deliverable for payout testing',
         'submitted', -- Not yet approved
         'pending',
@@ -288,6 +300,7 @@ BEGIN
         NOW(),
         NOW()
       );
+    END;
 
       RAISE NOTICE 'Created deliverable: %', v_deliverable_id;
     END;
@@ -331,7 +344,7 @@ SELECT
   cd.status as deliverable_status,
   cd.payment_status as deliverable_payment_status
 FROM campaigns c
-JOIN users u_business ON c.business_id = u_business.id
+JOIN users u_business ON c.owner_id = u_business.id
 JOIN campaign_deliverables cd ON cd.campaign_id = c.id
 JOIN creator_profiles cp ON cd.creator_id = cp.id
 JOIN users u_creator ON cp.user_id = u_creator.id
