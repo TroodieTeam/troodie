@@ -85,9 +85,18 @@ async function updateRestaurantImages(restaurantId: string, coverPhoto: string |
 }
 
 async function backfillRestaurantImages(batchSize: number = 50, maxRestaurants: number | null = null) {
-  console.log(`🚀 Starting restaurant image backfill...`);
+  console.log(`🚀 Starting restaurant image backfill for ALL restaurants with google_place_id...`);
   console.log(`   Batch size: ${batchSize}`);
   console.log(`   Max restaurants: ${maxRestaurants || 'unlimited'}`);
+
+  // First, get total count
+  const { count } = await supabase
+    .from('restaurants')
+    .select('*', { count: 'exact', head: true })
+    .not('google_place_id', 'is', null)
+    .neq('google_place_id', '');
+
+  console.log(`   Total restaurants with google_place_id: ${count || 0}\n`);
 
   let totalProcessed = 0;
   let totalUpdated = 0;
@@ -95,10 +104,11 @@ async function backfillRestaurantImages(batchSize: number = 50, maxRestaurants: 
   let offset = 0;
 
   while (true) {
-    // Get batch of restaurants needing backfill
+    // Get batch of restaurants for backfill
     const { data: restaurants, error } = await supabase.rpc('backfill_restaurant_images', {
       p_batch_size: batchSize,
       p_max_restaurants: maxRestaurants,
+      p_offset: offset,
     });
 
     if (error) {
@@ -144,6 +154,9 @@ async function backfillRestaurantImages(batchSize: number = 50, maxRestaurants: 
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
+    // Update offset for next batch
+    offset += restaurants.length;
+
     // If we got fewer restaurants than batch size, we're done
     if (restaurants.length < batchSize) {
       break;
@@ -151,6 +164,11 @@ async function backfillRestaurantImages(batchSize: number = 50, maxRestaurants: 
 
     // Check if we've hit the max
     if (maxRestaurants && totalProcessed >= maxRestaurants) {
+      break;
+    }
+
+    // If no more restaurants, we're done
+    if (restaurants.length === 0) {
       break;
     }
   }

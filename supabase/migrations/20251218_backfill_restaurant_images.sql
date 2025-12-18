@@ -1,10 +1,11 @@
 -- Migration: Backfill restaurant images from Google Places API
--- This migration creates a function to update restaurants with missing images
+-- This migration creates a function to update ALL restaurants with google_place_id
 -- The function should be called manually via a script or edge function
 
 CREATE OR REPLACE FUNCTION backfill_restaurant_images(
   p_batch_size INTEGER DEFAULT 50,
-  p_max_restaurants INTEGER DEFAULT NULL
+  p_max_restaurants INTEGER DEFAULT NULL,
+  p_offset INTEGER DEFAULT 0
 )
 RETURNS TABLE(
   restaurant_id UUID,
@@ -18,13 +19,10 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_restaurant RECORD;
-  v_count INTEGER := 0;
   v_processed INTEGER := 0;
 BEGIN
-  -- Find restaurants that need image backfill:
-  -- 1. Have a google_place_id
-  -- 2. Missing cover_photo_url OR cover_photo_url is null/empty
-  -- 3. Not already processed (optional: add a flag column)
+  -- Find ALL restaurants with google_place_id for backfill
+  -- This ensures we refresh images for all restaurants, not just missing ones
   
   FOR v_restaurant IN
     SELECT 
@@ -36,14 +34,10 @@ BEGIN
     FROM restaurants
     WHERE google_place_id IS NOT NULL
       AND google_place_id != ''
-      AND (
-        cover_photo_url IS NULL 
-        OR cover_photo_url = ''
-        OR cover_photo_url LIKE '%placeholder%'
-        OR cover_photo_url LIKE '%default%'
-      )
+      AND google_place_id != 'null'
     ORDER BY created_at DESC
-    LIMIT COALESCE(p_max_restaurants, 10000)
+    LIMIT COALESCE(p_max_restaurants, 100000)
+    OFFSET p_offset
   LOOP
     -- Return the restaurant info for external processing
     -- The actual Google Places API call should be done in an edge function
@@ -90,11 +84,10 @@ BEGIN
 END;
 $$;
 
--- Add index to speed up queries for restaurants needing backfill
-CREATE INDEX IF NOT EXISTS idx_restaurants_needs_image_backfill 
-ON restaurants(google_place_id, cover_photo_url) 
-WHERE google_place_id IS NOT NULL 
-  AND (cover_photo_url IS NULL OR cover_photo_url = '' OR cover_photo_url LIKE '%placeholder%' OR cover_photo_url LIKE '%default%');
+-- Add index to speed up queries for restaurants with google_place_id
+CREATE INDEX IF NOT EXISTS idx_restaurants_google_place_id 
+ON restaurants(google_place_id) 
+WHERE google_place_id IS NOT NULL AND google_place_id != '';
 
 COMMENT ON FUNCTION backfill_restaurant_images IS 'Returns list of restaurants that need image backfill from Google Places API';
 COMMENT ON FUNCTION update_restaurant_images IS 'Updates restaurant images after fetching from Google Places API';

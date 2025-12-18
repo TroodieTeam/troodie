@@ -25,21 +25,27 @@ supabase db push
 
 Or manually run the SQL in `supabase/migrations/20251218_backfill_restaurant_images.sql`
 
-## Step 2: Check How Many Restaurants Need Backfill
+## Step 2: Check How Many Restaurants Have google_place_id
 
 Run this SQL query in Supabase SQL Editor:
 
 ```sql
-SELECT COUNT(*) as restaurants_needing_images
+-- Count all restaurants with google_place_id (these will all be processed)
+SELECT COUNT(*) as total_restaurants_with_place_id
 FROM restaurants
 WHERE google_place_id IS NOT NULL
   AND google_place_id != ''
-  AND (
-    cover_photo_url IS NULL 
-    OR cover_photo_url = ''
-    OR cover_photo_url LIKE '%placeholder%'
-    OR cover_photo_url LIKE '%default%'
-  );
+  AND google_place_id != 'null';
+
+-- Check current image status
+SELECT 
+  COUNT(*) as total,
+  COUNT(cover_photo_url) FILTER (WHERE cover_photo_url IS NOT NULL AND cover_photo_url != '') as with_images,
+  COUNT(*) FILTER (WHERE cover_photo_url IS NULL OR cover_photo_url = '') as without_images
+FROM restaurants
+WHERE google_place_id IS NOT NULL
+  AND google_place_id != ''
+  AND google_place_id != 'null';
 ```
 
 ## Step 3: Run Backfill Script
@@ -80,17 +86,20 @@ serve(async (req) => {
 Check the progress by querying:
 
 ```sql
--- Count remaining restaurants needing images
-SELECT COUNT(*) as remaining
+-- Count restaurants that have been synced recently
+SELECT COUNT(*) as recently_synced
 FROM restaurants
 WHERE google_place_id IS NOT NULL
-  AND google_place_id != ''
-  AND (
-    cover_photo_url IS NULL 
-    OR cover_photo_url = ''
-    OR cover_photo_url LIKE '%placeholder%'
-    OR cover_photo_url LIKE '%default%'
-  );
+  AND last_google_sync > NOW() - INTERVAL '1 hour';
+
+-- Check overall sync status
+SELECT 
+  COUNT(*) as total,
+  COUNT(last_google_sync) FILTER (WHERE last_google_sync IS NOT NULL) as synced,
+  COUNT(*) FILTER (WHERE last_google_sync IS NULL) as not_synced
+FROM restaurants
+WHERE google_place_id IS NOT NULL
+  AND google_place_id != '';
 
 -- Check recently updated restaurants
 SELECT 
