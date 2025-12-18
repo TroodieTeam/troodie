@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { Database } from '@/lib/supabase';
 
 // Type definitions based on backend schema
 export interface Community {
@@ -19,6 +18,7 @@ export interface Community {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  post_count: number;
 }
 
 export interface CommunityMember {
@@ -57,11 +57,38 @@ class CommunityService {
     if (cached) return cached;
 
     try {
+      // Check if current user is a test user or admin
+      const { data: { user } } = await supabase.auth.getUser();
+      const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      
+      // Admin user IDs (same as in more.tsx)
+      const ADMIN_USER_IDS = [
+        'b08d9600-358d-4be9-9552-4607d9f50227',
+        '31744191-f7c0-44a4-8673-10b34ccbb87f',
+        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
+      ];
+      const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
+      
       let query = supabase
         .from('communities')
         .select('*')
         .eq('is_active', true)
         .order('member_count', { ascending: false });
+
+      // Exclude communities created by test users if current user is not a test user AND not an admin
+      // Admins should see all communities including test ones
+      if (!isCurrentUserTest && !isAdmin) {
+        // Get test user IDs
+        const { data: testUsers } = await supabase
+          .from('users')
+          .select('id')
+          .eq('is_test_account', true);
+        
+        if (testUsers && testUsers.length > 0) {
+          const testUserIds = testUsers.map(u => u.id);
+          query = query.not('created_by', 'in', `(${testUserIds.join(',')})`);
+        }
+      }
 
       // If user is logged in, include their private communities
       if (userId) {

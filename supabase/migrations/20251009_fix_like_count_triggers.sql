@@ -33,6 +33,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_post_likes_count_trigger ON post_likes;
 CREATE TRIGGER update_post_likes_count_trigger
 AFTER INSERT OR DELETE ON post_likes
 FOR EACH ROW

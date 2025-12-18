@@ -90,14 +90,14 @@ CREATE TABLE IF NOT EXISTS campaign_deliverables (
 );
 
 -- Indexes for campaign_deliverables
-CREATE INDEX idx_deliverables_application ON campaign_deliverables(campaign_application_id);
-CREATE INDEX idx_deliverables_creator ON campaign_deliverables(creator_id);
-CREATE INDEX idx_deliverables_restaurant ON campaign_deliverables(restaurant_id);
-CREATE INDEX idx_deliverables_campaign ON campaign_deliverables(campaign_id);
-CREATE INDEX idx_deliverables_status ON campaign_deliverables(status);
-CREATE INDEX idx_deliverables_payment_status ON campaign_deliverables(payment_status);
-CREATE INDEX idx_deliverables_submitted_at ON campaign_deliverables(submitted_at);
-CREATE INDEX idx_deliverables_auto_approval ON campaign_deliverables(submitted_at, status)
+CREATE INDEX IF NOT EXISTS idx_deliverables_application ON campaign_deliverables(campaign_application_id);
+CREATE INDEX IF NOT EXISTS idx_deliverables_creator ON campaign_deliverables(creator_id);
+CREATE INDEX IF NOT EXISTS idx_deliverables_restaurant ON campaign_deliverables(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_deliverables_campaign ON campaign_deliverables(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_deliverables_status ON campaign_deliverables(status);
+CREATE INDEX IF NOT EXISTS idx_deliverables_payment_status ON campaign_deliverables(payment_status);
+CREATE INDEX IF NOT EXISTS idx_deliverables_submitted_at ON campaign_deliverables(submitted_at);
+CREATE INDEX IF NOT EXISTS idx_deliverables_auto_approval ON campaign_deliverables(submitted_at, status)
   WHERE status = 'pending_review';
 
 -- =============================================
@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS deliverable_revisions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_revisions_deliverable ON deliverable_revisions(deliverable_id);
+CREATE INDEX IF NOT EXISTS idx_revisions_deliverable ON deliverable_revisions(deliverable_id);
 
 -- =============================================
 -- DISPUTE SYSTEM TABLES
@@ -162,9 +162,9 @@ CREATE TABLE IF NOT EXISTS deliverable_disputes (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_disputes_deliverable ON deliverable_disputes(deliverable_id);
-CREATE INDEX idx_disputes_status ON deliverable_disputes(status);
-CREATE INDEX idx_disputes_created ON deliverable_disputes(created_at);
+CREATE INDEX IF NOT EXISTS idx_disputes_deliverable ON deliverable_disputes(deliverable_id);
+CREATE INDEX IF NOT EXISTS idx_disputes_status ON deliverable_disputes(status);
+CREATE INDEX IF NOT EXISTS idx_disputes_created ON deliverable_disputes(created_at);
 
 -- Dispute messages/communications
 CREATE TABLE IF NOT EXISTS dispute_messages (
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS dispute_messages (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_dispute_messages_dispute ON dispute_messages(dispute_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_dispute_messages_dispute ON dispute_messages(dispute_id, created_at);
 
 -- =============================================
 -- CRON JOB MONITORING
@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS cron_job_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_cron_logs_job ON cron_job_logs(job_name, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cron_logs_job ON cron_job_logs(job_name, created_at DESC);
 
 -- =============================================
 -- UPDATE EXISTING TABLES
@@ -231,18 +231,24 @@ ALTER TABLE deliverable_disputes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dispute_messages ENABLE ROW LEVEL SECURITY;
 
 -- Creators can view their own deliverables
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can view own deliverables" ON campaign_deliverables;
 CREATE POLICY "Creators can view own deliverables" ON campaign_deliverables
   FOR SELECT USING (
     creator_id IN (SELECT id FROM creator_profiles WHERE user_id = auth.uid())
   );
 
 -- Creators can insert their own deliverables
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can submit deliverables" ON campaign_deliverables;
 CREATE POLICY "Creators can submit deliverables" ON campaign_deliverables
   FOR INSERT WITH CHECK (
     creator_id IN (SELECT id FROM creator_profiles WHERE user_id = auth.uid())
   );
 
 -- Creators can update their own draft deliverables
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Creators can update draft deliverables" ON campaign_deliverables;
 CREATE POLICY "Creators can update draft deliverables" ON campaign_deliverables
   FOR UPDATE USING (
     creator_id IN (SELECT id FROM creator_profiles WHERE user_id = auth.uid())
@@ -250,6 +256,8 @@ CREATE POLICY "Creators can update draft deliverables" ON campaign_deliverables
   );
 
 -- Restaurant owners can view deliverables for their campaigns
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Restaurant owners can view campaign deliverables" ON campaign_deliverables;
 CREATE POLICY "Restaurant owners can view campaign deliverables" ON campaign_deliverables
   FOR SELECT USING (
     restaurant_id IN (
@@ -258,6 +266,8 @@ CREATE POLICY "Restaurant owners can view campaign deliverables" ON campaign_del
   );
 
 -- Restaurant owners can update deliverable status (review)
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Restaurant owners can review deliverables" ON campaign_deliverables;
 CREATE POLICY "Restaurant owners can review deliverables" ON campaign_deliverables
   FOR UPDATE USING (
     restaurant_id IN (
@@ -267,6 +277,8 @@ CREATE POLICY "Restaurant owners can review deliverables" ON campaign_deliverabl
   );
 
 -- Revision policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view revisions for their deliverables" ON deliverable_revisions;
 CREATE POLICY "Users can view revisions for their deliverables" ON deliverable_revisions
   FOR SELECT USING (
     deliverable_id IN (
@@ -277,6 +289,8 @@ CREATE POLICY "Users can view revisions for their deliverables" ON deliverable_r
   );
 
 -- Dispute policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own disputes" ON deliverable_disputes;
 CREATE POLICY "Users can view their own disputes" ON deliverable_disputes
   FOR SELECT USING (
     filed_by_user_id = auth.uid() OR
@@ -287,10 +301,14 @@ CREATE POLICY "Users can view their own disputes" ON deliverable_disputes
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can file disputes" ON deliverable_disputes;
 CREATE POLICY "Users can file disputes" ON deliverable_disputes
   FOR INSERT WITH CHECK (filed_by_user_id = auth.uid());
 
 -- Dispute messages policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view messages for their disputes" ON dispute_messages;
 CREATE POLICY "Users can view messages for their disputes" ON dispute_messages
   FOR SELECT USING (
     dispute_id IN (
@@ -298,6 +316,8 @@ CREATE POLICY "Users can view messages for their disputes" ON dispute_messages
     )
   );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can send messages in their disputes" ON dispute_messages;
 CREATE POLICY "Users can send messages in their disputes" ON dispute_messages
   FOR INSERT WITH CHECK (
     sender_user_id = auth.uid() AND

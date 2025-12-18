@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Dimensions,
     Modal,
@@ -46,118 +46,130 @@ export function ImageViewer({
 }: ImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   
-  // Per-image scale and translation values
-  const scales = images.map(() => useSharedValue(1));
-  const translateX = images.map(() => useSharedValue(0));
-  const translateY = images.map(() => useSharedValue(0));
-  
-  // Swipe gesture for changing images
+  // Single set of shared values for the active image (only one image can be zoomed at a time)
+  // This is more performant and follows React hooks rules
+  const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
   const swipeX = useSharedValue(0);
 
+  // Reset zoom/pan when image changes
+  useEffect(() => {
+    if (visible) {
+      scale.value = 1;
+      translateX.value = 0;
+      translateY.value = 0;
+      swipeX.value = 0;
+      setCurrentIndex(initialIndex);
+    }
+  }, [visible, initialIndex, scale, translateX, translateY, swipeX]);
+
   const updateIndex = useCallback((newIndex: number) => {
+    if (newIndex < 0 || newIndex >= images.length) return;
+    
+    // Reset zoom/pan when switching images
+    scale.value = 1;
+    translateX.value = 0;
+    translateY.value = 0;
+    swipeX.value = 0;
+    
     setCurrentIndex(newIndex);
-    // Reset zoom when changing images
-    scales[newIndex].value = 1;
-    translateX[newIndex].value = 0;
-    translateY[newIndex].value = 0;
-  }, [scales, translateX, translateY]);
+  }, [images.length, scale, translateX, translateY, swipeX]);
 
   // Pan gesture for dragging zoomed image
-  const createPanGesture = (index: number) => {
-    return Gesture.Pan()
-      .onUpdate((e) => {
-        if (scales[index].value > MIN_SCALE) {
-          translateX[index].value = e.translationX;
-          translateY[index].value = e.translationY;
-        }
-      })
-      .onEnd(() => {
-        // Clamp translation to prevent dragging too far
-        const maxTranslateX = (SCREEN_WIDTH * (scales[index].value - 1)) / 2;
-        const maxTranslateY = (SCREEN_HEIGHT * (scales[index].value - 1)) / 2;
-        
-        translateX[index].value = withSpring(
-          clamp(translateX[index].value, -maxTranslateX, maxTranslateX)
-        );
-        translateY[index].value = withSpring(
-          clamp(translateY[index].value, -maxTranslateY, maxTranslateY)
-        );
-      });
-  };
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (scale.value > MIN_SCALE) {
+        translateX.value = e.translationX;
+        translateY.value = e.translationY;
+      }
+    })
+    .onEnd(() => {
+      // Clamp translation to prevent dragging too far
+      const maxTranslateX = (SCREEN_WIDTH * (scale.value - 1)) / 2;
+      const maxTranslateY = (SCREEN_HEIGHT * (scale.value - 1)) / 2;
+      
+      translateX.value = withSpring(
+        clamp(translateX.value, -maxTranslateX, maxTranslateX)
+      );
+      translateY.value = withSpring(
+        clamp(translateY.value, -maxTranslateY, maxTranslateY)
+      );
+    });
 
   // Pinch gesture for zooming
-  const createPinchGesture = (index: number) => {
-    return Gesture.Pinch()
-      .onUpdate((e) => {
-        scales[index].value = clamp(e.scale, MIN_SCALE, MAX_SCALE);
-      })
-      .onEnd(() => {
-        if (scales[index].value < MIN_SCALE) {
-          scales[index].value = withSpring(MIN_SCALE);
-          translateX[index].value = withSpring(0);
-          translateY[index].value = withSpring(0);
-        }
-      });
-  };
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = clamp(e.scale, MIN_SCALE, MAX_SCALE);
+    })
+    .onEnd(() => {
+      if (scale.value < MIN_SCALE) {
+        scale.value = withSpring(MIN_SCALE);
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+      }
+    });
 
   // Double tap gesture for zoom in/out
-  const createDoubleTapGesture = (index: number) => {
-    return Gesture.Tap()
-      .numberOfTaps(2)
-      .onEnd(() => {
-        if (scales[index].value > MIN_SCALE) {
-          // Zoom out
-          scales[index].value = withSpring(MIN_SCALE);
-          translateX[index].value = withSpring(0);
-          translateY[index].value = withSpring(0);
-        } else {
-          // Zoom in
-          scales[index].value = withSpring(DOUBLE_TAP_SCALE);
-        }
-      });
-  };
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (scale.value > MIN_SCALE) {
+        // Zoom out
+        scale.value = withSpring(MIN_SCALE);
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+      } else {
+        // Zoom in
+        scale.value = withSpring(DOUBLE_TAP_SCALE);
+      }
+    });
 
   // Horizontal swipe gesture for changing images (only when not zoomed)
-  const createSwipeGesture = (index: number) => {
-    return Gesture.Pan()
-      .enabled(scales[index].value <= MIN_SCALE)
-      .activeOffsetX([-10, 10])
-      .onUpdate((e) => {
-        if (scales[index].value <= MIN_SCALE) {
-          swipeX.value = e.translationX;
-        }
-      })
-      .onEnd((e) => {
-        if (scales[index].value > MIN_SCALE) {
-          swipeX.value = withSpring(0);
-          return;
-        }
-        
-        const threshold = SCREEN_WIDTH * 0.25;
-        const velocity = e.velocityX;
-        
-        if (Math.abs(e.translationX) > threshold || Math.abs(velocity) > 500) {
-          if (e.translationX > 0 && currentIndex > 0) {
-            // Swipe right - go to previous image
-            const newIndex = currentIndex - 1;
-            runOnJS(updateIndex)(newIndex);
-          } else if (e.translationX < 0 && currentIndex < images.length - 1) {
-            // Swipe left - go to next image
-            const newIndex = currentIndex + 1;
-            runOnJS(updateIndex)(newIndex);
-          }
-        }
+  const swipeGesture = Gesture.Pan()
+    .enabled(scale.value <= MIN_SCALE)
+    .activeOffsetX([-10, 10])
+    .onUpdate((e) => {
+      if (scale.value <= MIN_SCALE) {
+        swipeX.value = e.translationX;
+      }
+    })
+    .onEnd((e) => {
+      if (scale.value > MIN_SCALE) {
         swipeX.value = withSpring(0);
-      });
-  };
+        return;
+      }
+      
+      const threshold = SCREEN_WIDTH * 0.25;
+      const velocity = e.velocityX;
+      
+      if (Math.abs(e.translationX) > threshold || Math.abs(velocity) > 500) {
+        if (e.translationX > 0 && currentIndex > 0) {
+          // Swipe right - go to previous image
+          const newIndex = currentIndex - 1;
+          runOnJS(updateIndex)(newIndex);
+        } else if (e.translationX < 0 && currentIndex < images.length - 1) {
+          // Swipe left - go to next image
+          const newIndex = currentIndex + 1;
+          runOnJS(updateIndex)(newIndex);
+        }
+      }
+      swipeX.value = withSpring(0);
+    });
+
+  // Combined gestures for active image
+  const combinedGesture = Gesture.Race(
+    doubleTapGesture,
+    Gesture.Simultaneous(pinchGesture, panGesture),
+    swipeGesture
+  );
 
   const handleClose = () => {
-    // Reset all zoom states
-    images.forEach((_, index) => {
-      scales[index].value = 1;
-      translateX[index].value = 0;
-      translateY[index].value = 0;
-    });
+    // Reset zoom/pan state
+    scale.value = 1;
+    translateX.value = 0;
+    translateY.value = 0;
+    swipeX.value = 0;
     onClose();
   };
 
@@ -173,6 +185,141 @@ export function ImageViewer({
     }
   };
 
+  // Create animated styles - limit to 10 images max for performance
+  // Call hooks explicitly to follow React rules
+  const style0 = useAnimatedStyle(() => {
+    const isActive = 0 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (0 - currentIndex) * SCREEN_WIDTH : (0 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style1 = useAnimatedStyle(() => {
+    const isActive = 1 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (1 - currentIndex) * SCREEN_WIDTH : (1 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style2 = useAnimatedStyle(() => {
+    const isActive = 2 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (2 - currentIndex) * SCREEN_WIDTH : (2 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style3 = useAnimatedStyle(() => {
+    const isActive = 3 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (3 - currentIndex) * SCREEN_WIDTH : (3 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style4 = useAnimatedStyle(() => {
+    const isActive = 4 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (4 - currentIndex) * SCREEN_WIDTH : (4 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style5 = useAnimatedStyle(() => {
+    const isActive = 5 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (5 - currentIndex) * SCREEN_WIDTH : (5 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style6 = useAnimatedStyle(() => {
+    const isActive = 6 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (6 - currentIndex) * SCREEN_WIDTH : (6 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style7 = useAnimatedStyle(() => {
+    const isActive = 7 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (7 - currentIndex) * SCREEN_WIDTH : (7 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style8 = useAnimatedStyle(() => {
+    const isActive = 8 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (8 - currentIndex) * SCREEN_WIDTH : (8 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const style9 = useAnimatedStyle(() => {
+    const isActive = 9 === currentIndex;
+    const opacity = isActive ? 1 : 0;
+    const activeScale = isActive ? scale.value : 1;
+    const activeTx = isActive ? translateX.value : 0;
+    const activeTy = isActive ? translateY.value : 0;
+    const xOffset = isActive ? swipeX.value + (9 - currentIndex) * SCREEN_WIDTH : (9 - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(opacity, { duration: 200 }),
+      transform: [{ translateX: xOffset + activeTx }, { translateY: activeTy }, { scale: activeScale }],
+    };
+  });
+  
+  const animatedStyles = [style0, style1, style2, style3, style4, style5, style6, style7, style8, style9];
+  const MAX_IMAGES = 10;
+
   return (
     <Modal
       visible={visible}
@@ -184,68 +331,33 @@ export function ImageViewer({
       <GestureHandlerRootView style={{ flex: 1 }}>
         <StatusBar barStyle="light-content" />
         <View style={styles.container}>
-        {/* Close button */}
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={handleClose}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="close" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleClose}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
 
-        {/* Image counter */}
-        {images.length > 1 && (
-          <View style={styles.counter}>
-            <Text style={styles.counterText}>
-              {currentIndex + 1} / {images.length}
-            </Text>
-          </View>
-        )}
+          {/* Image counter */}
+          {images.length > 1 && (
+            <View style={styles.counter}>
+              <Text style={styles.counterText}>
+                {currentIndex + 1} / {images.length}
+              </Text>
+            </View>
+          )}
 
-        {/* Image container with gestures */}
-        <View style={styles.imageContainer}>
-          {images.map((imageUri, index) => {
-            const isActive = index === currentIndex;
-            
-            // Combined gestures for active image
-            const combinedGesture = isActive
-              ? Gesture.Race(
-                  createDoubleTapGesture(index),
-                  Gesture.Simultaneous(
-                    createPinchGesture(index),
-                    createPanGesture(index)
-                  ),
-                  createSwipeGesture(index)
-                )
-              : Gesture.Tap();
+          {/* Image container with gestures */}
+          <View style={styles.imageContainer}>
+            {images.slice(0, MAX_IMAGES).map((imageUri, index) => {
+              const isActive = index === currentIndex;
+              const animatedStyle = animatedStyles[index] || animatedStyles[0]; // Fallback to first style
 
-            const animatedStyle = useAnimatedStyle(() => {
-              const opacity = isActive ? 1 : 0;
-              const scale = scales[index].value;
-              const tx = translateX[index].value;
-              const ty = translateY[index].value;
-              
-              // Calculate position for swipe between images
-              let xOffset = 0;
-              if (isActive) {
-                xOffset = swipeX.value + (index - currentIndex) * SCREEN_WIDTH;
-              } else {
-                xOffset = (index - currentIndex) * SCREEN_WIDTH;
-              }
-
-              return {
-                opacity: withTiming(opacity, { duration: 200 }),
-                transform: [
-                  { translateX: xOffset + tx },
-                  { translateY: ty },
-                  { scale },
-                ],
-              };
-            });
-
-            return (
-              <GestureDetector key={index} gesture={combinedGesture}>
+              return (
                 <Animated.View
+                  key={index}
                   style={[
                     styles.imageWrapper,
                     animatedStyle,
@@ -253,6 +365,11 @@ export function ImageViewer({
                   ]}
                   pointerEvents={isActive ? 'auto' : 'none'}
                 >
+                  {isActive && (
+                    <GestureDetector gesture={combinedGesture}>
+                      <View style={StyleSheet.absoluteFill} />
+                    </GestureDetector>
+                  )}
                   <Image
                     source={{ uri: imageUri }}
                     style={styles.image}
@@ -260,35 +377,34 @@ export function ImageViewer({
                     transition={200}
                   />
                 </Animated.View>
-              </GestureDetector>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
 
-        {/* Navigation arrows (optional, for better UX) */}
-        {images.length > 1 && (
-          <>
-            {currentIndex > 0 && (
-              <TouchableOpacity
-                style={[styles.navButton, styles.navButtonLeft]}
-                onPress={handlePrevious}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            {currentIndex < images.length - 1 && (
-              <TouchableOpacity
-                style={[styles.navButton, styles.navButtonRight]}
-                onPress={handleNext}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-      </View>
+          {/* Navigation arrows */}
+          {images.length > 1 && (
+            <>
+              {currentIndex > 0 && (
+                <TouchableOpacity
+                  style={[styles.navButton, styles.navButtonLeft]}
+                  onPress={handlePrevious}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+              {currentIndex < images.length - 1 && (
+                <TouchableOpacity
+                  style={[styles.navButton, styles.navButtonRight]}
+                  onPress={handleNext}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </View>
       </GestureHandlerRootView>
     </Modal>
   );
@@ -363,4 +479,3 @@ const styles = StyleSheet.create({
     right: 20,
   },
 });
-

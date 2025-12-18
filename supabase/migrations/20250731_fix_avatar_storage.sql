@@ -26,6 +26,8 @@ WITH CHECK (
   auth.uid()::text = (storage.foldername(name))[1]
 );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own avatars" ON storage;
 CREATE POLICY "Users can update their own avatars"
 ON storage.objects FOR UPDATE
 USING (
@@ -33,6 +35,8 @@ USING (
   auth.uid()::text = (storage.foldername(name))[1]
 );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own avatars" ON storage;
 CREATE POLICY "Users can delete their own avatars"
 ON storage.objects FOR DELETE
 USING (
@@ -76,6 +80,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS validate_avatar_url_before_insert_update ON users;
 CREATE TRIGGER validate_avatar_url_before_insert_update
 BEFORE INSERT OR UPDATE ON users
 FOR EACH ROW

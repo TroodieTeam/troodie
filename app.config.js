@@ -64,7 +64,7 @@ export default {
   expo: {
     name: "Troodie",
     slug: "troodie",
-    version: "1.0.6",
+    version: "1.0.9",
     orientation: "portrait",
     icon: "./assets/images/troodie_icon_logo.jpg",
     scheme: "troodie",
@@ -103,7 +103,13 @@ export default {
           backgroundColor: "#ffffff"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "enableGooglePay": true
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true
@@ -115,6 +121,8 @@ export default {
       cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
       cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
       cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY,
       buildProfile: currentProfile,
       eas: {
         projectId: "68397d45-255f-4b4c-ba93-d51a044ddfb2"

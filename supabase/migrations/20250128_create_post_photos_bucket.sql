@@ -29,6 +29,8 @@ WITH CHECK (
 );
 
 -- Allow authenticated users to update their own photos
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own post photos" ON storage;
 CREATE POLICY "Users can update their own post photos" ON storage.objects
 FOR UPDATE TO authenticated
 USING (
@@ -38,6 +40,8 @@ USING (
 );
 
 -- Allow authenticated users to delete their own photos
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own post photos" ON storage;
 CREATE POLICY "Users can delete their own post photos" ON storage.objects
 FOR DELETE TO authenticated
 USING (
@@ -47,6 +51,8 @@ USING (
 );
 
 -- Allow public read access to all post photos
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Public can view post photos" ON storage;
 CREATE POLICY "Public can view post photos" ON storage.objects
 FOR SELECT TO public
 USING (bucket_id = 'post-photos');

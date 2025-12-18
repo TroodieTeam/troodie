@@ -3,26 +3,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft,
-  BarChart,
-  Camera,
-  ChevronRight,
-  DollarSign,
-  Eye,
-  Target,
-  Trophy,
-  TrendingUp,
-  Users
+    ArrowLeft,
+    BarChart,
+    Camera,
+    ChevronRight,
+    DollarSign,
+    Eye,
+    Target,
+    Trophy,
+    Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -110,12 +109,15 @@ export default function BusinessAnalytics() {
               avatar_url
             )
           ),
-          portfolio_items (
+          campaign_deliverables (
             id,
             thumbnail_url,
-            views,
-            likes,
+            content_url,
+            views_count,
+            likes_count,
+            creator_id,
             creator_profiles (
+              id,
               display_name
             )
           )
@@ -146,27 +148,27 @@ export default function BusinessAnalytics() {
       });
       const totalCreators = uniqueCreators.size;
 
-      // Count total content pieces
+      // Count total content pieces (deliverables)
       const totalContent = campaigns?.reduce((sum, c) => 
-        sum + (c.portfolio_items?.length || 0), 0
+        sum + (c.campaign_deliverables?.length || 0), 0
       ) || 0;
 
       // Find best performing campaign
       let bestCampaign = null;
       if (campaigns && campaigns.length > 0) {
         const sortedByEngagement = [...campaigns].sort((a, b) => {
-          const aEngagement = a.portfolio_items?.reduce((sum, item) => 
-            sum + (item.views || 0), 0
+          const aEngagement = a.campaign_deliverables?.reduce((sum, item) => 
+            sum + (item.views_count || 0), 0
           ) || 0;
-          const bEngagement = b.portfolio_items?.reduce((sum, item) => 
-            sum + (item.views || 0), 0
+          const bEngagement = b.campaign_deliverables?.reduce((sum, item) => 
+            sum + (item.views_count || 0), 0
           ) || 0;
           return bEngagement - aEngagement;
         });
         
-        if (sortedByEngagement[0] && sortedByEngagement[0].portfolio_items?.length > 0) {
-          const totalViews = sortedByEngagement[0].portfolio_items.reduce(
-            (sum, item) => sum + (item.views || 0), 0
+        if (sortedByEngagement[0] && sortedByEngagement[0].campaign_deliverables?.length > 0) {
+          const totalViews = sortedByEngagement[0].campaign_deliverables.reduce(
+            (sum, item) => sum + (item.views_count || 0), 0
           );
           bestCampaign = {
             id: sortedByEngagement[0].id,
@@ -195,11 +197,11 @@ export default function BusinessAnalytics() {
               });
             }
             const stats = creatorStats.get(creatorId);
-            // Count content from this creator
-            campaign.portfolio_items?.forEach(item => {
-              if (item.creator_profiles?.display_name === stats.name) {
+            // Count content from this creator (deliverables)
+            campaign.campaign_deliverables?.forEach(item => {
+              if (item.creator_id === creatorId) {
                 stats.content_count++;
-                stats.total_views += item.views || 0;
+                stats.total_views += item.views_count || 0;
               }
             });
           }
@@ -226,20 +228,21 @@ export default function BusinessAnalytics() {
         ? Math.round((totalSpend / 100) / totalContent) 
         : 0;
       
-      // Get recent content
+      // Get recent content (deliverables)
       const allContent: ContentItem[] = [];
       campaigns?.forEach(campaign => {
-        campaign.portfolio_items?.forEach(item => {
-          if (item.thumbnail_url) {
+        campaign.campaign_deliverables?.forEach(item => {
+          const thumbnailUrl = item.thumbnail_url || item.content_url;
+          if (thumbnailUrl) {
             allContent.push({
               id: item.id,
-              thumbnail_url: item.thumbnail_url,
+              thumbnail_url: thumbnailUrl,
               creator_name: item.creator_profiles?.display_name || 'Unknown',
-              views: item.views || 0,
-              engagement_rate: item.likes && item.views 
-                ? Math.round((item.likes / item.views) * 100) 
+              views: item.views_count || 0,
+              engagement_rate: item.likes_count && item.views_count 
+                ? Math.round((item.likes_count / item.views_count) * 100) 
                 : 0,
-              created_at: item.created_at,
+              created_at: item.created_at || campaign.created_at,
             });
           }
         });

@@ -1,6 +1,9 @@
-import { ImageUploadServiceV2 } from './imageUploadServiceV2';
-import { VideoUploadService } from './videoUploadService';
+import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
+import { CloudinaryVideoService } from './cloudinaryVideoService';
+import { ImageUploadServiceV2 } from './imageUploadServiceV2';
+import { VideoOptimizationService } from './videoOptimizationService';
+import { VideoUploadService } from './videoUploadService';
 
 class PostMediaService {
   /**
@@ -43,10 +46,6 @@ class PostMediaService {
     const uploadedUrls: string[] = [];
 
     try {
-
-      const { CloudinaryVideoService } = await import('./cloudinaryVideoService');
-      const { VideoUploadService } = await import('./videoUploadService');
-
       for (let i = 0; i < videos.length; i++) {
         const video = videos[i];
 
@@ -198,7 +197,6 @@ class PostMediaService {
    */
   async pickVideos(maxVideos: number = 5): Promise<string[]> {
     try {
-      const { VideoOptimizationService } = await import('./videoOptimizationService');
       return await VideoOptimizationService.pickVideos(maxVideos, {
         quality: 0.6, // 60% quality - good balance for mobile
         maxDuration: 300, // 300 seconds (5 minutes) max
@@ -259,7 +257,6 @@ class PostMediaService {
    */
   async recordVideo(): Promise<string | null> {
     try {
-      const { VideoOptimizationService } = await import('./videoOptimizationService');
       return await VideoOptimizationService.recordVideo({
         quality: 0.6, // 60% quality - good balance for mobile
         maxDuration: 300, // 300 seconds (5 minutes) max

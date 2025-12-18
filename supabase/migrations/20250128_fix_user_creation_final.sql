@@ -12,7 +12,7 @@ BEGIN
                  WHERE table_schema = 'public' 
                  AND table_name = 'users' 
                  AND column_name = 'email') THEN
-    ALTER TABLE public.users ADD COLUMN email TEXT;
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email TEXT;
     RAISE NOTICE 'Added email column to users table';
   END IF;
 END $$;
@@ -41,6 +41,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create the trigger
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

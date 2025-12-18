@@ -98,32 +98,50 @@ CREATE POLICY "Users can update their own notifications" ON notifications
 CREATE POLICY "Users can insert their own notifications" ON notifications
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own notifications" ON notifications;
 CREATE POLICY "Users can delete their own notifications" ON notifications
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Notification Preferences RLS Policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own notification preferences" ON notification_preferences;
 CREATE POLICY "Users can view their own notification preferences" ON notification_preferences
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own notification preferences" ON notification_preferences;
 CREATE POLICY "Users can update their own notification preferences" ON notification_preferences
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert their own notification preferences" ON notification_preferences;
 CREATE POLICY "Users can insert their own notification preferences" ON notification_preferences
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own notification preferences" ON notification_preferences;
 CREATE POLICY "Users can delete their own notification preferences" ON notification_preferences
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Push Tokens RLS Policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own push tokens" ON push_tokens;
 CREATE POLICY "Users can view their own push tokens" ON push_tokens
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own push tokens" ON push_tokens;
 CREATE POLICY "Users can update their own push tokens" ON push_tokens
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert their own push tokens" ON push_tokens;
 CREATE POLICY "Users can insert their own push tokens" ON push_tokens
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own push tokens" ON push_tokens;
 CREATE POLICY "Users can delete their own push tokens" ON push_tokens
   FOR DELETE USING (auth.uid() = user_id);
 

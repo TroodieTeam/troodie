@@ -17,9 +17,13 @@ CREATE POLICY "Users can join public communities" ON community_members
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can leave communities" ON community_members;
 CREATE POLICY "Users can leave communities" ON community_members
     FOR DELETE USING (user_id = auth.uid());
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update own membership" ON community_members;
 CREATE POLICY "Users can update own membership" ON community_members
     FOR UPDATE USING (user_id = auth.uid());
 
@@ -37,6 +41,8 @@ CREATE POLICY "Community members can view posts" ON community_posts
         )
     );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Community members can create posts" ON community_posts;
 CREATE POLICY "Community members can create posts" ON community_posts
     FOR INSERT WITH CHECK (
         user_id = auth.uid() AND

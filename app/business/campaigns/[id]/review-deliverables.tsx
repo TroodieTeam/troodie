@@ -12,36 +12,36 @@
  * - Real-time updates
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Image,
-  Linking,
-  RefreshControl,
-  TextInput,
-  Modal
-} from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  getPendingDeliverables,
-  approveDeliverable,
-  rejectDeliverable,
-  requestChanges,
-  formatDeadline,
-  getUrgencyColor,
-  type ApproveDeliverableParams,
-  type RejectDeliverableParams,
-  type RequestChangesParams
+    approveDeliverable,
+    formatDeadline,
+    getPendingDeliverables,
+    getUrgencyColor,
+    rejectDeliverable,
+    requestChanges,
+    type ApproveDeliverableParams,
+    type RejectDeliverableParams,
+    type RequestChangesParams
 } from '@/services/deliverableReviewService';
 import type { PendingDeliverableSummary } from '@/types/deliverableRequirements';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 // ============================================================================
 // TYPES
@@ -280,78 +280,141 @@ export default function ReviewDeliverablesScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Creator Info */}
-            {selectedDeliverable && (
-              <View style={styles.creatorInfo}>
-                {selectedDeliverable.creator_avatar ? (
-                  <Image
-                    source={{ uri: selectedDeliverable.creator_avatar }}
-                    style={styles.creatorAvatar}
-                  />
-                ) : (
-                  <View style={[styles.creatorAvatar, styles.creatorAvatarPlaceholder]}>
-                    <Ionicons name="person" size={20} color="#6B7280" />
+            <ScrollView 
+              style={styles.modalScrollContent}
+              showsVerticalScrollIndicator={true}
+            >
+              {/* Creator Info */}
+              {selectedDeliverable && (
+                <View style={styles.creatorInfo}>
+                  {selectedDeliverable.creator_avatar ? (
+                    <Image
+                      source={{ uri: selectedDeliverable.creator_avatar }}
+                      style={styles.creatorAvatar}
+                    />
+                  ) : (
+                    <View style={[styles.creatorAvatar, styles.creatorAvatarPlaceholder]}>
+                      <Ionicons name="person" size={20} color="#6B7280" />
+                    </View>
+                  )}
+                  <View>
+                    <Text style={styles.creatorName}>{selectedDeliverable.creator_name}</Text>
+                    <Text style={styles.creatorUsername}>@{selectedDeliverable.creator_username}</Text>
                   </View>
-                )}
-                <View>
-                  <Text style={styles.creatorName}>{selectedDeliverable.creator_name}</Text>
-                  <Text style={styles.creatorUsername}>@{selectedDeliverable.creator_username}</Text>
                 </View>
+              )}
+
+              {/* Deliverable Content Preview */}
+              {selectedDeliverable && (
+                <View style={styles.deliverablePreviewSection}>
+                  <Text style={styles.sectionTitle}>Deliverable Content</Text>
+                  
+                  {/* Post Screenshot */}
+                  {selectedDeliverable.screenshot_url && (
+                    <TouchableOpacity 
+                      style={styles.modalPostPreview} 
+                      onPress={() => openPostUrl(selectedDeliverable.post_url)}
+                      activeOpacity={0.7}
+                    >
+                      <Image 
+                        source={{ uri: selectedDeliverable.screenshot_url }} 
+                        style={styles.modalPostImage} 
+                      />
+                      <View style={styles.modalPostOverlay}>
+                        <Ionicons name="open-outline" size={20} color="#FFFFFF" />
+                        <Text style={styles.modalPostOverlayText}>Tap to view</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Post URL */}
+                  {selectedDeliverable.post_url && (
+                    <TouchableOpacity
+                      style={styles.postUrlContainer}
+                      onPress={() => openPostUrl(selectedDeliverable.post_url)}
+                    >
+                      <Ionicons name="link" size={16} color="#6B7280" />
+                      <Text style={styles.postUrlText} numberOfLines={1}>
+                        {selectedDeliverable.post_url}
+                      </Text>
+                      <Ionicons name="open-outline" size={16} color="#6B7280" />
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Caption */}
+                  {selectedDeliverable.caption && (
+                    <View style={styles.modalCaptionContainer}>
+                      <Text style={styles.modalCaptionLabel}>Caption</Text>
+                      <Text style={styles.modalCaptionText}>{selectedDeliverable.caption}</Text>
+                    </View>
+                  )}
+
+                  {/* Notes to Restaurant */}
+                  {selectedDeliverable.notes_to_restaurant && (
+                    <View style={styles.modalNotesContainer}>
+                      <View style={styles.modalNotesHeader}>
+                        <Ionicons name="chatbubble-ellipses" size={16} color="#6B7280" />
+                        <Text style={styles.modalNotesLabel}>Notes from Creator</Text>
+                      </View>
+                      <Text style={styles.modalNotesText}>{selectedDeliverable.notes_to_restaurant}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Action Message */}
+              <View style={styles.modalMessage}>
+                {selectedAction === 'approve' && (
+                  <>
+                    <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+                    <Text style={styles.modalMessageTitle}>Approve This Deliverable?</Text>
+                    <Text style={styles.modalMessageText}>
+                      The creator will be notified and payment will be processed.
+                    </Text>
+                  </>
+                )}
+                {selectedAction === 'request_changes' && (
+                  <>
+                    <Ionicons name="refresh-circle" size={48} color="#F59E0B" />
+                    <Text style={styles.modalMessageTitle}>Request Changes?</Text>
+                    <Text style={styles.modalMessageText}>
+                      The creator will be able to resubmit with your feedback.
+                    </Text>
+                  </>
+                )}
+                {selectedAction === 'reject' && (
+                  <>
+                    <Ionicons name="close-circle" size={48} color="#EF4444" />
+                    <Text style={styles.modalMessageTitle}>Reject This Deliverable?</Text>
+                    <Text style={styles.modalMessageText}>
+                      This action cannot be undone. The creator will be notified.
+                    </Text>
+                  </>
+                )}
               </View>
-            )}
 
-            {/* Action Message */}
-            <View style={styles.modalMessage}>
-              {selectedAction === 'approve' && (
-                <>
-                  <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-                  <Text style={styles.modalMessageTitle}>Approve This Deliverable?</Text>
-                  <Text style={styles.modalMessageText}>
-                    The creator will be notified and payment will be processed.
-                  </Text>
-                </>
-              )}
-              {selectedAction === 'request_changes' && (
-                <>
-                  <Ionicons name="refresh-circle" size={48} color="#F59E0B" />
-                  <Text style={styles.modalMessageTitle}>Request Changes?</Text>
-                  <Text style={styles.modalMessageText}>
-                    The creator will be able to resubmit with your feedback.
-                  </Text>
-                </>
-              )}
-              {selectedAction === 'reject' && (
-                <>
-                  <Ionicons name="close-circle" size={48} color="#EF4444" />
-                  <Text style={styles.modalMessageTitle}>Reject This Deliverable?</Text>
-                  <Text style={styles.modalMessageText}>
-                    This action cannot be undone. The creator will be notified.
-                  </Text>
-                </>
-              )}
-            </View>
-
-            {/* Feedback Input */}
-            <View style={styles.feedbackSection}>
-              <Text style={styles.feedbackLabel}>
-                Feedback {(selectedAction === 'reject' || selectedAction === 'request_changes') && '*'}
-              </Text>
-              <TextInput
-                style={styles.feedbackInput}
-                placeholder={
-                  selectedAction === 'approve'
-                    ? 'Optional: Add a positive note...'
-                    : selectedAction === 'request_changes'
-                    ? 'Explain what needs to be changed...'
-                    : 'Explain why you are rejecting...'
-                }
-                value={feedback}
-                onChangeText={setFeedback}
-                multiline
-                numberOfLines={4}
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
+              {/* Feedback Input */}
+              <View style={styles.feedbackSection}>
+                <Text style={styles.feedbackLabel}>
+                  Feedback {(selectedAction === 'reject' || selectedAction === 'request_changes') && '*'}
+                </Text>
+                <TextInput
+                  style={styles.feedbackInput}
+                  placeholder={
+                    selectedAction === 'approve'
+                      ? 'Optional: Add a positive note...'
+                      : selectedAction === 'request_changes'
+                      ? 'Explain what needs to be changed...'
+                      : 'Explain why you are rejecting...'
+                  }
+                  value={feedback}
+                  onChangeText={setFeedback}
+                  multiline
+                  numberOfLines={4}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </ScrollView>
 
             {/* Actions */}
             <View style={styles.modalActions}>
@@ -849,7 +912,11 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
-    maxHeight: '80%'
+    maxHeight: '90%'
+  },
+  modalScrollContent: {
+    flex: 1,
+    maxHeight: '70%'
   },
   modalHeader: {
     flexDirection: 'row',
@@ -960,5 +1027,97 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF'
+  },
+  deliverablePreviewSection: {
+    marginBottom: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12
+  },
+  modalPostPreview: {
+    position: 'relative',
+    aspectRatio: 9 / 16,
+    maxHeight: 300,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#F3F4F6'
+  },
+  modalPostImage: {
+    width: '100%',
+    height: '100%'
+  },
+  modalPostOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8
+  },
+  modalPostOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  postUrlContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 8
+  },
+  postUrlText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#6B7280'
+  },
+  modalCaptionContainer: {
+    marginBottom: 12
+  },
+  modalCaptionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 6
+  },
+  modalCaptionText: {
+    fontSize: 14,
+    color: '#1F2937',
+    lineHeight: 20
+  },
+  modalNotesContainer: {
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB'
+  },
+  modalNotesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6
+  },
+  modalNotesLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280'
+  },
+  modalNotesText: {
+    fontSize: 14,
+    color: '#1F2937',
+    lineHeight: 20
   }
 });

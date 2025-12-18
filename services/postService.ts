@@ -10,13 +10,39 @@ import {
     PostWithUser,
     TrendingPost
 } from '@/types/post';
-import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
-import { restaurantImageSyncService } from './restaurantImageSyncService';
-import { moderationService } from './moderationService';
-import { restaurantVisitService } from './restaurantVisitService';
 import { eventBus, EVENTS } from '@/utils/eventBus';
+import { IntelligentCoverPhotoService } from './intelligentCoverPhotoService';
+import { moderationService } from './moderationService';
+import { restaurantImageSyncService } from './restaurantImageSyncService';
+import { restaurantVisitService } from './restaurantVisitService';
 
 class PostService {
+  /**
+   * @deprecated Use engagementService.batchGetEngagementStats() instead
+   * This method is kept temporarily for backward compatibility during migration
+   */
+  private async calculateEngagementCounts(postIds: string[]): Promise<{
+    commentCounts: Map<string, number>;
+    likeCounts: Map<string, number>;
+    saveCounts: Map<string, number>;
+  }> {
+    // Use unified engagement service for accurate counts
+    const { engagementService } = await import('@/services/engagement');
+    const statsMap = await engagementService.batchGetEngagementStats(postIds);
+    
+    const commentCounts = new Map<string, number>();
+    const likeCounts = new Map<string, number>();
+    const saveCounts = new Map<string, number>();
+    
+    statsMap.forEach((stats, postId) => {
+      commentCounts.set(postId, stats.comments_count || 0);
+      likeCounts.set(postId, stats.likes_count || 0);
+      saveCounts.set(postId, stats.saves_count || 0);
+    });
+    
+    return { commentCounts, likeCounts, saveCounts };
+  }
+
   /**
    * Get a single post by ID
    */
@@ -287,31 +313,19 @@ class PostService {
       }
     }
 
-    // Check if current user has liked/saved this post
-    let isLiked = false;
-    let isSaved = false;
-    
-    if (currentUserId) {
-      // Check like status
-      const { data: likeData } = await supabase
-        .from('post_likes')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', currentUserId)
-        .maybeSingle();
-      
-      isLiked = !!likeData;
-      
-      // Check save status
-      const { data: saveData } = await supabase
-        .from('post_saves')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', currentUserId)
-        .maybeSingle();
-      
-      isSaved = !!saveData;
-    }
+    // Get engagement stats using unified service (single source of truth)
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStats = await engagementService.getEngagementStats(postId, currentUserId || undefined);
+
+    // Override stale column values with actual counts
+    postData.comments_count = engagementStats.comments_count || 0;
+    postData.likes_count = engagementStats.likes_count || 0;
+    postData.saves_count = engagementStats.saves_count || 0;
+    postData.share_count = engagementStats.share_count || 0;
+
+    // Use engagement service for user-specific status
+    const isLiked = engagementStats.is_liked_by_user || false;
+    const isSaved = engagementStats.is_saved_by_user || false;
 
     // Transform to PostWithUser format
     return {
@@ -419,6 +433,24 @@ class PostService {
       }
     }
 
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
+
     return postsData.map(post => {
       const restaurantData = restaurantsMap.get(post.restaurant_id);
       return {
@@ -449,6 +481,7 @@ class PostService {
     // Get current user ID for checking likes/saves
     const { data: { user } } = await supabase.auth.getUser();
     const currentUserId = user?.id;
+    const currentUserEmail = user?.email;
     
     let query = supabase
       .from('posts')
@@ -458,6 +491,24 @@ class PostService {
     // Exclude posts from blocked users
     if (blockedUserIds.length > 0) {
       query = query.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
+    }
+
+    // ALWAYS exclude posts from test users (test accounts should never be visible in explore)
+    // Get test user IDs
+    const { data: testUsers, error: testUsersError } = await supabase
+      .from('users')
+      .select('id, email, is_test_account')
+      .eq('is_test_account', true);
+    
+    if (testUsersError) {
+      // Silently continue - test user filtering is best-effort
+    }
+    
+    if (testUsers && testUsers.length > 0) {
+      const testUserIds = testUsers.map(u => u.id);
+      
+      // Use .not() with 'in' operator - correct Supabase syntax
+      query = query.not('user_id', 'in', `(${testUserIds.join(',')})`);
     }
 
     // Apply filters
@@ -478,7 +529,7 @@ class PostService {
     if (postsError) {
       throw postsError;
     }
-
+    
     if (!postsData || postsData.length === 0) {
       return [];
     }
@@ -487,24 +538,67 @@ class PostService {
     const userIds = [...new Set(postsData.map(post => post.user_id))];
     const restaurantIds = [...new Set(postsData.map(post => post.restaurant_id).filter(id => id))];
     const postIds = postsData.map(post => post.id);
+
+    // Get engagement stats using unified service (single source of truth)
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values (always accurate, no stale data)
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        const calculatedComments = stats.comments_count || 0;
+        const calculatedLikes = stats.likes_count || 0;
+        const calculatedSaves = stats.saves_count || 0;
+        
+        if (__DEV__) {
+          const postIdShort = post.id.substring(0, 8) + '...';
+          console.log(`[postService.getExplorePosts] Post ${postIdShort}: comments=${calculatedComments} (was ${post.comments_count}), likes=${calculatedLikes}, saves=${calculatedSaves}`);
+        }
+        
+        post.comments_count = calculatedComments;
+        post.likes_count = calculatedLikes;
+        post.saves_count = calculatedSaves;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
     
-    // Fetch user data
+    if (__DEV__) {
+      console.log(`[postService.getExplorePosts] ✅ Returning ${postsData.length} posts with calculated counts`);
+    }
+    
+    // Fetch user data (always filter test users as a safety check)
     const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('*')
-      .in('id', userIds);
+      .in('id', userIds)
+      .eq('is_test_account', false); // Always exclude test users
+    
+    if (usersError) {
+      throw usersError;
+    }
+    
+    // Create a map of raw user data for logging
+    const rawUsersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
     if (usersError) {
       throw usersError;
     }
 
-    // Fetch restaurant data
+    // Fetch restaurant data (exclude test restaurants if current user is not a test user)
     let restaurantsMap = new Map();
     if (restaurantIds.length > 0) {
-      const { data: restaurantsData } = await supabase
+      let restaurantQuery = supabase
         .from('restaurants')
         .select('id, name, address, cuisine_types, price_range, cover_photo_url')
         .in('id', restaurantIds);
+      
+      // Always exclude test restaurants
+      restaurantQuery = restaurantQuery.eq('is_test_restaurant', false);
+      
+      const { data: restaurantsData } = await restaurantQuery;
       
       if (restaurantsData) {
         restaurantsMap = new Map(restaurantsData.map(r => [r.id, r]));
@@ -543,25 +637,36 @@ class PostService {
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
     // Combine posts with user and restaurant data, including like/save status
-    return postsData.map(post => {
-      const userData = usersMap.get(post.user_id);
-      const restaurantData = restaurantsMap.get(post.restaurant_id);
-      return {
-        ...post,
-        user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
-        restaurant: restaurantData ? {
-          id: restaurantData.id,
-          name: restaurantData.name,
-          image: restaurantData.cover_photo_url || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
-          cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
-          rating: post.rating || 0,
-          location: restaurantData.address || 'Location',
-          priceRange: restaurantData.price_range || post.price_range || '$$',
-        } : null,
-        is_liked_by_user: currentUserId ? likedPostIds.has(post.id) : false,
-        is_saved_by_user: currentUserId ? savedPostIds.has(post.id) : false,
-      };
-    });
+    const result = postsData
+      .map(post => {
+        const userData = usersMap.get(post.user_id);
+        const rawUserData = rawUsersMap.get(post.user_id);
+        
+        // Skip posts from test users (final safety check - always filter)
+        if (rawUserData && rawUserData.is_test_account === true) {
+          return null;
+        }
+        
+        const restaurantData = restaurantsMap.get(post.restaurant_id);
+        return {
+          ...post,
+          user: userData ? this.transformUser({ user: userData }) : this.transformUser(post),
+          restaurant: restaurantData ? {
+            id: restaurantData.id,
+            name: restaurantData.name,
+            image: restaurantData.cover_photo_url || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+            cuisine: restaurantData.cuisine_types?.[0] || 'Restaurant',
+            rating: post.rating || 0,
+            location: restaurantData.address || 'Location',
+            priceRange: restaurantData.price_range || post.price_range || '$$',
+          } : null,
+          is_liked_by_user: currentUserId ? likedPostIds.has(post.id) : false,
+          is_saved_by_user: currentUserId ? savedPostIds.has(post.id) : false,
+        };
+      })
+      .filter((post): post is PostWithUser => post !== null);
+    
+    return result;
   }
 
   /**
@@ -589,12 +694,18 @@ class PostService {
    * Delete a post
    */
   async deletePost(postId: string): Promise<void> {
-    // First get the post's community_ids before deletion
-    const { data: postData } = await supabase
-      .from('posts')
-      .select('community_ids')
-      .eq('id', postId)
-      .single();
+    // First get the post's community_ids from post_communities junction table before deletion
+    const { data: postCommunities, error: fetchError } = await supabase
+      .from('post_communities')
+      .select('community_id')
+      .eq('post_id', postId);
+
+    if (fetchError) {
+      // Don't throw - continue with deletion even if we can't fetch communities
+      // The post might not be in any communities
+    }
+
+    const communityIds = postCommunities?.map(pc => pc.community_id) || [];
 
     const { error } = await supabase
       .from('posts')
@@ -606,8 +717,8 @@ class PostService {
     }
 
     // Emit deletion event for each community the post was in
-    if (postData?.community_ids && postData.community_ids.length > 0) {
-      postData.community_ids.forEach((communityId: string) => {
+    if (communityIds.length > 0) {
+      communityIds.forEach((communityId: string) => {
         eventBus.emit(EVENTS.COMMUNITY_POST_DELETED, {
           postId,
           communityId
@@ -651,6 +762,24 @@ class PostService {
 
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
+
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
 
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
@@ -748,6 +877,24 @@ class PostService {
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
+
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
       return {
@@ -802,38 +949,20 @@ class PostService {
 
   /**
    * Check if user has liked a post
+   * @deprecated Use engagementService.likes.isLiked() instead
    */
   async isPostLikedByUser(postId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('post_likes')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      // Handle error silently
-    }
-
-    return !!data;
+    const { engagementService } = await import('@/services/engagement');
+    return engagementService.likes.isLiked(postId, userId);
   }
 
   /**
    * Check if user has saved a post
+   * @deprecated Use engagementService.saves.isSaved() instead
    */
   async isPostSavedByUser(postId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('post_saves')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      // Handle error silently
-    }
-
-    return !!data;
+    const { engagementService } = await import('@/services/engagement');
+    return engagementService.saves.isSaved(postId, userId);
   }
 
   /**
@@ -905,6 +1034,24 @@ class PostService {
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
 
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
+
     // Combine posts with user data
     return postsData.map(post => {
       const userData = usersMap.get(post.user_id);
@@ -952,6 +1099,24 @@ class PostService {
 
     // Create a map of users for quick lookup
     const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
+
+    // Get engagement stats using unified service (single source of truth)
+    const postIds = postsData.map(post => post.id);
+    const { engagementService } = await import('@/services/engagement');
+    const engagementStatsMap = await engagementService.batchGetEngagementStats(postIds, currentUserId || undefined);
+
+    // Override all counts with calculated values
+    postsData.forEach((post: any) => {
+      const stats = engagementStatsMap.get(post.id);
+      if (stats) {
+        post.comments_count = stats.comments_count || 0;
+        post.likes_count = stats.likes_count || 0;
+        post.saves_count = stats.saves_count || 0;
+        post.share_count = stats.share_count || 0;
+        post.is_liked_by_user = stats.is_liked_by_user;
+        post.is_saved_by_user = stats.is_saved_by_user;
+      }
+    });
 
     // Combine posts with user data
     return postsData.map(post => {

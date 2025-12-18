@@ -47,6 +47,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS update_follow_counts_trigger ON user_relationships;
 CREATE TRIGGER update_follow_counts_trigger
 AFTER INSERT OR DELETE ON user_relationships
 FOR EACH ROW

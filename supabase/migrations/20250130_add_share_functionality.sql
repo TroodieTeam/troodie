@@ -22,12 +22,12 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name = 'posts' AND column_name = 'shares_count') THEN
-        ALTER TABLE posts ADD COLUMN shares_count INTEGER DEFAULT 0;
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS shares_count INTEGER DEFAULT 0;
     END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name = 'boards' AND column_name = 'share_count') THEN
-        ALTER TABLE boards ADD COLUMN share_count INTEGER DEFAULT 0;
+        ALTER TABLE boards ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0;
     END IF;
 END $$;
 
@@ -61,11 +61,15 @@ CREATE TRIGGER update_share_counts
 ALTER TABLE share_analytics ENABLE ROW LEVEL SECURITY;
 
 -- Users can insert their own share analytics
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can insert own share analytics" ON share_analytics;
 CREATE POLICY "Users can insert own share analytics" ON share_analytics
     FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
 -- Users can view their own share analytics
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view own share analytics" ON share_analytics;
 CREATE POLICY "Users can view own share analytics" ON share_analytics
     FOR SELECT
     USING (auth.uid() = user_id);

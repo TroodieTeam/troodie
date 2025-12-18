@@ -15,6 +15,32 @@ export class NotificationService implements NotificationServiceInterface {
   async createNotification(params: CreateNotificationParams): Promise<Notification> {
     const { userId, type, title, message, data, relatedId, relatedType, priority = 1, expiresAt } = params;
     
+    // Try using the SECURITY DEFINER function first (bypasses RLS)
+    const { data: notificationId, error: functionError } = await supabase
+      .rpc('create_notification', {
+        p_user_id: userId,
+        p_type: type,
+        p_title: title,
+        p_message: message,
+        p_data: data || {},
+        p_related_id: relatedId || null,
+        p_related_type: relatedType || null
+      });
+
+    // If function exists and succeeded, fetch the notification
+    if (!functionError && notificationId) {
+      const { data: notification, error: fetchError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('id', notificationId)
+        .single();
+
+      if (!fetchError && notification) {
+        return notification;
+      }
+    }
+
+    // Fallback to direct insert (for backwards compatibility)
     const notificationData: NotificationInsert = {
       user_id: userId,
       type,
@@ -480,6 +506,140 @@ export class NotificationService implements NotificationServiceInterface {
         url,
         metadata
       }
+    });
+  }
+
+  /**
+   * Create payment success notification for business
+   */
+  async createPaymentSuccessNotification(
+    businessId: string,
+    campaignId: string,
+    campaignTitle: string,
+    amountCents: number
+  ): Promise<Notification> {
+    const amountDollars = (amountCents / 100).toFixed(2);
+    return this.createNotification({
+      userId: businessId,
+      type: 'system',
+      title: 'Payment Successful',
+      message: `Your payment of $${amountDollars} for "${campaignTitle}" was successful. The campaign is now live!`,
+      data: {
+        campaignId,
+        campaignTitle,
+        amountCents,
+        amountDollars,
+      },
+      relatedId: campaignId,
+      relatedType: 'campaign',
+      priority: 2,
+    });
+  }
+
+  /**
+   * Create payment failed notification for business
+   */
+  async createPaymentFailedNotification(
+    businessId: string,
+    campaignId: string,
+    campaignTitle: string,
+    errorMessage?: string
+  ): Promise<Notification> {
+    return this.createNotification({
+      userId: businessId,
+      type: 'system',
+      title: 'Payment Failed',
+      message: `Payment for "${campaignTitle}" failed. Please update your payment method and try again.`,
+      data: {
+        campaignId,
+        campaignTitle,
+        errorMessage,
+      },
+      relatedId: campaignId,
+      relatedType: 'campaign',
+      priority: 3,
+    });
+  }
+
+  /**
+   * Create payout received notification for creator
+   */
+  async createPayoutReceivedNotification(
+    creatorId: string,
+    deliverableId: string,
+    campaignId: string,
+    campaignTitle: string,
+    amountCents: number
+  ): Promise<Notification> {
+    const amountDollars = (amountCents / 100).toFixed(2);
+    return this.createNotification({
+      userId: creatorId,
+      type: 'system',
+      title: 'Payment Received',
+      message: `You received $${amountDollars} for your work on "${campaignTitle}"`,
+      data: {
+        deliverableId,
+        campaignId,
+        campaignTitle,
+        amountCents,
+        amountDollars,
+      },
+      relatedId: deliverableId,
+      relatedType: 'deliverable',
+      priority: 2,
+    });
+  }
+
+  /**
+   * Create payout onboarding required notification for creator
+   */
+  async createPayoutOnboardingRequiredNotification(
+    creatorId: string,
+    deliverableId: string,
+    campaignId: string,
+    campaignTitle: string
+  ): Promise<Notification> {
+    return this.createNotification({
+      userId: creatorId,
+      type: 'system',
+      title: 'Complete Payment Setup',
+      message: `To receive payment for "${campaignTitle}", please complete your payment account setup.`,
+      data: {
+        deliverableId,
+        campaignId,
+        campaignTitle,
+        action: 'onboard_payment',
+      },
+      relatedId: deliverableId,
+      relatedType: 'deliverable',
+      priority: 3,
+    });
+  }
+
+  /**
+   * Create payout failed notification for creator
+   */
+  async createPayoutFailedNotification(
+    creatorId: string,
+    deliverableId: string,
+    campaignId: string,
+    campaignTitle: string,
+    errorMessage?: string
+  ): Promise<Notification> {
+    return this.createNotification({
+      userId: creatorId,
+      type: 'system',
+      title: 'Payout Failed',
+      message: `Payment for "${campaignTitle}" failed. Our team has been notified and will resolve this shortly.`,
+      data: {
+        deliverableId,
+        campaignId,
+        campaignTitle,
+        errorMessage,
+      },
+      relatedId: deliverableId,
+      relatedType: 'deliverable',
+      priority: 3,
     });
   }
 }

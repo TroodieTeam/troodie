@@ -15,6 +15,7 @@ export default function CreatorOnboardingScreen() {
 
   const handleComplete = () => {
     // Navigate back to More tab after successful onboarding
+    // Use replace to replace the onboarding screen in the stack
     router.replace('/(tabs)/more');
   };
 

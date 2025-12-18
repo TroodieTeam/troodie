@@ -1,15 +1,25 @@
+/**
+ * @deprecated This service has been replaced by UnifiedEngagementService.
+ * Please use `engagementService` from '@/services/engagement' instead.
+ * 
+ * Migration guide:
+ * - enhancedPostEngagementService.togglePostLikeOptimistic() → engagementService.likes.toggle()
+ * - enhancedPostEngagementService.togglePostSaveOptimistic() → engagementService.saves.toggle()
+ * - enhancedPostEngagementService.addCommentOptimistic() → engagementService.comments.create()
+ * - enhancedPostEngagementService.sharePost() → engagementService.shares.share()
+ * 
+ * This file will be removed in a future version.
+ */
+
 import { supabase } from '@/lib/supabase';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { Share } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import ShareService from '@/services/shareService';
 import { UserInfo } from '@/types/core';
 import {
-  CommentWithUser,
-  PostComment,
-  PostSave,
-  PostEngagementStats
+    CommentWithUser,
+    PostEngagementStats
 } from '@/types/post';
-import ShareService from '@/services/shareService';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import * as Clipboard from 'expo-clipboard';
 
 interface OptimisticUpdate<T> {
   id: string;

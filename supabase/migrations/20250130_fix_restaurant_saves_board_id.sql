@@ -68,6 +68,8 @@ WITH CHECK (
     )
 );
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their own saves" ON public;
 CREATE POLICY "Users can update their own saves"
 ON public.restaurant_saves
 FOR UPDATE
@@ -75,6 +77,8 @@ TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can delete their own saves" ON public;
 CREATE POLICY "Users can delete their own saves"
 ON public.restaurant_saves
 FOR DELETE

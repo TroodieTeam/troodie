@@ -8,6 +8,8 @@ interface Config {
   cloudinaryCloudName: string;
   cloudinaryApiKey: string;
   cloudinaryApiSecret: string;
+  stripePublishableKey: string;
+  stripeSecretKey: string;
 }
 
 const config: Config = {
@@ -18,6 +20,8 @@ const config: Config = {
   cloudinaryCloudName: Constants.expoConfig?.extra?.cloudinaryCloudName || process.env.CLOUDINARY_CLOUD_NAME || '',
   cloudinaryApiKey: Constants.expoConfig?.extra?.cloudinaryApiKey || process.env.CLOUDINARY_API_KEY || '',
   cloudinaryApiSecret: Constants.expoConfig?.extra?.cloudinaryApiSecret || process.env.CLOUDINARY_API_SECRET || '',
+  stripePublishableKey: Constants.expoConfig?.extra?.stripePublishableKey || process.env.STRIPE_PUBLISHABLE_KEY || '',
+  stripeSecretKey: Constants.expoConfig?.extra?.stripeSecretKey || process.env.STRIPE_SECRET_KEY || '',
 };
 
 // Validate that required variables are present

@@ -12,6 +12,26 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Move arrays outside component to ensure stability
+const visitTypes = [
+  { value: 'dine_in', label: 'Dine In', icon: 'restaurant' },
+  { value: 'takeout', label: 'Takeout', icon: 'bag-handle' },
+  { value: 'delivery', label: 'Delivery', icon: 'car' },
+];
+
+const priceRanges = [
+  { value: '$', label: 'Budget' },
+  { value: '$$', label: 'Moderate' },
+  { value: '$$$', label: 'Expensive' },
+  { value: '$$$$', label: 'Very Expensive' },
+];
+
+const privacyOptions = [
+  { value: 'public', label: 'Public', icon: 'globe' },
+  { value: 'friends', label: 'Friends', icon: 'people' },
+  { value: 'private', label: 'Private', icon: 'lock-closed' },
+];
+
 export default function EditPostScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,25 +49,6 @@ export default function EditPostScreen() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState<Error | null>(null);
-
-  const visitTypes = [
-    { value: 'dine_in', label: 'Dine In', icon: 'restaurant' },
-    { value: 'takeout', label: 'Takeout', icon: 'bag-handle' },
-    { value: 'delivery', label: 'Delivery', icon: 'car' },
-  ];
-
-  const priceRanges = [
-    { value: '$', label: 'Budget' },
-    { value: '$$', label: 'Moderate' },
-    { value: '$$$', label: 'Expensive' },
-    { value: '$$$$', label: 'Very Expensive' },
-  ];
-
-  const privacyOptions = [
-    { value: 'public', label: 'Public', icon: 'globe' },
-    { value: 'friends', label: 'Friends', icon: 'people' },
-    { value: 'private', label: 'Private', icon: 'lock-closed' },
-  ];
 
   useEffect(() => {
     if (id) {
@@ -342,9 +343,9 @@ export default function EditPostScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Visit Type</Text>
           <View style={styles.visitTypeContainer}>
-            {visitTypes.map((type) => (
+            {visitTypes.map((type, index) => (
               <TouchableOpacity
-                key={type.value}
+                key={`edit-post-visit-${index}`}
                 style={[
                   styles.visitTypeButton,
                   visitType === type.value && styles.visitTypeButtonActive
@@ -371,9 +372,9 @@ export default function EditPostScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Price Range</Text>
           <View style={styles.priceRangeContainer}>
-            {priceRanges.map((range) => (
+            {priceRanges.map((range, index) => (
               <TouchableOpacity
-                key={range.value}
+                key={`edit-post-price-${index}`}
                 style={[
                   styles.priceRangeButton,
                   priceRange === range.value && styles.priceRangeButtonActive
@@ -426,9 +427,9 @@ export default function EditPostScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy</Text>
           <View style={styles.privacyContainer}>
-            {privacyOptions.map((option) => (
+            {privacyOptions.map((option, index) => (
               <TouchableOpacity
-                key={option.value}
+                key={`edit-post-privacy-${index}`}
                 style={[
                   styles.privacyButton,
                   privacy === option.value && styles.privacyButtonActive

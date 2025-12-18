@@ -30,6 +30,8 @@ CREATE POLICY "view_public_board_restaurants" ON board_restaurants
   );
 
 -- SELECT: Users can view restaurants in their own boards
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "view_own_board_restaurants" ON board_restaurants;
 CREATE POLICY "view_own_board_restaurants" ON board_restaurants
   FOR SELECT
   USING (
@@ -41,6 +43,8 @@ CREATE POLICY "view_own_board_restaurants" ON board_restaurants
   );
 
 -- SELECT: Users can view restaurants in boards they're members of
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "view_member_board_restaurants" ON board_restaurants;
 CREATE POLICY "view_member_board_restaurants" ON board_restaurants
   FOR SELECT
   USING (
@@ -52,6 +56,8 @@ CREATE POLICY "view_member_board_restaurants" ON board_restaurants
   );
 
 -- INSERT: Users can add restaurants to their own boards
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "add_to_own_boards" ON board_restaurants;
 CREATE POLICY "add_to_own_boards" ON board_restaurants
   FOR INSERT
   WITH CHECK (
@@ -63,6 +69,8 @@ CREATE POLICY "add_to_own_boards" ON board_restaurants
   );
 
 -- INSERT: Board members can add restaurants to boards they're members of
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "members_can_add_restaurants" ON board_restaurants;
 CREATE POLICY "members_can_add_restaurants" ON board_restaurants
   FOR INSERT
   WITH CHECK (
@@ -74,11 +82,15 @@ CREATE POLICY "members_can_add_restaurants" ON board_restaurants
   );
 
 -- UPDATE: Users can update restaurant entries they added
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "update_own_entries" ON board_restaurants;
 CREATE POLICY "update_own_entries" ON board_restaurants
   FOR UPDATE
   USING (added_by = auth.uid());
 
 -- UPDATE: Board owners can update any restaurant in their boards
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "owners_can_update" ON board_restaurants;
 CREATE POLICY "owners_can_update" ON board_restaurants
   FOR UPDATE
   USING (
@@ -90,11 +102,15 @@ CREATE POLICY "owners_can_update" ON board_restaurants
   );
 
 -- DELETE: Users can delete restaurant entries they added
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "delete_own_entries" ON board_restaurants;
 CREATE POLICY "delete_own_entries" ON board_restaurants
   FOR DELETE
   USING (added_by = auth.uid());
 
 -- DELETE: Board owners can delete any restaurant from their boards
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "owners_can_delete" ON board_restaurants;
 CREATE POLICY "owners_can_delete" ON board_restaurants
   FOR DELETE
   USING (

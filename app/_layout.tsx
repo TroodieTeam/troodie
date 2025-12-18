@@ -2,16 +2,16 @@
 import 'react-native-url-polyfill/auto';
 
 import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import {
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -28,8 +28,11 @@ import { NetworkStatusBanner } from '@/components/NetworkStatusBanner';
 import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
+import config from '@/lib/config';
 import { BackgroundTaskManager } from '@/utils/backgroundTasks';
 import * as Sentry from '@sentry/react-native';
+import { StripeProvider } from '@stripe/stripe-react-native';
+import Constants from 'expo-constants';
 import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 
@@ -59,8 +62,10 @@ function InnerLayout() {
   // Handle deep links
   useEffect(() => {
     const handleDeepLink = (url: string) => {
+      console.log('[Deep Link] Received URL:', url);
       // Parse the URL to extract the path
       const parsed = Linking.parse(url);
+      console.log('[Deep Link] Parsed:', parsed);
       
       // Extract the path from the URL
       // Handle Expo dev URLs that have --/ prefix
@@ -73,6 +78,7 @@ function InnerLayout() {
       if (path) {
         // Remove leading slash if present
         const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        console.log('[Deep Link] Clean path:', cleanPath);
         
         // Add a small delay to ensure navigation is ready
         setTimeout(() => {
@@ -93,6 +99,40 @@ function InnerLayout() {
             const id = cleanPath.replace('boards/', '');
             console.log('Navigating to board:', id);
             router.push(`/boards/${id}`);
+          } else if (cleanPath.startsWith('stripe/onboarding/')) {
+            // Handle Stripe onboarding deep links
+            const isReturn = cleanPath.includes('/return');
+            const isRefresh = cleanPath.includes('/refresh');
+            
+            console.log('[Deep Link] ✅ Stripe onboarding callback detected!', { 
+              isReturn, 
+              isRefresh, 
+              path: cleanPath,
+              fullUrl: url,
+              parsed
+            });
+            
+            // Extract account_type from query params if present
+            const accountType = parsed.queryParams?.account_type || 'business';
+            
+            console.log('[Deep Link] Navigating to campaign creation with params:', {
+              stripeRefresh: 'true',
+              accountType
+            });
+            
+            // Navigate to campaign creation page with refresh trigger
+            // The campaign creation page will handle refreshing the Stripe account status
+            router.push({
+              pathname: '/(tabs)/business/campaigns/create',
+              params: {
+                stripeRefresh: 'true',
+                accountType: accountType as string,
+              },
+            });
+            
+            console.log('[Deep Link] Navigation triggered');
+          } else {
+            console.log('[Deep Link] ⚠️ Unhandled deep link path:', cleanPath);
           }
         }, 100);
       }
@@ -112,9 +152,28 @@ function InnerLayout() {
     
     // Subscribe to incoming links
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      console.log('App received URL:', url);
+      console.log('[Deep Link] App received URL event:', url);
       handleDeepLink(url);
     });
+    
+    // Also listen for app state changes (when app comes to foreground)
+    // This helps catch deep links when returning from browser
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        console.log('[Deep Link] App became active, checking for pending deep link...');
+        // Small delay to ensure app is fully active
+        setTimeout(async () => {
+          const url = await Linking.getInitialURL();
+          if (url && url.includes('stripe/onboarding')) {
+            console.log('[Deep Link] Found pending Stripe deep link:', url);
+            handleDeepLink(url);
+          }
+        }, 500);
+      }
+    };
+    
+    // Note: AppState listener would need to be imported from react-native
+    // For now, the Linking.addEventListener should handle it
     
     return () => {
       subscription.remove();
@@ -172,27 +231,30 @@ function InnerLayout() {
     return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
   }
 
-  return (
-    <SafeAreaProvider>
-      <AppProvider>
-        <OnboardingProvider>
-          <ThemeProvider value={DefaultTheme}>
-            <NetworkStatusBanner />
-            <Stack>
+  const AppContent = (
+    <AppProvider>
+      <OnboardingProvider>
+        <ThemeProvider value={DefaultTheme}>
+          <NetworkStatusBanner />
+          <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="add" options={{ headerShown: false }} />
             <Stack.Screen name="boards" options={{ headerShown: false }} />
             <Stack.Screen name="business" options={{ headerShown: false }} />
+            <Stack.Screen name="creator" options={{ headerShown: false }} />
+            <Stack.Screen name="restaurant/[id]/analytics" options={{ headerShown: false }} />
             <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="posts/[id]/comments" options={{ headerShown: false }} />
             <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="find-friends" options={{ headerShown: false }} />
             <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
             <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
             <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
             <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
             <StatusBar style="dark" />
@@ -200,6 +262,25 @@ function InnerLayout() {
           </ThemeProvider>
         </OnboardingProvider>
       </AppProvider>
+  );
+
+  // Get proper urlScheme for Stripe redirects (per Expo docs)
+  const urlScheme = Constants.appOwnership === 'expo'
+    ? Linking.createURL('/--/')
+    : Linking.createURL('');
+
+  return (
+    <SafeAreaProvider>
+      {config.stripePublishableKey ? (
+        <StripeProvider 
+          publishableKey={config.stripePublishableKey}
+          urlScheme={urlScheme}
+        >
+          {AppContent}
+        </StripeProvider>
+      ) : (
+        AppContent
+      )}
     </SafeAreaProvider>
   );
 }

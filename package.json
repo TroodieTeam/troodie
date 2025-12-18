@@ -42,7 +42,9 @@
     "supabase:types": "supabase gen types typescript --linked > types/supabase-staging.ts",
     "supabase:seed": "node scripts/seed-staging-data.js",
     "staging:setup": "npm run supabase:link-staging && npm run supabase:migrate && npm run supabase:types",
-    "staging:reset": "npm run supabase:reset && npm run supabase:migrate && npm run supabase:types"
+    "staging:reset": "npm run supabase:reset && npm run supabase:migrate && npm run supabase:types",
+    "prod:migrate:cm": "node scripts/apply-creator-marketplace-migrations.js",
+    "prod:setup:test-users": "node scripts/setup-production-test-users.js"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",
@@ -50,10 +52,12 @@
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "^8.5.1",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
     "@sentry/react-native": "~6.20.0",
+    "@stripe/stripe-react-native": "0.50.3",
     "@supabase/supabase-js": "^2.52.0",
     "@types/lodash": "^4.17.20",
     "base64-arraybuffer": "^1.0.2",
@@ -101,7 +105,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.21.0",
     "react-native-webview": "13.15.0",
-    "react-native-worklets": "0.5.1"
+    "react-native-worklets": "0.5.1",
+    "stripe": "^20.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

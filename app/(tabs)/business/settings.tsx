@@ -1,34 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Switch,
-  Image,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { 
-  ArrowLeft,
-  Store,
-  Clock,
-  Phone,
-  Globe,
-  MapPin,
-  DollarSign,
-  Camera,
-  Check,
-  AlertCircle,
-  Mail,
-  Shield,
-} from 'lucide-react-native';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { restaurantImageService } from '@/services/restaurantImageService';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import {
+    AlertCircle,
+    ArrowLeft,
+    Camera,
+    Globe,
+    Mail,
+    MapPin,
+    Phone,
+    Store,
+    Trash2
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface RestaurantData {
   id: string;
@@ -43,14 +42,11 @@ interface RestaurantData {
   price_range: string;
   cover_photo_url: string;
   is_verified: boolean;
-  hours?: any;
 }
 
 interface BusinessSettings {
   notifications_enabled: boolean;
   auto_approve_creators: boolean;
-  min_creator_rating: number;
-  preferred_content_types: string[];
   business_email: string;
   business_role: string;
 }
@@ -64,12 +60,11 @@ export default function RestaurantSettings() {
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({
     notifications_enabled: true,
     auto_approve_creators: false,
-    min_creator_rating: 4.0,
-    preferred_content_types: ['photo', 'video', 'reel'],
     business_email: '',
     business_role: '',
   });
   const [editMode, setEditMode] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     loadRestaurantData();
@@ -79,7 +74,6 @@ export default function RestaurantSettings() {
     try {
       if (!user?.id) return;
 
-      // Get restaurant data through business profile
       const { data: profile, error: profileError } = await supabase
         .from('business_profiles')
         .select(`
@@ -97,8 +91,7 @@ export default function RestaurantSettings() {
             cuisine_types,
             price_range,
             cover_photo_url,
-            is_verified,
-            hours
+            is_verified
           )
         `)
         .eq('user_id', user.id)
@@ -122,12 +115,54 @@ export default function RestaurantSettings() {
     }
   };
 
+  const handlePickCoverImage = async () => {
+    if (!restaurantData) return;
+
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant photo library access to upload images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      setUploadingImage(true);
+
+      const imageUrl = await restaurantImageService.uploadRestaurantImage(
+        restaurantData.id,
+        result.assets[0].uri,
+        'cover'
+      );
+
+      await restaurantImageService.updateRestaurantImage(
+        restaurantData.id,
+        imageUrl,
+        'cover'
+      );
+
+      setRestaurantData(prev => prev ? { ...prev, cover_photo_url: imageUrl } : null);
+      Alert.alert('Success', 'Cover photo updated successfully');
+    } catch (error) {
+      console.error('Failed to upload cover photo:', error);
+      Alert.alert('Error', 'Failed to upload cover photo');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       if (!user?.id || !restaurantData) return;
 
-      // Update restaurant data
       const { error: restaurantError } = await supabase
         .from('restaurants')
         .update({
@@ -139,7 +174,6 @@ export default function RestaurantSettings() {
 
       if (restaurantError) throw restaurantError;
 
-      // Update business profile
       const { error: profileError } = await supabase
         .from('business_profiles')
         .update({
@@ -165,7 +199,7 @@ export default function RestaurantSettings() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={DS.colors.primary} />
+          <ActivityIndicator size="large" color={DS.colors.primaryOrange} />
         </View>
       </SafeAreaView>
     );
@@ -188,340 +222,212 @@ export default function RestaurantSettings() {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: DS.spacing.md,
-        backgroundColor: DS.colors.backgroundWhite,
+        padding: DS.spacing.lg,
+        backgroundColor: DS.colors.surface,
         borderBottomWidth: 1,
         borderBottomColor: DS.colors.border,
       }}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color={DS.colors.text} />
+          <ArrowLeft size={24} color={DS.colors.textDark} />
         </TouchableOpacity>
-        <Text style={{
-          fontSize: 17,
-          fontWeight: '600',
-          color: DS.colors.text,
-        }}>Restaurant Settings</Text>
+        <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>Restaurant Settings</Text>
         <TouchableOpacity 
           onPress={editMode ? handleSave : () => setEditMode(true)}
           disabled={saving}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
         >
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: DS.colors.primary,
-          }}>
-            {saving ? 'Saving...' : editMode ? 'Save' : 'Edit'}
-          </Text>
+          {editMode ? (
+            <Text style={{ ...DS.typography.button, color: DS.colors.primaryOrange }}>Save</Text>
+          ) : (
+            <Text style={{ ...DS.typography.button, color: DS.colors.primaryOrange }}>Edit</Text>
+          )}
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Restaurant Info Section */}
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          margin: DS.spacing.md,
-          padding: DS.spacing.md,
-          borderRadius: DS.borderRadius.md,
-        }}>
-          {/* Cover Photo */}
-          <View style={{ marginBottom: DS.spacing.md }}>
+        {/* Hero Section */}
+        <View style={{ margin: DS.spacing.lg }}>
+          <View style={{ position: 'relative', marginBottom: DS.spacing.lg }}>
             <Image
               source={{ uri: restaurantData.cover_photo_url || 'https://via.placeholder.com/400x200' }}
               style={{
                 width: '100%',
-                height: 150,
-                borderRadius: DS.borderRadius.sm,
-                backgroundColor: DS.colors.border,
+                height: 180,
+                borderRadius: DS.borderRadius.lg,
+                backgroundColor: DS.colors.surfaceLight,
               }}
             />
             {editMode && (
               <TouchableOpacity
+                onPress={handlePickCoverImage}
+                disabled={uploadingImage}
                 style={{
                   position: 'absolute',
-                  bottom: 10,
-                  right: 10,
-                  backgroundColor: DS.colors.primary,
-                  padding: DS.spacing.xs,
-                  borderRadius: DS.borderRadius.sm,
+                  bottom: 12,
+                  right: 12,
+                  backgroundColor: 'rgba(0,0,0,0.6)',
+                  padding: 8,
+                  borderRadius: DS.borderRadius.full,
                 }}
               >
-                <Camera size={20} color="white" />
+                {uploadingImage ? <ActivityIndicator size="small" color="white" /> : <Camera size={20} color="white" />}
               </TouchableOpacity>
             )}
           </View>
 
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: DS.spacing.md,
-          }}>
-            <Store size={24} color={DS.colors.primary} />
-            <Text style={{
-              fontSize: 20,
-              fontWeight: '700',
-              color: DS.colors.text,
-              marginLeft: DS.spacing.sm,
-              flex: 1,
-            }}>{restaurantData.name}</Text>
-            {restaurantData.is_verified && (
-              <View style={{
-                backgroundColor: '#10B981',
-                paddingHorizontal: DS.spacing.xs,
-                paddingVertical: 4,
-                borderRadius: DS.borderRadius.xs,
-              }}>
-                <Text style={{ color: 'white', fontSize: 10, fontWeight: '600' }}>VERIFIED</Text>
+          <View style={{ backgroundColor: DS.colors.surface, borderRadius: DS.borderRadius.lg, padding: DS.spacing.lg, ...DS.shadows.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.md }}>
+              <Store size={24} color={DS.colors.primaryOrange} style={{ marginRight: DS.spacing.sm }} />
+              <Text style={{ ...DS.typography.h2, flex: 1, color: DS.colors.textDark }}>{restaurantData.name}</Text>
+              {restaurantData.is_verified && (
+                <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: DS.borderRadius.full }}>
+                  <Text style={{ ...DS.typography.caption, color: '#16A34A', fontWeight: '700' }}>VERIFIED</Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={{ flexDirection: 'row', gap: DS.spacing.sm, marginBottom: DS.spacing.sm }}>
+              <MapPin size={16} color={DS.colors.textGray} />
+              <Text style={{ ...DS.typography.body, color: DS.colors.textGray, flex: 1 }}>
+                {restaurantData.address}, {restaurantData.city}, {restaurantData.state} {restaurantData.zip_code}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: DS.spacing.lg }}>
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>{restaurantData.cuisine_types?.join(' • ')}</Text>
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textDark, fontWeight: '600' }}>{restaurantData.price_range || '$$$'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Contact Info */}
+        <View style={{ marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.lg }}>
+          <Text style={{ ...DS.typography.h3, marginBottom: DS.spacing.md, color: DS.colors.textDark }}>Contact Information</Text>
+          <View style={{ backgroundColor: DS.colors.surface, borderRadius: DS.borderRadius.lg, padding: DS.spacing.lg, ...DS.shadows.sm, gap: DS.spacing.lg }}>
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.xs }}>
+                <Phone size={16} color={DS.colors.textGray} style={{ marginRight: DS.spacing.xs }} />
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Phone Number</Text>
               </View>
-            )}
-          </View>
-
-          {/* Address */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            marginBottom: DS.spacing.sm,
-          }}>
-            <MapPin size={16} color={DS.colors.textLight} style={{ marginTop: 2 }} />
-            <View style={{ marginLeft: DS.spacing.xs, flex: 1 }}>
-              <Text style={{ color: DS.colors.text, fontSize: 14 }}>
-                {restaurantData.address}
-              </Text>
-              <Text style={{ color: DS.colors.text, fontSize: 14 }}>
-                {restaurantData.city}, {restaurantData.state} {restaurantData.zip_code}
-              </Text>
+              <TextInput
+                value={restaurantData.phone}
+                onChangeText={(text) => setRestaurantData({ ...restaurantData, phone: text })}
+                editable={editMode}
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: editMode ? DS.colors.primaryOrange : DS.colors.border,
+                  paddingVertical: DS.spacing.xs,
+                  fontSize: 16,
+                  color: DS.colors.textDark
+                }}
+                placeholder="(555) 123-4567"
+                keyboardType="phone-pad"
+              />
             </View>
-          </View>
 
-          {/* Cuisine & Price */}
-          <View style={{
-            flexDirection: 'row',
-            marginBottom: DS.spacing.sm,
-          }}>
-            <Text style={{ color: DS.colors.textLight, fontSize: 14 }}>
-              {restaurantData.cuisine_types?.join(' • ')}
-            </Text>
-            <Text style={{ color: DS.colors.primary, fontSize: 14, marginLeft: DS.spacing.sm }}>
-              {restaurantData.price_range || '$$$'}
-            </Text>
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.xs }}>
+                <Globe size={16} color={DS.colors.textGray} style={{ marginRight: DS.spacing.xs }} />
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Website</Text>
+              </View>
+              <TextInput
+                value={restaurantData.website}
+                onChangeText={(text) => setRestaurantData({ ...restaurantData, website: text })}
+                editable={editMode}
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: editMode ? DS.colors.primaryOrange : DS.colors.border,
+                  paddingVertical: DS.spacing.xs,
+                  fontSize: 16,
+                  color: DS.colors.textDark
+                }}
+                placeholder="https://example.com"
+                keyboardType="url"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.xs }}>
+                <Mail size={16} color={DS.colors.textGray} style={{ marginRight: DS.spacing.xs }} />
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Business Email</Text>
+              </View>
+              <TextInput
+                value={businessSettings.business_email}
+                onChangeText={(text) => setBusinessSettings({ ...businessSettings, business_email: text })}
+                editable={editMode}
+                style={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: editMode ? DS.colors.primaryOrange : DS.colors.border,
+                  paddingVertical: DS.spacing.xs,
+                  fontSize: 16,
+                  color: DS.colors.textDark
+                }}
+                placeholder="business@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
           </View>
         </View>
 
-        {/* Contact Information */}
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          marginHorizontal: DS.spacing.md,
-          marginBottom: DS.spacing.md,
-          padding: DS.spacing.md,
-          borderRadius: DS.borderRadius.md,
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: DS.colors.text,
-            marginBottom: DS.spacing.md,
-          }}>Contact Information</Text>
-
-          {/* Phone */}
-          <View style={{ marginBottom: DS.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.xs }}>
-              <Phone size={16} color={DS.colors.textLight} />
-              <Text style={{ color: DS.colors.textLight, fontSize: 12, marginLeft: DS.spacing.xs }}>
-                Phone Number
-              </Text>
+        {/* Preferences */}
+        <View style={{ marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.lg }}>
+          <Text style={{ ...DS.typography.h3, marginBottom: DS.spacing.md, color: DS.colors.textDark }}>Preferences</Text>
+          <View style={{ backgroundColor: DS.colors.surface, borderRadius: DS.borderRadius.lg, padding: DS.spacing.lg, ...DS.shadows.sm, gap: DS.spacing.lg }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1, marginRight: DS.spacing.md }}>
+                <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>Notifications</Text>
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Receive alerts for new applications</Text>
+              </View>
+              <Switch
+                value={businessSettings.notifications_enabled}
+                onValueChange={(value) => setBusinessSettings({ ...businessSettings, notifications_enabled: value })}
+                disabled={!editMode}
+                trackColor={{ false: DS.colors.border, true: DS.colors.primaryOrange }}
+              />
             </View>
-            <TextInput
-              value={restaurantData.phone}
-              onChangeText={(text) => setRestaurantData({ ...restaurantData, phone: text })}
-              editable={editMode}
-              style={{
-                borderWidth: 1,
-                borderColor: DS.colors.border,
-                borderRadius: DS.borderRadius.sm,
-                padding: DS.spacing.sm,
-                fontSize: 14,
-                color: editMode ? DS.colors.text : DS.colors.textLight,
-                backgroundColor: editMode ? DS.colors.backgroundWhite : DS.colors.background,
-              }}
-              placeholder="(555) 123-4567"
-              keyboardType="phone-pad"
-            />
-          </View>
 
-          {/* Website */}
-          <View style={{ marginBottom: DS.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.xs }}>
-              <Globe size={16} color={DS.colors.textLight} />
-              <Text style={{ color: DS.colors.textLight, fontSize: 12, marginLeft: DS.spacing.xs }}>
-                Website
-              </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1, marginRight: DS.spacing.md }}>
+                <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>Auto-Approve</Text>
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>Automatically accept verified creators</Text>
+              </View>
+              <Switch
+                value={businessSettings.auto_approve_creators}
+                onValueChange={(value) => setBusinessSettings({ ...businessSettings, auto_approve_creators: value })}
+                disabled={!editMode}
+                trackColor={{ false: DS.colors.border, true: DS.colors.primaryOrange }}
+              />
             </View>
-            <TextInput
-              value={restaurantData.website}
-              onChangeText={(text) => setRestaurantData({ ...restaurantData, website: text })}
-              editable={editMode}
-              style={{
-                borderWidth: 1,
-                borderColor: DS.colors.border,
-                borderRadius: DS.borderRadius.sm,
-                padding: DS.spacing.sm,
-                fontSize: 14,
-                color: editMode ? DS.colors.text : DS.colors.textLight,
-                backgroundColor: editMode ? DS.colors.backgroundWhite : DS.colors.background,
-              }}
-              placeholder="https://example.com"
-              keyboardType="url"
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* Business Email */}
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.xs }}>
-              <Mail size={16} color={DS.colors.textLight} />
-              <Text style={{ color: DS.colors.textLight, fontSize: 12, marginLeft: DS.spacing.xs }}>
-                Business Email
-              </Text>
-            </View>
-            <TextInput
-              value={businessSettings.business_email}
-              onChangeText={(text) => setBusinessSettings({ ...businessSettings, business_email: text })}
-              editable={editMode}
-              style={{
-                borderWidth: 1,
-                borderColor: DS.colors.border,
-                borderRadius: DS.borderRadius.sm,
-                padding: DS.spacing.sm,
-                fontSize: 14,
-                color: editMode ? DS.colors.text : DS.colors.textLight,
-                backgroundColor: editMode ? DS.colors.backgroundWhite : DS.colors.background,
-              }}
-              placeholder="business@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        {/* Campaign Settings */}
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          marginHorizontal: DS.spacing.md,
-          marginBottom: DS.spacing.md,
-          padding: DS.spacing.md,
-          borderRadius: DS.borderRadius.md,
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: DS.colors.text,
-            marginBottom: DS.spacing.md,
-          }}>Campaign Preferences</Text>
-
-          {/* Auto-approve creators */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: DS.spacing.md,
-          }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, color: DS.colors.text, marginBottom: 4 }}>
-                Auto-approve verified creators
-              </Text>
-              <Text style={{ fontSize: 12, color: DS.colors.textLight }}>
-                Automatically accept applications from verified creators
-              </Text>
-            </View>
-            <Switch
-              value={businessSettings.auto_approve_creators}
-              onValueChange={(value) => setBusinessSettings({ ...businessSettings, auto_approve_creators: value })}
-              disabled={!editMode}
-              trackColor={{ false: DS.colors.border, true: DS.colors.primary }}
-            />
-          </View>
-
-          {/* Notifications */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, color: DS.colors.text, marginBottom: 4 }}>
-                Campaign notifications
-              </Text>
-              <Text style={{ fontSize: 12, color: DS.colors.textLight }}>
-                Receive alerts for new applications
-              </Text>
-            </View>
-            <Switch
-              value={businessSettings.notifications_enabled}
-              onValueChange={(value) => setBusinessSettings({ ...businessSettings, notifications_enabled: value })}
-              disabled={!editMode}
-              trackColor={{ false: DS.colors.border, true: DS.colors.primary }}
-            />
           </View>
         </View>
 
         {/* Danger Zone */}
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          marginHorizontal: DS.spacing.md,
-          marginBottom: DS.spacing.xl,
-          padding: DS.spacing.md,
-          borderRadius: DS.borderRadius.md,
-          borderWidth: 1,
-          borderColor: '#FEE2E2',
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.sm }}>
-            <AlertCircle size={20} color="#DC2626" />
-            <Text style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: '#DC2626',
-              marginLeft: DS.spacing.xs,
-            }}>Danger Zone</Text>
+        <View style={{ marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.xxl }}>
+          <View style={{ backgroundColor: '#FEF2F2', borderRadius: DS.borderRadius.lg, padding: DS.spacing.lg, borderWidth: 1, borderColor: '#FECACA' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.md }}>
+              <AlertCircle size={20} color="#DC2626" style={{ marginRight: DS.spacing.sm }} />
+              <Text style={{ ...DS.typography.h3, color: '#DC2626' }}>Danger Zone</Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: DS.spacing.sm }}
+              onPress={() => Alert.alert('Contact Support', 'Please contact support to transfer ownership.')}
+            >
+              <Text style={{ ...DS.typography.button, color: '#DC2626' }}>Transfer Ownership</Text>
+            </TouchableOpacity>
+            
+            <View style={{ height: 1, backgroundColor: '#FECACA', marginVertical: DS.spacing.sm }} />
+            
+            <TouchableOpacity 
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: DS.spacing.sm }}
+              onPress={() => Alert.alert('Warning', 'This action cannot be undone. Are you sure?', [{ text: 'Cancel' }, { text: 'Remove', style: 'destructive' }])}
+            >
+              <Trash2 size={16} color="#DC2626" style={{ marginRight: DS.spacing.sm }} />
+              <Text style={{ ...DS.typography.button, color: '#DC2626' }}>Remove Restaurant Claim</Text>
+            </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#FEE2E2',
-              padding: DS.spacing.sm,
-              borderRadius: DS.borderRadius.sm,
-              alignItems: 'center',
-              marginBottom: DS.spacing.sm,
-            }}
-            onPress={() => {
-              Alert.alert(
-                'Transfer Ownership',
-                'Contact support to transfer restaurant ownership to another account.',
-                [{ text: 'OK' }]
-              );
-            }}
-          >
-            <Text style={{ color: '#DC2626', fontWeight: '600' }}>Transfer Ownership</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#DC2626',
-              padding: DS.spacing.sm,
-              borderRadius: DS.borderRadius.sm,
-              alignItems: 'center',
-            }}
-            onPress={() => {
-              Alert.alert(
-                'Remove Restaurant',
-                'This will permanently remove your restaurant claim. This action cannot be undone.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Remove', style: 'destructive', onPress: () => console.log('Remove restaurant') }
-                ]
-              );
-            }}
-          >
-            <Text style={{ color: 'white', fontWeight: '600' }}>Remove Restaurant Claim</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

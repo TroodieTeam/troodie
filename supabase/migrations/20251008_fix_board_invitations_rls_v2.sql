@@ -17,6 +17,8 @@ CREATE POLICY "Users can see their invitations"
 
 -- Create simplified UPDATE policy
 -- Users can update invitations where they are the invitee
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can update their invitations" ON board_invitations;
 CREATE POLICY "Users can update their invitations"
   ON board_invitations FOR UPDATE
   USING (invitee_id = auth.uid());

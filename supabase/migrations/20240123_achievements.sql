@@ -17,9 +17,13 @@ CREATE INDEX IF NOT EXISTS user_achievements_unlocked_at_idx ON public.user_achi
 ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "Users can view their own achievements" ON public;
 CREATE POLICY "Users can view their own achievements" ON public.user_achievements
   FOR SELECT USING (auth.uid() = user_id);
 
+-- Drop policy if it exists to make migration idempotent
+DROP POLICY IF EXISTS "System can insert achievements" ON public;
 CREATE POLICY "System can insert achievements" ON public.user_achievements
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 

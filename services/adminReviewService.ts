@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { statusNotificationService } from './statusNotificationService';
 
 /**
  * Admin Review Service
@@ -147,6 +146,11 @@ class AdminReviewService {
 
       const { data: { user: admin } } = await supabase.auth.getUser();
 
+      console.log('[AdminReviewService] Approving restaurant claim:', {
+        claimId,
+        adminId: admin?.id,
+      });
+
       // Get the claim details
       const { data: claim, error: claimError } = await supabase
         .from('restaurant_claims')
@@ -154,8 +158,22 @@ class AdminReviewService {
         .eq('id', claimId)
         .single();
 
-      if (claimError || !claim) {
-        throw new Error('Claim not found');
+      console.log('[AdminReviewService] Claim query result:', {
+        claim,
+        claimError,
+        errorCode: claimError?.code,
+        errorMessage: claimError?.message,
+        errorDetails: claimError?.details,
+        errorHint: claimError?.hint,
+      });
+
+      if (claimError) {
+        console.error('[AdminReviewService] Claim query error:', claimError);
+        throw new Error(`Claim not found: ${claimError.message} (Code: ${claimError.code})`);
+      }
+
+      if (!claim) {
+        throw new Error('Claim not found - no data returned');
       }
 
       if (claim.status !== 'pending') {
@@ -164,10 +182,11 @@ class AdminReviewService {
 
       // Start transaction-like operations
       // 1. Update claim status
+      // Note: restaurant_claims uses 'verified' not 'approved' per schema constraint
       const { error: updateClaimError } = await supabase
         .from('restaurant_claims')
         .update({
-          status: 'approved',
+          status: 'verified',
           reviewed_at: new Date().toISOString(),
           reviewed_by: admin?.id,
           review_notes: request.review_notes
@@ -177,60 +196,124 @@ class AdminReviewService {
       if (updateClaimError) throw updateClaimError;
 
       // 2. Link restaurant to user
-      const { error: updateRestaurantError } = await supabase
+      console.log('[AdminReviewService] Updating restaurant ownership:', {
+        restaurantId: claim.restaurant_id,
+        userId: claim.user_id,
+      });
+
+      const { error: updateRestaurantError, data: restaurantUpdateData } = await supabase
         .from('restaurants')
         .update({
           owner_id: claim.user_id,
-          claimed_at: new Date().toISOString()
+          is_claimed: true
         })
-        .eq('id', claim.restaurant_id);
+        .eq('id', claim.restaurant_id)
+        .select();
 
-      if (updateRestaurantError) throw updateRestaurantError;
+      console.log('[AdminReviewService] Restaurant update result:', {
+        error: updateRestaurantError,
+        data: restaurantUpdateData,
+        errorCode: updateRestaurantError?.code,
+        errorMessage: updateRestaurantError?.message,
+      });
+
+      if (updateRestaurantError) {
+        console.error('[AdminReviewService] Failed to update restaurant:', updateRestaurantError);
+        throw updateRestaurantError;
+      }
 
       // 3. Update user profile to restaurant owner
-      const { error: updateUserError } = await supabase
+      console.log('[AdminReviewService] Updating user account type:', {
+        userId: claim.user_id,
+      });
+
+      const { error: updateUserError, data: userUpdateData } = await supabase
         .from('users')
         .update({
           is_restaurant: true,
           account_type: 'business'
         })
-        .eq('id', claim.user_id);
+        .eq('id', claim.user_id)
+        .select();
 
-      if (updateUserError) throw updateUserError;
+      console.log('[AdminReviewService] User update result:', {
+        error: updateUserError,
+        data: userUpdateData,
+        errorCode: updateUserError?.code,
+        errorMessage: updateUserError?.message,
+      });
+
+      if (updateUserError) {
+        console.error('[AdminReviewService] Failed to update user:', updateUserError);
+        throw updateUserError;
+      }
 
       // 4. Create business profile if doesn't exist
-      const { data: existingProfile } = await supabase
+      console.log('[AdminReviewService] Checking business profile:', {
+        userId: claim.user_id,
+      });
+
+      const { data: existingProfile, error: profileCheckError } = await supabase
         .from('business_profiles')
         .select('id')
         .eq('user_id', claim.user_id)
         .single();
 
+      console.log('[AdminReviewService] Business profile check:', {
+        existingProfile,
+        error: profileCheckError,
+      });
+
       if (!existingProfile) {
-        await supabase
+        console.log('[AdminReviewService] Creating business profile:', {
+          userId: claim.user_id,
+          restaurantId: claim.restaurant_id,
+          email: claim.email,
+        });
+
+        const { error: insertProfileError, data: insertProfileData } = await supabase
           .from('business_profiles')
           .insert({
             user_id: claim.user_id,
             restaurant_id: claim.restaurant_id,
             verification_status: 'verified',
             business_email: claim.email
-          });
-      }
+          })
+          .select();
 
-      // Send notification if auto_notify is true
-      if (request.auto_notify !== false) {
-        try {
-          await statusNotificationService.notifyStatusChange({
-            userId: claim.user_id,
-            submissionId: claimId,
-            submissionType: 'restaurant_claim',
-            newStatus: 'approved',
-            restaurantName: claim.restaurant?.name,
-            reviewNotes: request.review_notes
-          });
-        } catch (error) {
-          console.error('Error sending notification:', error);
+        console.log('[AdminReviewService] Business profile insert result:', {
+          error: insertProfileError,
+          data: insertProfileData,
+          errorCode: insertProfileError?.code,
+          errorMessage: insertProfileError?.message,
+        });
+
+        if (insertProfileError) {
+          console.error('[AdminReviewService] Failed to create business profile:', insertProfileError);
+          // Don't throw - this is not critical, profile can be created later
         }
       }
+
+      // TODO: Notifications temporarily disabled - see engineering request ER-001
+      // Notification system needs RLS audit and fixes before re-enabling
+      // if (request.auto_notify !== false) {
+      //   try {
+      //     await statusNotificationService.notifyStatusChange({
+      //       userId: claim.user_id,
+      //       submissionId: claimId,
+      //       submissionType: 'restaurant_claim',
+      //       newStatus: 'verified',
+      //       restaurantName: claim.restaurant?.name,
+      //       reviewNotes: request.review_notes
+      //     });
+      //   } catch (error: any) {
+      //     console.warn('[AdminReviewService] Notification failed (non-critical):', {
+      //       error: error.message,
+      //       userId: claim.user_id,
+      //       claimId: claimId,
+      //     });
+      //   }
+      // }
 
       return {
         success: true,
@@ -310,20 +393,21 @@ class AdminReviewService {
         console.error('Error creating creator profile:', createProfileError);
       }
 
-      // Send notification if auto_notify is true
-      if (request.auto_notify !== false) {
-        try {
-          await statusNotificationService.notifyStatusChange({
-            userId: application.user_id,
-            submissionId: applicationId,
-            submissionType: 'creator_application',
-            newStatus: 'approved',
-            reviewNotes: request.review_notes
-          });
-        } catch (error) {
-          console.error('Error sending notification:', error);
-        }
-      }
+      // TODO: Notifications temporarily disabled - see engineering request ER-001
+      // Notification system needs RLS audit and fixes before re-enabling
+      // if (request.auto_notify !== false) {
+      //   try {
+      //     await statusNotificationService.notifyStatusChange({
+      //       userId: application.user_id,
+      //       submissionId: applicationId,
+      //       submissionType: 'creator_application',
+      //       newStatus: 'approved',
+      //       reviewNotes: request.review_notes
+      //     });
+      //   } catch (error) {
+      //     console.error('Error sending notification:', error);
+      //   }
+      // }
 
       return {
         success: true,

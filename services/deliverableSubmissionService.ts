@@ -7,15 +7,26 @@
  * - Updating/resubmitting deliverables
  * - URL validation
  * - Time tracking for auto-approval
+ *
+ * Engineering Task: Support Multiple Posts/Deliverables
+ * =====================================================
+ * Current implementation supports single deliverable submission per call.
+ * 
+ * Future Enhancement: Add support for batch/multiple deliverable submissions:
+ * - Add submitMultipleDeliverables() function that accepts array of SubmitDeliverableParams
+ * - Update deliverable_index calculation to handle multiple submissions
+ * - Add transaction support to ensure all-or-nothing submission for batch operations
+ * - Consider adding deliverable grouping/relationship for multi-post campaigns
+ * - Update validation to check for duplicate URLs within a batch
+ * - Add progress tracking for batch submissions
  */
 
 import { supabase } from '@/lib/supabase';
 import type {
-  DeliverableSubmission,
-  DeliverablePlatform,
-  DeliverableStatus,
-  EngagementMetrics,
-  PendingDeliverableSummary
+    DeliverablePlatform,
+    DeliverableStatus,
+    DeliverableSubmission,
+    EngagementMetrics
 } from '@/types/deliverableRequirements';
 
 // ============================================================================
@@ -23,10 +34,10 @@ import type {
 // ============================================================================
 
 export interface SubmitDeliverableParams {
-  creator_campaign_id: string;
+  campaign_application_id: string; // Changed from creator_campaign_id
   campaign_id: string;
   creator_id: string;
-  deliverable_index: number;
+  deliverable_index?: number; // Made optional - will auto-calculate if not provided
   platform: DeliverablePlatform;
   post_url: string;
   screenshot_url?: string;
@@ -47,6 +58,7 @@ export interface UpdateDeliverableParams {
 export interface ValidationResult {
   valid: boolean;
   platform?: DeliverablePlatform;
+  warning?: string;
   error?: string;
 }
 
@@ -54,61 +66,125 @@ export interface ValidationResult {
 // URL VALIDATION
 // ============================================================================
 
+// Platform detection patterns
+const PLATFORM_PATTERNS: Record<string, RegExp[]> = {
+  instagram: [
+    /instagram\.com\/(p|reel|reels|tv|stories|share)\//i,
+    /instagram\.com\/[^\/]+\/(p|reel)\//i,
+    /instagr\.am\//i,
+  ],
+  tiktok: [
+    /tiktok\.com\/@[^\/]+\/video\//i,
+    /tiktok\.com\/t\//i,
+    /vm\.tiktok\.com\//i,
+    /tiktok\.com\/@[^\/]+$/i, // Profile with video
+  ],
+  youtube: [
+    /youtube\.com\/watch/i,
+    /youtube\.com\/shorts\//i,
+    /youtube\.com\/live\//i,
+    /youtu\.be\//i,
+    /youtube\.com\/embed\//i,
+  ],
+  twitter: [
+    /twitter\.com\/[^\/]+\/status\//i,
+    /x\.com\/[^\/]+\/status\//i,
+    /mobile\.twitter\.com\/[^\/]+\/status\//i,
+  ],
+  facebook: [
+    /facebook\.com\/.+\/posts\//i,
+    /facebook\.com\/watch\//i,
+    /facebook\.com\/reel\//i,
+    /fb\.watch\//i,
+    /fb\.com\//i,
+  ],
+  threads: [
+    /threads\.net\/@[^\/]+\/post\//i,
+    /threads\.net\/t\//i,
+  ],
+  linkedin: [
+    /linkedin\.com\/posts\//i,
+    /linkedin\.com\/feed\/update\//i,
+  ],
+};
+
+function detectPlatformFromDomain(hostname: string): DeliverablePlatform {
+  if (hostname.includes('instagram')) return 'instagram';
+  if (hostname.includes('tiktok')) return 'tiktok';
+  if (hostname.includes('youtube') || hostname.includes('youtu.be')) return 'youtube';
+  if (hostname.includes('twitter') || hostname.includes('x.com')) return 'twitter';
+  if (hostname.includes('facebook') || hostname.includes('fb.')) return 'facebook';
+  if (hostname.includes('threads')) return 'instagram'; // Threads is Meta-owned, use instagram as fallback
+  if (hostname.includes('linkedin')) return 'other';
+  return 'other';
+}
+
 /**
  * Validates a social media URL and determines the platform
+ * Now supports more flexible patterns and warnings for unrecognized formats
  */
 export function validateSocialMediaUrl(url: string): ValidationResult {
+  // Basic URL validation
+  let urlObj: URL;
   try {
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname.toLowerCase();
-
-    // Instagram
-    if (hostname.includes('instagram.com')) {
-      if (urlObj.pathname.includes('/p/') || urlObj.pathname.includes('/reel/') || urlObj.pathname.includes('/stories/')) {
-        return { valid: true, platform: 'instagram' };
-      }
-      return { valid: false, error: 'Invalid Instagram post URL. Must be a post, reel, or story.' };
-    }
-
-    // TikTok
-    if (hostname.includes('tiktok.com')) {
-      if (urlObj.pathname.includes('/video/') || urlObj.pathname.includes('/@')) {
-        return { valid: true, platform: 'tiktok' };
-      }
-      return { valid: false, error: 'Invalid TikTok URL. Must be a video post.' };
-    }
-
-    // YouTube
-    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
-      if (urlObj.pathname.includes('/watch') || urlObj.pathname.includes('/shorts/') || hostname.includes('youtu.be')) {
-        return { valid: true, platform: 'youtube' };
-      }
-      return { valid: false, error: 'Invalid YouTube URL. Must be a video link.' };
-    }
-
-    // Facebook
-    if (hostname.includes('facebook.com') || hostname.includes('fb.com')) {
-      return { valid: true, platform: 'facebook' };
-    }
-
-    // Twitter/X
-    if (hostname.includes('twitter.com') || hostname.includes('x.com')) {
-      if (urlObj.pathname.includes('/status/')) {
-        return { valid: true, platform: 'twitter' };
-      }
-      return { valid: false, error: 'Invalid Twitter/X URL. Must be a tweet link.' };
-    }
-
+    urlObj = new URL(url);
+  } catch {
     return {
       valid: false,
-      error: 'Unsupported platform. Please use Instagram, TikTok, YouTube, Facebook, or Twitter.'
-    };
-  } catch (error) {
-    return {
-      valid: false,
-      error: 'Invalid URL format. Please enter a valid URL starting with https://'
+      platform: 'other',
+      error: 'Invalid URL format. Please enter a valid URL starting with https://',
     };
   }
+
+  // Require HTTPS
+  if (urlObj.protocol !== 'https:') {
+    return {
+      valid: false,
+      platform: 'other',
+      error: 'URL must use HTTPS',
+    };
+  }
+
+  const hostname = urlObj.hostname.toLowerCase();
+
+  // Detect platform using patterns
+  for (const [platform, patterns] of Object.entries(PLATFORM_PATTERNS)) {
+    for (const pattern of patterns) {
+      if (pattern.test(url)) {
+        return {
+          valid: true,
+          platform: platform as DeliverablePlatform,
+        };
+      }
+    }
+  }
+
+  // Check if it's a known social media domain but unrecognized format
+  const knownDomains = [
+    'instagram.com', 'tiktok.com', 'youtube.com', 'youtu.be',
+    'twitter.com', 'x.com', 'facebook.com', 'fb.com',
+    'threads.net', 'linkedin.com',
+  ];
+
+  const isKnownDomain = knownDomains.some(domain =>
+    hostname.includes(domain)
+  );
+
+  if (isKnownDomain) {
+    // Known platform but unknown format - allow with warning
+    return {
+      valid: true,
+      platform: detectPlatformFromDomain(hostname),
+      warning: 'URL format not recognized. Please verify the link is to a specific post.',
+    };
+  }
+
+  // Unknown platform - allow but warn
+  return {
+    valid: true,
+    platform: 'other',
+    warning: 'Platform not auto-detected. Please verify the link works and is publicly accessible.',
+  };
 }
 
 /**
@@ -131,7 +207,9 @@ export async function checkUrlAccessibility(url: string): Promise<boolean> {
  * Submit a new deliverable
  */
 export async function submitDeliverable(
-  params: SubmitDeliverableParams
+  params: Omit<SubmitDeliverableParams, 'deliverable_index'> & {
+    deliverable_index?: number;
+  }
 ): Promise<{ data: DeliverableSubmission | null; error: Error | null }> {
   try {
     // Validate URL
@@ -146,39 +224,153 @@ export async function submitDeliverable(
     // Auto-detect platform from URL if not explicitly set
     const platform = params.platform || urlValidation.platform || 'other';
 
-    // Insert deliverable
-    const { data, error } = await supabase
+    // Auto-calculate deliverable_index if not provided
+    let deliverableIndex = params.deliverable_index;
+    if (!deliverableIndex) {
+      // Try to get existing deliverables and calculate next index
+      // Handle case where deliverable_index column might not exist
+      const { data: existing, error: selectError } = await supabase
+        .from('campaign_deliverables')
+        .select('id, deliverable_index, submitted_at')
+        .eq('campaign_application_id', params.campaign_application_id);
+      
+      if (selectError && selectError.message?.includes('deliverable_index')) {
+        // Column doesn't exist - use count of existing deliverables + 1
+        const { count } = await supabase
+          .from('campaign_deliverables')
+          .select('*', { count: 'exact', head: true })
+          .eq('campaign_application_id', params.campaign_application_id);
+        
+        deliverableIndex = (count || 0) + 1;
+      } else if (existing && existing.length > 0) {
+        // Column exists - find max index
+        const maxIndex = Math.max(
+          ...existing
+            .map((e: any) => e.deliverable_index)
+            .filter((idx: any) => idx !== null && idx !== undefined)
+        );
+        deliverableIndex = maxIndex > 0 ? maxIndex + 1 : 1;
+      } else {
+        deliverableIndex = 1;
+      }
+    }
+
+    // Get restaurant_id from campaign
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('restaurant_id')
+      .eq('id', params.campaign_id)
+      .single();
+
+    // Insert deliverable - try with deliverable_index first, fallback without it
+    // Build base insert data (exclude columns that might not exist)
+    const insertData: any = {
+      campaign_application_id: params.campaign_application_id,
+      campaign_id: params.campaign_id,
+      creator_id: params.creator_id,
+      restaurant_id: campaign?.restaurant_id || null,
+      social_platform: platform, // Use social_platform instead of platform
+      platform_post_url: params.post_url,
+      content_url: params.post_url, // Use content_url as well
+      content_type: 'post', // Default content type
+      caption: params.caption,
+      status: 'pending_review',
+      submitted_at: new Date().toISOString()
+    };
+
+    // Add optional fields if they exist
+    if (params.screenshot_url) {
+      insertData.thumbnail_url = params.screenshot_url; // Use thumbnail_url instead of screenshot_url
+    }
+    if (params.notes_to_restaurant) {
+      insertData.review_notes = params.notes_to_restaurant; // Map notes_to_restaurant to review_notes
+    }
+
+    // Try to insert with deliverable_index first
+    let { data, error } = await supabase
       .from('campaign_deliverables')
       .insert({
-        creator_campaign_id: params.creator_campaign_id,
-        campaign_id: params.campaign_id,
-        creator_id: params.creator_id,
-        deliverable_index: params.deliverable_index,
-        platform,
-        post_url: params.post_url,
-        screenshot_url: params.screenshot_url,
-        caption: params.caption,
-        notes_to_restaurant: params.notes_to_restaurant,
-        engagement_metrics: params.engagement_metrics || {},
-        status: 'pending',
-        submitted_at: new Date().toISOString()
+        ...insertData,
+        deliverable_index: deliverableIndex,
       })
       .select('*')
       .single();
 
-    if (error) {
-      console.error('Error submitting deliverable:', error);
-      return { data: null, error };
+    // If error is about missing column, retry without deliverable_index
+    if (error && error.message?.includes('deliverable_index')) {
+      const { data: retryData, error: retryError } = await supabase
+        .from('campaign_deliverables')
+        .insert(insertData)
+        .select('*')
+        .single();
+      
+      if (retryError) {
+        // If error is about engagement_metrics or other missing columns, try without them
+        if (retryError.message?.includes('engagement_metrics') || 
+            retryError.message?.includes('screenshot_url') ||
+            retryError.message?.includes('notes_to_restaurant')) {
+          // Remove problematic fields and retry
+          const cleanData = { ...insertData };
+          delete cleanData.engagement_metrics;
+          delete cleanData.screenshot_url;
+          delete cleanData.notes_to_restaurant;
+          
+          const { data: finalData, error: finalError } = await supabase
+            .from('campaign_deliverables')
+            .insert(cleanData)
+            .select('*')
+            .single();
+          
+          if (finalError) {
+            console.error('Error submitting deliverable:', finalError);
+            return { data: null, error: finalError };
+          }
+          data = finalData;
+          error = null;
+        } else {
+          console.error('Error submitting deliverable:', retryError);
+          return { data: null, error: retryError };
+        }
+      } else {
+        data = retryData;
+        error = null;
+      }
+    } else if (error) {
+      // If error is about engagement_metrics or other missing columns, try without them
+      if (error.message?.includes('engagement_metrics') || 
+          error.message?.includes('screenshot_url') ||
+          error.message?.includes('notes_to_restaurant')) {
+        const cleanData = { ...insertData };
+        delete cleanData.engagement_metrics;
+        delete cleanData.screenshot_url;
+        delete cleanData.notes_to_restaurant;
+        delete cleanData.deliverable_index;
+        
+        const { data: finalData, error: finalError } = await supabase
+          .from('campaign_deliverables')
+          .insert(cleanData)
+          .select('*')
+          .single();
+        
+        if (finalError) {
+          console.error('Error submitting deliverable:', finalError);
+          return { data: null, error: finalError };
+        }
+        data = finalData;
+        error = null;
+      } else {
+        console.error('Error submitting deliverable:', error);
+        return { data: null, error };
+      }
     }
 
-    // Update creator_campaigns to reflect submission
+    // Update campaign_application to reflect submission
     await supabase
-      .from('creator_campaigns')
+      .from('campaign_applications')
       .update({
         restaurant_review_deadline: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), // 72 hours from now
-        updated_at: new Date().toISOString()
       })
-      .eq('id', params.creator_campaign_id);
+      .eq('id', params.campaign_application_id);
 
     return { data: data as DeliverableSubmission, error: null };
   } catch (error) {
@@ -208,16 +400,17 @@ export async function updateDeliverable(
           error: new Error(urlValidation.error || 'Invalid URL')
         };
       }
-      updates.post_url = params.post_url;
+      updates.platform_post_url = params.post_url;
       if (urlValidation.platform) {
-        updates.platform = urlValidation.platform;
+        updates.social_platform = urlValidation.platform;
       }
     }
 
-    if (params.screenshot_url !== undefined) updates.screenshot_url = params.screenshot_url;
+    // Map field names to match actual table schema
+    if (params.screenshot_url !== undefined) updates.thumbnail_url = params.screenshot_url;
     if (params.caption !== undefined) updates.caption = params.caption;
-    if (params.notes_to_restaurant !== undefined) updates.notes_to_restaurant = params.notes_to_restaurant;
-    if (params.engagement_metrics !== undefined) updates.engagement_metrics = params.engagement_metrics;
+    if (params.notes_to_restaurant !== undefined) updates.review_notes = params.notes_to_restaurant;
+    // engagement_metrics doesn't exist in the table - skip it
 
     // If updating after rejection, increment revision number and reset status
     const { data: currentData } = await supabase
@@ -325,21 +518,60 @@ export async function getDeliverableById(
  * Get all deliverables for a creator campaign
  */
 export async function getDeliverablesForCreatorCampaign(
-  creatorCampaignId: string
+  campaignApplicationId: string
 ): Promise<{ data: DeliverableSubmission[] | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase
+    // First, check if deliverable_index column exists by trying to select it
+    // If it doesn't exist, we'll use submitted_at for ordering instead
+    let query = supabase
       .from('campaign_deliverables')
       .select('*')
-      .eq('creator_campaign_id', creatorCampaignId)
-      .order('deliverable_index', { ascending: true });
+      .eq('campaign_application_id', campaignApplicationId);
+    
+    // Try to order by deliverable_index, fallback to submitted_at if column doesn't exist
+    try {
+      query = query.order('deliverable_index', { ascending: true });
+    } catch (e) {
+      // Column doesn't exist, order by submitted_at instead
+      query = query.order('submitted_at', { ascending: true });
+    }
+
+    const { data, error } = await query;
 
     if (error) {
+      // If error is about missing column, try without ordering
+      if (error.message?.includes('deliverable_index')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('campaign_deliverables')
+          .select('*')
+          .eq('campaign_application_id', campaignApplicationId)
+          .order('submitted_at', { ascending: true });
+        
+        if (fallbackError) {
+          console.error('Error fetching deliverables:', fallbackError);
+          return { data: null, error: fallbackError };
+        }
+        
+        // Map data to include deliverable_index (default to 1 if missing)
+        const mappedData = (fallbackData || []).map((item: any, index: number) => ({
+          ...item,
+          deliverable_index: item.deliverable_index || index + 1,
+        }));
+        
+        return { data: mappedData as DeliverableSubmission[], error: null };
+      }
+      
       console.error('Error fetching deliverables:', error);
       return { data: null, error };
     }
 
-    return { data: data as DeliverableSubmission[], error: null };
+    // Ensure deliverable_index exists in data (default to array index + 1 if missing)
+    const mappedData = (data || []).map((item: any, index: number) => ({
+      ...item,
+      deliverable_index: item.deliverable_index !== undefined ? item.deliverable_index : index + 1,
+    }));
+
+    return { data: mappedData as DeliverableSubmission[], error: null };
   } catch (error) {
     console.error('Error in getDeliverablesForCreatorCampaign:', error);
     return { data: null, error: error as Error };
@@ -350,7 +582,7 @@ export async function getDeliverablesForCreatorCampaign(
  * Get deliverable status summary for a creator campaign
  */
 export async function getDeliverableStatusSummary(
-  creatorCampaignId: string
+  campaignApplicationId: string
 ): Promise<{
   data: {
     total: number;
@@ -368,7 +600,7 @@ export async function getDeliverableStatusSummary(
     const { data: deliverables, error } = await supabase
       .from('campaign_deliverables')
       .select('status, submitted_at')
-      .eq('creator_campaign_id', creatorCampaignId);
+      .eq('campaign_application_id', campaignApplicationId);
 
     if (error) {
       console.error('Error fetching deliverable status:', error);
@@ -376,17 +608,17 @@ export async function getDeliverableStatusSummary(
     }
 
     const total = deliverables?.length || 0;
-    const pending = deliverables?.filter(d => d.status === 'pending').length || 0;
-    const approved = deliverables?.filter(d => d.status === 'approved').length || 0;
+    const pending = deliverables?.filter(d => d.status === 'pending_review' || d.status === 'pending').length || 0;
+    const approved = deliverables?.filter(d => d.status === 'approved' || d.status === 'auto_approved').length || 0;
     const rejected = deliverables?.filter(d => d.status === 'rejected').length || 0;
-    const needs_revision = deliverables?.filter(d => d.status === 'needs_revision').length || 0;
+    const needs_revision = deliverables?.filter(d => d.status === 'needs_revision' || d.status === 'revision_requested').length || 0;
     const all_approved = total > 0 && approved === total;
 
     // Calculate auto-approval deadline for pending deliverables
     let auto_approval_deadline: string | undefined;
     let hours_remaining: number | undefined;
 
-    const pendingDeliverable = deliverables?.find(d => d.status === 'pending');
+    const pendingDeliverable = deliverables?.find(d => d.status === 'pending_review' || d.status === 'pending');
     if (pendingDeliverable?.submitted_at) {
       const submittedAt = new Date(pendingDeliverable.submitted_at);
       const deadline = new Date(submittedAt.getTime() + 72 * 60 * 60 * 1000); // 72 hours
@@ -531,7 +763,7 @@ export function getUrgencyLevel(submittedAt: string): 'low' | 'medium' | 'high' 
  * Submit multiple deliverables at once
  */
 export async function submitMultipleDeliverables(
-  submissions: SubmitDeliverableParams[]
+  submissions: Omit<SubmitDeliverableParams, 'deliverable_index'>[]
 ): Promise<{
   data: DeliverableSubmission[] | null;
   errors: Array<{ index: number; error: Error }>;
@@ -555,44 +787,217 @@ export async function submitMultipleDeliverables(
 }
 
 /**
+ * Get required deliverables for a campaign
+ */
+export async function getRequiredDeliverables(
+  campaignId: string
+): Promise<{
+  data: {
+    total_required: number;
+    deliverables: Array<{
+      index: number;
+      platform?: DeliverablePlatform;
+      description?: string;
+      content_type?: string;
+      required: boolean;
+    }>;
+  } | null;
+  error: Error | null;
+}> {
+  try {
+    // First try to get deliverable_requirements (new field)
+    const { data: campaign, error } = await supabase
+      .from('campaigns')
+      .select('deliverable_requirements')
+      .eq('id', campaignId)
+      .single();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    // Try to get old deliverables field separately (may not exist)
+    let oldDeliverables: any = null;
+    try {
+      const { data: oldData } = await supabase
+        .from('campaigns')
+        .select('deliverables')
+        .eq('id', campaignId)
+        .single();
+      oldDeliverables = oldData?.deliverables;
+    } catch (e) {
+      // Column doesn't exist - that's fine, we'll just use deliverable_requirements
+      console.log('Old deliverables column does not exist, using deliverable_requirements only');
+    }
+
+    // Parse deliverable_requirements JSONB
+    const requirements = campaign?.deliverable_requirements || {};
+    let deliverablesList = requirements.deliverables || [];
+    
+    // Check the old deliverables field as a fallback/source of truth
+    // Some campaigns may have incorrect deliverable_requirements but correct old deliverables field
+    let oldDeliverablesList: any[] = [];
+    if (oldDeliverables) {
+      const oldDeliverablesArray = Array.isArray(oldDeliverables) 
+        ? oldDeliverables 
+        : [];
+      oldDeliverablesList = oldDeliverablesArray.map((deliverable: any, index: number) => {
+        // Handle both string and object formats
+        if (typeof deliverable === 'string') {
+          return {
+            index: index + 1,
+            description: deliverable,
+            required: true
+          };
+        } else if (deliverable && typeof deliverable === 'object') {
+          return {
+            index: deliverable.index !== undefined ? deliverable.index : index + 1,
+            platform: deliverable.platform,
+            description: deliverable.description || deliverable,
+            content_type: deliverable.content_type || deliverable.type,
+            required: deliverable.required !== false
+          };
+        }
+        return {
+          index: index + 1,
+          description: String(deliverable),
+          required: true
+        };
+      });
+    }
+    
+    // Use old deliverables if:
+    // 1. deliverable_requirements is empty, OR
+    // 2. old deliverables has fewer items (likely more accurate for campaigns that only require 1)
+    if (oldDeliverablesList.length > 0) {
+      if (deliverablesList.length === 0 || oldDeliverablesList.length < deliverablesList.length) {
+        deliverablesList = oldDeliverablesList;
+      }
+    }
+    
+    // If still no deliverables found, default to 1 deliverable
+    // This handles campaigns that have neither deliverable_requirements nor deliverables set
+    if (deliverablesList.length === 0) {
+      deliverablesList = [{
+        index: 1,
+        description: 'Social Media Post',
+        required: true
+      }];
+    }
+
+    // Helper function to parse platform from type string
+    const parsePlatform = (type?: string, platform?: string): DeliverablePlatform | undefined => {
+      if (platform) {
+        return platform.toLowerCase() as DeliverablePlatform;
+      }
+      if (!type) return undefined;
+      const lowerType = type.toLowerCase();
+      if (lowerType.includes('instagram')) return 'instagram';
+      if (lowerType.includes('tiktok')) return 'tiktok';
+      if (lowerType.includes('youtube')) return 'youtube';
+      if (lowerType.includes('facebook')) return 'facebook';
+      if (lowerType.includes('twitter')) return 'twitter';
+      return undefined;
+    };
+
+    const deliverables = deliverablesList.map((req: any, arrayIndex: number) => ({
+      index: req.index !== undefined ? req.index : arrayIndex + 1, // Use req.index if present, otherwise use array index + 1
+      platform: parsePlatform(req.type, req.platform),
+      description: req.description,
+      content_type: req.content_type || req.type, // Support both 'content_type' and 'type' fields
+      required: req.required !== false, // Default to required
+    }));
+
+    return {
+      data: {
+        total_required: deliverables.length,
+        deliverables,
+      },
+      error: null,
+    };
+  } catch (error) {
+    console.error('Error in getRequiredDeliverables:', error);
+    return { data: null, error: error as Error };
+  }
+}
+
+/**
  * Get deliverable submission progress
  */
 export async function getSubmissionProgress(
-  creatorCampaignId: string,
-  requiredDeliverables: number
+  campaignApplicationId: string,
+  campaignId: string
 ): Promise<{
   data: {
     submitted: number;
     required: number;
     percentage: number;
     complete: boolean;
+    deliverables: Array<{
+      index: number;
+      status: string;
+      submitted_at?: string;
+      platform?: DeliverablePlatform;
+    }>;
   } | null;
   error: Error | null;
 }> {
   try {
-    const { data: deliverables, error } = await supabase
-      .from('campaign_deliverables')
-      .select('id')
-      .eq('creator_campaign_id', creatorCampaignId);
-
-    if (error) {
-      return { data: null, error };
+    // Get required deliverables
+    const { data: required, error: reqError } = await getRequiredDeliverables(campaignId);
+    if (reqError) {
+      return { data: null, error: reqError };
     }
 
-    const submitted = deliverables?.length || 0;
-    const percentage = requiredDeliverables > 0
-      ? Math.round((submitted / requiredDeliverables) * 100)
+    // Get submitted deliverables (campaignApplicationId is already passed)
+    const { data: submitted, error: subError } = await getDeliverablesForCreatorCampaign(
+      campaignApplicationId
+    );
+    if (subError) {
+      return { data: null, error: subError };
+    }
+
+    if (!required) {
+      return { data: null, error: new Error('Failed to fetch required deliverables') };
+    }
+
+    // Build deliverables array with status
+    const deliverables = required.deliverables.map((req, reqIndex) => {
+      // Find submitted deliverable by index
+      // If deliverable_index column exists, use it; otherwise match by array position
+      const submittedDeliverable = submitted?.find((s: any, sIndex: number) => {
+        if (s.deliverable_index !== undefined && s.deliverable_index !== null) {
+          return s.deliverable_index === req.index;
+        }
+        // Fallback: match by array position (assuming order matches)
+        return sIndex === reqIndex;
+      });
+
+      return {
+        index: req.index,
+        status: submittedDeliverable
+          ? submittedDeliverable.status
+          : 'pending',
+        submitted_at: submittedDeliverable?.submitted_at,
+        platform: submittedDeliverable?.platform || req.platform,
+      };
+    });
+
+    const submittedCount = submitted?.length || 0;
+    const requiredCount = required.total_required;
+    const percentage = requiredCount > 0
+      ? Math.round((submittedCount / requiredCount) * 100)
       : 0;
-    const complete = submitted >= requiredDeliverables;
 
     return {
       data: {
-        submitted,
-        required: requiredDeliverables,
+        submitted: submittedCount,
+        required: requiredCount,
         percentage,
-        complete
+        complete: submittedCount >= requiredCount,
+        deliverables,
       },
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('Error in getSubmissionProgress:', error);

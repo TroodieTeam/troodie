@@ -41,7 +41,7 @@ BEGIN
     AND table_name = 'users' 
     AND column_name = 'email'
   ) THEN
-    ALTER TABLE public.users ADD COLUMN email TEXT;
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email TEXT;
   END IF;
 END $$;
 

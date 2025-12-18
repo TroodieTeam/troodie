@@ -3,21 +3,21 @@ import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
-  Modal,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Modal,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -28,6 +28,186 @@ interface VideoViewerProps {
   initialIndex?: number;
   onClose: () => void;
 }
+
+interface VideoItemProps {
+  videoUri: string;
+  index: number;
+  player: any;
+  isActive: boolean;
+  currentIndex: number;
+  swipeX: Animated.SharedValue<number>;
+  swipeGesture: any;
+  duration: number;
+  actualCurrentTime: number;
+  progress: number;
+  isPlaying: boolean;
+  onPlayPause: () => void;
+  onRestart: () => void;
+  onSeek: (seekTime: number) => void;
+  formatTime: (seconds: number) => string;
+}
+
+const VideoItem = React.memo(({
+  videoUri,
+  index,
+  player,
+  isActive,
+  currentIndex,
+  swipeX,
+  swipeGesture,
+  duration,
+  actualCurrentTime,
+  progress,
+  isPlaying,
+  onPlayPause,
+  onRestart,
+  onSeek,
+  formatTime,
+}: VideoItemProps) => {
+  const animatedStyle = useAnimatedStyle(() => {
+    const xOffset = swipeX.value + (index - currentIndex) * SCREEN_WIDTH;
+    return {
+      opacity: withTiming(isActive ? 1 : 0, { duration: 200 }),
+      transform: [{ translateX: xOffset }],
+    };
+  });
+
+  return (
+    <GestureDetector gesture={swipeGesture}>
+      <Animated.View
+        style={[
+          styles.videoWrapper,
+          animatedStyle,
+          { zIndex: isActive ? 1 : 0 },
+        ]}
+        pointerEvents={isActive ? 'auto' : 'none'}
+      >
+        <VideoView
+          player={player}
+          style={styles.video}
+          contentFit="contain"
+          nativeControls={false}
+          fullscreenOptions={{ enable: false }}
+          allowsPictureInPicture={false}
+        />
+        
+        {/* Video Controls - Always visible when active */}
+        {isActive && (
+          <>
+            {/* Play/Pause button - only show when paused */}
+            {!isPlaying && (
+              <TouchableOpacity
+                style={styles.playPauseOverlay}
+                onPress={onPlayPause}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="play"
+                  size={64}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* Video Controls Bar - Always visible when video is active */}
+            <View style={styles.controlsContainer}>
+                {/* Scrubber */}
+                {duration > 0 ? (
+                  <View style={styles.progressContainer}>
+                    <TouchableOpacity
+                      style={styles.progressBar}
+                      activeOpacity={1}
+                      onPress={(e) => {
+                        const { locationX } = e.nativeEvent;
+                        const progressBarWidth = SCREEN_WIDTH - 40 - 32; // Account for padding
+                        const seekPercent = Math.max(0, Math.min(1, locationX / progressBarWidth));
+                        const seekTime = seekPercent * duration;
+                        onSeek(seekTime);
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: `${progress}%`,
+                          },
+                        ]}
+                      />
+                      <View
+                        style={[
+                          styles.progressThumb,
+                          {
+                            left: `${progress}%`,
+                            marginLeft: -6,
+                          },
+                        ]}
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.timeContainer}>
+                      <Text style={styles.timeText}>
+                        {formatTime(actualCurrentTime)}
+                      </Text>
+                      <Text style={styles.timeText}>
+                        {formatTime(duration)}
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View style={[styles.progressFill, { width: '0%' }]} />
+                    </View>
+                    <View style={styles.timeContainer}>
+                      <Text style={styles.timeText}>0:00</Text>
+                      <Text style={styles.timeText}>Loading...</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Control Buttons */}
+                <View style={styles.controlButtons}>
+                  <TouchableOpacity
+                    style={styles.controlButton}
+                    onPress={onRestart}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="refresh" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.controlButton}
+                    onPress={onPlayPause}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isPlaying ? 'pause' : 'play'}
+                      size={24}
+                      color="#FFFFFF"
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.controlButton}
+                    onPress={() => onSeek(Math.max(0, actualCurrentTime - 10))}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="play-back" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.controlButton}
+                    onPress={() => onSeek(Math.min(duration, actualCurrentTime + 10))}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="play-forward" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+          </>
+        )}
+      </Animated.View>
+    </GestureDetector>
+  );
+});
+
+VideoItem.displayName = 'VideoItem';
 
 export function VideoViewer({
   visible,
@@ -576,146 +756,25 @@ export function VideoViewer({
               const player = players[index];
               if (!player) return null;
               
-              const animatedStyle = useAnimatedStyle(() => {
-                const xOffset = swipeX.value + (index - currentIndex) * SCREEN_WIDTH;
-                return {
-                  opacity: withTiming(isActive ? 1 : 0, { duration: 200 }),
-                  transform: [{ translateX: xOffset }],
-                };
-              });
-
               return (
-                <GestureDetector key={index} gesture={createSwipeGesture()}>
-                  <Animated.View
-                    style={[
-                      styles.videoWrapper,
-                      animatedStyle,
-                      { zIndex: isActive ? 1 : 0 },
-                    ]}
-                    pointerEvents={isActive ? 'auto' : 'none'}
-                  >
-                    <VideoView
-                      player={player}
-                      style={styles.video}
-                      contentFit="contain"
-                      nativeControls={false}
-                      fullscreenOptions={{ enable: false }}
-                      allowsPictureInPicture={false}
-                    />
-                    
-                    {/* Video Controls - Always visible when active */}
-                    {isActive && (
-                      <>
-                        {/* Play/Pause button - only show when paused */}
-                        {!isPlaying && (
-                          <TouchableOpacity
-                            style={styles.playPauseOverlay}
-                            onPress={handlePlayPause}
-                            activeOpacity={0.8}
-                          >
-                            <Ionicons
-                              name="play"
-                              size={64}
-                              color="#FFFFFF"
-                            />
-                          </TouchableOpacity>
-                        )}
-
-                        {/* Video Controls Bar - Always visible when video is active */}
-                        <View style={styles.controlsContainer}>
-                            {/* Scrubber */}
-                            {duration > 0 ? (
-                              <View style={styles.progressContainer}>
-                                <TouchableOpacity
-                                  style={styles.progressBar}
-                                  activeOpacity={1}
-                                  onPress={(e) => {
-                                    const { locationX } = e.nativeEvent;
-                                    const progressBarWidth = SCREEN_WIDTH - 40 - 32; // Account for padding
-                                    const seekPercent = Math.max(0, Math.min(1, locationX / progressBarWidth));
-                                    const seekTime = seekPercent * duration;
-                                    handleSeek(seekTime);
-                                  }}
-                                >
-                                  <View
-                                    style={[
-                                      styles.progressFill,
-                                      {
-                                        width: `${progress}%`,
-                                      },
-                                    ]}
-                                  />
-                                  <View
-                                    style={[
-                                      styles.progressThumb,
-                                      {
-                                        left: `${progress}%`,
-                                        marginLeft: -6,
-                                      },
-                                    ]}
-                                  />
-                                </TouchableOpacity>
-                                <View style={styles.timeContainer}>
-                                  <Text style={styles.timeText}>
-                                    {formatTime(actualCurrentTime)}
-                                  </Text>
-                                  <Text style={styles.timeText}>
-                                    {formatTime(duration)}
-                                  </Text>
-                                </View>
-                              </View>
-                            ) : (
-                              <View style={styles.progressContainer}>
-                                <View style={styles.progressBar}>
-                                  <View style={[styles.progressFill, { width: '0%' }]} />
-                                </View>
-                                <View style={styles.timeContainer}>
-                                  <Text style={styles.timeText}>0:00</Text>
-                                  <Text style={styles.timeText}>Loading...</Text>
-                                </View>
-                              </View>
-                            )}
-
-                            {/* Control Buttons */}
-                            <View style={styles.controlButtons}>
-                              <TouchableOpacity
-                                style={styles.controlButton}
-                                onPress={handleRestart}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name="refresh" size={24} color="#FFFFFF" />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.controlButton}
-                                onPress={handlePlayPause}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons
-                                  name={isPlaying ? 'pause' : 'play'}
-                                  size={24}
-                                  color="#FFFFFF"
-                                />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.controlButton}
-                                onPress={() => handleSeek(Math.max(0, actualCurrentTime - 10))}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name="play-back" size={24} color="#FFFFFF" />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.controlButton}
-                                onPress={() => handleSeek(Math.min(duration, actualCurrentTime + 10))}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name="play-forward" size={24} color="#FFFFFF" />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                      </>
-                    )}
-                  </Animated.View>
-                </GestureDetector>
+                <VideoItem
+                  key={index}
+                  videoUri={videoUri}
+                  index={index}
+                  player={player}
+                  isActive={isActive}
+                  currentIndex={currentIndex}
+                  swipeX={swipeX}
+                  swipeGesture={createSwipeGesture()}
+                  duration={duration}
+                  actualCurrentTime={actualCurrentTime}
+                  progress={progress}
+                  isPlaying={isPlaying}
+                  onPlayPause={handlePlayPause}
+                  onRestart={handleRestart}
+                  onSeek={handleSeek}
+                  formatTime={formatTime}
+                />
               );
             })}
           </View>

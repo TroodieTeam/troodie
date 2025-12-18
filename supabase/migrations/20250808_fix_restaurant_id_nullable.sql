@@ -58,6 +58,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create the trigger
+-- Drop trigger if it exists to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_validate_post_requirements ON posts;
 CREATE TRIGGER trigger_validate_post_requirements
   BEFORE INSERT OR UPDATE ON posts
   FOR EACH ROW

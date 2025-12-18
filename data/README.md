@@ -1,6 +1,13 @@
 # Data Directory
 
-This directory contains data files and setup scripts for demo data seeding.
+This directory contains data files and setup scripts for demo data seeding and test data references.
+
+## Directory Structure
+
+- **`test-data/`** - Test data reference files (see `test-data/README.md`)
+  - `dev/` - Development environment test data IDs and queries
+  - `prod/` - Production environment reference data (read-only)
+- **Other files** - Demo data seeding scripts and mock data
 
 ## Setup
 
