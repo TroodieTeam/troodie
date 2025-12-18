@@ -78,8 +78,16 @@ BEGIN
   DELETE FROM business_profiles
   WHERE user_id = test_user_id;
   
+  -- Delete ALL claims for this user AND for this restaurant (to avoid unique constraint violation)
   DELETE FROM restaurant_claims
-  WHERE user_id = test_user_id;
+  WHERE user_id = test_user_id
+     OR (test_restaurant_id IS NOT NULL AND restaurant_id = test_restaurant_id);
+  
+  -- Also delete any verified claims that might exist (unique_verified_claim constraint)
+  -- This ensures we can create a fresh claim
+  DELETE FROM restaurant_claims
+  WHERE restaurant_id = test_restaurant_id
+    AND status IN ('verified', 'approved');
 
 END
 $proc$;

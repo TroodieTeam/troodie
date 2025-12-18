@@ -14,7 +14,7 @@ import { pushNotificationService } from '@/services/pushNotificationService';
 import { PersonaType } from '@/types/onboarding';
 import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   Activity,
   BarChart3,
@@ -34,7 +34,7 @@ import {
   Target,
   TrendingUp
 } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -88,6 +88,7 @@ export default function MoreScreen() {
   const ADMIN_USER_IDS = [
     'b08d9600-358d-4be9-9552-4607d9f50227',
     '31744191-f7c0-44a4-8673-10b34ccbb87f',
+    '5373475d-b6b5-4abd-bd47-8ec515c44a47',
     'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
   ];
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
@@ -109,18 +110,27 @@ export default function MoreScreen() {
   const [userProfile, setUserProfile] = useState<any>(null);
 
   // Fetch user profile from users table
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user?.id) return;
-      try {
-        const profile = await profileService.getProfile(user.id);
-        setUserProfile(profile);
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-      }
-    };
-    fetchProfile();
+  const fetchProfile = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const profile = await profileService.getProfile(user.id);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
   }, [user?.id]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  // Refresh profile when screen comes into focus
+  // This ensures the latest data is shown after editing the creator profile
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [fetchProfile])
+  );
 
   // Check notification permission status on mount
   React.useEffect(() => {

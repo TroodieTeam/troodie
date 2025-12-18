@@ -190,6 +190,22 @@ export class CommentsManager {
       this.cache.removeComment(postId, commentId);
       this.cache.updateCommentsCount(postId, -1);
       
+      // Get actual count from database (single source of truth)
+      // This ensures we emit the correct count even if cache is stale
+      const actualCount = await this.getCount(postId);
+      
+      // Update cache with actual count
+      this.cache.setCommentsCount(postId, actualCount);
+      
+      console.log(`[CommentsManager] 📢 Emitting POST_ENGAGEMENT_CHANGED (delete) - postId: ${postId.substring(0, 8)}..., commentsCount: ${actualCount} (from database)`);
+      
+      // Emit event so components can update immediately
+      // This ensures UI updates even if realtime subscription hasn't fired yet
+      eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, {
+        postId,
+        commentsCount: actualCount
+      });
+      
       // Invalidate stats cache to force fresh calculation on next read
       this.cache.invalidateStats(postId);
 

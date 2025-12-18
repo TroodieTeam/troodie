@@ -227,7 +227,7 @@ export default function RestaurantSettings() {
         borderBottomWidth: 1,
         borderBottomColor: DS.colors.border,
       }}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
           <ArrowLeft size={24} color={DS.colors.textDark} />
         </TouchableOpacity>
         <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>Restaurant Settings</Text>

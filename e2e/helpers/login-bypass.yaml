@@ -1,0 +1,72 @@
+appId: com.troodie.troodie.com
+---
+# Reusable: Login with bypass account (OTP: 000000)
+# Usage: runFlow with env.TEST_EMAIL set
+# Example: 
+#   env:
+#     TEST_EMAIL: prod-creator1@bypass.com
+#   - runFlow: helpers/login-bypass.yaml
+
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+# Wait for welcome screen
+- assertVisible:
+    text: "Welcome"
+    timeout: 10000
+    optional: true
+
+# Tap Get Started or Sign In
+- tapOn:
+    text: "Get Started"
+    optional: true
+
+- tapOn:
+    text: "Sign In"
+    optional: true
+
+# Enter email
+- tapOn:
+    id: "email-input"
+    optional: true
+
+- tapOn:
+    text: "Continue with Email"
+    optional: true
+
+- inputText: ${TEST_EMAIL}
+- hideKeyboard
+
+# Continue to OTP
+- tapOn:
+    text: "Continue"
+    optional: true
+
+- tapOn:
+    text: "Send Code"
+    optional: true
+
+- tapOn:
+    text: "Next"
+    optional: true
+
+# Wait for OTP screen
+- waitForAnimationToEnd
+
+# Enter OTP: 000000 (bypass code)
+- inputText: "000000"
+
+# Wait for login
+- waitForAnimationToEnd
+
+# Verify logged in - look for main navigation
+- assertVisible:
+    id: "tab-bar"
+    timeout: 15000
+    optional: true
+
+- assertVisible:
+    text: "Home"
+    timeout: 10000
+    optional: true

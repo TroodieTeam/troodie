@@ -438,7 +438,7 @@ export default function CreatorPaymentsDashboard() {
     <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
       <View style={{ padding: DS.spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.lg }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ marginRight: DS.spacing.md }}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/more')} style={{ marginRight: DS.spacing.md }}>
             <ArrowLeft size={24} color={DS.colors.text} />
           </TouchableOpacity>
           <Text style={{ fontSize: 24, fontWeight: '700', color: DS.colors.text }}>

@@ -74,7 +74,8 @@ export default function ManageCampaigns() {
       const ADMIN_USER_IDS = [
         'b08d9600-358d-4be9-9552-4607d9f50227',
         '31744191-f7c0-44a4-8673-10b34ccbb87f',
-        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599'
+        'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599',
+        '5373475d-b6b5-4abd-bd47-8ec515c44a47'
       ];
       const isAdmin = ADMIN_USER_IDS.includes(user.id);
 
@@ -179,7 +180,7 @@ export default function ManageCampaigns() {
           marginBottom: DS.spacing.md,
         }}>
           <TouchableOpacity 
-            onPress={() => router.back()}
+            onPress={() => router.push('/(tabs)/more')}
             style={{
               padding: DS.spacing.xs,
               marginLeft: -DS.spacing.xs,

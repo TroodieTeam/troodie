@@ -6,15 +6,24 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-nativ
 interface ExploreHeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onBack?: () => void;
 }
 
-export function ExploreHeader({ searchQuery, onSearchChange }: ExploreHeaderProps) {
+export function ExploreHeader({ searchQuery, onSearchChange, onBack }: ExploreHeaderProps) {
   const router = useRouter();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      router.push('/(tabs)/more');
+    }
+  };
 
   return (
     <View style={styles.header}>
       <View style={styles.headerTop}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color="#000" />
         </TouchableOpacity>
         <View style={styles.titleContainer}>

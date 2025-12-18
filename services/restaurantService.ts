@@ -1,4 +1,5 @@
 import { DEFAULT_IMAGES, getRestaurantPlaceholder } from '@/constants/images'
+import { TROODIE_RESTAURANT } from '@/constants/systemAccounts'
 import { Database, supabase } from '@/lib/supabase'
 import { RestaurantInfo } from '@/types/core'
 import { NetworkError, NotFoundError, ServerError, TimeoutError, isNetworkError } from '@/types/errors'
@@ -620,6 +621,12 @@ export const restaurantService = {
           request = request.eq('is_test_restaurant', false);
         }
 
+        // Exclude Troodie Restaurant (platform-managed restaurant for creator marketplace)
+        // Exclude by ID and name containing "Troodie"
+        request = request
+          .neq('id', TROODIE_RESTAURANT.ID)
+          .not('name', 'ilike', '%Troodie%')
+
         // If there's a search query, use server-side search
         if (searchQuery && searchQuery.trim()) {
           const query = searchQuery.trim()
@@ -639,7 +646,20 @@ export const restaurantService = {
         if (error) {
           throw transformError(error)
         }
-        return data || []
+        
+        // Additional client-side filtering to exclude platform-managed restaurants
+        // and any restaurants with "Troodie" in the name (case-insensitive)
+        const filtered = (data || []).filter(restaurant => {
+          // Exclude by ID
+          if (restaurant.id === TROODIE_RESTAURANT.ID) return false;
+          // Exclude by name containing "Troodie" (case-insensitive)
+          if (restaurant.name?.toLowerCase().includes('troodie')) return false;
+          // Exclude platform-managed restaurants
+          if (restaurant.is_platform_managed === true) return false;
+          return true;
+        });
+        
+        return filtered
       })
     } catch (error) {
       console.error('Error fetching restaurants for explore:', error)

@@ -1,0 +1,146 @@
+appId: com.troodie.troodie.com
+---
+# Test: Creator submits deliverable for accepted campaign
+# Priority: P1 (Critical for Creator Marketplace)
+# Prerequisites:
+#   - Creator account logged in
+#   - Accepted application exists
+# Tags: creator, deliverable, submission
+
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+
+# Login as creator
+- runFlow: helpers/login-bypass.yaml
+
+# Navigate to My Campaigns
+- tapOn:
+    id: "tab-discover"
+    optional: true
+
+- tapOn:
+    text: "My Campaigns"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Go to Active tab
+- tapOn:
+    text: "Active"
+
+- waitForAnimationToEnd
+
+# Find accepted campaign
+- assertVisible:
+    text: "Active"
+    timeout: 10000
+    optional: true
+
+# Tap on active campaign
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Tap Submit Deliverable
+- scrollUntilVisible:
+    element:
+      text: "Submit"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Submit Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+
+- waitForAnimationToEnd
+
+# Fill deliverable form
+- assertVisible:
+    text: "Deliverable"
+    timeout: 10000
+    optional: true
+
+# Enter content URL
+- tapOn:
+    id: "content-url-input"
+    optional: true
+
+- tapOn:
+    text: "URL"
+    optional: true
+
+- inputText: "https://www.instagram.com/reel/TEST123MAESTRO/"
+- hideKeyboard
+
+# Enter notes (optional)
+- tapOn:
+    id: "notes-input"
+    optional: true
+
+- scrollUntilVisible:
+    element:
+      id: "notes-input"
+    direction: DOWN
+    optional: true
+
+- inputText: "Here's my content for the campaign. Posted on Instagram as requested!"
+- hideKeyboard
+
+# Submit
+- scrollUntilVisible:
+    element:
+      text: "Submit"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Submit"
+
+# Confirm submission
+- tapOn:
+    text: "Confirm"
+    optional: true
+
+# Wait for submission
+- waitForAnimationToEnd
+
+# Verify success
+- assertVisible:
+    text: "submitted"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Success"
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+# Take screenshot
+- takeScreenshot: "creator-deliverable-submitted"
+
+# Verify deliverable status
+- assertVisible:
+    text: "Pending Review"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "pending"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "creator-deliverable-pending-review"

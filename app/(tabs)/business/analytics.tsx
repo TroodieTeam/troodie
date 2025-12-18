@@ -310,7 +310,7 @@ export default function BusinessAnalytics() {
           justifyContent: 'space-between',
           padding: DS.spacing.md,
         }}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
             <ArrowLeft size={24} color={DS.colors.text} />
           </TouchableOpacity>
           <Text style={{

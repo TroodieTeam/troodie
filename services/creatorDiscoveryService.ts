@@ -503,6 +503,19 @@ export async function updateCreatorProfile(
   updates: Partial<CreatorProfile>
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // First, get the user_id from the creator_profile
+    const { data: creatorProfile, error: profileError } = await supabase
+      .from('creator_profiles')
+      .select('user_id')
+      .eq('id', creatorId)
+      .single();
+
+    if (profileError || !creatorProfile) {
+      throw new Error('Creator profile not found');
+    }
+
+    const userId = creatorProfile.user_id;
+
     const updateData: any = {
       display_name: updates.displayName,
       bio: updates.bio || null,
@@ -516,12 +529,41 @@ export async function updateCreatorProfile(
       updateData.availability_status = updates.availabilityStatus;
     }
 
+    // Add avatar_url if provided
+    if (updates.avatarUrl !== undefined) {
+      updateData.avatar_url = updates.avatarUrl || null;
+    }
+
+    // Update creator_profiles table
     const { error } = await supabase
       .from('creator_profiles')
       .update(updateData)
       .eq('id', creatorId);
 
     if (error) throw error;
+
+    // Sync display_name and avatar_url to users table for app-wide consistency
+    const userUpdateData: any = {};
+    if (updates.displayName !== undefined) {
+      userUpdateData.name = updates.displayName;
+    }
+    if (updates.avatarUrl !== undefined) {
+      userUpdateData.avatar_url = updates.avatarUrl || null;
+    }
+
+    // Only update users table if there are changes
+    if (Object.keys(userUpdateData).length > 0) {
+      const { error: userError } = await supabase
+        .from('users')
+        .update(userUpdateData)
+        .eq('id', userId);
+
+      if (userError) {
+        console.error('[updateCreatorProfile] Error syncing to users table:', userError);
+        // Don't fail the whole operation if user sync fails, but log it
+      }
+    }
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

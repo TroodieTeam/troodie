@@ -21,6 +21,7 @@ import {
   updateCreatorProfile
 } from '@/services/creatorDiscoveryService';
 import { addPortfolioItems } from '@/services/creatorUpgradeService';
+import { ImageUploadServiceV2 } from '@/services/imageUploadServiceV2';
 import {
   PortfolioImage as PortfolioImageType,
   uploadAllPortfolioImages,
@@ -28,7 +29,7 @@ import {
 } from '@/services/portfolioImageService';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { ChevronDown, Lightbulb, Play, Plus, X } from 'lucide-react-native';
+import { Camera, ChevronDown, Lightbulb, Play, Plus, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -51,6 +52,8 @@ export default function EditCreatorProfileScreen() {
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [openToCollabs, setOpenToCollabs] = useState(true);
   const [availabilityStatus, setAvailabilityStatus] = useState<'available' | 'busy' | 'not_accepting'>('available');
@@ -78,6 +81,7 @@ export default function EditCreatorProfileScreen() {
       setDisplayName(creatorProfile.display_name || '');
       setBio(creatorProfile.bio || '');
       setLocation(creatorProfile.location || '');
+      setProfileImageUrl(creatorProfile.avatar_url || null);
       setOpenToCollabs(creatorProfile.open_to_collabs ?? true);
       setAvailabilityStatus((creatorProfile.availability_status as 'available' | 'busy' | 'not_accepting') || 'available');
       
@@ -302,6 +306,55 @@ export default function EditCreatorProfileScreen() {
     };
   };
 
+  const handleProfileImageChange = async () => {
+    if (!user?.id || !creatorProfile?.id) return;
+
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant photo library access.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      setUploadingProfileImage(true);
+      const imageUri = result.assets[0].uri;
+
+      // Upload profile image
+      const publicUrl = await ImageUploadServiceV2.uploadProfileImage(user.id, imageUri);
+
+      // Update local state immediately
+      setProfileImageUrl(publicUrl);
+      setHasChanges(true);
+
+      // Update in database
+      const updateResult = await updateCreatorProfile(creatorProfile.id, {
+        avatarUrl: publicUrl,
+      });
+
+      if (!updateResult.success) {
+        // Revert on error
+        setProfileImageUrl(creatorProfile.avatar_url || null);
+        Alert.alert('Error', updateResult.error || 'Failed to update profile image');
+      }
+    } catch (error: any) {
+      console.error('[EditCreatorProfileScreen] Error updating profile image:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile image');
+      // Revert on error
+      setProfileImageUrl(creatorProfile?.avatar_url || null);
+    } finally {
+      setUploadingProfileImage(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!creatorProfile?.id) return;
 
@@ -312,10 +365,11 @@ export default function EditCreatorProfileScreen() {
       location: location || undefined,
       openToCollabs: openToCollabs,
       availabilityStatus: availabilityStatus,
+      avatarUrl: profileImageUrl || undefined,
     });
 
     if (result.success) {
-      Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => router.push('/(tabs)/more') }]);
     } else {
       Alert.alert('Error', result.error || 'Failed to update profile');
     }
@@ -326,10 +380,10 @@ export default function EditCreatorProfileScreen() {
     if (hasChanges) {
       Alert.alert('Discard Changes?', 'You have unsaved changes.', [
         { text: 'Keep Editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+        { text: 'Discard', style: 'destructive', onPress: () => router.push('/(tabs)/more') },
       ]);
     } else {
-      router.back();
+      router.push('/(tabs)/more');
     }
   };
 
@@ -361,7 +415,7 @@ export default function EditCreatorProfileScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
         <View style={{ padding: 16 }}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
             <X size={24} color={DS.colors.text} />
           </TouchableOpacity>
         </View>
@@ -429,6 +483,80 @@ export default function EditCreatorProfileScreen() {
           paddingBottom: hasChanges ? 100 : 16, // Extra padding when floating button is visible
         }}
       >
+        {/* Profile Image */}
+        <View style={{ marginBottom: 24, alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 12, alignSelf: 'flex-start' }}>Profile Image</Text>
+          <TouchableOpacity
+            onPress={handleProfileImageChange}
+            disabled={uploadingProfileImage}
+            style={{ position: 'relative' }}
+          >
+            {profileImageUrl ? (
+              <Image
+                source={{ uri: profileImageUrl }}
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 60,
+                  backgroundColor: DS.colors.border,
+                }}
+              />
+            ) : (
+              <View
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 60,
+                  backgroundColor: DS.colors.primary,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 48, fontWeight: '600', color: 'white' }}>
+                  {displayName[0]?.toUpperCase() || 'C'}
+                </Text>
+              </View>
+            )}
+            {uploadingProfileImage && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: 60,
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <ActivityIndicator size="large" color="white" />
+              </View>
+            )}
+            <View
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: DS.colors.primary,
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 3,
+                borderColor: '#FFFFFF',
+              }}
+            >
+              <Camera size={18} color="white" />
+            </View>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 13, color: DS.colors.textLight, marginTop: 8, textAlign: 'center' }}>
+            Tap to change your profile image
+          </Text>
+        </View>
+
         {/* CM-15: Profile Completeness Indicator */}
         {(() => {
           const { percentage, missingItems } = calculateCompleteness();

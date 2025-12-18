@@ -1,0 +1,60 @@
+{
+  "prodTestUsers": {
+    "consumer1": {
+      "email": "prod-consumer1@bypass.com",
+      "otp": "000000",
+      "userId": "b22f710c-c15a-4ee1-bce4-061902b954cc",
+      "accountType": "consumer",
+      "purpose": "General app testing"
+    },
+    "consumer2": {
+      "email": "prod-consumer2@bypass.com",
+      "otp": "000000",
+      "userId": "2621c5c4-a6de-42e5-8f1d-b73039646403",
+      "accountType": "consumer",
+      "purpose": "Account upgrade testing"
+    },
+    "creator1": {
+      "email": "prod-creator1@bypass.com",
+      "otp": "000000",
+      "userId": "348be0b5-eef5-41be-8728-84c4d09d2bf2",
+      "accountType": "creator",
+      "purpose": "Apply to campaigns, submit deliverables"
+    },
+    "creator2": {
+      "email": "prod-creator2@bypass.com",
+      "otp": "000000",
+      "userId": "6740e5be-c1ca-444c-b100-6122c3dd8273",
+      "accountType": "creator",
+      "purpose": "Multi-application testing"
+    },
+    "creator3": {
+      "email": "prod-creator3@bypass.com",
+      "otp": "000000",
+      "userId": "08f478e2-45b9-4ab2-a068-8276beb851c3",
+      "accountType": "creator",
+      "purpose": "Payout verification"
+    },
+    "business1": {
+      "email": "prod-business1@bypass.com",
+      "otp": "000000",
+      "userId": "cfd8cdb5-a227-42bd-8040-cd4fb965b58e",
+      "accountType": "business",
+      "purpose": "Campaign management, deliverable review"
+    },
+    "business2": {
+      "email": "prod-business2@bypass.com",
+      "otp": "000000",
+      "userId": "0e281bb7-6867-40b4-afff-4e82608cc34d",
+      "accountType": "business",
+      "purpose": "Secondary business testing"
+    }
+  },
+  "stripeTestCards": {
+    "success": "4242424242424242",
+    "declined": "4000000000000002",
+    "insufficientFunds": "4000000000009995",
+    "requires3DS": "4000002500003155"
+  },
+  "betaPasscode": "TROODIE2025"
+}
