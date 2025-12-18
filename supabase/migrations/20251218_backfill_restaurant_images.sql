@@ -45,10 +45,10 @@ BEGIN
     
     RETURN QUERY SELECT
       v_restaurant.id,
-      v_restaurant.name,
-      v_restaurant.google_place_id,
+      v_restaurant.name::TEXT,
+      v_restaurant.google_place_id::TEXT,
       'pending'::TEXT,
-      v_restaurant.cover_photo_url,
+      v_restaurant.cover_photo_url::TEXT,
       COALESCE(array_length(v_restaurant.photos, 1), 0);
     
     v_processed := v_processed + 1;
