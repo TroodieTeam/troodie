@@ -78,6 +78,7 @@ export function usePostEngagement({
   // Track which postId we've set up subscriptions for to prevent re-subscription
   const subscribedPostIdRef = useRef<string | null>(null);
   const hasReceivedRealtimeUpdate = useRef<boolean>(false);
+  const lastEventBusUpdate = useRef<number>(0); // Track when we last updated via event bus
   
   // Initialize state only on mount or when postId changes
   useEffect(() => {
@@ -94,10 +95,13 @@ export function usePostEngagement({
         // Only set counts if we haven't received realtime updates yet (for this postId)
         // This prevents stale initialStats from overwriting realtime updates when navigating back
         if (!hasReceivedRealtimeUpdate.current) {
+          console.log(`[usePostEngagement] Initializing counts from initialStats - commentsCount: ${initialStats.comments_count || 0} (postId: ${postId})`);
           setLikesCount(initialStats.likes_count || 0);
           setCommentsCount(initialStats.comments_count || 0);
           setSavesCount(initialStats.saves_count || 0);
           setShareCount(initialStats.share_count || 0);
+        } else {
+          console.log(`[usePostEngagement] Skipping initialStats (realtime updates received) - commentsCount: ${commentsCount} (postId: ${postId})`);
         }
       }
       
@@ -156,6 +160,14 @@ export function usePostEngagement({
   useEffect(() => {
     if (!initialStats || lastPostIdRef.current !== postId) return;
     
+    // CRITICAL: Don't sync if we just updated via event bus (within last 5 seconds)
+    // This prevents stale initialStats from overwriting fresh event bus updates
+    const timeSinceEventBus = Date.now() - (lastEventBusUpdate.current || 0);
+    if (timeSinceEventBus < 5000) {
+      console.log(`[usePostEngagement] Skipping sync - recent event bus update (${timeSinceEventBus}ms ago)`);
+      return;
+    }
+    
     // CRITICAL: Don't sync if we just did an optimistic update (within last 3 seconds)
     // This prevents stale initialStats from overwriting fresh optimistic/server updates
     const timeSinceOptimistic = Date.now() - (lastOptimisticUpdate.current || 0);
@@ -181,6 +193,7 @@ export function usePostEngagement({
     const shouldSync = hasSignificantDiff || !hasReceivedRealtimeUpdate.current || timeSinceRealtime > 2000;
     
     if (shouldSync) {
+      console.log(`[usePostEngagement] Syncing counts from initialStats - commentsCount: ${commentsCount} -> ${initialStats.comments_count}`);
       if (initialStats.likes_count !== undefined) setLikesCount(initialStats.likes_count);
       if (initialStats.comments_count !== undefined) setCommentsCount(initialStats.comments_count);
       if (initialStats.saves_count !== undefined) setSavesCount(initialStats.saves_count);
@@ -225,6 +238,7 @@ export function usePostEngagement({
 
     // Subscribe to comment INSERT/DELETE events (SINGLE SOURCE OF TRUTH)
     // Calculate count from actual comments, not stale column
+    console.log(`[usePostEngagement] Setting up realtime subscription for comments - postId: ${postId}, currentCount: ${commentsCount}`);
     unsubscribeComments.current = realtimeManager.subscribe(
       `post-comments-${postId}`,
       {
@@ -242,6 +256,8 @@ export function usePostEngagement({
           // (the comments modal handles its own optimistic updates)
           const isOwnComment = data?.user_id === user.id;
           
+          console.log(`[usePostEngagement] Realtime INSERT - commentId: ${data?.id}, isOwnComment: ${isOwnComment}, postId: ${postId}`);
+          
           // Only add to list if not our own (comments modal handles own comments optimistically)
           if (!isOwnComment) {
             setComments((prev) => {
@@ -254,6 +270,7 @@ export function usePostEngagement({
           // ALWAYS increment count (even for own comments) - PostCard needs this
           setCommentsCount((prev) => {
             const newCount = prev + 1;
+            console.log(`[usePostEngagement] Updating commentsCount: ${prev} -> ${newCount} (postId: ${postId})`);
             hasReceivedRealtimeUpdate.current = true; // Mark that we've received a realtime update
             
             // Emit event so ExploreScreen can update post list
@@ -268,6 +285,8 @@ export function usePostEngagement({
           // For DELETE, data contains the deleted row (from payload.old via realtimeManager)
           const deletedCommentId = data?.id;
           
+          console.log(`[usePostEngagement] Realtime DELETE - commentId: ${deletedCommentId}, postId: ${postId}`);
+          
           if (deletedCommentId) {
             // Remove comment from list
             setComments((prev) => prev.filter(c => c.id !== deletedCommentId));
@@ -275,6 +294,9 @@ export function usePostEngagement({
             // Decrement count (calculate from actual data)
             setCommentsCount((prev) => {
               const newCount = Math.max(prev - 1, 0);
+              console.log(`[usePostEngagement] Updating commentsCount (DELETE): ${prev} -> ${newCount} (postId: ${postId})`);
+              hasReceivedRealtimeUpdate.current = true;
+              lastEventBusUpdate.current = Date.now(); // Mark that we just updated via realtime
               
               // Emit event so ExploreScreen can update post list
               eventBus.emit(EVENTS.POST_ENGAGEMENT_CHANGED, {
@@ -326,11 +348,61 @@ export function usePostEngagement({
       }
     );
 
+    // Also listen to POST_ENGAGEMENT_CHANGED events (emitted by DB triggers/CommentsManager)
+    // This ensures we update counts even if realtime subscription misses the event or has delay
+    const handleEngagementChanged = (data: { postId: string; commentsCount?: number; likesCount?: number; savesCount?: number; shareCount?: number }) => {
+      console.log(`[usePostEngagement] POST_ENGAGEMENT_CHANGED event received - postId: ${data.postId}, commentsCount: ${data.commentsCount}, hook postId: ${postId}`);
+      if (data.postId === postId) {
+        if (data.commentsCount !== undefined) {
+          setCommentsCount((prev) => {
+            console.log(`[usePostEngagement] POST_ENGAGEMENT_CHANGED processing - prev: ${prev}, new: ${data.commentsCount}, will update: ${prev !== data.commentsCount}`);
+            if (prev !== data.commentsCount) {
+              console.log(`[usePostEngagement] POST_ENGAGEMENT_CHANGED received - updating commentsCount: ${prev} -> ${data.commentsCount} (postId: ${postId})`);
+              hasReceivedRealtimeUpdate.current = true;
+              lastEventBusUpdate.current = Date.now(); // Mark that we just updated via event bus
+              return data.commentsCount;
+            }
+            return prev;
+          });
+        }
+        if (data.likesCount !== undefined) {
+          setLikesCount((prev) => {
+            if (prev !== data.likesCount) {
+              lastEventBusUpdate.current = Date.now();
+              return data.likesCount;
+            }
+            return prev;
+          });
+        }
+        if (data.savesCount !== undefined) {
+          setSavesCount((prev) => {
+            if (prev !== data.savesCount) {
+              lastEventBusUpdate.current = Date.now();
+              return data.savesCount;
+            }
+            return prev;
+          });
+        }
+        if (data.shareCount !== undefined) {
+          setShareCount((prev) => {
+            if (prev !== data.shareCount) {
+              lastEventBusUpdate.current = Date.now();
+              return data.shareCount;
+            }
+            return prev;
+          });
+        }
+      }
+    };
+
+    const unsubscribeEventBus = eventBus.on(EVENTS.POST_ENGAGEMENT_CHANGED, handleEngagementChanged);
+
     return () => {
       // Only cleanup if this is actually the current subscription (prevent cleanup on re-renders)
       if (subscribedPostIdRef.current === postId) {
         unsubscribeStats.current?.();
         unsubscribeComments.current?.();
+        unsubscribeEventBus();
         subscribedPostIdRef.current = null;
       }
     };

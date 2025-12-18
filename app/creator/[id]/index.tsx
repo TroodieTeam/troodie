@@ -3,7 +3,7 @@
  * 
  * Displays comprehensive creator profile including:
  * - Bio and location
- * - Social metrics (followers, engagement rate)
+ * - Social metrics (campaigns, rating)
  * - Portfolio items
  * - Availability status
  * - Specialties
@@ -14,18 +14,18 @@ import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { VideoViewer } from '@/components/VideoViewer';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
-import { CreatorProfile, formatFollowers, getCreatorProfile } from '@/services/creatorDiscoveryService';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Briefcase, Clock, Edit, MapPin, Play, Star, TrendingUp, Users, XCircle } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { CreatorProfile, getCreatorProfile } from '@/services/creatorDiscoveryService';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Briefcase, Clock, Edit, MapPin, Play, Star, XCircle } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -41,13 +41,7 @@ export default function CreatorProfileScreen() {
   const [videoViewerVisible, setVideoViewerVisible] = useState(false);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
-  useEffect(() => {
-    if (id) {
-      loadProfile();
-    }
-  }, [id]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     if (!id) {
       console.log('[CreatorProfileScreen] No id provided');
       return;
@@ -112,7 +106,23 @@ export default function CreatorProfileScreen() {
       setLoading(false);
       console.log('[CreatorProfileScreen] Loading complete');
     }
-  };
+  }, [id, user?.id]);
+
+  useEffect(() => {
+    if (id) {
+      loadProfile();
+    }
+  }, [id, loadProfile]);
+
+  // Refresh profile data when screen comes into focus
+  // This ensures the latest data is shown after editing the profile
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        loadProfile();
+      }
+    }, [id, loadProfile])
+  );
 
   const isOwnProfile = profile?.userId === user?.id;
 
@@ -154,7 +164,7 @@ export default function CreatorProfileScreen() {
           borderBottomColor: DS.colors.border,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
           <ArrowLeft size={24} color={DS.colors.text} />
         </TouchableOpacity>
         <Text style={{ fontSize: 18, fontWeight: '600', color: DS.colors.text }}>Creator Profile</Text>
@@ -255,22 +265,8 @@ export default function CreatorProfileScreen() {
             </View>
           )}
 
-          {/* Metrics - CM-14: 4 items */}
+          {/* Metrics - CM-14: 2 items */}
           <View style={{ flexDirection: 'row', marginTop: 24, gap: 16, justifyContent: 'space-around', width: '100%' }}>
-            <View style={{ alignItems: 'center', flex: 1 }}>
-              <Users size={20} color={DS.colors.primary} />
-              <Text style={{ fontSize: 18, fontWeight: '700', color: DS.colors.text, marginTop: 4 }}>
-                {formatFollowers(profile.totalFollowers)}
-              </Text>
-              <Text style={{ fontSize: 12, color: DS.colors.textLight }}>Followers</Text>
-            </View>
-            <View style={{ alignItems: 'center', flex: 1 }}>
-              <TrendingUp size={20} color={DS.colors.primary} />
-              <Text style={{ fontSize: 18, fontWeight: '700', color: DS.colors.text, marginTop: 4 }}>
-                {profile.engagementRate.toFixed(1)}%
-              </Text>
-              <Text style={{ fontSize: 12, color: DS.colors.textLight }}>Engagement</Text>
-            </View>
             {/* CM-14: Completed Campaigns */}
             <View style={{ alignItems: 'center', flex: 1 }}>
               <Briefcase size={20} color={DS.colors.primary} />

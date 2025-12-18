@@ -13,17 +13,17 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, MessageCircle, Send } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -55,31 +55,31 @@ export default function PostCommentsModal() {
     return {
       likes_count: post.likes_count || 0,
       comments_count: post.comments_count || 0, // This is now calculated from actual data
-      saves_count: post.saves_count || 0,
       share_count: post.share_count || 0,
     };
-  }, [post?.likes_count, post?.comments_count, post?.saves_count, post?.share_count]);
+  }, [post?.likes_count, post?.comments_count, post?.share_count]);
 
   // Use post engagement hook for reactive engagement actions
   const {
     isLiked,
-    isSaved,
     likesCount,
     commentsCount,
-    savesCount,
     shareCount,
     isLoading,
     toggleLike,
-    toggleSave,
     sharePost,
     copyLink,
   } = usePostEngagement({
     postId: id || '',
     initialStats,
     initialIsLiked: post?.is_liked_by_user || false,
-    initialIsSaved: post?.is_saved_by_user || false,
     enableRealtime: true, // Always enable realtime for accurate counts
   });
+
+  // Log comment count changes for debugging
+  useEffect(() => {
+    console.log(`[Comments] commentsCount changed: ${commentsCount} (postId: ${id})`);
+  }, [commentsCount, id]);
 
 
   // Load post data (recalculates counts from actual data)
@@ -145,9 +145,11 @@ export default function PostCommentsModal() {
         if (actualEventType === 'INSERT') {
           // Skip if we've already seen this comment
           if (seenCommentIds.current.has(data.id)) {
+            console.log(`[Comments] Realtime INSERT skipped (already seen): ${data.id}`);
             return;
           }
           
+          console.log(`[Comments] Realtime INSERT received - commentId: ${data.id}, parentCommentId: ${data.parent_comment_id || 'none'}`);
           seenCommentIds.current.add(data.id);
           handleRealtimeInsert(data);
         } else if (actualEventType === 'DELETE') {
@@ -175,6 +177,7 @@ export default function PostCommentsModal() {
     try {
       setLoading(true);
       const postData = await postService.getPost(id as string);
+      console.log(`[Comments] Post loaded - comments_count: ${postData.comments_count} (postId: ${id})`);
       setPost(postData);
     } catch (error) {
       ToastService.showError('Failed to load post');
@@ -509,6 +512,10 @@ export default function PostCommentsModal() {
 
     const content = newComment.trim();
     const tempId = `temp-${Date.now()}`;
+    const currentCount = commentsCount;
+    const isReply = !!replyingTo;
+
+    console.log(`[Comments] Submitting comment - currentCount: ${currentCount}, isReply: ${isReply}, postId: ${post.id}`);
 
     try {
       setSubmitting(true);
@@ -570,6 +577,7 @@ export default function PostCommentsModal() {
       }
 
       const realComment = result.comment;
+      console.log(`[Comments] Comment created - commentId: ${realComment.id}, expectedNewCount: ${currentCount + (isReply ? 0 : 1)}, currentUICount: ${commentsCount}`);
 
       // Track the real comment ID
       seenCommentIds.current.add(realComment.id);
@@ -602,6 +610,7 @@ export default function PostCommentsModal() {
       // has realtime subscriptions to the posts table that automatically update
       // comment counts when the DB trigger fires.
 
+      console.log(`[Comments] Comment posted successfully - UI count after: ${commentsCount}, expected: ${currentCount + (isReply ? 0 : 1)}`);
       ToastService.showSuccess('Comment posted!');
     } catch (error: any) {
       // Remove optimistic comment
@@ -631,6 +640,11 @@ export default function PostCommentsModal() {
   };
 
   const handleDeleteComment = async (commentId: string, isReply = false) => {
+    const currentCount = commentsCount;
+    const expectedNewCount = Math.max(currentCount - (isReply ? 0 : 1), 0);
+    
+    console.log(`[Comments] Deleting comment - commentId: ${commentId}, isReply: ${isReply}, currentCount: ${currentCount}, expectedNewCount: ${expectedNewCount}, postId: ${post.id}`);
+    
     try {
       const success = await engagementService.comments.delete(commentId, post.id);
       if (!success) {
@@ -651,6 +665,7 @@ export default function PostCommentsModal() {
         setComments((prev) => prev.filter((c) => c.id !== commentId));
       }
 
+      console.log(`[Comments] Comment deleted successfully - UI count after: ${commentsCount}, expected: ${expectedNewCount}`);
       ToastService.showSuccess('Comment deleted');
     } catch (error) {
       ToastService.showError('Failed to delete comment');
@@ -903,21 +918,7 @@ export default function PostCommentsModal() {
           activeOpacity={0.7}
         >
           <Ionicons name="chatbubble-outline" size={20} color={designTokens.colors.textMedium} />
-          <Text style={styles.reactionCount}>{commentsCount}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.reactionButton} 
-          onPress={toggleSave}
-          disabled={isLoading}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isSaved ? 'bookmark' : 'bookmark-outline'}
-            size={20}
-            color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textMedium}
-          />
-          <Text style={styles.reactionCount}>{savesCount}</Text>
+          <Text style={styles.reactionCount} testID="comment-count-display">{commentsCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 

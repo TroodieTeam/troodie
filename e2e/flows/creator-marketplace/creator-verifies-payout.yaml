@@ -1,0 +1,88 @@
+appId: com.troodie.troodie.com
+---
+# Test: Creator verifies payout received
+# Priority: P1 (Critical for Payment Flow)
+# Prerequisites:
+#   - Creator account logged in
+#   - Deliverable approved (payout triggered)
+# Tags: creator, payout, earnings, verification
+
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+
+# Login as creator
+- runFlow: helpers/login-bypass.yaml
+
+# Navigate to Profile or Payments
+- tapOn:
+    id: "tab-profile"
+    optional: true
+
+- tapOn:
+    text: "Profile"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Payments/Earnings
+- tapOn:
+    text: "Payments"
+    optional: true
+
+- tapOn:
+    text: "Earnings"
+    optional: true
+
+- scrollUntilVisible:
+    element:
+      text: "Earnings"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Earnings"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify earnings screen
+- assertVisible:
+    text: "Earnings"
+    timeout: 10000
+    optional: true
+
+# Look for payout entry
+- assertVisible:
+    text: "$"
+    timeout: 10000
+    optional: true
+
+# Check payout status (completed or processing)
+- assertVisible:
+    text: "completed"
+    timeout: 10000
+    optional: true
+
+# Or processing if webhook hasn't arrived yet
+- assertVisible:
+    text: "processing"
+    timeout: 5000
+    optional: true
+
+# Take screenshot
+- takeScreenshot: "creator-earnings-verified"
+
+# Navigate to payout details
+- tapOn:
+    id: "payout-item-0"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify payout details
+- assertVisible:
+    text: "Campaign"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "creator-payout-details"

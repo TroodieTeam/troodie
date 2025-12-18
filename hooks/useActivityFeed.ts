@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { activityFeedService, ActivityFeedItem } from '@/services/activityFeedService';
+import { ActivityFeedItem, activityFeedService } from '@/services/activityFeedService';
 import { moderationService } from '@/services/moderationService';
 import { eventBus, EVENTS } from '@/utils/eventBus';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+// Team account ID to hide from activity feed
+const TEAM_ACCOUNT_ID = '5373475d-b6b5-4abd-bd47-8ec515c44a47';
 
 interface UseActivityFeedOptions {
   userId: string | null;
@@ -61,14 +64,16 @@ export function useActivityFeed({
   }, [userId]);
 
   /**
-   * Filter activities based on blocked users
+   * Filter activities based on blocked users and team account
    */
   const filterBlockedActivities = useCallback((
     activities: ActivityFeedItem[], 
     blockedList: string[]
   ): ActivityFeedItem[] => {
-    if (!blockedList.length) return activities;
-    return activities.filter(activity => !blockedList.includes(activity.actor_id));
+    return activities.filter(activity => 
+      !blockedList.includes(activity.actor_id) && 
+      activity.actor_id !== TEAM_ACCOUNT_ID
+    );
   }, []);
 
   /**
@@ -201,6 +206,11 @@ export function useActivityFeed({
    * Add a new activity to the feed (for real-time updates)
    */
   const addActivity = useCallback((newActivity: ActivityFeedItem) => {
+    // Don't add activities from team account
+    if (newActivity.actor_id === TEAM_ACCOUNT_ID) {
+      return;
+    }
+    
     setActivities(prev => {
       // Check if activity already exists
       if (prev.some(a => 

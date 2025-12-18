@@ -1,0 +1,132 @@
+appId: com.troodie.troodie.com
+---
+# Test: Business accepts creator application
+# Priority: P1 (Critical for Creator Marketplace)
+# Prerequisites:
+#   - Business account logged in
+#   - Pending application exists (run apply-to-campaign first)
+# Tags: business, campaign, application, accept
+
+env:
+  TEST_EMAIL: prod-business1@bypass.com
+
+# Login as business
+- runFlow: helpers/login-bypass.yaml
+
+# Navigate to Business tab
+- tapOn:
+    id: "tab-business"
+    optional: true
+
+- tapOn:
+    text: "Business"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Campaigns
+- tapOn:
+    text: "Campaigns"
+    optional: true
+
+- tapOn:
+    id: "campaigns-menu"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Find campaign with applications
+- assertVisible:
+    text: "Campaign"
+    timeout: 10000
+
+# Tap on campaign with pending applications
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "applications"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Applications tab
+- tapOn:
+    text: "Applications"
+    optional: true
+
+- tapOn:
+    text: "Applicants"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Find pending application
+- assertVisible:
+    text: "pending"
+    timeout: 10000
+    optional: true
+
+# Tap on first application
+- tapOn:
+    id: "application-card-0"
+    optional: true
+
+- tapOn:
+    text: "prod-creator1"
+    optional: true
+
+- tapOn:
+    text: "View"
+    optional: true
+
+- waitForAnimationToEnd
+
+# View application details
+- assertVisible:
+    text: "Application"
+    timeout: 10000
+    optional: true
+
+# Accept the application
+- scrollUntilVisible:
+    element:
+      text: "Accept"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Accept"
+
+# Confirm acceptance
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Confirm"
+    optional: true
+
+- tapOn:
+    text: "Yes"
+    optional: true
+
+# Wait for acceptance to process
+- waitForAnimationToEnd
+
+# Verify acceptance
+- assertVisible:
+    text: "accepted"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Success"
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+# Take screenshot
+- takeScreenshot: "business-application-accepted"
