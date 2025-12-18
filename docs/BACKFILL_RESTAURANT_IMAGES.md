@@ -48,9 +48,9 @@ WHERE google_place_id IS NOT NULL
   AND google_place_id != 'null';
 ```
 
-## Step 3: Run Backfill Script
+## Step 3: Run Backfill
 
-### Option A: Run via Node.js Script
+### Option A: Use Edge Function (Recommended)
 
 ```bash
 # Install dependencies if needed
@@ -66,20 +66,60 @@ npx tsx scripts/backfill-restaurant-images.ts --batch-size=100
 npx tsx scripts/backfill-restaurant-images.ts --batch-size=50 --max=500
 ```
 
-### Option B: Create Edge Function (Recommended for Production)
+### Option B: Use Edge Function (Recommended for Production)
 
-Create a Supabase Edge Function that can be triggered on-demand:
+The edge function is already created at `supabase/functions/backfill-restaurant-images/index.ts`.
 
-```typescript
-// supabase/functions/backfill-restaurant-images/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-serve(async (req) => {
-  // Implementation similar to the script
-  // Can be triggered via HTTP request or scheduled
-});
+**Deploy the function:**
+```bash
+supabase functions deploy backfill-restaurant-images
 ```
+
+**Trigger via HTTP request:**
+
+```bash
+# Basic request (processes 50 restaurants)
+curl -X POST https://<your-project-ref>.supabase.co/functions/v1/backfill-restaurant-images \
+  -H "Authorization: Bearer <anon-key>" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# With custom parameters
+curl -X POST https://<your-project-ref>.supabase.co/functions/v1/backfill-restaurant-images \
+  -H "Authorization: Bearer <anon-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "batch_size": 100,
+    "max_restaurants": 500,
+    "offset": 0,
+    "dry_run": false
+  }'
+
+# Dry run (test without updating)
+curl -X POST https://<your-project-ref>.supabase.co/functions/v1/backfill-restaurant-images \
+  -H "Authorization: Bearer <anon-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"dry_run": true, "batch_size": 10}'
+```
+
+**Or use Supabase Dashboard:**
+1. Go to Edge Functions → `backfill-restaurant-images`
+2. Click "Invoke function"
+3. Add JSON body with parameters:
+   ```json
+   {
+     "batch_size": 50,
+     "max_restaurants": 1000,
+     "offset": 0,
+     "dry_run": false
+   }
+   ```
+
+**Parameters:**
+- `batch_size` (default: 50) - Number of restaurants to process per request
+- `max_restaurants` (default: null) - Maximum total restaurants to process
+- `offset` (default: 0) - Starting offset for pagination
+- `dry_run` (default: false) - If true, fetches data but doesn't update database
 
 ## Step 4: Monitor Progress
 
