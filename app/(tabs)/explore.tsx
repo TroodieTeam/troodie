@@ -77,16 +77,10 @@ const useTabData = <T extends { id: string }>(
   });
 
   const load = async (searchQuery?: string) => {
-    if (__DEV__) {
-      console.log(`[useTabData] Loading, searchQuery: ${searchQuery || 'none'}, current data length: ${state.data.length}`);
-    }
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const data = await loadFn(searchQuery);
       const processedData = shouldRandomize && !searchQuery ? shuffleArray(data) : data;
-      if (__DEV__) {
-        console.log(`[useTabData] Loaded ${processedData.length} items, setting state...`);
-      }
       setState({ data: processedData, filtered: processedData, loading: false, error: null });
     } catch (err: any) {
       if (__DEV__) {

@@ -103,11 +103,8 @@ class PostService {
    * Create a new post
    */
   async createPost(postData: PostCreationData): Promise<Post> {
-    console.log('[PostService] createPost called with data:', JSON.stringify(postData, null, 2));
-
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
-    console.log('[PostService] Current user:', user?.id);
 
     if (!user) {
       console.error('[PostService] User not authenticated');
@@ -133,8 +130,6 @@ class PostService {
       content_type: postData.contentType || 'original',
     };
 
-    console.log('[PostService] Insert data:', JSON.stringify(insertData, null, 2));
-
     // Add external content fields if applicable
     if (postData.contentType === 'external' && postData.externalContent) {
       insertData.external_source = postData.externalContent.source;
@@ -146,7 +141,6 @@ class PostService {
     }
 
     // Create the post
-    console.log('[PostService] Inserting post into database...');
     const { data, error } = await supabase
       .from('posts')
       .insert(insertData)
@@ -157,8 +151,6 @@ class PostService {
       console.error('[PostService] Failed to create post:', error);
       throw new Error(`Failed to create post: ${error.message}`);
     }
-
-    console.log('[PostService] Post created successfully:', data.id);
 
     // Handle cross-posting to communities
     if (data && postData.communityIds && postData.communityIds.length > 0) {
@@ -256,7 +248,6 @@ class PostService {
           data.id,
           'review'
         );
-        console.log('[PostService] Restaurant marked as visited:', postData.restaurantId);
       } catch (error) {
         // Don't fail the post creation if visit tracking fails
         console.error('[PostService] Error marking restaurant as visited:', error);
@@ -551,11 +542,6 @@ class PostService {
         const calculatedLikes = stats.likes_count || 0;
         const calculatedSaves = stats.saves_count || 0;
         
-        if (__DEV__) {
-          const postIdShort = post.id.substring(0, 8) + '...';
-          console.log(`[postService.getExplorePosts] Post ${postIdShort}: comments=${calculatedComments} (was ${post.comments_count}), likes=${calculatedLikes}, saves=${calculatedSaves}`);
-        }
-        
         post.comments_count = calculatedComments;
         post.likes_count = calculatedLikes;
         post.saves_count = calculatedSaves;
@@ -564,10 +550,6 @@ class PostService {
         post.is_saved_by_user = stats.is_saved_by_user;
       }
     });
-    
-    if (__DEV__) {
-      console.log(`[postService.getExplorePosts] ✅ Returning ${postsData.length} posts with calculated counts`);
-    }
     
     // Fetch user data (always filter test users as a safety check)
     const { data: usersData, error: usersError } = await supabase

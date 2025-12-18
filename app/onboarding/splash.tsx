@@ -11,14 +11,8 @@ export default function SplashScreen() {
   const scaleAnim = new Animated.Value(0.8);
 
   useEffect(() => {
-    console.log('[Splash] Component mounted')
-    console.log('[Splash] isAuthenticated:', isAuthenticated)
-    console.log('[Splash] user:', user?.email)
-    console.log('[Splash] session:', !!session)
-    
     // Check if user is authenticated
     if (isAuthenticated) {
-      console.log('[Splash] User is authenticated, navigating to tabs')
       router.replace('/(tabs)');
       return;
     }
@@ -39,7 +33,6 @@ export default function SplashScreen() {
 
     // Navigate to welcome after delay
     const timer = setTimeout(() => {
-      console.log('[Splash] Timer expired, navigating to welcome')
       router.replace('/onboarding/welcome');
     }, 2500);
 

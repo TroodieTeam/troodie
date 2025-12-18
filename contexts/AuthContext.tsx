@@ -41,12 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserProfile = async (userId: string) => {
     try {
-      console.log('[AuthContext] Loading profile for user:', userId)
-      // Loading profile for user
       const profile = await userService.getProfile(userId)
       if (!profile) {
-        console.log('[AuthContext] No profile found, creating new profile')
-        // No profile found, creating new profile
         const newProfile = await userService.createProfile({
           id: userId,
           phone: null,
@@ -55,8 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
         setProfile(newProfile)
       } else {
-        console.log('[AuthContext] Profile loaded successfully:', profile.email)
-        // Profile loaded successfully
         setProfile(profile)
       }
       
@@ -69,9 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadAccountInfo = async (userId: string) => {
     try {
-      console.log('[AuthContext] Loading account info for user:', userId)
       const accountInfo = await accountService.getUserAccountInfo(userId)
-      console.log('[AuthContext] Account info loaded:', accountInfo)
       setAccountInfo(accountInfo)
     } catch (error) {
       console.error('[AuthContext] Error loading account info:', error)
@@ -81,20 +73,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshAuth = async () => {
     try {
-      console.log('[AuthContext] refreshAuth called - checking for persisted session')
-      // Refreshing auth state
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('[AuthContext] Supabase session found:', !!session, session?.user?.email)
       
       if (session) {
-        console.log('[AuthContext] Session found during refresh, loading profile')
-        // Session found during refresh
         setSession(session)
         setUser(session.user)
         await loadUserProfile(session.user.id)
       } else {
-        console.log('[AuthContext] No session found during refresh, clearing state')
-        // No session found during refresh
         setSession(null)
         setUser(null)
         setProfile(null)
@@ -118,25 +103,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Simple listener - only handle TOKEN_REFRESHED and user-initiated SIGNED_OUT
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AuthContext] Auth state change event:', event)
-      console.log('[AuthContext] Session in event:', !!session)
-      console.log('[AuthContext] User in event:', session?.user?.email)
-      
       if (event === 'TOKEN_REFRESHED' && session) {
-        console.log('[AuthContext] Token refreshed, updating session')
-        // Token refreshed
         setSession(session)
         setUser(session.user)
       } else if (event === 'SIGNED_OUT') {
-        console.log('[AuthContext] SIGNED_OUT event received, clearing all state')
-        // User signed out - clear all state
         setSession(null)
         setUser(null)
         setProfile(null)
         setAccountInfo(null)
         setIsAnonymous(false)
         setLoading(false)
-        console.log('[AuthContext] All state cleared after SIGNED_OUT')
       }
       // Don't handle SIGNED_IN here - we'll manage that manually
     })
@@ -163,34 +139,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const verifyOtp = async (email: string, token: string) => {
-    console.log('[AuthContext] verifyOtp called with email:', email, 'token:', token)
     setError(null)
     setLoading(true)
     
     try {
-      // Verifying OTP
       const result = await authService.verifyOtp(email, token)
-      console.log('[AuthContext] verifyOtp result:', result.success, result.session ? 'session exists' : 'no session')
-      
-      // No special handling needed - password auth returns a real session
       
       if (result.success && result.session) {
-        // OTP verified successfully
-        console.log('[AuthContext] OTP verified successfully, setting session and user')
-        
-        // Directly set our state - don't rely on auth state changes
         setSession(result.session)
         setUser(result.session.user)
-        
-        // Load profile
-        console.log('[AuthContext] Loading user profile...')
         await loadUserProfile(result.session.user.id)
-        console.log('[AuthContext] Profile loading completed')
-        
         return { ...result, session: result.session }
       } else {
-        // OTP verification failed
-        console.log('[AuthContext] OTP verification failed:', result.error)
         setError(result.error || 'Verification failed')
         return result
       }
@@ -209,19 +169,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    console.log('[AuthContext] signOut called')
-    console.log('[AuthContext] Current session before signOut:', !!session)
-    console.log('[AuthContext] Current user before signOut:', user?.email)
-    
     setLoading(true)
     try {
-      // Check if we actually have a session before trying to sign out
       const { data: { session: currentSession } } = await supabase.auth.getSession()
-      console.log('[AuthContext] Current Supabase session:', !!currentSession)
       
       if (!currentSession) {
-        console.log('[AuthContext] No Supabase session found, clearing local state directly')
-        // No session to sign out from, just clear our local state
         setSession(null)
         setUser(null)
         setProfile(null)
@@ -230,11 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       
-      console.log('[AuthContext] Calling supabase.auth.signOut()...')
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('[AuthContext] signOut error:', error)
-        // Even if signOut fails, clear our local state
         setSession(null)
         setUser(null)
         setProfile(null)
@@ -242,14 +192,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAnonymous(false)
         return
       }
-      console.log('[AuthContext] supabase.auth.signOut() completed successfully')
       // State will be cleared by the SIGNED_OUT event listener
       // Add a fallback timeout in case the event doesn't fire
       setTimeout(async () => {
         const { data: { session: fallbackSession } } = await supabase.auth.getSession()
-        console.log('[AuthContext] Fallback check - Supabase session:', !!fallbackSession, 'Local session:', !!session)
         if (!fallbackSession && session) {
-          console.log('[AuthContext] Fallback: SIGNED_OUT event did not fire, clearing state manually')
           setSession(null)
           setUser(null)
           setProfile(null)
@@ -259,7 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }, 1000)
     } finally {
       setLoading(false)
-      console.log('[AuthContext] signOut function completed')
     }
   }
 
@@ -321,11 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     skipAuth,
     loading,
-    isAuthenticated: (() => {
-      const auth = !!session;
-      console.log('[AuthContext] isAuthenticated computed:', auth, 'session:', !!session, 'user:', user?.email);
-      return auth;
-    })(),
+    isAuthenticated: !!session,
     isAnonymous,
     error,
     refreshAuth,

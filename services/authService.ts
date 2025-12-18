@@ -37,8 +37,6 @@ export const authService = {
     try {
       // Special case for App Review and test accounts
       if (this._isBypassEmail(email)) {
-        console.log('[AuthService] Bypass account detected in signup, OTP will be bypassed with code 000000')
-
         // For bypass accounts, verify they exist (they should be pre-created)
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -53,8 +51,6 @@ export const authService = {
             error: 'Test account not found. Bypass accounts must be pre-created in Supabase.',
           }
         }
-
-        console.log('[AuthService] Bypass account exists, proceeding with bypass flow')
 
         // Don't call Supabase OTP to avoid signup restrictions
         return {
@@ -122,22 +118,8 @@ export const authService = {
     try {
       // Special case for bypass accounts - skip OTP entirely
       if (this._isBypassEmail(email)) {
-        console.log('[AuthService] Bypass account detected - will use password auth')
-
         // For bypass accounts, we don't require the user to exist in public.users
         // The profile will be created automatically after authentication via ensure_user_profile
-        // Check if profile exists (for logging only, not blocking)
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id, email')
-          .eq('email', email.toLowerCase())
-          .maybeSingle()
-
-        if (userData) {
-          console.log('[AuthService] Bypass account found in public.users - skipping OTP email')
-        } else {
-          console.log('[AuthService] Bypass account not in public.users yet - profile will be created after authentication')
-        }
 
         // Return success without sending OTP
         // We'll authenticate with password in verifyOtp, and profile will be created automatically
@@ -204,8 +186,6 @@ export const authService = {
       // For bypass accounts, use password authentication instead of OTP
       // This works with fake emails that can't receive real OTPs
       if (this._isBypassEmail(email) && token === '000000') {
-        console.log('[AuthService] Bypass account - using password auth instead of OTP')
-
         // Use password authentication with a known password
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.toLowerCase(),
@@ -226,9 +206,6 @@ export const authService = {
             error: 'Authentication succeeded but no session created.',
           }
         }
-
-        console.log('[AuthService] Bypass account authenticated successfully!')
-        console.log('[AuthService] Session user ID:', data.session.user.id)
 
         // Ensure user profile exists
         if (data.user) {
