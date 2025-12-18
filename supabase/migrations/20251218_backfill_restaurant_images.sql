@@ -26,16 +26,16 @@ BEGIN
   
   FOR v_restaurant IN
     SELECT 
-      id,
-      name,
-      google_place_id,
-      cover_photo_url,
-      photos
-    FROM restaurants
-    WHERE google_place_id IS NOT NULL
-      AND google_place_id != ''
-      AND google_place_id != 'null'
-    ORDER BY created_at DESC
+      r.id,
+      r.name,
+      r.google_place_id,
+      r.cover_photo_url,
+      r.photos
+    FROM restaurants r
+    WHERE r.google_place_id IS NOT NULL
+      AND r.google_place_id != ''
+      AND r.google_place_id != 'null'
+    ORDER BY r.created_at DESC
     LIMIT COALESCE(p_max_restaurants, 100000)
     OFFSET p_offset
   LOOP
