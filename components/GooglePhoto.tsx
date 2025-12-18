@@ -1,6 +1,6 @@
 import { DEFAULT_IMAGES } from '@/constants/images';
 import React, { useMemo, useState } from 'react';
-import { Image, ImageStyle, StyleProp, View } from 'react-native';
+import { Image, ImageStyle, StyleProp } from 'react-native';
 
 interface GooglePhotoProps {
   photoReference: string | null | undefined;
@@ -14,10 +14,31 @@ export const GooglePhoto = ({ photoReference, style, resizeMode = 'cover' }: Goo
     if (!photoReference || hasError) {
       return { uri: DEFAULT_IMAGES.restaurant };
     }
+    
+    // If it's already a full Google Maps URL with key, use it directly
+    if (photoReference.includes('maps.googleapis.com') && photoReference.includes('key=')) {
+      return {
+        uri: photoReference,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': '', 
+          'Accept': 'image/*'
+        }
+      };
+    }
+    
+    // If it's a non-Google Maps HTTP URL, use it directly
     if (photoReference.startsWith('http') && !photoReference.includes('maps.googleapis.com')) {
       return { uri: photoReference };
     }
+    
+    // Handle Google Maps URLs without key or photo_reference strings
     const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+    
+    if (!API_KEY) {
+      return { uri: DEFAULT_IMAGES.restaurant };
+    }
+    
     let referenceId = photoReference;
     if (photoReference.includes('photoreference=')) {
       const match = photoReference.match(/photoreference=([^&]+)/);

@@ -3,7 +3,7 @@ import { DEFAULT_IMAGES } from '@/constants/images';
 import { RestaurantInfo } from '@/types/core';
 import { Star } from 'lucide-react-native';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GooglePhoto } from '../GooglePhoto';
 
 interface RestaurantCardProps {

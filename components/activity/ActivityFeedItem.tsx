@@ -1,24 +1,23 @@
 import { designTokens } from '@/constants/designTokens';
-import { DEFAULT_IMAGES } from '@/constants/images';
 import { ActivityFeedItem } from '@/services/activityFeedService';
 import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import { useRouter } from 'expo-router';
 import {
-  Bookmark,
-  Circle,
-  Heart,
-  MapPin,
-  MessageCircle,
-  UserPlus,
-  Users,
+    Bookmark,
+    Circle,
+    Heart,
+    MapPin,
+    MessageCircle,
+    UserPlus,
+    Users,
 } from 'lucide-react-native';
 import React from 'react';
 import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { GooglePhoto } from '../GooglePhoto';
 
@@ -251,19 +250,18 @@ export const ActivityFeedItemComponent: React.FC<ActivityFeedItemProps> = ({
       const photoData = activity.photos[0];
       if (!photoData) return null; 
 
-      // Logic to handle both Objects and Strings
-      let reference = photoData;
-      if (typeof photoData === 'object' && (photoData as any).photo_reference) {
-         reference = (photoData as any).photo_reference;
-      }
-      else if (typeof photoData === 'string' && photoData.includes('photoreference=')) {
-        const match = photoData.match(/photoreference=([^&]+)/);
-        if (match) reference = match[1];
-      }
+      // Photos are stored as full URLs (strings) from the database
+      // GooglePhoto component now handles full URLs directly
+      const photoUrl = typeof photoData === 'string' 
+        ? photoData 
+        : (photoData as any)?.url || (photoData as any)?.photo_reference || null;
+      
+      if (!photoUrl) return null;
+      
       return (
         <TouchableOpacity onPress={handleTargetPress}>
           <GooglePhoto
-            photoReference={reference}
+            photoReference={photoUrl}
             style={styles.thumbnail}
           />
         </TouchableOpacity>

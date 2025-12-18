@@ -372,7 +372,9 @@ function normalizePhone(phone) {
   return phone.toString().replace(/[^\d+\-\(\)\s\.]/g, '');
 }
 function normalizePhotos(photos) {
-  if (!photos) return [];
+  if (!photos) {
+    return [];
+  }
   if (Array.isArray(photos)) {
     const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY') || Deno.env.get('GOOGLE_API_KEY');
     return photos.map((p)=>{
@@ -430,7 +432,7 @@ function processApifyData(apifyData, userInput) {
     ...trafficLightRating
   };
 }
-function processGooglePlacesData(placeDetails, userInput) {
+function processGooglePlacesData(placeDetails, userInput, fallbackImage = null) {
   const fullAddress = userInput.address;
   const googleRating = placeDetails.rating || null;
   const reviewCount = placeDetails.user_ratings_total || 0;
@@ -446,6 +448,21 @@ function processGooglePlacesData(placeDetails, userInput) {
       cuisineTypes = standardizeCuisine(relevantTypes.map((type)=>type.replace(/_/g, ' ').replace(/restaurant/g, '').trim()).filter(Boolean));
     }
   }
+  
+  // Get cover photo, with fallback to provided image if available
+  let coverPhoto = getCoverPhoto(placeDetails.photos);
+  
+  // Use fallback image if cover photo is null and fallback is a valid URL
+  if (!coverPhoto && fallbackImage && typeof fallbackImage === 'string' && fallbackImage.startsWith('http')) {
+    coverPhoto = fallbackImage;
+  }
+  
+  // Normalize photos array, and prepend fallback image if it exists and isn't already in the array
+  const normalizedPhotos = normalizePhotos(placeDetails.photos);
+  const photosArray = coverPhoto && !normalizedPhotos.includes(coverPhoto) 
+    ? [coverPhoto, ...normalizedPhotos].slice(0, 10)
+    : normalizedPhotos;
+  
   return {
     google_place_id: userInput.placeId || null,
     name: userInput.restaurantName,
@@ -459,8 +476,8 @@ function processGooglePlacesData(placeDetails, userInput) {
     phone: placeDetails.formatted_phone_number || null,
     website: placeDetails.website || null,
     hours: convertOpeningHours(placeDetails.opening_hours || {}),
-    photos: normalizePhotos(placeDetails.photos),
-    cover_photo_url: getCoverPhoto(placeDetails.photos),
+    photos: photosArray,
+    cover_photo_url: coverPhoto,
     google_rating: googleRating,
     google_reviews_count: reviewCount,
     troodie_rating: null,
@@ -485,7 +502,7 @@ serve(async (req)=>{
     });
   }
   try {
-    const { restaurantName, address, placeId, placeDetails } = await req.json();
+    const { restaurantName, address, placeId, placeDetails, image } = await req.json();
     // Validate input
     const validation = validateRestaurantInput({
       restaurantName,
@@ -547,7 +564,7 @@ serve(async (req)=>{
         restaurantName,
         address,
         placeId
-      });
+      }, image);
     } else if (APIFY_TOKEN) {
       console.log(`🔍 Scraping data for: ${restaurantName} at ${address}`);
       const apifyResults = await runApifyActor(restaurantName, address);
