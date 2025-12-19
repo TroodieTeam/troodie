@@ -1,5 +1,8 @@
+import { ActivityFeedItem, activityFeedService } from '@/services/activityFeedService';
 import { useEffect, useRef } from 'react';
-import { activityFeedService, ActivityFeedItem } from '@/services/activityFeedService';
+
+// Team account ID to hide from activity feed
+const TEAM_ACCOUNT_ID = '5373475d-b6b5-4abd-bd47-8ec515c44a47';
 
 interface UseActivityRealtimeOptions {
   userId: string | null;
@@ -40,6 +43,11 @@ export function useActivityRealtime({
 
         // Filter out blocked users
         if (blockedUsers.includes(newActivity.actor_id)) {
+          return;
+        }
+
+        // Filter out team account activities
+        if (newActivity.actor_id === TEAM_ACCOUNT_ID) {
           return;
         }
 

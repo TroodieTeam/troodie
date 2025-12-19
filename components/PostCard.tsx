@@ -10,30 +10,29 @@ import { PostWithUser } from '@/types/post';
 import { eventBus, EVENTS } from '@/utils/eventBus';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { MenuButton } from './common/MenuButton';
+import { ImageViewer } from './ImageViewer';
 import { ReportModal } from './modals/ReportModal';
 import { ExternalContentPreview } from './posts/ExternalContentPreview';
-import { ImageViewer } from './ImageViewer';
-import { VideoViewer } from './VideoViewer';
 import { VideoThumbnail } from './VideoThumbnail';
+import { VideoViewer } from './VideoViewer';
 
 interface PostCardProps {
   post: PostWithUser;
   onPress?: () => void;
   onLike?: (postId: string, liked: boolean) => void;
   onComment?: (postId: string) => void;
-  onSave?: (postId: string) => void;
   onShare?: (postId: string) => void;
   onBlock?: (userId: string) => void;
   onDelete?: (postId: string) => void;
@@ -48,7 +47,6 @@ export function PostCard({
   onPress,
   onLike,
   onComment,
-  onSave,
   onShare,
   onBlock,
   onDelete,
@@ -63,45 +61,45 @@ export function PostCard({
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [showVideoViewer, setShowVideoViewer] = useState(false);
   const [videoViewerIndex, setVideoViewerIndex] = useState(0);
+  const [captionMentions, setCaptionMentions] = useState<Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>([]);
   
+  // Memoize initial stats to prevent unnecessary re-initialization
+  const initialStats = useMemo(() => ({
+    likes_count: post.likes_count,
+    comments_count: post.comments_count,
+    share_count: post.share_count || 0,
+  }), [post.likes_count, post.comments_count, post.share_count]);
+
   // Use the enhanced post engagement hook
   const {
     isLiked,
-    isSaved,
     likesCount,
     commentsCount,
-    savesCount,
     shareCount,
     isLoading,
     toggleLike,
-    toggleSave,
   } = usePostEngagement({
     postId: post.id,
-    initialStats: {
-      likes_count: post.likes_count,
-      comments_count: post.comments_count,
-      saves_count: post.saves_count,
-      share_count: post.share_count || 0,
-    },
+    initialStats,
     initialIsLiked: post.is_liked_by_user || false,
-    initialIsSaved: post.is_saved_by_user || false,
     enableRealtime: true,
   });
 
+
   const handleLike = async () => {
     if (isLoading) return;
-    const wasLiked = isLiked;
+    const previousIsLiked = isLiked;
     await toggleLike();
-    onLike?.(post.id, !wasLiked);
-  };
-
-  const handleSave = async () => {
-    await toggleSave();
-    onSave?.(post.id);
+    // Like updates are handled via event bus (POST_ENGAGEMENT_CHANGED)
+    // Call onLike callback for any parent component side effects if needed
+    // Pass the new state (opposite of previous)
+    onLike?.(post.id, !previousIsLiked);
   };
 
   const handleComment = () => {
-    onComment?.(post.id);
+    // Navigate to comments modal
+    router.push(`/posts/${post.id}/comments`);
+    onComment?.(post.id); // Still call callback for backwards compatibility
   };
 
   const handleShare = async () => {
@@ -139,6 +137,133 @@ export function PostCard({
       router.push(`/restaurant/${post.restaurant.id}`);
     }
   }, [post.restaurant, router]);
+
+  // Load restaurant mentions from caption
+  React.useEffect(() => {
+    const loadCaptionMentions = async () => {
+      if (!post.caption || !post.caption.includes('@')) {
+        setCaptionMentions([]);
+        return;
+      }
+
+      try {
+        // Extract @mentions from caption using regex
+        // Match @ followed by word characters (letters, numbers, &, ', -) but stop at spaces
+        // This matches single-word restaurant names like @Meshugganah or @Puerta
+        const mentionPattern = /@([A-Za-z0-9&'-]+)/g;
+        const matches = Array.from(post.caption.matchAll(mentionPattern));
+        
+        if (matches.length === 0) {
+          setCaptionMentions([]);
+          return;
+        }
+
+        // Look up restaurants for each mention
+        const mentions: Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }> = [];
+        
+        for (const match of matches) {
+          const mentionText = match[0]; // e.g., "@Meshugganah"
+          const restaurantName = match[1].trim(); // e.g., "Meshugganah"
+          const startIndex = match.index!;
+          const endIndex = startIndex + mentionText.length;
+
+          // Search for restaurant by name (prioritize exact match, then partial)
+          // First try exact match (case-insensitive)
+          let { data: restaurants } = await supabase
+            .from('restaurants')
+            .select('id, name')
+            .ilike('name', restaurantName)
+            .limit(1);
+
+          // If no exact match, try partial match
+          if (!restaurants || restaurants.length === 0) {
+            const { data: partialMatches } = await supabase
+              .from('restaurants')
+              .select('id, name')
+              .ilike('name', `%${restaurantName}%`)
+              .limit(1);
+            restaurants = partialMatches;
+          }
+
+          if (restaurants && restaurants.length > 0) {
+            mentions.push({
+              restaurantId: restaurants[0].id,
+              restaurantName: restaurants[0].name,
+              startIndex,
+              endIndex
+            });
+          }
+        }
+
+        // Sort by start index
+        mentions.sort((a, b) => a.startIndex - b.startIndex);
+        setCaptionMentions(mentions);
+      } catch (error) {
+        console.error('Error loading caption mentions:', error);
+        setCaptionMentions([]);
+      }
+    };
+
+    loadCaptionMentions();
+  }, [post.caption]);
+
+  const renderCaptionText = (content: string) => {
+    if (captionMentions.length === 0) {
+      return <Text style={styles.caption}>{content}</Text>;
+    }
+
+    // Sort mentions by start index
+    const sortedMentions = [...captionMentions].sort((a, b) => a.startIndex - b.startIndex);
+    
+    const parts: Array<{ text: string; isMention: boolean; restaurantId?: string }> = [];
+    let lastIndex = 0;
+    
+    sortedMentions.forEach(mention => {
+      // Add text before mention
+      if (mention.startIndex > lastIndex) {
+        parts.push({
+          text: content.substring(lastIndex, mention.startIndex),
+          isMention: false
+        });
+      }
+      
+      // Add mention
+      parts.push({
+        text: content.substring(mention.startIndex, mention.endIndex),
+        isMention: true,
+        restaurantId: mention.restaurantId
+      });
+      
+      lastIndex = mention.endIndex;
+    });
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({
+        text: content.substring(lastIndex),
+        isMention: false
+      });
+    }
+    
+    return (
+      <Text style={styles.caption} numberOfLines={3}>
+        {parts.map((part, index) => {
+          if (part.isMention && part.restaurantId) {
+            return (
+              <Text
+                key={index}
+                style={styles.mentionText}
+                onPress={() => router.push(`/restaurant/${part.restaurantId}`)}
+              >
+                {part.text}
+              </Text>
+            );
+          }
+          return <Text key={index}>{part.text}</Text>;
+        })}
+      </Text>
+    );
+  };
 
   const handleMenuPress = () => {
     const isOwnPost = user?.id === post.user?.id;
@@ -397,11 +522,7 @@ export function PostCard({
       )}
 
       {/* Content */}
-      {post.caption && (
-        <Text style={styles.caption} numberOfLines={3}>
-          {post.caption}
-        </Text>
-      )}
+      {post.caption && renderCaptionText(post.caption)}
 
       {/* External Content Preview */}
       {(post as any).content_type === 'external' && (post as any).external_url && (
@@ -640,20 +761,6 @@ export function PostCard({
 
           <TouchableOpacity 
             style={styles.actionButton} 
-            onPress={handleSave}
-            disabled={isLoading}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={isSaved ? 'bookmark' : 'bookmark-outline'}
-              size={compactDesign.icon.medium}
-              color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textMedium}
-            />
-            <Text style={styles.actionCount}>{savesCount}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton} 
             onPress={handleShare}
             activeOpacity={0.7}
           >
@@ -754,6 +861,12 @@ const styles = StyleSheet.create({
     ...designTokens.typography.bodyRegular,
     color: designTokens.colors.textDark,
     marginBottom: compactDesign.card.gap,
+    lineHeight: 18,
+  },
+  mentionText: {
+    color: '#F59E0B',
+    fontFamily: 'Inter_500Medium',
+    fontSize: designTokens.typography.bodyRegular.fontSize,
     lineHeight: 18,
   },
   photoContainer: {

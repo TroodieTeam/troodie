@@ -135,6 +135,7 @@ export interface CreatorProfile {
   portfolio_uploaded?: boolean;
   total_followers?: number;
   troodie_engagement_rate?: number;
+  avatar_url?: string;
 }
 
 interface UseCreatorProfileResult {
@@ -192,7 +193,8 @@ export function useCreatorProfile(): UseCreatorProfileResult {
           verification_status,
           portfolio_uploaded,
           total_followers,
-          troodie_engagement_rate
+          troodie_engagement_rate,
+          avatar_url
         `
         )
         .eq('user_id', user.id)

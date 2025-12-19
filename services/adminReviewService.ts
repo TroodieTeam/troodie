@@ -34,8 +34,9 @@ export interface RejectRequest extends ReviewActionRequest {
 class AdminReviewService {
   // Admin user IDs
   private readonly ADMIN_USER_IDS = [
-    'b08d9600-358d-4be9-9552-4607d9f50227',
-    '31744191-f7c0-44a4-8673-10b34ccbb87f'
+    'b08d9600-358d-4be9-9552-4607d9f50227',  // Admin 1 (taydav37@gmail.com)
+    '31744191-f7c0-44a4-8673-10b34ccbb87f',  // Admin 2 (kouamendri@outlook.com)
+    '5373475d-b6b5-4abd-bd47-8ec515c44a47'   // Admin 3 (team@troodieapp.com) - GTM admin
   ];
 
   /**

@@ -7,6 +7,7 @@ import { DEFAULT_IMAGES } from '@/constants/images';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePostForm } from '@/hooks/usePostForm';
+import { supabase } from '@/lib/supabase';
 import { postMediaService } from '@/services/postMediaService';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
@@ -99,6 +100,11 @@ export default function CreatePostScreen() {
   // Keyboard state
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   
+  // Mention autocomplete state
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionSuggestions, setMentionSuggestions] = useState<Array<{ id: string; name: string; address: string | null; cover_photo_url: string | null; owner_id: string | null }>>([]);
+  const [captionInputHeight, setCaptionInputHeight] = useState(0);
+  
   // Edit mode params
   const editMode = params.editMode === 'true';
   const postId = params.postId as string | undefined;
@@ -189,6 +195,76 @@ export default function CreatePostScreen() {
       keyboardDidHideListener.remove();
     };
   }, []);
+
+  const handleCaptionChange = async (text: string) => {
+    updateFormField('caption', text);
+
+    // Regex: Check if the cursor is at the end of a word starting with @
+    // Updated to match database pattern - handles spaces and special characters
+    const match = text.match(/@([A-Za-z0-9\s&'-]*)$/);
+
+    if (match) {
+      const query = match[1];
+      setShowMentionSuggestions(true);
+      // Search Supabase directly
+      if (query.length >= 1) {
+        const { data } = await supabase
+          .from('restaurants')
+          .select('id, name, address, cover_photo_url, owner_id')
+          .ilike('name', `%${query}%`)
+          .limit(20);
+        
+        if (data) setMentionSuggestions(data);
+      } else {
+        // Show all restaurants when just @ is typed
+        const { data } = await supabase
+          .from('restaurants')
+          .select('id, name, address, cover_photo_url, owner_id')
+          .limit(20);
+        
+        if (data) setMentionSuggestions(data);
+      }
+    } else {
+      setShowMentionSuggestions(false);
+    }
+  };
+
+  const handleSelectMention = (restaurant: { id: string; name: string; address: string | null; cover_photo_url: string | null; owner_id: string | null }) => {
+    // Updated regex to match the improved pattern
+    const newText = formData.caption.replace(/@([A-Za-z0-9\s&'-]*)$/, `@${restaurant.name} `);
+    
+    updateFormField('caption', newText);
+    setShowMentionSuggestions(false);
+    setMentionSuggestions([]);
+  };
+
+  const renderMentionSuggestions = () => {
+    if (!showMentionSuggestions || mentionSuggestions.length === 0) return null;
+
+    return (
+      <View style={styles.suggestionListContainer}>
+        {mentionSuggestions.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.suggestionItem}
+            onPress={() => handleSelectMention(item)}
+          >
+            {item.cover_photo_url ? (
+              <Image source={{ uri: item.cover_photo_url }} style={styles.suggestionImage} />
+            ) : (
+              <View style={[styles.suggestionImage, { backgroundColor: '#eee' }]} />
+            )}
+            <View style={styles.suggestionInfo}>
+              <Text style={styles.suggestionName}>{item.name}</Text>
+              <Text style={styles.suggestionAddress} numberOfLines={1}>
+                {item.address}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
 
   const handlePublish = async () => {
     if (!user) return;
@@ -462,12 +538,15 @@ export default function CreatePostScreen() {
       <ScrollView style={styles.contentArea} keyboardShouldPersistTaps="handled">
         {/* Text input section */}
         <View style={styles.textSection}>
+          {/* Mention suggestions dropdown */}
+          {renderMentionSuggestions()}
           <TextInput
             style={styles.textInput}
             placeholder="What was your experience like? Tell us about the food, service, atmosphere..."
             placeholderTextColor={designTokens.colors.textLight}
             value={formData.caption}
-            onChangeText={(text) => updateFormField('caption', text)}
+            onChangeText={handleCaptionChange}
+            onLayout={(e) => setCaptionInputHeight(e.nativeEvent.layout.height)}
             testID="review-input"
             multiline
             maxLength={500}
@@ -2190,5 +2269,60 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
+  },
+  suggestionListContainer: {
+    marginHorizontal: designTokens.spacing.md,
+    marginBottom: 8,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: 12,
+    maxHeight: 180,
+    flexGrow: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    overflow: 'hidden',
+  },
+  listStyle: {
+    flexGrow: 0,
+  },
+  listContent: {
+    paddingVertical: 0,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.colors.borderLight,
+    backgroundColor: designTokens.colors.white,
+  },
+  suggestionInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  suggestionImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+  },
+  suggestionName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: designTokens.colors.textDark,
+    marginBottom: 2,
+  },
+  suggestionAddress: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: designTokens.colors.textLight,
   },
 });

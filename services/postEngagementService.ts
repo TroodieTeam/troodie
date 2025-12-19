@@ -1,3 +1,15 @@
+/**
+ * @deprecated This service has been replaced by UnifiedEngagementService.
+ * Please use `engagementService` from '@/services/engagement' instead.
+ * 
+ * Migration guide:
+ * - postEngagementService.likePost() → engagementService.likes.toggle()
+ * - postEngagementService.commentOnPost() → engagementService.comments.create()
+ * - postEngagementService.savePost() → engagementService.saves.toggle()
+ * 
+ * This file will be removed in a future version.
+ */
+
 import { supabase } from '@/lib/supabase';
 import { UserInfo } from '@/types/core';
 import {

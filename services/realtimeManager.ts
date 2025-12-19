@@ -71,7 +71,8 @@ class RealtimeManager {
     // Wrapper callback with filtering logic
     const wrappedCallback = (payload: any) => {
       const eventType = payload.eventType;
-      const data = payload.new || payload.old;
+      // For DELETE events, use payload.old; for INSERT/UPDATE, use payload.new
+      const data = eventType === 'DELETE' ? payload.old : payload.new;
 
       // Filter: Ignore events from specific user
       if (ignoreUserId) {
@@ -83,7 +84,9 @@ class RealtimeManager {
       }
 
       // Filter: Only process events newer than minTimestamp
-      if (timestampField && minTimestamp) {
+      // NOTE: If timestampField is provided but eventTimestamp is missing/null,
+      // we still process the event (for trigger-based updates that might not update timestamps)
+      if (timestampField && minTimestamp && minTimestamp > 0) {
         const eventTimestamp = data?.[timestampField];
         if (eventTimestamp) {
           const eventTime = new Date(eventTimestamp).getTime();
@@ -91,10 +94,19 @@ class RealtimeManager {
             return;
           }
         }
+        // If timestampField is missing but minTimestamp is set, we still process
+        // (this allows trigger-based updates to come through)
       }
 
-      // Call the actual callback
-      callback(data, eventType, { payload });
+      // Call the actual callback with full payload metadata
+      if (__DEV__) {
+        console.log(`[realtimeManager] Calling callback - eventType: ${payload.eventType}, table: ${table}, data:`, {
+          id: data?.id,
+          post_id: data?.post_id,
+          user_id: data?.user_id,
+        });
+      }
+      callback(data, eventType, { payload, eventType: payload.eventType });
     };
 
     // Add to callbacks set

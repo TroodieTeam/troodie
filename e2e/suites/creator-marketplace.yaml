@@ -1,0 +1,37 @@
+# Creator Marketplace Full E2E Test Suite
+# Purpose: Complete Creator Marketplace + Payment flow testing
+# Run time: ~8-10 minutes (with pre-seeded data)
+# Run: npm run test:e2e:marketplace
+#      OR: maestro test e2e/suites/creator-marketplace.yaml
+
+appId: com.troodie.troodie.com
+---
+name: Creator Marketplace E2E
+env:
+  # Accounts
+  CREATOR_EMAIL: prod-creator1@bypass.com
+  BUSINESS_EMAIL: prod-business1@bypass.com
+  OTP_CODE: "000000"
+
+tags:
+  - creator-marketplace
+  - payment
+  - e2e
+  - critical
+
+# Sequential flow - each step depends on previous
+flows:
+  # Step 1: Creator applies to a paid campaign
+  - creator-marketplace/apply-to-campaign.yaml
+  
+  # Step 2: Business accepts the application
+  - creator-marketplace/business-accepts-application.yaml
+  
+  # Step 3: Creator submits deliverable
+  - creator-marketplace/creator-submits-deliverable.yaml
+  
+  # Step 4: Business approves deliverable (triggers payout)
+  - creator-marketplace/business-approves-deliverable.yaml
+  
+  # Step 5: Creator verifies payout
+  - creator-marketplace/creator-verifies-payout.yaml

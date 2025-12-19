@@ -103,8 +103,7 @@ class DeliverableService {
           id,
           campaign_id,
           creator_id,
-          proposed_rate_cents,
-          campaigns!inner(restaurant_id)
+          campaigns!inner(restaurant_id, budget_cents)
         `)
         .eq('id', input.campaign_application_id)
         .single();
@@ -115,6 +114,8 @@ class DeliverableService {
       }
 
       // Create deliverable
+      // Note: payment_amount_cents will be set during approval via deliverableReviewService
+      // We use campaign budget as initial value, but it will be recalculated during approval
       const { data, error } = await supabase
         .from('campaign_deliverables')
         .insert({
@@ -128,7 +129,7 @@ class DeliverableService {
           caption: input.caption,
           social_platform: input.social_platform,
           platform_post_url: input.platform_post_url,
-          payment_amount_cents: application.proposed_rate_cents,
+          payment_amount_cents: null, // Will be set during approval via deliverableReviewService
           status: 'pending_review',
           submitted_at: new Date().toISOString(),
         })
@@ -161,8 +162,7 @@ class DeliverableService {
           id,
           campaign_id,
           creator_id,
-          proposed_rate_cents,
-          campaigns!inner(restaurant_id)
+          campaigns!inner(restaurant_id, budget_cents)
         `)
         .eq('id', input.campaign_application_id)
         .single();
@@ -185,7 +185,7 @@ class DeliverableService {
           caption: input.caption,
           social_platform: input.social_platform,
           platform_post_url: input.platform_post_url,
-          payment_amount_cents: application.proposed_rate_cents,
+          payment_amount_cents: null, // Will be set during approval via deliverableReviewService
           status: 'draft',
         })
         .select()
@@ -248,26 +248,30 @@ class DeliverableService {
     try {
       console.log('[DeliverableService] Approving deliverable:', deliverableId);
 
-      const { data, error } = await supabase
-        .from('campaign_deliverables')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          review_notes: reviewNotes,
-          payment_status: 'processing',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', deliverableId)
-        .select()
-        .single();
+      // Use the proper approveDeliverable function from deliverableReviewService
+      // which handles payment_amount_cents and triggers payout processing
+      const { approveDeliverable: approveDeliverableWithPayout } = await import('./deliverableReviewService');
+      
+      // Get current user ID for reviewer_id (required by approveDeliverable)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('[DeliverableService] No user found');
+        return null;
+      }
 
-      if (error) {
-        console.error('[DeliverableService] Error approving deliverable:', error);
+      const result = await approveDeliverableWithPayout({
+        deliverable_id: deliverableId,
+        reviewer_id: user.id,
+        feedback: reviewNotes,
+      });
+
+      if (result.error) {
+        console.error('[DeliverableService] Error approving deliverable:', result.error);
         return null;
       }
 
       console.log('[DeliverableService] Deliverable approved successfully');
-      return data;
+      return result.data;
     } catch (error) {
       console.error('[DeliverableService] Unexpected error:', error);
       return null;

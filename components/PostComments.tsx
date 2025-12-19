@@ -6,7 +6,7 @@ import { CommentWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -18,6 +18,14 @@ interface PostCommentsProps {
   showComments?: boolean;
   postAuthorName?: string; // For "Replying to" text
   bottomOffset?: number;
+}
+
+interface RestaurantSuggestion {
+  id: string;
+  name: string;
+  address: string | null;
+  cover_photo_url: string | null;
+  owner_id: string | null;
 }
 
 export function PostComments({ 
@@ -37,6 +45,45 @@ export function PostComments({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mentionsMap, setMentionsMap] = useState<Map<string, Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>>(new Map());
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<RestaurantSuggestion[]>([]);
+  const [inputHeight, setInputHeight] = useState(0);
+  const [tempMentions, setTempMentions] = useState<RestaurantSuggestion[]>([]);
+  
+  
+  const handleCommentChange = async (text: string) => {
+    setNewComment(text);
+
+    // Regex: Check if the cursor is at the end of a word starting with @
+    // Updated to match database pattern - handles spaces and special characters
+    const match = text.match(/@([A-Za-z0-9\s&'-]*)$/);
+
+    if (match) {
+      const query = match[1];
+      setShowSuggestions(true);
+      // Search Supabase directly
+      if (query.length >= 1) {
+        const { data } = await supabase
+          .from('restaurants')
+          .select('id, name, address, cover_photo_url, owner_id')
+          .ilike('name', `%${query}%`)
+          .limit(20);
+        
+        if (data) setSuggestions(data);
+      }
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+  const handleSelectMention = (restaurant: RestaurantSuggestion) => {
+    // Updated regex to match the improved pattern
+    const newText = newComment.replace(/@([A-Za-z0-9\s&'-]*)$/, `@${restaurant.name} `);
+    
+    setNewComment(newText);
+    setTempMentions(prev => [...prev, restaurant]);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
 
   useEffect(() => {
     if (showComments) {
@@ -231,6 +278,12 @@ export function PostComments({
       
       // Get the returned comment data
       const commentData = data?.comment;
+
+      // Note: Mentions are automatically processed by database trigger
+      // No need to manually save mentions here - trigger handles it
+      // Clear tempMentions for next comment
+      setTempMentions([]);
+
       if (!commentData) {
         // Fallback: reload comments if no comment data returned
         await loadComments();
@@ -390,8 +443,43 @@ export function PostComments({
         })}
       </Text>
     );
-  };
+  }; 
 
+
+const renderSuggestions = () => {
+    if (!showSuggestions || suggestions.length === 0) return null;
+
+    return (
+      <View style={styles.suggestionListContainer}>
+        <FlatList
+          data={suggestions}
+          keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={true}
+          style={styles.listStyle}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.suggestionItem}
+              onPress={() => handleSelectMention(item)}
+            >
+              {item.cover_photo_url ? (
+                <Image source={{ uri: item.cover_photo_url }} style={styles.suggestionImage} />
+              ) : (
+                <View style={[styles.suggestionImage, { backgroundColor: '#eee' }]} />
+              )}
+              <View style={styles.suggestionInfo}>
+                <Text style={styles.suggestionName}>{item.name}</Text>
+                <Text style={styles.suggestionAddress} numberOfLines={1}>
+                  {item.address}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    );
+  };
   const renderComment = ({ item }: { item: CommentWithUser }) => {
     return (
       <View style={styles.commentContainer}>
@@ -464,11 +552,12 @@ export function PostComments({
               Replying to <Text style={styles.replyingToUsername}>@{postAuthorName}</Text>
             </Text>
           )}
+          {renderSuggestions()}
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.twitterCommentInput}
               value={newComment}
-              onChangeText={setNewComment}
+              onChangeText={handleCommentChange}
               placeholder="Post your reply"
               multiline
               maxLength={500}
@@ -493,32 +582,56 @@ export function PostComments({
     );
   }
 
-  // If only showing comments (no input)
-  if (!showInput && showComments) {
+  // If only showing input (Twitter-style fixed bottom input)
+  if (showInput && !showComments) {
+    const offset = bottomOffset + insets.bottom;
     return (
-      <View style={styles.commentsOnlyContainer}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
-            <Text style={styles.loadingText}>Loading comments...</Text>
+      <KeyboardAvoidingView 
+        style={[styles.fixedInputContainer, { bottom: offset }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Suggestions render OUTSIDE the input view to prevent clipping */}
+        <View style={{ position: 'absolute', bottom: inputHeight, left: 0, right: 0, zIndex: 9999 }}>
+          {renderSuggestions()}
+        </View>
+
+        <View 
+          style={styles.twitterInputContainer}
+          onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
+        >
+          {/* Replying to text */}
+          {postAuthorName && (
+            <Text style={styles.replyingToText}>
+              Replying to <Text style={styles.replyingToUsername}>@{postAuthorName}</Text>
+            </Text>
+          )}
+          
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.twitterCommentInput}
+              value={newComment}
+              onChangeText={handleCommentChange}
+              placeholder="Post your reply"
+              multiline
+              maxLength={500}
+              returnKeyType="send"
+              onSubmitEditing={newComment.trim() ? handleSubmitComment : undefined}
+              blurOnSubmit={false}
+            />
+            <TouchableOpacity
+              style={[styles.twitterSubmitButton, (!newComment.trim() || submitting) && styles.submitButtonDisabled]}
+              onPress={handleSubmitComment}
+              disabled={!newComment.trim() || submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color={designTokens.colors.white} />
+              ) : (
+                <Text style={styles.replyButtonText}>Reply</Text>
+              )}
+            </TouchableOpacity>
           </View>
-        ) : comments.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No comments yet</Text>
-          </View>
-        ) : (
-          comments.slice(0, 10).map((item) => ( // Show more comments when separate
-            <View key={item.id}>
-              {renderComment({ item })}
-            </View>
-          ))
-        )}
-        {comments.length > 10 && (
-          <View style={styles.showMoreContainer}>
-            <Text style={styles.showMoreText}>... and {comments.length - 10} more comments</Text>
-          </View>
-        )}
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -555,30 +668,40 @@ export function PostComments({
 
       {/* Comment Input - Fixed at bottom */}
       {showInput && (
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.commentInput}
-              value={newComment}
-              onChangeText={setNewComment}
-              placeholder="Add a comment..."
-              multiline
-              maxLength={500}
-              returnKeyType="send"
-              onSubmitEditing={newComment.trim() ? handleSubmitComment : undefined}
-              blurOnSubmit={false}
-            />
-            <TouchableOpacity
-              style={[styles.submitButton, (!newComment.trim() || submitting) && styles.submitButtonDisabled]}
-              onPress={handleSubmitComment}
-              disabled={!newComment.trim() || submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator size="small" color={designTokens.colors.white} />
-              ) : (
-                <Ionicons name="send" size={16} color={designTokens.colors.white} />
-              )}
-            </TouchableOpacity>
+        <View>
+          {/* Suggestions render OUTSIDE the input container */}
+          <View style={{ position: 'absolute', bottom: inputHeight, left: 0, right: 0, zIndex: 9999 }}>
+            {renderSuggestions()}
+          </View>
+
+          <View 
+            style={styles.inputContainer}
+            onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
+          >
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.commentInput}
+                value={newComment}
+                onChangeText={handleCommentChange}
+                placeholder="Add a comment..."
+                multiline
+                maxLength={500}
+                returnKeyType="send"
+                onSubmitEditing={newComment.trim() ? handleSubmitComment : undefined}
+                blurOnSubmit={false}
+              />
+              <TouchableOpacity
+                style={[styles.submitButton, (!newComment.trim() || submitting) && styles.submitButtonDisabled]}
+                onPress={handleSubmitComment}
+                disabled={!newComment.trim() || submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color={designTokens.colors.white} />
+                ) : (
+                  <Ionicons name="send" size={16} color={designTokens.colors.white} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
@@ -590,6 +713,61 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+ suggestionListContainer: {
+    marginHorizontal: 12,
+    marginBottom: 4, 
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    maxHeight: 180, 
+    flexGrow: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    overflow: 'hidden',
+  },
+  listStyle: {
+    flexGrow: 0, 
+  },
+  listContent: {
+    paddingVertical: 0,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+  },
+  suggestionInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  suggestionImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+    backgroundColor: '#F0F0F0',
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  suggestionName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  suggestionAddress: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: '#8E8E93',
   },
   inputContainer: {
     paddingHorizontal: 16,

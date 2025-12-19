@@ -41,6 +41,7 @@ yarn-error.*
 
 app-example
 
+ios/
 
 # documentation files
 README.md
