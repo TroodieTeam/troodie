@@ -55,9 +55,9 @@ CREATE POLICY "Users can create mentions in their comments" ON restaurant_mentio
 
 -- Extend process_restaurant_mentions function to handle post mentions
 CREATE OR REPLACE FUNCTION process_restaurant_mentions(
+  p_text TEXT,
   p_comment_id UUID DEFAULT NULL,
-  p_post_id UUID DEFAULT NULL,
-  p_text TEXT
+  p_post_id UUID DEFAULT NULL
 )
 RETURNS JSON AS $$
 DECLARE
@@ -162,7 +162,7 @@ DECLARE
 BEGIN
   -- Process mentions if comment contains @
   IF NEW.content LIKE '%@%' THEN
-    PERFORM process_restaurant_mentions(p_comment_id => NEW.id, p_text => NEW.content);
+    PERFORM process_restaurant_mentions(p_text => NEW.content, p_comment_id => NEW.id);
     
     -- Get commenter info for notifications
     SELECT id, name, username, avatar_url INTO v_commenter
@@ -233,7 +233,7 @@ DECLARE
 BEGIN
   -- Process mentions if post caption contains @
   IF NEW.caption LIKE '%@%' THEN
-    PERFORM process_restaurant_mentions(p_post_id => NEW.id, p_text => NEW.caption);
+    PERFORM process_restaurant_mentions(p_text => NEW.caption, p_post_id => NEW.id);
     
     -- Get poster info for notifications
     SELECT id, name, username, avatar_url INTO v_poster
