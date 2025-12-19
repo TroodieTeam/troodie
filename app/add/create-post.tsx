@@ -22,7 +22,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   InputAccessoryView,
   Keyboard,
@@ -244,32 +243,25 @@ export default function CreatePostScreen() {
 
     return (
       <View style={styles.suggestionListContainer}>
-        <FlatList
-          data={mentionSuggestions}
-          keyExtractor={(item) => item.id}
-          keyboardShouldPersistTaps="handled"
-          nestedScrollEnabled={true}
-          style={styles.listStyle}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.suggestionItem}
-              onPress={() => handleSelectMention(item)}
-            >
-              {item.cover_photo_url ? (
-                <Image source={{ uri: item.cover_photo_url }} style={styles.suggestionImage} />
-              ) : (
-                <View style={[styles.suggestionImage, { backgroundColor: '#eee' }]} />
-              )}
-              <View style={styles.suggestionInfo}>
-                <Text style={styles.suggestionName}>{item.name}</Text>
-                <Text style={styles.suggestionAddress} numberOfLines={1}>
-                  {item.address}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
+        {mentionSuggestions.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.suggestionItem}
+            onPress={() => handleSelectMention(item)}
+          >
+            {item.cover_photo_url ? (
+              <Image source={{ uri: item.cover_photo_url }} style={styles.suggestionImage} />
+            ) : (
+              <View style={[styles.suggestionImage, { backgroundColor: '#eee' }]} />
+            )}
+            <View style={styles.suggestionInfo}>
+              <Text style={styles.suggestionName}>{item.name}</Text>
+              <Text style={styles.suggestionAddress} numberOfLines={1}>
+                {item.address}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
       </View>
     );
   };

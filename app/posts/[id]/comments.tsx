@@ -49,6 +49,7 @@ export default function PostCommentsModal() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; address: string | null; cover_photo_url: string | null; owner_id: string | null }>>([]);
   const [inputHeight, setInputHeight] = useState(0);
+  const [postCaptionMentions, setPostCaptionMentions] = useState<Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>([]);
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -129,6 +130,77 @@ export default function PostCommentsModal() {
       loadMentionsForComments(comments);
     }
   }, [comments.map(c => c.id).join(',')]); // Only reload when comment IDs change
+
+  // Load restaurant mentions from post caption
+  useEffect(() => {
+    const loadPostCaptionMentions = async () => {
+      if (!post?.caption || !post.caption.includes('@')) {
+        setPostCaptionMentions([]);
+        return;
+      }
+
+      try {
+        // Extract @mentions from caption using regex
+        // Match @ followed by word characters (letters, numbers, &, ', -) but stop at spaces
+        // This matches single-word restaurant names like @Meshugganah or @Puerta
+        const mentionPattern = /@([A-Za-z0-9&'-]+)/g;
+        const matches = Array.from(post.caption.matchAll(mentionPattern));
+        
+        if (matches.length === 0) {
+          setPostCaptionMentions([]);
+          return;
+        }
+
+        // Look up restaurants for each mention
+        const mentions: Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }> = [];
+        
+        for (const match of matches) {
+          const mentionText = match[0]; // e.g., "@Meshugganah"
+          const restaurantName = match[1].trim(); // e.g., "Meshugganah"
+          const startIndex = match.index!;
+          const endIndex = startIndex + mentionText.length;
+
+          // Search for restaurant by name (prioritize exact match, then partial)
+          // First try exact match (case-insensitive)
+          let { data: restaurants } = await supabase
+            .from('restaurants')
+            .select('id, name')
+            .ilike('name', restaurantName)
+            .limit(1);
+
+          // If no exact match, try partial match
+          if (!restaurants || restaurants.length === 0) {
+            const { data: partialMatches } = await supabase
+              .from('restaurants')
+              .select('id, name')
+              .ilike('name', `%${restaurantName}%`)
+              .limit(1);
+            restaurants = partialMatches;
+          }
+
+          if (restaurants && restaurants.length > 0) {
+            mentions.push({
+              restaurantId: restaurants[0].id,
+              restaurantName: restaurants[0].name,
+              startIndex,
+              endIndex
+            });
+          }
+        }
+
+        // Sort by start index
+        mentions.sort((a, b) => a.startIndex - b.startIndex);
+        setPostCaptionMentions(mentions);
+      } catch (error) {
+        console.error('Error loading post caption mentions:', error);
+        setPostCaptionMentions([]);
+      }
+    };
+
+    if (post?.caption) {
+      loadPostCaptionMentions();
+    }
+  }, [post?.caption]);
   
   // CRITICAL: Prevent loadComments from running after comment creation
   // This was causing subscription cleanup and missing realtime events
@@ -886,6 +958,64 @@ export default function PostCommentsModal() {
     );
   };
 
+  const renderPostCaptionText = (content: string) => {
+    if (postCaptionMentions.length === 0) {
+      return <Text style={styles.postCaption}>{content}</Text>;
+    }
+
+    // Sort mentions by start index
+    const sortedMentions = [...postCaptionMentions].sort((a, b) => a.startIndex - b.startIndex);
+    
+    const parts: Array<{ text: string; isMention: boolean; restaurantId?: string }> = [];
+    let lastIndex = 0;
+    
+    sortedMentions.forEach(mention => {
+      // Add text before mention
+      if (mention.startIndex > lastIndex) {
+        parts.push({
+          text: content.substring(lastIndex, mention.startIndex),
+          isMention: false
+        });
+      }
+      
+      // Add mention
+      parts.push({
+        text: content.substring(mention.startIndex, mention.endIndex),
+        isMention: true,
+        restaurantId: mention.restaurantId
+      });
+      
+      lastIndex = mention.endIndex;
+    });
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({
+        text: content.substring(lastIndex),
+        isMention: false
+      });
+    }
+    
+    return (
+      <Text style={styles.postCaption} numberOfLines={2}>
+        {parts.map((part, index) => {
+          if (part.isMention && part.restaurantId) {
+            return (
+              <Text
+                key={index}
+                style={styles.mentionText}
+                onPress={() => router.push(`/restaurant/${part.restaurantId}`)}
+              >
+                {part.text}
+              </Text>
+            );
+          }
+          return <Text key={index}>{part.text}</Text>;
+        })}
+      </Text>
+    );
+  };
+
   const renderCommentText = (content: string, commentId: string) => {
     const mentions = mentionsMap.get(commentId) || [];
     
@@ -1131,9 +1261,9 @@ export default function PostCommentsModal() {
           <Text style={styles.postAuthorName}>
             {post.user.name || post.user.username}
           </Text>
-          <Text style={styles.postCaption} numberOfLines={2}>
-            {post.caption || 'No caption'}
-          </Text>
+          {post.caption ? renderPostCaptionText(post.caption) : (
+            <Text style={styles.postCaption}>No caption</Text>
+          )}
         </View>
       </View>
 
@@ -1421,9 +1551,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
   },
   mentionText: {
-    color: designTokens.colors.primaryOrange,
-    textDecorationLine: 'underline',
+    color: '#F59E0B',
     fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    lineHeight: 20,
   },
   commentActions: {
     flexDirection: 'row',
