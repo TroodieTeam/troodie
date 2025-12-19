@@ -2,9 +2,11 @@ import { RestaurantCard } from '@/components/cards/RestaurantCard';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { boardService } from '@/services/boardService';
 import { boardInvitationService } from '@/services/boardInvitationService';
+import { boardService } from '@/services/boardService';
+import { restaurantFavoriteService } from '@/services/restaurantFavoriteService';
 import { restaurantService } from '@/services/restaurantService';
+import { restaurantVisitService } from '@/services/restaurantVisitService';
 import ShareService from '@/services/shareService';
 import { ToastService } from '@/services/toastService';
 import { BoardRestaurant, BoardWithRestaurants } from '@/types/board';
@@ -26,7 +28,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Modal,
   Pressable,
   SafeAreaView,
@@ -55,6 +56,8 @@ export default function BoardDetailScreen() {
   const [pendingInvitation, setPendingInvitation] = useState<any>(null);
   const [showInvitationAcceptModal, setShowInvitationAcceptModal] = useState(false);
   const [invitationActionLoading, setInvitationActionLoading] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [visited, setVisited] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     console.log('[BoardDetail] Component mounted with boardId:', boardId);
@@ -147,6 +150,9 @@ export default function BoardDetailScreen() {
           setPendingInvitation(invitation);
           setShowInvitationAcceptModal(true);
         }
+
+        // Load user's favorite and visited status
+        loadUserStatus();
       }
 
       if (boardData.restaurants && boardData.restaurants.length > 0) {
@@ -163,6 +169,21 @@ export default function BoardDetailScreen() {
       Alert.alert('Error', 'Failed to load board details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserStatus = async () => {
+    if (!user?.id) return;
+
+    try {
+      const [favs, visits] = await Promise.all([
+        restaurantFavoriteService.getUserFavorites(user.id),
+        restaurantVisitService.getUserVisitedRestaurants(user.id)
+      ]);
+      setFavorites(new Set(favs));
+      setVisited(new Set(visits));
+    } catch (error) {
+      console.error('Error loading user status:', error);
     }
   };
 
@@ -635,6 +656,8 @@ export default function BoardDetailScreen() {
             <RestaurantCard
               restaurant={restaurant}
               onPress={() => router.push(`/restaurant/${restaurant.id}`)}
+              isFavorited={favorites.has(restaurant.id)}
+              isVisited={visited.has(restaurant.id)}
             />
           </View>
         ))}

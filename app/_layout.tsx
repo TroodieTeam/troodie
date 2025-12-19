@@ -2,16 +2,16 @@
 import 'react-native-url-polyfill/auto';
 
 import {
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import {
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -58,7 +58,7 @@ SplashScreen.preventAutoHideAsync();
 // Inner layout component that has access to auth context
 function InnerLayout() {
   const router = useRouter();
-  
+
   // Handle deep links
   useEffect(() => {
     const handleDeepLink = (url: string) => {
@@ -73,7 +73,7 @@ function InnerLayout() {
       if (path.includes('--/')) {
         path = path.split('--/')[1];
       }
-      
+
       // Handle different deep link patterns
       if (path) {
         // Remove leading slash if present
@@ -137,7 +137,7 @@ function InnerLayout() {
         }, 100);
       }
     };
-    
+
     // Get the initial URL if the app was launched from a deep link
     const getInitialURL = async () => {
       const url = await Linking.getInitialURL();
@@ -147,9 +147,9 @@ function InnerLayout() {
         setTimeout(() => handleDeepLink(url), 500);
       }
     };
-    
+
     getInitialURL();
-    
+
     // Subscribe to incoming links
     const subscription = Linking.addEventListener('url', ({ url }) => {
       console.log('[Deep Link] App received URL event:', url);
@@ -194,7 +194,7 @@ function InnerLayout() {
 
   // Get auth loading state
   const { loading: authLoading } = useAuth();
-  
+
   // Coordinate splash screen hiding with both font and auth loading
   const onLayoutRootView = useCallback(async () => {
     if ((fontsLoaded || fontError) && !authLoading) {
@@ -225,7 +225,7 @@ function InnerLayout() {
     // Return a View instead of null to prevent flash
     return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
   }
-  
+
   if (authLoading) {
     // Keep showing splash while auth loads
     return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
@@ -255,13 +255,14 @@ function InnerLayout() {
             <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
             <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
             <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
+            <Stack.Screen name="quick-saves" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
-            <StatusBar style="dark" />
-            <Toast config={toastConfig} />
-          </ThemeProvider>
-        </OnboardingProvider>
-      </AppProvider>
+          <StatusBar style="dark" />
+          <Toast config={toastConfig} />
+        </ThemeProvider>
+      </OnboardingProvider>
+    </AppProvider>
   );
 
   // Get proper urlScheme for Stripe redirects (per Expo docs)
