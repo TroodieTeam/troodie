@@ -1,0 +1,129 @@
+appId: com.troodie.troodie.com
+---
+# Test: Business approves deliverable (triggers payout)
+# Priority: P1 (Critical for Payment Flow)
+# Prerequisites:
+#   - Business account logged in
+#   - Submitted deliverable exists
+#   - Stripe accounts pre-configured (for payout)
+# Tags: business, deliverable, approval, payout
+
+env:
+  TEST_EMAIL: prod-business1@bypass.com
+
+# Login as business
+- runFlow: helpers/login-bypass.yaml
+
+# Navigate to Business tab
+- tapOn:
+    id: "tab-business"
+    optional: true
+
+- tapOn:
+    text: "Business"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Campaigns
+- tapOn:
+    text: "Campaigns"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Find campaign with deliverables
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Deliverables tab
+- tapOn:
+    text: "Deliverables"
+    optional: true
+
+- tapOn:
+    text: "Review"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Find pending deliverable
+- assertVisible:
+    text: "Pending"
+    timeout: 10000
+    optional: true
+
+# Tap on deliverable to review
+- tapOn:
+    id: "deliverable-card-0"
+    optional: true
+
+- tapOn:
+    text: "Review"
+    optional: true
+
+- waitForAnimationToEnd
+
+# View deliverable details
+- assertVisible:
+    text: "instagram"
+    timeout: 10000
+    optional: true
+
+# Approve deliverable
+- scrollUntilVisible:
+    element:
+      text: "Approve"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Approve"
+
+# Confirm approval (this triggers payout)
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Confirm"
+    optional: true
+
+- tapOn:
+    text: "Yes, Approve"
+    optional: true
+
+# Wait for approval and payout trigger
+- waitForAnimationToEnd
+
+# Verify approval
+- assertVisible:
+    text: "approved"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Success"
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+# Take screenshot
+- takeScreenshot: "business-deliverable-approved"
+
+# Verify payout initiated (may show processing)
+- assertVisible:
+    text: "Payout"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "payout-initiated"

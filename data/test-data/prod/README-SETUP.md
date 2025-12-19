@@ -122,3 +122,49 @@ If you see "JSON object requested, multiple (or no) rows returned" when accessin
 - Run `02h-fix-business-profiles.sql` to create/update business_profiles with correct restaurant links
 
 All scripts use `ON CONFLICT` so they're safe to run multiple times.
+
+---
+
+## Complete Reset & Testing
+
+### Step 9: Reset All Test Data (Before Fresh Testing)
+**File:** `03-complete-reset-all-test-data.sql`
+
+Resets ALL test data to a clean state:
+- Removes Stripe accounts
+- Removes payment transactions
+- Removes campaign payments
+- Removes deliverables
+- Removes applications
+- Resets campaigns to unpaid/active state
+- Clears notifications
+
+**Use this before each testing session to start fresh.**
+
+### Step 10: Setup Troodie Restaurant Paid Campaigns
+**File:** `04-setup-troodie-restaurant-paid-campaigns.sql`
+
+Creates/finds Troodie Restaurant with paid opportunities:
+- Featured Creator Partnership ($500) - 2 creators
+- New Menu Launch ($300) - 1 creator
+- UGC Video Creator ($400) - 1 creator
+
+**Total: $1,200 in paid opportunities for creators to apply!**
+
+## Ultimate Testing Guide
+
+See `docs/PRODUCTION_TESTING_ULTIMATE_GUIDE.md` for:
+- Step-by-step E2E testing instructions
+- Stripe onboarding guides (business & creator)
+- Campaign payment flow
+- Creator application & deliverable flow
+- Payout verification
+- Troubleshooting common issues
+
+## Admin Account Setup
+
+See `docs/ADMIN_ACCOUNT_SETUP_GUIDE.md` for:
+- Creating admin accounts with bypass OTP (`000000`)
+- Setting up `team@troodieapp.com` admin account
+- Adding admin UUIDs to `adminReviewService.ts`
+- Verifying admin access and capabilities

@@ -12,14 +12,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { MenuButton } from './common/MenuButton';
 import { ImageViewer } from './ImageViewer';
@@ -33,7 +33,6 @@ interface PostCardProps {
   onPress?: () => void;
   onLike?: (postId: string, liked: boolean) => void;
   onComment?: (postId: string) => void;
-  onSave?: (postId: string) => void;
   onShare?: (postId: string) => void;
   onBlock?: (userId: string) => void;
   onDelete?: (postId: string) => void;
@@ -48,7 +47,6 @@ export function PostCard({
   onPress,
   onLike,
   onComment,
-  onSave,
   onShare,
   onBlock,
   onDelete,
@@ -68,26 +66,21 @@ export function PostCard({
   const initialStats = useMemo(() => ({
     likes_count: post.likes_count,
     comments_count: post.comments_count,
-    saves_count: post.saves_count,
     share_count: post.share_count || 0,
-  }), [post.likes_count, post.comments_count, post.saves_count, post.share_count]);
+  }), [post.likes_count, post.comments_count, post.share_count]);
 
   // Use the enhanced post engagement hook
   const {
     isLiked,
-    isSaved,
     likesCount,
     commentsCount,
-    savesCount,
     shareCount,
     isLoading,
     toggleLike,
-    toggleSave,
   } = usePostEngagement({
     postId: post.id,
     initialStats,
     initialIsLiked: post.is_liked_by_user || false,
-    initialIsSaved: post.is_saved_by_user || false,
     enableRealtime: true,
   });
 
@@ -100,11 +93,6 @@ export function PostCard({
     // Call onLike callback for any parent component side effects if needed
     // Pass the new state (opposite of previous)
     onLike?.(post.id, !previousIsLiked);
-  };
-
-  const handleSave = async () => {
-    await toggleSave();
-    onSave?.(post.id);
   };
 
   const handleComment = () => {
@@ -645,20 +633,6 @@ export function PostCard({
           >
             <Ionicons name="chatbubble-outline" size={compactDesign.icon.medium} color={designTokens.colors.textMedium} />
             <Text style={styles.actionCount}>{commentsCount}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={handleSave}
-            disabled={isLoading}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={isSaved ? 'bookmark' : 'bookmark-outline'}
-              size={compactDesign.icon.medium}
-              color={isSaved ? designTokens.colors.primaryOrange : designTokens.colors.textMedium}
-            />
-            <Text style={styles.actionCount}>{savesCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 

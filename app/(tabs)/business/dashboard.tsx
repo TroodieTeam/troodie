@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
+    ArrowLeft,
     BarChart,
     Bell,
     CheckCircle,
@@ -222,13 +223,24 @@ export default function BusinessDashboard() {
           paddingHorizontal: DS.spacing.lg,
           marginBottom: DS.spacing.lg,
         }}>
-          <View>
-            <Text style={{ ...DS.typography.h2, color: DS.colors.textDark }}>
-              Dashboard
-            </Text>
-            <Text style={{ ...DS.typography.body, color: DS.colors.textGray }}>
-              Overview
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <TouchableOpacity 
+              onPress={() => router.push('/(tabs)/more')}
+              style={{
+                marginRight: DS.spacing.md,
+                padding: DS.spacing.xs,
+              }}
+            >
+              <ArrowLeft size={24} color={DS.colors.textDark} />
+            </TouchableOpacity>
+            <View>
+              <Text style={{ ...DS.typography.h2, color: DS.colors.textDark }}>
+                Dashboard
+              </Text>
+              <Text style={{ ...DS.typography.body, color: DS.colors.textGray }}>
+                Overview
+              </Text>
+            </View>
           </View>
           
           <View style={{ flexDirection: 'row', gap: DS.spacing.md }}>

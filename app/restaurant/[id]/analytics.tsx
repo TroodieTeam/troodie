@@ -97,7 +97,7 @@ export default function RestaurantAnalyticsScreen() {
       console.log('[Restaurant Analytics] No business profile found');
       setLoading(false);
       Alert.alert('Access Denied', 'You need to claim a restaurant to view analytics.');
-      router.back();
+      router.push('/(tabs)/more');
       return;
     }
 
@@ -126,7 +126,7 @@ export default function RestaurantAnalyticsScreen() {
         'Access Denied', 
         `You can only view analytics for your own restaurant.\n\nExpected: ${restaurantId}\nYour restaurant: ${businessRestaurantId || 'None'}`
       );
-      router.back();
+      router.push('/(tabs)/more');
       return;
     }
 
@@ -254,7 +254,7 @@ export default function RestaurantAnalyticsScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
         <View style={{ padding: 16 }}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
             <ArrowLeft size={24} color={DS.colors.text} />
           </TouchableOpacity>
         </View>

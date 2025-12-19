@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface CreatorHeaderProps {
@@ -18,7 +18,7 @@ export function CreatorHeader({ title, onBack, rightElement }: CreatorHeaderProp
     if (onBack) {
       onBack();
     } else {
-      router.back();
+      router.push('/(tabs)/more');
     }
   };
 

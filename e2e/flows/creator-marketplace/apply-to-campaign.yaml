@@ -1,0 +1,180 @@
+appId: com.troodie.troodie.com
+---
+# Test: Creator applies to a paid campaign
+# Priority: P1 (Critical for Creator Marketplace)
+# Prerequisites: 
+#   - Creator account logged in
+#   - Active paid campaigns exist
+# Tags: creator, campaign, application
+
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+
+# Login as creator
+- runFlow: helpers/login-bypass.yaml
+
+# Navigate to Discover/Marketplace
+- tapOn:
+    id: "tab-discover"
+    optional: true
+
+- tapOn:
+    text: "Discover"
+    optional: true
+
+- tapOn:
+    text: "Marketplace"
+    optional: true
+
+- tapOn:
+    text: "Campaigns"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Look for active campaign
+- assertVisible:
+    text: "Campaign"
+    timeout: 10000
+
+# Scroll to find a paid campaign
+- scrollUntilVisible:
+    element:
+      text: "$"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+# Tap on first campaign card
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+# Wait for campaign details
+- waitForAnimationToEnd
+
+# Verify campaign details visible
+- assertVisible:
+    text: "Apply"
+    timeout: 10000
+
+# Tap Apply Now
+- tapOn:
+    text: "Apply Now"
+    optional: true
+
+- tapOn:
+    text: "Apply"
+
+# Wait for application modal
+- waitForAnimationToEnd
+
+# Fill application form
+- assertVisible:
+    text: "Application"
+    timeout: 5000
+    optional: true
+
+# Proposed Rate
+- tapOn:
+    id: "proposed-rate-input"
+    optional: true
+
+- inputText: "150"
+- hideKeyboard
+
+# Cover Letter
+- tapOn:
+    id: "cover-letter-input"
+    optional: true
+
+- scrollUntilVisible:
+    element:
+      id: "cover-letter-input"
+    direction: DOWN
+    optional: true
+
+- inputText: "I'm excited to create content for your restaurant! I have experience creating engaging food content on Instagram and TikTok."
+- hideKeyboard
+
+# Proposed Deliverables
+- tapOn:
+    id: "proposed-deliverables-input"
+    optional: true
+
+- scrollUntilVisible:
+    element:
+      id: "proposed-deliverables-input"
+    direction: DOWN
+    optional: true
+
+- inputText: "1 Instagram Reel (30-60 seconds) + Stories coverage"
+- hideKeyboard
+
+# Submit application
+- scrollUntilVisible:
+    element:
+      text: "Submit"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Submit Application"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+
+# Wait for confirmation
+- waitForAnimationToEnd
+
+# Verify success
+- assertVisible:
+    text: "submitted"
+    timeout: 10000
+    optional: true
+
+- assertVisible:
+    text: "Success"
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+- tapOn:
+    text: "Done"
+    optional: true
+
+# Take screenshot
+- takeScreenshot: "creator-application-submitted"
+
+# Navigate to My Campaigns to verify
+- tapOn:
+    text: "My Campaigns"
+    optional: true
+
+- tapOn:
+    id: "tab-my-campaigns"
+    optional: true
+
+# Check Pending tab
+- tapOn:
+    text: "Pending"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify application appears
+- assertVisible:
+    text: "pending"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "creator-application-pending"

@@ -16,13 +16,13 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Clock, Filter, MapPin, Play, Search, Star, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -663,7 +663,7 @@ export default function BrowseCreators() {
           borderBottomColor: DS.colors.border,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
           <ArrowLeft size={24} color={DS.colors.text} />
         </TouchableOpacity>
         <Text style={{ fontSize: 17, fontWeight: '600', color: DS.colors.text }}>
