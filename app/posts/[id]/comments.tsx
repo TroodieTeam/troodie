@@ -45,6 +45,11 @@ export default function PostCommentsModal() {
   const [loadingReplies, setLoadingReplies] = useState<Set<string>>(new Set());
   const [hasMore, setHasMore] = useState(true);
   const [cursorCreatedAt, setCursorCreatedAt] = useState<string | undefined>();
+  const [mentionsMap, setMentionsMap] = useState<Map<string, Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>>(new Map());
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; address: string | null; cover_photo_url: string | null; owner_id: string | null }>>([]);
+  const [inputHeight, setInputHeight] = useState(0);
+  const [postCaptionMentions, setPostCaptionMentions] = useState<Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>([]);
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -117,6 +122,85 @@ export default function PostCommentsModal() {
   useEffect(() => {
     hasLoadedComments.current = false;
   }, [post?.id]);
+
+  // Load mentions whenever comments change
+  useEffect(() => {
+    if (comments.length > 0) {
+      // Use functional update to ensure we have the latest comments
+      loadMentionsForComments(comments);
+    }
+  }, [comments.map(c => c.id).join(',')]); // Only reload when comment IDs change
+
+  // Load restaurant mentions from post caption
+  useEffect(() => {
+    const loadPostCaptionMentions = async () => {
+      if (!post?.caption || !post.caption.includes('@')) {
+        setPostCaptionMentions([]);
+        return;
+      }
+
+      try {
+        // Extract @mentions from caption using regex
+        // Match @ followed by word characters (letters, numbers, &, ', -) but stop at spaces
+        // This matches single-word restaurant names like @Meshugganah or @Puerta
+        const mentionPattern = /@([A-Za-z0-9&'-]+)/g;
+        const matches = Array.from(post.caption.matchAll(mentionPattern));
+        
+        if (matches.length === 0) {
+          setPostCaptionMentions([]);
+          return;
+        }
+
+        // Look up restaurants for each mention
+        const mentions: Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }> = [];
+        
+        for (const match of matches) {
+          const mentionText = match[0]; // e.g., "@Meshugganah"
+          const restaurantName = match[1].trim(); // e.g., "Meshugganah"
+          const startIndex = match.index!;
+          const endIndex = startIndex + mentionText.length;
+
+          // Search for restaurant by name (prioritize exact match, then partial)
+          // First try exact match (case-insensitive)
+          let { data: restaurants } = await supabase
+            .from('restaurants')
+            .select('id, name')
+            .ilike('name', restaurantName)
+            .limit(1);
+
+          // If no exact match, try partial match
+          if (!restaurants || restaurants.length === 0) {
+            const { data: partialMatches } = await supabase
+              .from('restaurants')
+              .select('id, name')
+              .ilike('name', `%${restaurantName}%`)
+              .limit(1);
+            restaurants = partialMatches;
+          }
+
+          if (restaurants && restaurants.length > 0) {
+            mentions.push({
+              restaurantId: restaurants[0].id,
+              restaurantName: restaurants[0].name,
+              startIndex,
+              endIndex
+            });
+          }
+        }
+
+        // Sort by start index
+        mentions.sort((a, b) => a.startIndex - b.startIndex);
+        setPostCaptionMentions(mentions);
+      } catch (error) {
+        console.error('Error loading post caption mentions:', error);
+        setPostCaptionMentions([]);
+      }
+    };
+
+    if (post?.caption) {
+      loadPostCaptionMentions();
+    }
+  }, [post?.caption]);
   
   // CRITICAL: Prevent loadComments from running after comment creation
   // This was causing subscription cleanup and missing realtime events
@@ -325,6 +409,95 @@ export default function PostCommentsModal() {
     }
   };
 
+  const loadMentionsForComments = async (commentsToLoad: CommentWithUser[]) => {
+    try {
+      // Collect all comment IDs (top-level and replies)
+      const allCommentIds: string[] = [];
+      commentsToLoad.forEach(comment => {
+        allCommentIds.push(comment.id);
+        if (comment.replies && comment.replies.length > 0) {
+          comment.replies.forEach(reply => allCommentIds.push(reply.id));
+        }
+      });
+
+      if (allCommentIds.length === 0) return;
+
+      // Load mentions from database
+      const { data: mentionsData, error } = await supabase
+        .from('restaurant_mentions')
+        .select('comment_id, restaurant_id, restaurant_name')
+        .in('comment_id', allCommentIds);
+
+      if (error) {
+        console.error('[Comments] Error loading mentions:', error);
+        return;
+      }
+
+      // Build mentions map with position data
+      const mentions = new Map<string, Array<{ restaurantId: string; restaurantName: string; startIndex: number; endIndex: number }>>();
+      
+      commentsToLoad.forEach(comment => {
+        // Process top-level comment mentions
+        const commentMentions = (mentionsData || [])
+          .filter(m => m.comment_id === comment.id)
+          .map(m => {
+            const mentionText = '@' + m.restaurant_name;
+            const startIndex = comment.content.indexOf(mentionText);
+            if (startIndex !== -1) {
+              return {
+                restaurantId: m.restaurant_id,
+                restaurantName: m.restaurant_name,
+                startIndex,
+                endIndex: startIndex + mentionText.length
+              };
+            }
+            return null;
+          })
+          .filter((m): m is { restaurantId: string; restaurantName: string; startIndex: number; endIndex: number } => m !== null);
+        
+        if (commentMentions.length > 0) {
+          mentions.set(comment.id, commentMentions);
+        }
+
+        // Process reply mentions
+        if (comment.replies && comment.replies.length > 0) {
+          comment.replies.forEach(reply => {
+            const replyMentions = (mentionsData || [])
+              .filter(m => m.comment_id === reply.id)
+              .map(m => {
+                const mentionText = '@' + m.restaurant_name;
+                const startIndex = reply.content.indexOf(mentionText);
+                if (startIndex !== -1) {
+                  return {
+                    restaurantId: m.restaurant_id,
+                    restaurantName: m.restaurant_name,
+                    startIndex,
+                    endIndex: startIndex + mentionText.length
+                  };
+                }
+                return null;
+              })
+              .filter((m): m is { restaurantId: string; restaurantName: string; startIndex: number; endIndex: number } => m !== null);
+            
+            if (replyMentions.length > 0) {
+              mentions.set(reply.id, replyMentions);
+            }
+          });
+        }
+      });
+
+      setMentionsMap(prev => {
+        const updated = new Map(prev);
+        mentions.forEach((value, key) => {
+          updated.set(key, value);
+        });
+        return updated;
+      });
+    } catch (error) {
+      console.error('[Comments] Error loading mentions:', error);
+    }
+  };
+
   const loadReplies = async (commentId: string) => {
     if (loadingReplies.has(commentId)) return;
 
@@ -340,6 +513,12 @@ export default function PostCommentsModal() {
           comment.id === commentId ? { ...comment, replies } : comment
         )
       );
+
+      // Load mentions for newly loaded replies
+      const comment = comments.find(c => c.id === commentId);
+      if (comment) {
+        await loadMentionsForComments([{ ...comment, replies }]);
+      }
     } catch (error) {
       ToastService.showError('Failed to load replies');
     } finally {
@@ -505,6 +684,48 @@ export default function PostCommentsModal() {
         return comment;
       })
     );
+  };
+
+  const handleCommentChange = async (text: string) => {
+    setNewComment(text);
+
+    // Regex: Check if the cursor is at the end of a word starting with @
+    // Updated to match database pattern - handles spaces and special characters
+    const match = text.match(/@([A-Za-z0-9\s&'-]*)$/);
+
+    if (match) {
+      const query = match[1];
+      setShowSuggestions(true);
+      // Search Supabase directly
+      if (query.length >= 1) {
+        const { data } = await supabase
+          .from('restaurants')
+          .select('id, name, address, cover_photo_url, owner_id')
+          .ilike('name', `%${query}%`)
+          .limit(20);
+        
+        if (data) setSuggestions(data);
+      } else {
+        // Show all restaurants when just @ is typed
+        const { data } = await supabase
+          .from('restaurants')
+          .select('id, name, address, cover_photo_url, owner_id')
+          .limit(20);
+        
+        if (data) setSuggestions(data);
+      }
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectMention = (restaurant: { id: string; name: string; address: string | null; cover_photo_url: string | null; owner_id: string | null }) => {
+    // Updated regex to match the improved pattern
+    const newText = newComment.replace(/@([A-Za-z0-9\s&'-]*)$/, `@${restaurant.name} `);
+    
+    setNewComment(newText);
+    setShowSuggestions(false);
+    setSuggestions([]);
   };
 
   const handleSubmitComment = async () => {
@@ -702,6 +923,159 @@ export default function PostCommentsModal() {
     return date.toLocaleDateString();
   };
 
+  const renderSuggestions = () => {
+    if (!showSuggestions || suggestions.length === 0) return null;
+
+    return (
+      <View style={styles.suggestionListContainer}>
+        <FlatList
+          data={suggestions}
+          keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={true}
+          style={styles.listStyle}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.suggestionItem}
+              onPress={() => handleSelectMention(item)}
+            >
+              {item.cover_photo_url ? (
+                <Image source={{ uri: item.cover_photo_url }} style={styles.suggestionImage} />
+              ) : (
+                <View style={[styles.suggestionImage, { backgroundColor: '#eee' }]} />
+              )}
+              <View style={styles.suggestionInfo}>
+                <Text style={styles.suggestionName}>{item.name}</Text>
+                <Text style={styles.suggestionAddress} numberOfLines={1}>
+                  {item.address}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    );
+  };
+
+  const renderPostCaptionText = (content: string) => {
+    if (postCaptionMentions.length === 0) {
+      return <Text style={styles.postCaption}>{content}</Text>;
+    }
+
+    // Sort mentions by start index
+    const sortedMentions = [...postCaptionMentions].sort((a, b) => a.startIndex - b.startIndex);
+    
+    const parts: Array<{ text: string; isMention: boolean; restaurantId?: string }> = [];
+    let lastIndex = 0;
+    
+    sortedMentions.forEach(mention => {
+      // Add text before mention
+      if (mention.startIndex > lastIndex) {
+        parts.push({
+          text: content.substring(lastIndex, mention.startIndex),
+          isMention: false
+        });
+      }
+      
+      // Add mention
+      parts.push({
+        text: content.substring(mention.startIndex, mention.endIndex),
+        isMention: true,
+        restaurantId: mention.restaurantId
+      });
+      
+      lastIndex = mention.endIndex;
+    });
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({
+        text: content.substring(lastIndex),
+        isMention: false
+      });
+    }
+    
+    return (
+      <Text style={styles.postCaption} numberOfLines={2}>
+        {parts.map((part, index) => {
+          if (part.isMention && part.restaurantId) {
+            return (
+              <Text
+                key={index}
+                style={styles.mentionText}
+                onPress={() => router.push(`/restaurant/${part.restaurantId}`)}
+              >
+                {part.text}
+              </Text>
+            );
+          }
+          return <Text key={index}>{part.text}</Text>;
+        })}
+      </Text>
+    );
+  };
+
+  const renderCommentText = (content: string, commentId: string) => {
+    const mentions = mentionsMap.get(commentId) || [];
+    
+    if (mentions.length === 0) {
+      return <Text style={styles.commentText}>{content}</Text>;
+    }
+    
+    // Sort mentions by start index
+    const sortedMentions = [...mentions].sort((a, b) => a.startIndex - b.startIndex);
+    
+    const parts: Array<{ text: string; isMention: boolean; restaurantId?: string }> = [];
+    let lastIndex = 0;
+    
+    sortedMentions.forEach(mention => {
+      // Add text before mention
+      if (mention.startIndex > lastIndex) {
+        parts.push({
+          text: content.substring(lastIndex, mention.startIndex),
+          isMention: false
+        });
+      }
+      
+      // Add mention
+      parts.push({
+        text: content.substring(mention.startIndex, mention.endIndex),
+        isMention: true,
+        restaurantId: mention.restaurantId
+      });
+      
+      lastIndex = mention.endIndex;
+    });
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({
+        text: content.substring(lastIndex),
+        isMention: false
+      });
+    }
+    
+    return (
+      <Text style={styles.commentText}>
+        {parts.map((part, index) => {
+          if (part.isMention && part.restaurantId) {
+            return (
+              <Text
+                key={index}
+                style={[styles.commentText, styles.mentionText]}
+                onPress={() => router.push(`/restaurant/${part.restaurantId}`)}
+              >
+                {part.text}
+              </Text>
+            );
+          }
+          return <Text key={index}>{part.text}</Text>;
+        })}
+      </Text>
+    );
+  };
+
   const renderComment = ({ item: comment }: { item: CommentWithUser }) => {
     const hasReplies = comment.replies && comment.replies.length > 0;
     const isExpanded = expandedReplies.has(comment.id);
@@ -730,7 +1104,7 @@ export default function PostCommentsModal() {
                 {formatTimeAgo(comment.created_at)}
               </Text>
             </View>
-            <Text style={styles.commentText}>{comment.content}</Text>
+            {renderCommentText(comment.content, comment.id)}
             <View style={styles.commentActions}>
               <TouchableOpacity
                 style={styles.commentActionButton}
@@ -796,7 +1170,7 @@ export default function PostCommentsModal() {
                         {formatTimeAgo(reply.created_at)}
                       </Text>
                     </View>
-                    <Text style={styles.commentText}>{reply.content}</Text>
+                    {renderCommentText(reply.content, reply.id)}
                     <View style={styles.commentActions}>
                       <TouchableOpacity
                         style={styles.commentActionButton}
@@ -887,9 +1261,9 @@ export default function PostCommentsModal() {
           <Text style={styles.postAuthorName}>
             {post.user.name || post.user.username}
           </Text>
-          <Text style={styles.postCaption} numberOfLines={2}>
-            {post.caption || 'No caption'}
-          </Text>
+          {post.caption ? renderPostCaptionText(post.caption) : (
+            <Text style={styles.postCaption}>No caption</Text>
+          )}
         </View>
       </View>
 
@@ -1003,14 +1377,19 @@ export default function PostCommentsModal() {
             </TouchableOpacity>
           </View>
         )}
-        <View style={styles.composerInputRow}>
+        {/* Suggestions dropdown */}
+        {renderSuggestions()}
+        <View 
+          style={styles.composerInputRow}
+          onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
+        >
           <TextInput
             ref={inputRef}
             style={styles.composerInput}
             placeholder="Add a comment..."
             placeholderTextColor={designTokens.colors.textLight}
             value={newComment}
-            onChangeText={setNewComment}
+            onChangeText={handleCommentChange}
             multiline
             maxLength={500}
             testID="comment-input"
@@ -1171,6 +1550,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontFamily: 'Inter_400Regular',
   },
+  mentionText: {
+    color: '#F59E0B',
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    lineHeight: 20,
+  },
   commentActions: {
     flexDirection: 'row',
     gap: 16,
@@ -1294,6 +1679,61 @@ const styles = StyleSheet.create({
   loadingMore: {
     paddingVertical: 16,
     alignItems: 'center',
+  },
+  suggestionListContainer: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: designTokens.colors.white,
+    borderRadius: 12,
+    maxHeight: 180,
+    flexGrow: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+    overflow: 'hidden',
+  },
+  listStyle: {
+    flexGrow: 0,
+  },
+  listContent: {
+    paddingVertical: 0,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.colors.borderLight,
+    backgroundColor: designTokens.colors.white,
+  },
+  suggestionInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  suggestionImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+    backgroundColor: designTokens.colors.backgroundLight,
+    borderWidth: 1,
+    borderColor: designTokens.colors.borderLight,
+  },
+  suggestionName: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    color: designTokens.colors.textDark,
+    marginBottom: 2,
+  },
+  suggestionAddress: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: designTokens.colors.textLight,
   },
 });
 

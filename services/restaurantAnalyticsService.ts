@@ -18,6 +18,11 @@ export interface RestaurantAnalytics {
   savesLast24h: number;
   isTrending: boolean;
   mentionsCount: number;
+  mentionsBreakdown?: {
+    commentMentions: number;
+    postCaptionMentions: number;
+    postsAboutRestaurant: number;
+  };
   creatorPostsCount: number;
   totalPostLikes: number;
   dailySaves: Array<{ date: string; count: number }>;
@@ -58,6 +63,11 @@ export async function getRestaurantAnalytics(
       savesLast24h: data.saves_last_24h || 0,
       isTrending: data.is_trending || false,
       mentionsCount: data.mentions_count || 0,
+      mentionsBreakdown: data.mentions_breakdown ? {
+        commentMentions: data.mentions_breakdown.comment_mentions || 0,
+        postCaptionMentions: data.mentions_breakdown.post_caption_mentions || 0,
+        postsAboutRestaurant: data.mentions_breakdown.posts_about_restaurant || 0,
+      } : undefined,
       creatorPostsCount: data.creator_posts_count || 0,
       totalPostLikes: data.total_post_likes || 0,
       dailySaves: (data.daily_saves || []).map((item: any) => ({
@@ -128,6 +138,11 @@ export function exportAnalyticsToCSV(analytics: RestaurantAnalytics): string {
   rows.push(`Saves Last 24h,${analytics.savesLast24h}`);
   rows.push(`Is Trending,${analytics.isTrending ? 'Yes' : 'No'}`);
   rows.push(`Mentions Count,${analytics.mentionsCount}`);
+  if (analytics.mentionsBreakdown) {
+    rows.push(`  Comment Mentions,${analytics.mentionsBreakdown.commentMentions}`);
+    rows.push(`  Post Caption Mentions,${analytics.mentionsBreakdown.postCaptionMentions}`);
+    rows.push(`  Posts About Restaurant,${analytics.mentionsBreakdown.postsAboutRestaurant}`);
+  }
   rows.push(`Creator Posts,${analytics.creatorPostsCount}`);
   rows.push(`Total Post Likes,${analytics.totalPostLikes}`);
   

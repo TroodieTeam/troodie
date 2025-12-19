@@ -6,7 +6,7 @@ import { CommentWithUser } from '@/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -55,7 +55,8 @@ export function PostComments({
     setNewComment(text);
 
     // Regex: Check if the cursor is at the end of a word starting with @
-    const match = text.match(/@(\w*)$/);
+    // Updated to match database pattern - handles spaces and special characters
+    const match = text.match(/@([A-Za-z0-9\s&'-]*)$/);
 
     if (match) {
       const query = match[1];
@@ -75,7 +76,8 @@ export function PostComments({
     }
   };
   const handleSelectMention = (restaurant: RestaurantSuggestion) => {
-    const newText = newComment.replace(/@(\w*)$/, `@${restaurant.name} `);
+    // Updated regex to match the improved pattern
+    const newText = newComment.replace(/@([A-Za-z0-9\s&'-]*)$/, `@${restaurant.name} `);
     
     setNewComment(newText);
     setTempMentions(prev => [...prev, restaurant]);
@@ -277,33 +279,10 @@ export function PostComments({
       // Get the returned comment data
       const commentData = data?.comment;
 
-      if (commentData && tempMentions.length > 0) {
-        const validMentions = tempMentions.filter(m => 
-          commentText.includes(`@${m.name}`)
-        );
-        const uniqueMentions = validMentions.filter((m, index, self) => 
-          index === self.findIndex((t) => t.id === m.id)
-        );
-        if (uniqueMentions.length > 0) {
-          const mentionRows = uniqueMentions.map(m => ({
-            comment_id: commentData.id,
-            restaurant_id: m.id,
-            restaurant_name: m.name
-          }));
-
-          const { error: mentionError } = await supabase
-            .from('restaurant_mentions')
-            .upsert(mentionRows, { 
-              onConflict: 'comment_id, restaurant_id', 
-              ignoreDuplicates: true 
-            });
-
-          if (mentionError) {
-            console.error('Error saving mentions:', mentionError);
-          }
-        }
-        setTempMentions([]);
-      }
+      // Note: Mentions are automatically processed by database trigger
+      // No need to manually save mentions here - trigger handles it
+      // Clear tempMentions for next comment
+      setTempMentions([]);
 
       if (!commentData) {
         // Fallback: reload comments if no comment data returned

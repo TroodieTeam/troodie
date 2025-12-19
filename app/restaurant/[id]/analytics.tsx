@@ -23,7 +23,7 @@ import {
     subscribeToRestaurantSaves,
 } from '@/services/restaurantAnalyticsService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Bookmark, Calendar, Camera, Download, Heart } from 'lucide-react-native';
+import { ArrowLeft, Bookmark, Calendar, Camera, Download, Heart, MessageCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -185,6 +185,7 @@ export default function RestaurantAnalyticsScreen() {
           savesLast24h: 0,
           isTrending: false,
           mentionsCount: 0,
+          mentionsBreakdown: undefined,
           creatorPostsCount: 0,
           totalPostLikes: 0,
           dailySaves: [],
@@ -318,12 +319,59 @@ export default function RestaurantAnalyticsScreen() {
             <MetricCard title="This Month" value={analytics.savesThisMonth} icon={Calendar} />
           </View>
           <View style={{ width: '50%', padding: 8 }}>
+            <MetricCard title="Mentions" value={analytics.mentionsCount} icon={MessageCircle} />
+          </View>
+          <View style={{ width: '50%', padding: 8 }}>
             <MetricCard title="Creator Posts" value={analytics.creatorPostsCount} icon={Camera} />
           </View>
           <View style={{ width: '50%', padding: 8 }}>
             <MetricCard title="Total Engagement" value={analytics.totalPostLikes} icon={Heart} />
           </View>
         </View>
+
+        {/* Mentions Breakdown */}
+        {analytics.mentionsBreakdown && (
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: DS.colors.text,
+                marginBottom: 12,
+              }}
+            >
+              Mentions Breakdown
+            </Text>
+            <View
+              style={{
+                backgroundColor: DS.colors.backgroundWhite,
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: DS.colors.border,
+              }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ fontSize: 14, color: DS.colors.textLight }}>Comment Mentions</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
+                  {analytics.mentionsBreakdown.commentMentions}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ fontSize: 14, color: DS.colors.textLight }}>Post Caption Mentions</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
+                  {analytics.mentionsBreakdown.postCaptionMentions}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 14, color: DS.colors.textLight }}>Posts About Restaurant</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
+                  {analytics.mentionsBreakdown.postsAboutRestaurant}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Saves Chart */}
         <View style={{ marginBottom: 16 }}>

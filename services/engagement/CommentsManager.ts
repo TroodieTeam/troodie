@@ -234,7 +234,13 @@ export class CommentsManager {
 
     let query = supabase
       .from('post_comments')
-      .select('*')
+      .select(`
+        *,
+        restaurant_mentions (
+          restaurant_id,
+          restaurant_name
+        )
+      `)
       .eq('post_id', postId)
       .is('parent_comment_id', null)
       .order('created_at', { ascending: false })
@@ -279,19 +285,26 @@ export class CommentsManager {
       });
     });
 
-    // Combine comments with user data
-    const commentsWithUser = comments.map(comment => ({
-      ...comment,
-      user: userMap.get(comment.user_id) || {
-        id: comment.user_id,
-        name: 'Unknown User',
-        username: 'unknown',
-        avatar: '',
-        persona: 'Food Explorer',
-        verified: false
-      },
-      replies: []
-    })) as CommentWithUser[];
+    // Combine comments with user data and extract mentions
+    const commentsWithUser = comments.map(comment => {
+      // Extract mentions from joined data (restaurant_mentions is an array from the join)
+      const mentions = (comment.restaurant_mentions || []) as Array<{ restaurant_id: string; restaurant_name: string }>;
+      
+      return {
+        ...comment,
+        // Remove restaurant_mentions from the comment object (it's not part of CommentWithUser type)
+        restaurant_mentions: undefined,
+        user: userMap.get(comment.user_id) || {
+          id: comment.user_id,
+          name: 'Unknown User',
+          username: 'unknown',
+          avatar: '',
+          persona: 'Food Explorer',
+          verified: false
+        },
+        replies: []
+      };
+    }) as CommentWithUser[];
 
     // Update cache (only for first page)
     if (!cursorCreatedAt) {
@@ -307,7 +320,13 @@ export class CommentsManager {
   async listReplies(parentCommentId: string, limit: number = 20): Promise<CommentWithUser[]> {
     const { data: comments, error } = await supabase
       .from('post_comments')
-      .select('*')
+      .select(`
+        *,
+        restaurant_mentions (
+          restaurant_id,
+          restaurant_name
+        )
+      `)
       .eq('parent_comment_id', parentCommentId)
       .order('created_at', { ascending: true })
       .limit(limit);
@@ -345,19 +364,26 @@ export class CommentsManager {
       });
     });
 
-    // Combine comments with user data
-    return comments.map(comment => ({
-      ...comment,
-      user: userMap.get(comment.user_id) || {
-        id: comment.user_id,
-        name: 'Unknown User',
-        username: 'unknown',
-        avatar: '',
-        persona: 'Food Explorer',
-        verified: false
-      },
-      replies: []
-    })) as CommentWithUser[];
+    // Combine comments with user data and extract mentions
+    return comments.map(comment => {
+      // Extract mentions from joined data
+      const mentions = (comment.restaurant_mentions || []) as Array<{ restaurant_id: string; restaurant_name: string }>;
+      
+      return {
+        ...comment,
+        // Remove restaurant_mentions from the comment object
+        restaurant_mentions: undefined,
+        user: userMap.get(comment.user_id) || {
+          id: comment.user_id,
+          name: 'Unknown User',
+          username: 'unknown',
+          avatar: '',
+          persona: 'Food Explorer',
+          verified: false
+        },
+        replies: []
+      };
+    }) as CommentWithUser[];
   }
 
   /**
