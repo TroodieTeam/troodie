@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { Platform, PushNotification, PushNotificationServiceInterface } from '@/types/notifications';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import  Constants  from 'expo-constants';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -24,6 +25,7 @@ export class PushNotificationService implements PushNotificationServiceInterface
   async initialize(): Promise<void> {
     try {
       // Request permissions
+      console.log('Initializing push notifications...');
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       
@@ -33,12 +35,16 @@ export class PushNotificationService implements PushNotificationServiceInterface
       }
       
       if (finalStatus !== 'granted') {
+        console.log("Push notifications permission not granted.");
         return;
       }
 
       // Get push token
       const token = await this.getPushToken();
       if (token) {
+        console.log('Push token:', token);
+      }else{
+        console.log('Push token not found.');
       }
 
       // Set up notification listeners
@@ -54,12 +60,21 @@ export class PushNotificationService implements PushNotificationServiceInterface
   async getPushToken(): Promise<string | null> {
     try {
       if (!Device.isDevice) {
+        console.log("Must be on a physical device for Push Notifications.");
         return null;
+      }
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ||
+        Constants?.easConfig?.projectId ||
+        process.env.EXPO_PROJECT_ID;
+
+      if (!projectId) {
+        console.warn('Project ID not found. Ensure EAS is configured.');
       }
 
       // EAS automatically handles the project ID
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: process.env.EXPO_PROJECT_ID || undefined, // EAS will auto-detect
+        projectId: projectId || undefined, // EAS will auto-detect
       });
 
       return token.data;
@@ -88,8 +103,10 @@ export class PushNotificationService implements PushNotificationServiceInterface
         });
 
       if (error) {
-        console.error('Error registering device:', error);
-        throw new Error(`Failed to register device: ${error.message}`);
+        console.error('Supabase Error registering device:', error);
+      }
+      else{
+        console.log('Device registered successfully.');
       }
     } catch (error) {
       console.error('Error registering device:', error);
@@ -108,13 +125,9 @@ export class PushNotificationService implements PushNotificationServiceInterface
         .eq('user_id', userId)
         .eq('token', token);
 
-      if (error) {
-        console.error('Error unregistering device:', error);
-        throw new Error(`Failed to unregister device: ${error.message}`);
-      }
+      if (error) throw new Error(error.message);
     } catch (error) {
       console.error('Error unregistering device:', error);
-      throw error;
     }
   }
 
