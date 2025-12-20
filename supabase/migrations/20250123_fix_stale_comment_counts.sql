@@ -44,3 +44,4 @@ HAVING p.comments_count != COUNT(pc.id)
 ORDER BY p.created_at DESC
 LIMIT 20;
 
+

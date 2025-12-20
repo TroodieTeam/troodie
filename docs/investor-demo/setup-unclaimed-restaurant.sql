@@ -30,3 +30,4 @@ WHERE NOT EXISTS (
     AND is_test_restaurant = true
 );
 
+

@@ -29,3 +29,4 @@ export function createStripeReturnURL(): string {
     return 'troodie://payment-return';
   }
 }
+

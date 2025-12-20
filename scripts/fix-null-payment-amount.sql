@@ -43,3 +43,4 @@ FROM campaign_deliverables cd
 LEFT JOIN campaigns c ON c.id = cd.campaign_id
 LEFT JOIN campaign_payments cp ON cp.campaign_id = cd.campaign_id AND cp.status = 'succeeded'
 WHERE cd.id = 'f6be6a31-a018-424e-b838-b54fa098a95e';
+

@@ -62,3 +62,4 @@ export function CampaignStepIndicator({ currentStep, totalSteps }: CampaignStepI
     </View>
   );
 }
+

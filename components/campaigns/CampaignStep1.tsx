@@ -80,3 +80,4 @@ export function CampaignStep1({ formData, onUpdate }: CampaignStep1Props) {
     </View>
   );
 }
+

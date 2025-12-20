@@ -15,3 +15,4 @@ export const PAYMENT_POLLING_CONFIG = {
   intervalMs: 1000,
   timeoutMs: 10000,
 } as const;
+

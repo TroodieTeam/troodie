@@ -71,3 +71,4 @@ The Creator Marketplace provides the essential functionality for creators to bro
 ### Phase 3: Advanced Features (2 Weeks)
 - [ ] Geolocation search (Near Me).
 - [ ] Recommendation Engine ("Recommended for you" based on past approvals).
+

@@ -169,3 +169,4 @@ export function CampaignStep2({ formData, onUpdate }: CampaignStep2Props) {
     </View>
   );
 }
+

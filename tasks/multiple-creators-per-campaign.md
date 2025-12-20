@@ -206,3 +206,4 @@ CREATE TABLE campaign_creator_allocations (
 - [ ] Per-creator analytics dashboard
 - [ ] Batch application acceptance
 - [ ] Creator comparison view
+

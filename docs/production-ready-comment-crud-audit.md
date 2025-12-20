@@ -173,3 +173,4 @@ useFocusEffect(
 3. **Realtime is authoritative** - Subscribe to actual data changes
 4. **Recalculate on navigation** - Use `useFocusEffect` to reload fresh data
 
+

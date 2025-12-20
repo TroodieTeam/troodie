@@ -23,3 +23,4 @@ CREATE POLICY "Creators can delete own saves" ON saved_campaigns
   FOR DELETE USING (creator_id IN (
     SELECT id FROM creator_profiles WHERE user_id = auth.uid()
   ));
+

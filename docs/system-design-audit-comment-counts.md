@@ -168,3 +168,4 @@ The fundamental issue is **architectural confusion**:
 - **High Confidence**: Realtime subscriptions already work
 - **Rollback Plan**: Can re-add events if needed (but shouldn't be)
 
+

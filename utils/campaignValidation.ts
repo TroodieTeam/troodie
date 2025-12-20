@@ -45,3 +45,4 @@ export function validateCampaignSubmission(
 
   return { valid: true };
 }
+

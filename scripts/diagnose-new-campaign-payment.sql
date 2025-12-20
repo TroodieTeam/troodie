@@ -146,3 +146,4 @@ SET
 WHERE id = 'YOUR_DELIVERABLE_ID' -- Replace with actual deliverable ID
   AND (payment_amount_cents IS NULL OR payment_amount_cents = 0);
 */
+

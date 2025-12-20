@@ -117,3 +117,4 @@ Since deliverables are essentially the campaign requirements, locking would happ
 ---
 
 **Current Status:** Pay-per-deliverable model is working and tested. Locking mechanism can be added as enhancement.
+

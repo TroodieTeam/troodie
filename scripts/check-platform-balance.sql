@@ -77,3 +77,4 @@ WHERE cd.status IN ('approved', 'auto_approved')
 --
 -- In PRODUCTION MODE, this won't be an issue - real payments automatically
 -- add funds to your platform account.
+

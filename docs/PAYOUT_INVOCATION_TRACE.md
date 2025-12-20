@@ -101,3 +101,4 @@ If payout fails, you can manually retry:
 - You want to retry a failed payout
 
 **Otherwise**: Payout is automatically invoked during approval.
+

@@ -52,3 +52,4 @@ export function formatEndDate(deadline: string): string {
 export function convertBudgetToCents(budget: string): number {
   return Math.round(parseFloat(budget) * 100);
 }
+

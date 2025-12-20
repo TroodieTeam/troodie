@@ -86,3 +86,4 @@ COMMENT ON COLUMN campaign_applications.proposed_deliverables IS
 ## Conclusion
 
 **No schema migration needed** - columns are already nullable. Focus on fixing code that incorrectly uses these deprecated fields.
+

@@ -244,3 +244,4 @@ export const campaignSearchService = {
   toggleSaveCampaign,
   getSavedCampaigns
 };
+

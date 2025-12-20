@@ -126,3 +126,4 @@ WHERE post_id = '<POST_ID_FROM_ABOVE>';
    -- Look for: SET updated_at = NOW()
    ```
 
+

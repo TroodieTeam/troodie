@@ -230,3 +230,4 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 - [x] Documentation updated
 - [x] Code reviewed
 - [x] No breaking changes
+

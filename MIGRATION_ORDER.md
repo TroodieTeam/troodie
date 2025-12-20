@@ -185,3 +185,4 @@ AND tablename IN ('stripe_accounts', 'campaign_payments', 'payment_transactions'
 ```
 
 All queries should return expected results.
+

@@ -91,3 +91,4 @@ SELECT
 FROM campaign_deliverables cd
 INNER JOIN campaigns c ON c.id = cd.campaign_id
 WHERE cd.id = '255e2e96-643d-426e-b00d-e4a2931f89eb';
+

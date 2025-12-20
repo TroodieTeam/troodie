@@ -45,3 +45,4 @@ INNER JOIN campaigns c ON c.id = cd.campaign_id
 INNER JOIN creator_profiles cp ON cp.id = cd.creator_id
 LEFT JOIN campaign_payments cpi ON cpi.campaign_id = cd.campaign_id AND cpi.status = 'succeeded'
 WHERE cd.id = '255e2e96-643d-426e-b00d-e4a2931f89eb';
+

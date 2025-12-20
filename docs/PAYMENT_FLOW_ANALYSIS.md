@@ -145,3 +145,4 @@ payment_amount_cents =
 4. **Standardize payout calculation**:
    - Always use `campaign_deliverables.payment_amount_cents` once set
    - Remove fallback logic in `processDeliverablePayout()`
+

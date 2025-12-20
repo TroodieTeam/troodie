@@ -46,3 +46,4 @@ WHERE is_test_restaurant = true
   AND is_claimed = false
 ORDER BY name;
 
+
