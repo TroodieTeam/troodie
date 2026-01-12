@@ -27,6 +27,8 @@ export interface Profile {
   // Additional fields we might use later
   email?: string;
   location?: string;
+  // User type for analytics tracking (TRO-143)
+  user_type?: 'diner' | 'content_creator' | 'restaurant_admin';
 }
 
 class ProfileService {
