@@ -32,11 +32,15 @@ export interface RejectRequest extends ReviewActionRequest {
 }
 
 class AdminReviewService {
-  // Admin user IDs
+  // Admin user IDs - includes both production and development UUIDs
+  // team@troodieapp.com has different UUIDs in dev vs prod
   private readonly ADMIN_USER_IDS = [
-    'b08d9600-358d-4be9-9552-4607d9f50227',  // Admin 1 (taydav37@gmail.com)
-    '31744191-f7c0-44a4-8673-10b34ccbb87f',  // Admin 2 (kouamendri@outlook.com)
-    '5373475d-b6b5-4abd-bd47-8ec515c44a47'   // Admin 3 (team@troodieapp.com) - GTM admin
+    // Production admin accounts
+    'b08d9600-358d-4be9-9552-4607d9f50227',  // Prod Admin 1 (taydav37@gmail.com)
+    '31744191-f7c0-44a4-8673-10b34ccbb87f',  // Prod Admin 2 (kouamendri@outlook.com)
+    '5373475d-b6b5-4abd-bd47-8ec515c44a47',  // Prod Admin 3 (team@troodieapp.com)
+    // Development admin accounts
+    'a5c480d6-351e-44a2-987b-b3de05244697',  // Dev Admin (team@troodieapp.com)
   ];
 
   /**
@@ -256,7 +260,7 @@ class AdminReviewService {
 
       const { data: existingProfile, error: profileCheckError } = await supabase
         .from('business_profiles')
-        .select('id')
+        .select('id, verification_status')
         .eq('user_id', claim.user_id)
         .single();
 
@@ -265,7 +269,29 @@ class AdminReviewService {
         error: profileCheckError,
       });
 
-      if (!existingProfile) {
+      if (existingProfile) {
+        // Profile exists (created during onboarding), just update to verified
+        console.log('[AdminReviewService] Updating existing business profile to verified:', {
+          profileId: existingProfile.id,
+          previousStatus: existingProfile.verification_status,
+        });
+
+        const { error: updateProfileError } = await supabase
+          .from('business_profiles')
+          .update({
+            verification_status: 'verified',
+            restaurant_id: claim.restaurant_id, // Ensure restaurant is linked
+            business_email: claim.email,
+          })
+          .eq('id', existingProfile.id);
+
+        if (updateProfileError) {
+          console.error('[AdminReviewService] Failed to update business profile:', updateProfileError);
+        } else {
+          console.log('[AdminReviewService] Business profile updated to verified');
+        }
+      } else {
+        // No profile exists, create one (fallback for older claims)
         console.log('[AdminReviewService] Creating business profile:', {
           userId: claim.user_id,
           restaurantId: claim.restaurant_id,

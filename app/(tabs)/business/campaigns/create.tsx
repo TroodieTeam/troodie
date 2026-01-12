@@ -2,7 +2,7 @@ import { CampaignErrorStates } from '@/components/campaigns/CampaignErrorStates'
 import { CampaignStep1 } from '@/components/campaigns/CampaignStep1';
 import { CampaignStep2 } from '@/components/campaigns/CampaignStep2';
 import { CampaignStep3 } from '@/components/campaigns/CampaignStep3';
-import { CampaignStep4 } from '@/components/campaigns/CampaignStep4';
+import { CampaignStep4, SavedPaymentMethod } from '@/components/campaigns/CampaignStep4';
 import { CampaignStepIndicator } from '@/components/campaigns/CampaignStepIndicator';
 import { DS } from '@/components/design-system/tokens';
 import { TOTAL_STEPS } from '@/constants/campaign';
@@ -11,10 +11,11 @@ import { useCampaignForm } from '@/hooks/useCampaignForm';
 import { useCampaignSubmission } from '@/hooks/useCampaignSubmission';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
 import { useStripeAccount } from '@/hooks/useStripeAccount';
+import { supabase } from '@/lib/supabase';
 import { validateCampaignSubmission, validateStep } from '@/utils/campaignValidation';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,6 +23,8 @@ export default function CreateCampaign() {
   const router = useRouter();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  // TRO-136: Saved payment method from onboarding
+  const [savedPaymentMethod, setSavedPaymentMethod] = useState<SavedPaymentMethod | null>(null);
 
   // Custom hooks
   const {
@@ -39,6 +42,46 @@ export default function CreateCampaign() {
   const { restaurantData, loadingState, errorMessage, loadRestaurantData } = useRestaurantData();
 
   const { submitCampaign, loading: submissionLoading } = useCampaignSubmission();
+
+  // TRO-136: Fetch saved payment method from business profile (including customer ID for off-session charging)
+  useEffect(() => {
+    const fetchSavedPaymentMethod = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data: businessProfile } = await supabase
+          .from('business_profiles')
+          .select('stripe_customer_id, default_payment_method_id, payment_method_last4, payment_method_brand')
+          .eq('user_id', user.id)
+          .single();
+
+        if (businessProfile?.default_payment_method_id && businessProfile?.stripe_customer_id) {
+          console.log('[CreateCampaign] Found saved payment method:', {
+            last4: businessProfile.payment_method_last4,
+            brand: businessProfile.payment_method_brand,
+            hasCustomerId: true,
+          });
+          setSavedPaymentMethod({
+            paymentMethodId: businessProfile.default_payment_method_id,
+            customerId: businessProfile.stripe_customer_id, // Required for off-session charging
+            last4: businessProfile.payment_method_last4,
+            brand: businessProfile.payment_method_brand,
+          });
+        } else {
+          console.log('[CreateCampaign] No saved payment method found (missing paymentMethodId or customerId)');
+        }
+      } catch (error) {
+        console.log('[CreateCampaign] Error fetching payment method:', error);
+      }
+    };
+
+    fetchSavedPaymentMethod();
+  }, [user?.id]);
+
+  const handleChangePaymentMethod = () => {
+    // Navigate to payment settings or show payment method change UI
+    router.push('/settings/payment-methods' as any);
+  };
 
   const handleNext = () => {
     if (validateStep(currentStep, formData, stripeAccountStatus)) {
@@ -67,7 +110,28 @@ export default function CreateCampaign() {
       return;
     }
 
-    const result = await submitCampaign(formData, restaurantData!, stripeAccountStatus, user.id);
+    // TRO-136: Pass saved payment method for off-session charging (no PaymentSheet)
+    const savedPaymentForSubmission = savedPaymentMethod?.paymentMethodId && savedPaymentMethod?.customerId
+      ? {
+          paymentMethodId: savedPaymentMethod.paymentMethodId,
+          customerId: savedPaymentMethod.customerId,
+          last4: savedPaymentMethod.last4 || undefined,
+          brand: savedPaymentMethod.brand || undefined,
+        }
+      : undefined;
+
+    console.log('[CreateCampaign] Submitting campaign with payment method:', {
+      hasSavedPaymentMethod: !!savedPaymentForSubmission,
+      last4: savedPaymentForSubmission?.last4,
+    });
+
+    const result = await submitCampaign(
+      formData,
+      restaurantData!,
+      stripeAccountStatus,
+      user.id,
+      savedPaymentForSubmission
+    );
     if (result?.step) {
       setCurrentStep(result.step);
     }
@@ -100,6 +164,8 @@ export default function CreateCampaign() {
             onManualRefresh={() => {
               checkStripeAccount();
             }}
+            savedPaymentMethod={savedPaymentMethod}
+            onChangePaymentMethod={handleChangePaymentMethod}
           />
         );
       default:

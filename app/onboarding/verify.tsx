@@ -22,8 +22,8 @@ import * as Clipboard from 'expo-clipboard';
 
 export default function VerifyScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ email: string; type: 'signup' | 'login' }>();
-  const { setCurrentStep } = useOnboarding();
+  const params = useLocalSearchParams<{ email: string; type: 'signup' | 'login'; userType?: string }>();
+  const { setCurrentStep, state: onboardingState } = useOnboarding();
   const { verifyOtp, resendOtp, user } = useAuth();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isValid, setIsValid] = useState(false);
@@ -155,10 +155,18 @@ export default function VerifyScreen() {
           await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
           router.replace('/(tabs)');
         } else {
-          // For signup, always continue with onboarding flow
-          // Signup successful, starting onboarding
-          setCurrentStep('quiz-intro');
-          router.push('/onboarding/quiz-intro');
+          // For signup, route based on user type selection (TRO-140, TRO-141)
+          const userType = params.userType || onboardingState.userType;
+          
+          if (userType === 'restaurant') {
+            // Restaurant path - go to claim screen
+            setCurrentStep('restaurant-claim');
+            router.push('/onboarding/restaurant-claim');
+          } else {
+            // Diner/Creator path - continue with quiz
+            setCurrentStep('quiz-intro');
+            router.push('/onboarding/quiz-intro');
+          }
         }
       } else {
         Alert.alert('Verification Failed', result.error || 'Invalid verification code');

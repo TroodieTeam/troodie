@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { authService } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -21,7 +21,8 @@ import {
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { setCurrentStep } = useOnboarding();
+  const params = useLocalSearchParams<{ userType?: string }>();
+  const { setCurrentStep, state: onboardingState } = useOnboarding();
   const { signUpWithEmail, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [isValidEmail, setIsValidEmail] = useState(false);
@@ -79,10 +80,12 @@ export default function SignupScreen() {
       if (result.success) {
         setLastRequestTime(Date.now());
         // Store email in context for verification screen
+        // Pass userType so verify screen can route appropriately (TRO-140, TRO-141)
+        const userType = params.userType || onboardingState.userType;
         setCurrentStep('verify');
         router.push({
           pathname: '/onboarding/verify',
-          params: { email, type: 'signup' }
+          params: { email, type: 'signup', userType: userType || '' }
         });
       } else {
         Alert.alert('Error', result.error || 'Failed to send verification code');

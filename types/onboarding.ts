@@ -76,8 +76,31 @@ export interface FavoriteSpotCategoryInfo {
   examples: string;
 }
 
+// User type for signup segmentation (TRO-140)
+export type UserType = 'diner' | 'restaurant' | 'creator';
+
+// Restaurant claim data collected during onboarding (TRO-141)
+export interface RestaurantClaimData {
+  restaurantId?: string;
+  restaurantName?: string;
+  restaurantAddress?: string;
+  adminFullName?: string;
+  businessEmail?: string;
+  businessPhone?: string;
+}
+
+// Stripe setup data for restaurant onboarding (TRO-136)
+export interface StripeSetupData {
+  stripeAccountId?: string;
+  stripeOnboardingComplete?: boolean;
+  stripeCustomerId?: string;
+  paymentMethodId?: string;
+  paymentMethodLast4?: string;
+  paymentMethodBrand?: string;
+}
+
 export interface OnboardingState {
-  currentStep: 'welcome' | 'signup' | 'verify' | 'quiz-intro' | 'quiz' | 'profile' | 'favorites' | 'complete';
+  currentStep: 'welcome' | 'user-type' | 'signup' | 'verify' | 'quiz-intro' | 'quiz' | 'profile' | 'favorites' | 'complete' | 'restaurant-claim' | 'restaurant-welcome' | 'restaurant-stripe' | 'restaurant-payment' | 'restaurant-complete';
   phoneNumber?: string;
   quizAnswers: QuizAnswer[];
   persona?: PersonaType;
@@ -87,4 +110,10 @@ export interface OnboardingState {
   username?: string;
   bio?: string;
   hasSeenQuizIntro?: boolean;
+  // NEW: User type selection for segmentation
+  userType?: UserType;
+  // NEW: Restaurant-specific claim data
+  restaurantClaim?: RestaurantClaimData;
+  // NEW: Stripe setup data for restaurant onboarding (TRO-136)
+  stripeSetup?: StripeSetupData;
 }

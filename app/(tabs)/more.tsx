@@ -85,11 +85,15 @@ export default function MoreScreen() {
   const { profileId: creatorProfileId } = useCreatorProfileId();
 
   // Check if user is admin - using specific admin user IDs
+  // Includes both production and development UUIDs
   const ADMIN_USER_IDS = [
-    'b08d9600-358d-4be9-9552-4607d9f50227',
-    '31744191-f7c0-44a4-8673-10b34ccbb87f',
-    '5373475d-b6b5-4abd-bd47-8ec515c44a47',
-    'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599' // kouame@troodieapp.com
+    // Production admin accounts
+    'b08d9600-358d-4be9-9552-4607d9f50227',  // Prod Admin 1 (taydav37@gmail.com)
+    '31744191-f7c0-44a4-8673-10b34ccbb87f',  // Prod Admin 2 (kouamendri@outlook.com)
+    '5373475d-b6b5-4abd-bd47-8ec515c44a47',  // Prod Admin 3 (team@troodieapp.com)
+    'a23aaf2a-45b2-4ca7-a3a2-cafb0fc0c599',  // Prod Admin 4 (kouame@troodieapp.com)
+    // Development admin accounts
+    'a5c480d6-351e-44a2-987b-b3de05244697',  // Dev Admin (team@troodieapp.com)
   ];
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
   

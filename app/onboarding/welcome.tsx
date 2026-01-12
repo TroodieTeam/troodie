@@ -18,8 +18,9 @@ export default function WelcomeScreen() {
   }, [isAuthenticated, router]);
 
   const handleGetStarted = () => {
-    setCurrentStep('signup');
-    router.push('/onboarding/signup');
+    // Route to user type selection first (TRO-140)
+    setCurrentStep('user-type');
+    router.push('/onboarding/user-type');
   };
 
   const handleLogin = () => {
