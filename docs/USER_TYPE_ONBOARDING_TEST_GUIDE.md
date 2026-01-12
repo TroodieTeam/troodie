@@ -177,14 +177,14 @@ After onboarding, verify user_type is recorded:
 DELETE FROM business_profiles 
 WHERE user_id IN (
   SELECT id FROM users 
-  WHERE email LIKE 'test-%@bypass.com'
+  WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com')
 );
 
--- Step 2: Reset restaurant claims table if exists
+-- Step 2: Reset restaurant claims table
 DELETE FROM restaurant_claims 
-WHERE submitter_id IN (
+WHERE user_id IN (
   SELECT id FROM users 
-  WHERE email LIKE 'test-%@bypass.com'
+  WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com')
 );
 
 -- Step 3: Reset test user accounts
@@ -195,12 +195,12 @@ SET
   account_type = 'consumer',
   is_business = false,
   is_creator = false
-WHERE email LIKE 'test-%@bypass.com';
+WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 
 -- Step 4: Verify cleanup
 SELECT email, user_type, account_type, is_business, onboarding_completed
 FROM users 
-WHERE email LIKE 'test-%@bypass.com';
+WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 ```
 
 ### 1. Database Migration Verification
@@ -279,7 +279,7 @@ LIMIT 10;
 **Objective:** Complete restaurant owner onboarding in 5-10 minutes (updated per TRO-136)  
 **Key Change:** Now includes Stripe Connect and Payment Method setup
 
-**Test Account:** `test-consumer1@bypass.com` (or any consumer account)  
+**Test Account:** `test-consumer5@bypass.com`  
 **OTP:** `000000`
 
 > ⚠️ **First, reset the account** - See "Pre-Test Setup" section (Step 0) to clear onboarding state
@@ -339,7 +339,7 @@ SELECT
   is_business,
   onboarding_completed
 FROM users
-WHERE email = 'test-consumer1@bypass.com';
+WHERE email = 'test-consumer5@bypass.com';
 
 -- Expected:
 -- user_type: 'restaurant_admin'
@@ -367,7 +367,7 @@ SELECT
 FROM business_profiles bp
 JOIN restaurants r ON bp.restaurant_id = r.id
 JOIN users u ON bp.user_id = u.id
-WHERE u.email = 'test-consumer1@bypass.com';
+WHERE u.email = 'test-consumer5@bypass.com';
 
 -- Expected: Record exists with:
 -- - All claim details (admin_name, business_email, business_phone)
@@ -386,10 +386,10 @@ WHERE u.email = 'test-consumer1@bypass.com';
 
 **Objective:** Verify diner selection routes to standard quiz flow
 
-**Test Account:** `test-consumer2@bypass.com` (reset onboarding first)  
+**Test Account:** `test-consumer4@bypass.com`  
 **OTP:** `000000`
 
-> ⚠️ Run the reset SQL (from Pre-Test Setup) substituting `test-consumer2@bypass.com`
+> ⚠️ **First, reset the account** - See "Pre-Test Setup" section (Step 0) to clear onboarding state
 
 #### Step-by-Step Test
 
@@ -525,7 +525,7 @@ ORDER BY bp.created_at DESC;
 
 ### Test: Regular User Navigation
 
-**Account:** `test-consumer1@bypass.com` (or any consumer with completed onboarding)  
+**Account:** `test-consumer5@bypass.com` (with completed restaurant onboarding)  
 **OTP:** `000000`
 
 | Step | Action | Expected Result | ✓ |
@@ -599,7 +599,7 @@ ORDER BY bp.created_at DESC;
 ### Reset Test Accounts
 
 ```sql
--- Reset test-consumer1 for future testing
+-- Reset test accounts for future testing
 UPDATE users 
 SET 
   onboarding_completed = false,
@@ -607,11 +607,15 @@ SET
   account_type = 'consumer',
   is_business = false,
   is_creator = false
-WHERE email = 'test-consumer1@bypass.com';
+WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 
--- Remove business profile created during test
+-- Remove business profiles created during test
 DELETE FROM business_profiles 
-WHERE user_id = (SELECT id FROM users WHERE email = 'test-consumer1@bypass.com');
+WHERE user_id IN (SELECT id FROM users WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com'));
+
+-- Remove restaurant claims created during test
+DELETE FROM restaurant_claims 
+WHERE user_id IN (SELECT id FROM users WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com'));
 ```
 
 ### Clear App State
@@ -627,7 +631,7 @@ In the app:
 -- Confirm reset was successful
 SELECT email, user_type, account_type, is_business, onboarding_completed
 FROM users
-WHERE email = 'test-consumer1@bypass.com';
+WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 
 -- Should show: user_type NULL, account_type 'consumer', is_business false, onboarding_completed false
 ```
@@ -739,8 +743,8 @@ When reporting bugs, include:
 
 | Email | OTP | Type | Use For |
 |-------|-----|------|---------|
-| `test-consumer1@bypass.com` | `000000` | Consumer | Fresh onboarding tests (reset first!) |
-| `test-consumer2@bypass.com` | `000000` | Consumer | Alternative consumer account |
+| `test-consumer4@bypass.com` | `000000` | Consumer | Diner onboarding tests |
+| `test-consumer5@bypass.com` | `000000` | Consumer | Restaurant onboarding tests |
 | `test-business1@bypass.com` | `000000` | Business | Navigation verification |
 | `test-business2@bypass.com` | `000000` | Business | Navigation verification |
 | `test-creator1@bypass.com` | `000000` | Creator | Creator flow testing |
@@ -755,42 +759,13 @@ When reporting bugs, include:
 
 ### Time Target
 
-- **Restaurant Onboarding Goal:** < 3 minutes
+- **Restaurant Onboarding Goal:** 5-10 minutes (updated for TRO-136)
 - **Measure from:** Welcome screen "Get Started" tap
 - **Measure to:** Restaurant Complete screen displayed
+- **Includes:** Restaurant claim, Stripe Connect, Payment method setup
 
-### Scenario D: Campaign Creation with Saved Payment (TRO-136)
+### Campaign Creation Time Target (TRO-136)
 
-**Objective:** Verify campaign creation uses saved payment method (no re-entry)
-
-**Pre-requisite:** Complete Scenario A with payment method saved  
-**Test Account:** `test-consumer1@bypass.com` (with completed restaurant onboarding)  
-**OTP:** `000000`
-
-#### Step-by-Step Test
-
-| Step | Action | Expected Result | ✓ |
-|------|--------|-----------------|---|
-| 1 | Login as business user | Successful login, home tab displayed | ☐ |
-| 2 | Navigate to "More" tab | More tab with business tools section | ☐ |
-| 3 | Tap "Business Dashboard" or navigate to campaigns | Business dashboard displayed | ☐ |
-| 4 | Tap "Create Campaign" button | Campaign creation wizard opens | ☐ |
-| 5 | Complete Step 1: Campaign Details | Fill title, description, requirements | ☐ |
-| 6 | Complete Step 2: Timeline | Set dates and budget | ☐ |
-| 7 | Complete Step 3: Deliverables | Add at least one deliverable | ☐ |
-| 8 | Proceed to Step 4: Payment | Payment step displays | ☐ |
-| 9 | Verify saved payment method shown | Shows: "Card on file", card brand, •••• last4 | ☐ |
-| 10 | Verify "Change" link available | "Change" link visible next to card info | ☐ |
-| 11 | Verify budget charge messaging | Shows: "This will be charged to your [brand] •••• XXXX when you publish" | ☐ |
-| 12 | Tap "Create Campaign" | Campaign created successfully | ☐ |
-| 13 | **TIME CHECK** | Total time from Step 4 to completion < 30 seconds | ☐ |
-| 14 | **OVERALL TIME CHECK** | Total campaign creation time < 2 minutes | ☐ |
-
-#### Key Verification Points
-
-- [ ] No Stripe redirect or card entry required
-- [ ] Saved card brand and last4 displayed correctly
-- [ ] Payment charged to saved card on publish
-- [ ] "Change" link navigates to payment settings
-
----
+- **Goal:** < 2 minutes for subsequent campaigns
+- **Key benefit:** No payment re-entry required
+- **Shows:** "Card on file: •••• XXXX | Change"
