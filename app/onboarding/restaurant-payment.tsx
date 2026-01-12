@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { useStripe } from '@stripe/stripe-react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -34,6 +35,7 @@ export default function RestaurantPaymentScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { setCurrentStep, updateStripeSetup, state } = useOnboarding();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('not_started');
   const [loading, setLoading] = useState(false);
@@ -129,36 +131,46 @@ export default function RestaurantPaymentScreen() {
         throw new Error(data?.error || 'Failed to create payment setup');
       }
 
-      // In a real implementation, you'd use Stripe's CardField component
-      // For now, we'll simulate success with the returned data
-      if (data.paymentMethodId) {
-        setCardLast4(data.last4 || '4242');
-        setCardBrand(data.brand || 'visa');
-        setPaymentStatus('completed');
+      const { setupIntentId, clientSecret, customerId } = data;
 
-        updateStripeSetup({
-          stripeCustomerId: data.customerId,
-          paymentMethodId: data.paymentMethodId,
-          paymentMethodLast4: data.last4,
-          paymentMethodBrand: data.brand,
-        });
-
-        Alert.alert('Success', 'Payment method saved successfully!');
-      } else {
-        // If no payment method yet, this is where you'd show Stripe's card input
-        // For now, show a placeholder message
-        Alert.alert(
-          'Payment Setup',
-          'In production, this would open Stripe\'s secure card entry form. For testing, the payment method will be simulated.',
-          [
-            {
-              text: 'Simulate Success',
-              onPress: () => simulatePaymentMethodSave(),
-            },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
+      if (!clientSecret) {
+        throw new Error('No client secret returned from server');
       }
+
+      console.log('[RestaurantPayment] Initializing PaymentSheet for SetupIntent...', { setupIntentId });
+
+      // Initialize Stripe PaymentSheet with SetupIntent
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: 'Troodie',
+        setupIntentClientSecret: clientSecret,
+        returnURL: 'troodie://payment-return',
+        allowsDelayedPaymentMethods: false,
+      });
+
+      if (initError) {
+        console.error('[RestaurantPayment] PaymentSheet init error:', initError);
+        throw new Error(initError.message || 'Failed to initialize payment form');
+      }
+
+      console.log('[RestaurantPayment] Presenting PaymentSheet...');
+
+      // Present the payment sheet
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        if (presentError.code === 'Canceled') {
+          console.log('[RestaurantPayment] User cancelled payment sheet');
+          return; // User cancelled, not an error
+        }
+        console.error('[RestaurantPayment] PaymentSheet error:', presentError);
+        throw new Error(presentError.message || 'Payment setup failed');
+      }
+
+      console.log('[RestaurantPayment] ✅ PaymentSheet completed successfully!');
+
+      // Payment method was saved! Now fetch the details from Stripe
+      // The SetupIntent should now have a payment_method attached
+      await savePaymentMethodDetails(customerId, setupIntentId);
     } catch (error: any) {
       console.error('[RestaurantPayment] Error:', error);
       setError(error.message || 'Failed to set up payment method');
@@ -166,6 +178,90 @@ export default function RestaurantPaymentScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Save payment method details after successful SetupIntent completion
+  const savePaymentMethodDetails = async (customerId: string, setupIntentId: string) => {
+    try {
+      console.log('[RestaurantPayment] Fetching payment method details...');
+
+      // Call Edge Function to get the payment method from the completed SetupIntent
+      const { data, error: functionError } = await supabase.functions.invoke(
+        'stripe-get-setup-intent',
+        {
+          body: { setupIntentId },
+        }
+      );
+
+      if (functionError) {
+        console.error('[RestaurantPayment] Error fetching payment method:', functionError);
+        // Fallback: save with placeholder data since SetupIntent succeeded
+        await saveFallbackPaymentMethod(customerId);
+        return;
+      }
+
+      const { paymentMethodId, last4, brand } = data;
+
+      console.log('[RestaurantPayment] Payment method details:', { paymentMethodId, last4, brand });
+
+      // Update business profile with actual payment method details
+      const { error: updateError } = await supabase
+        .from('business_profiles')
+        .update({
+          stripe_customer_id: customerId,
+          default_payment_method_id: paymentMethodId,
+          payment_method_last4: last4 || '****',
+          payment_method_brand: brand || 'card',
+          payment_setup_completed: true,
+        })
+        .eq('user_id', user?.id);
+
+      if (updateError) {
+        console.error('[RestaurantPayment] Error updating business profile:', updateError);
+      }
+
+      setCardLast4(last4 || '****');
+      setCardBrand(brand || 'card');
+      setPaymentStatus('completed');
+
+      updateStripeSetup({
+        stripeCustomerId: customerId,
+        paymentMethodId: paymentMethodId,
+        paymentMethodLast4: last4,
+        paymentMethodBrand: brand,
+      });
+
+      Alert.alert('Success', 'Payment method saved successfully!');
+    } catch (error: any) {
+      console.error('[RestaurantPayment] Error saving payment method:', error);
+      // Fallback
+      await saveFallbackPaymentMethod(customerId);
+    }
+  };
+
+  // Fallback: Save with placeholder data when we can't fetch details
+  const saveFallbackPaymentMethod = async (customerId: string) => {
+    const { error: updateError } = await supabase
+      .from('business_profiles')
+      .update({
+        stripe_customer_id: customerId,
+        payment_setup_completed: true,
+      })
+      .eq('user_id', user?.id);
+
+    if (updateError) {
+      console.error('[RestaurantPayment] Fallback update error:', updateError);
+    }
+
+    setCardLast4('****');
+    setCardBrand('card');
+    setPaymentStatus('completed');
+
+    updateStripeSetup({
+      stripeCustomerId: customerId,
+    });
+
+    Alert.alert('Success', 'Payment method saved!');
   };
 
   // Simulate saving a payment method for testing
