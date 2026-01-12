@@ -6,6 +6,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { StripeAccountType } from '@/lib/stripeTypes';
+import { supabase } from '@/lib/supabase';
 import { createStripeAccount, checkAccountStatus, getOnboardingLink } from '@/services/stripeService';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -148,13 +149,28 @@ export default function RestaurantStripeScreen() {
       console.log('[RestaurantStripe] Got onboarding link:', onboardingLink.substring(0, 80) + '...');
       setStripeStatus('in_progress');
 
-      // Open Stripe onboarding in browser
-      console.log('[RestaurantStripe] Opening Stripe onboarding in browser...');
-      const browserResult = await WebBrowser.openBrowserAsync(onboardingLink, {
-        dismissButtonStyle: 'done',
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      });
-      console.log('[RestaurantStripe] Browser result:', browserResult);
+      // Open Stripe onboarding in system browser (Safari) - more reliable than embedded WebBrowser
+      console.log('[RestaurantStripe] Opening Stripe onboarding in system browser...');
+      const canOpen = await Linking.canOpenURL(onboardingLink);
+      if (canOpen) {
+        await Linking.openURL(onboardingLink);
+        console.log('[RestaurantStripe] Opened in system browser');
+        
+        // Show helpful alert since user will leave the app
+        Alert.alert(
+          'Complete Stripe Setup',
+          'Complete your setup in Safari. When done, return to Troodie and tap "Refresh Status" to continue.',
+          [{ text: 'Got it' }]
+        );
+      } else {
+        // Fallback to WebBrowser
+        console.log('[RestaurantStripe] Fallback: Opening in embedded browser...');
+        const browserResult = await WebBrowser.openBrowserAsync(onboardingLink, {
+          dismissButtonStyle: 'done',
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+        console.log('[RestaurantStripe] Browser result:', browserResult);
+      }
 
       // After returning from browser, check status
       console.log('[RestaurantStripe] Browser closed, checking status...');
@@ -169,7 +185,53 @@ export default function RestaurantStripeScreen() {
   };
 
   const handleRefreshStatus = async () => {
-    await checkExistingAccount();
+    if (!user?.id) return;
+    
+    setCheckingStatus(true);
+    setError(null);
+    
+    try {
+      console.log('[RestaurantStripe] Refreshing status from Stripe API...');
+      
+      // Call Edge Function to check Stripe directly (not just database)
+      const { data, error: refreshError } = await supabase.functions.invoke('stripe-refresh-account-status', {
+        body: { accountType: 'business' },
+      });
+      
+      console.log('[RestaurantStripe] Refresh result:', data);
+      
+      if (refreshError || !data?.success) {
+        console.error('[RestaurantStripe] Refresh failed:', refreshError || data?.error);
+        // Fall back to checking database
+        await checkExistingAccount();
+        return;
+      }
+      
+      if (data.onboardingCompleted) {
+        console.log('[RestaurantStripe] ✅ Onboarding completed! Updating state...');
+        setStripeStatus('completed');
+        updateStripeSetup({
+          stripeAccountId: stripeAccountId || '',
+          stripeOnboardingComplete: true,
+        });
+        Alert.alert('Success', 'Your Stripe account is now connected!');
+      } else {
+        console.log('[RestaurantStripe] Onboarding still incomplete');
+        setStripeStatus('in_progress');
+        Alert.alert(
+          'Still In Progress',
+          'Please complete your Stripe onboarding. If you completed it on the web, it may take a moment to sync.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      console.error('[RestaurantStripe] Refresh error:', error);
+      setError('Failed to refresh status. Please try again.');
+      // Fall back to checking database
+      await checkExistingAccount();
+    } finally {
+      setCheckingStatus(false);
+    }
   };
 
   const handleContinue = () => {
