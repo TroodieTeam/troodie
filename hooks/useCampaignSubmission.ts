@@ -108,12 +108,12 @@ export function useCampaignSubmission() {
         if (budgetCents === 0) {
           console.log('[Campaign Submit] ✅ Free campaign - skipping payment, activating immediately');
           
-          // Activate the campaign directly (no payment needed)
+          // Activate the campaign directly (no payment needed - mark as 'paid' since nothing to pay)
           const { error: activateError } = await supabase
             .from('campaigns')
             .update({
               status: 'active',
-              payment_status: 'not_required',
+              payment_status: 'paid', // Free = nothing to pay = effectively paid
             })
             .eq('id', campaignId);
 
