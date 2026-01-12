@@ -24,9 +24,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 type PaymentStatus = 'not_started' | 'processing' | 'completed' | 'error';
