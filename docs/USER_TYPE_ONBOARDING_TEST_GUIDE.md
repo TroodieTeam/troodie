@@ -190,15 +190,21 @@ WHERE user_id IN (
 -- Step 3: Reset test user accounts
 UPDATE users 
 SET 
-  onboarding_completed = false,
   user_type = NULL,
   account_type = 'consumer',
-  is_business = false,
+  is_restaurant = false,
   is_creator = false
 WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 
--- Step 4: Verify cleanup
-SELECT email, user_type, account_type, is_business, onboarding_completed
+-- Step 4: Clear user_onboarding progress (if exists)
+DELETE FROM user_onboarding
+WHERE user_id IN (
+  SELECT id FROM users 
+  WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com')
+);
+
+-- Step 5: Verify cleanup
+SELECT email, user_type, account_type, is_restaurant, is_creator
 FROM users 
 WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 ```
@@ -602,10 +608,9 @@ ORDER BY bp.created_at DESC;
 -- Reset test accounts for future testing
 UPDATE users 
 SET 
-  onboarding_completed = false,
   user_type = NULL,
   account_type = 'consumer',
-  is_business = false,
+  is_restaurant = false,
   is_creator = false
 WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 
@@ -615,6 +620,10 @@ WHERE user_id IN (SELECT id FROM users WHERE email IN ('test-consumer4@bypass.co
 
 -- Remove restaurant claims created during test
 DELETE FROM restaurant_claims 
+WHERE user_id IN (SELECT id FROM users WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com'));
+
+-- Clear user_onboarding progress
+DELETE FROM user_onboarding
 WHERE user_id IN (SELECT id FROM users WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com'));
 ```
 
@@ -629,11 +638,11 @@ In the app:
 
 ```sql
 -- Confirm reset was successful
-SELECT email, user_type, account_type, is_business, onboarding_completed
+SELECT email, user_type, account_type, is_restaurant, is_creator
 FROM users
 WHERE email IN ('test-consumer4@bypass.com', 'test-consumer5@bypass.com');
 
--- Should show: user_type NULL, account_type 'consumer', is_business false, onboarding_completed false
+-- Should show: user_type NULL, account_type 'consumer', is_restaurant false, is_creator false
 ```
 
 ---
