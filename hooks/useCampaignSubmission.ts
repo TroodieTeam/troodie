@@ -104,6 +104,36 @@ export function useCampaignSubmission() {
         campaignId = campaignData.id;
         console.log('[Campaign Submit] ✅ Campaign created:', campaignId);
 
+        // FREE CAMPAIGN: Skip payment if budget is $0
+        if (budgetCents === 0) {
+          console.log('[Campaign Submit] ✅ Free campaign - skipping payment, activating immediately');
+          
+          // Activate the campaign directly (no payment needed)
+          const { error: activateError } = await supabase
+            .from('campaigns')
+            .update({
+              status: 'active',
+              payment_status: 'not_required',
+            })
+            .eq('id', campaignId);
+
+          if (activateError) {
+            console.error('[Campaign Submit] ⚠️ Error activating free campaign:', activateError);
+          }
+
+          Alert.alert(
+            'Campaign Created!',
+            'Your free campaign is now active. Creators can start applying!',
+            [
+              {
+                text: 'View Campaigns',
+                onPress: () => router.replace('/business/campaigns'),
+              },
+            ]
+          );
+          return;
+        }
+
         // Ensure we have a valid session before calling Edge Function
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !sessionData?.session) {
