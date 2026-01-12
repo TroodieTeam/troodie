@@ -195,9 +195,9 @@ class RestaurantClaimService {
           .from('business_profiles')
           .insert({
             user_id: user.id,
-            restaurant_id: data.restaurantId,
+            restaurant_id: request.restaurant_id,
             verification_status: 'pending',
-            business_email: data.email || userProfile?.email || user.email,
+            business_email: request.email || userProfile?.email || user.email,
           })
           .select()
           .single();
