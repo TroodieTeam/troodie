@@ -9,7 +9,9 @@ export function validateStep(
     case 1:
       return formData.title.trim() !== '' && formData.description.trim() !== '';
     case 2:
-      return formData.budget !== '' && formData.deadline !== '';
+      // Budget must be a positive number (minimum $1)
+      const budgetNum = parseFloat(formData.budget);
+      return !isNaN(budgetNum) && budgetNum >= 1 && formData.deadline !== '';
     case 3:
       return formData.deliverables.length > 0;
     case 4:
@@ -26,6 +28,16 @@ export function validateCampaignSubmission(
 ): { valid: boolean; error?: string; step?: number } {
   if (!restaurantData?.id) {
     return { valid: false, error: 'Restaurant data is missing. Please refresh and try again.' };
+  }
+
+  // Validate budget is at least $1
+  const budgetNum = parseFloat(formData.budget);
+  if (isNaN(budgetNum) || budgetNum < 1) {
+    return {
+      valid: false,
+      error: 'Campaign budget must be at least $1.00',
+      step: 2,
+    };
   }
 
   if (!formData.deadline || formData.deadline.trim() === '') {
