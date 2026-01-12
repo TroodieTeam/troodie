@@ -8,7 +8,14 @@ export interface PaymentIntentResult {
   success: boolean;
   paymentIntentId?: string;
   clientSecret?: string;
+  paymentAlreadySucceeded?: boolean; // TRO-136: true if saved card was charged off-session
   error?: string;
+}
+
+// TRO-136: Saved payment method info for off-session charging
+export interface SavedPaymentMethodInfo {
+  paymentMethodId: string;
+  customerId: string;
 }
 
 export interface PaymentConfirmationResult {
@@ -19,21 +26,21 @@ export interface PaymentConfirmationResult {
 
 /**
  * Create a payment intent for a campaign
- * NOTE: This should be called via Edge Function, not directly from client
- * Client should call: supabase.functions.invoke('stripe-create-payment-intent', {...})
+ * TRO-136: If savedPaymentMethod is provided, charges off-session (no UI needed)
+ * Otherwise returns clientSecret for PaymentSheet
  */
 export async function createCampaignPaymentIntent(
   campaignId: string,
   businessId: string,
-  amountCents: number
+  amountCents: number,
+  savedPaymentMethod?: SavedPaymentMethodInfo
 ): Promise<PaymentIntentResult> {
-  // This function requires Stripe SDK - should be moved to Edge Function
-  // For now, call Edge Function
   try {
     console.log('[paymentService] Calling stripe-create-payment-intent Edge Function...', {
       campaignId,
       businessId,
       amountCents,
+      usingSavedPaymentMethod: !!savedPaymentMethod,
     });
 
     // Ensure we have a valid session before calling Edge Function
@@ -48,12 +55,21 @@ export async function createCampaignPaymentIntent(
 
     console.log('[paymentService] ✅ Session validated, calling Edge Function...');
 
+    // Build request body
+    const requestBody: Record<string, any> = {
+      campaignId,
+      businessId,
+      amountCents,
+    };
+
+    // TRO-136: Include saved payment method for off-session charging
+    if (savedPaymentMethod) {
+      requestBody.paymentMethodId = savedPaymentMethod.paymentMethodId;
+      requestBody.customerId = savedPaymentMethod.customerId;
+    }
+
     const { data, error } = await supabase.functions.invoke('stripe-create-payment-intent', {
-      body: {
-        campaignId,
-        businessId,
-        amountCents,
-      },
+      body: requestBody,
     });
 
     if (error) {
@@ -73,6 +89,7 @@ export async function createCampaignPaymentIntent(
       success: data?.success,
       paymentIntentId: data?.paymentIntentId,
       hasClientSecret: !!data?.clientSecret,
+      paymentAlreadySucceeded: data?.paymentAlreadySucceeded,
       error: data?.error,
     });
 
@@ -80,6 +97,7 @@ export async function createCampaignPaymentIntent(
       success: data?.success || false,
       paymentIntentId: data?.paymentIntentId,
       clientSecret: data?.clientSecret,
+      paymentAlreadySucceeded: data?.paymentAlreadySucceeded, // TRO-136: Saved card was charged
       error: data?.error,
     };
   } catch (error) {

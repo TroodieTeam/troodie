@@ -43,7 +43,7 @@ export default function CreateCampaign() {
 
   const { submitCampaign, loading: submissionLoading } = useCampaignSubmission();
 
-  // TRO-136: Fetch saved payment method from business profile
+  // TRO-136: Fetch saved payment method from business profile (including customer ID for off-session charging)
   useEffect(() => {
     const fetchSavedPaymentMethod = async () => {
       if (!user?.id) return;
@@ -51,19 +51,27 @@ export default function CreateCampaign() {
       try {
         const { data: businessProfile } = await supabase
           .from('business_profiles')
-          .select('default_payment_method_id, payment_method_last4, payment_method_brand')
+          .select('stripe_customer_id, default_payment_method_id, payment_method_last4, payment_method_brand')
           .eq('user_id', user.id)
           .single();
 
-        if (businessProfile?.default_payment_method_id) {
+        if (businessProfile?.default_payment_method_id && businessProfile?.stripe_customer_id) {
+          console.log('[CreateCampaign] Found saved payment method:', {
+            last4: businessProfile.payment_method_last4,
+            brand: businessProfile.payment_method_brand,
+            hasCustomerId: true,
+          });
           setSavedPaymentMethod({
             paymentMethodId: businessProfile.default_payment_method_id,
+            customerId: businessProfile.stripe_customer_id, // Required for off-session charging
             last4: businessProfile.payment_method_last4,
             brand: businessProfile.payment_method_brand,
           });
+        } else {
+          console.log('[CreateCampaign] No saved payment method found (missing paymentMethodId or customerId)');
         }
       } catch (error) {
-        console.log('[CreateCampaign] No saved payment method found');
+        console.log('[CreateCampaign] Error fetching payment method:', error);
       }
     };
 
@@ -102,7 +110,28 @@ export default function CreateCampaign() {
       return;
     }
 
-    const result = await submitCampaign(formData, restaurantData!, stripeAccountStatus, user.id);
+    // TRO-136: Pass saved payment method for off-session charging (no PaymentSheet)
+    const savedPaymentForSubmission = savedPaymentMethod?.paymentMethodId && savedPaymentMethod?.customerId
+      ? {
+          paymentMethodId: savedPaymentMethod.paymentMethodId,
+          customerId: savedPaymentMethod.customerId,
+          last4: savedPaymentMethod.last4 || undefined,
+          brand: savedPaymentMethod.brand || undefined,
+        }
+      : undefined;
+
+    console.log('[CreateCampaign] Submitting campaign with payment method:', {
+      hasSavedPaymentMethod: !!savedPaymentForSubmission,
+      last4: savedPaymentForSubmission?.last4,
+    });
+
+    const result = await submitCampaign(
+      formData,
+      restaurantData!,
+      stripeAccountStatus,
+      user.id,
+      savedPaymentForSubmission
+    );
     if (result?.step) {
       setCurrentStep(result.step);
     }

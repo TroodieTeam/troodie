@@ -4,9 +4,10 @@ import { CheckCircle, CreditCard, Shield } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 
-// Saved payment method info (TRO-136)
+// Saved payment method info (TRO-136) - includes customerId for off-session charging
 export interface SavedPaymentMethod {
   paymentMethodId: string | null;
+  customerId?: string | null; // Required for off-session charging
   last4: string | null;
   brand: string | null;
 }

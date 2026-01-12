@@ -48,7 +48,7 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { campaignId, businessId, amountCents } = body;
+    const { campaignId, businessId, amountCents, paymentMethodId, customerId } = body;
 
     // Validate required fields
     if (!campaignId || !businessId || !amountCents) {
@@ -60,6 +60,14 @@ serve(async (req) => {
         }
       );
     }
+
+    // Log if using saved payment method (TRO-136)
+    const useSavedPaymentMethod = !!paymentMethodId && !!customerId;
+    console.log('[stripe-create-payment-intent] Payment mode:', {
+      useSavedPaymentMethod,
+      hasPaymentMethodId: !!paymentMethodId,
+      hasCustomerId: !!customerId,
+    });
 
     // Validate amount
     if (amountCents <= 0 || !Number.isInteger(amountCents)) {
@@ -145,10 +153,11 @@ serve(async (req) => {
       businessId,
       amountCents,
       amountDollars: (amountCents / 100).toFixed(2),
+      useSavedPaymentMethod,
     });
 
-    // Create Stripe Payment Intent
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Build PaymentIntent options
+    const paymentIntentOptions: Stripe.PaymentIntentCreateParams = {
       amount: amountCents,
       currency: 'usd',
       metadata: {
@@ -158,15 +167,31 @@ serve(async (req) => {
         creator_payout_cents: creatorPayoutCents.toString(),
       },
       description: `Campaign: ${campaign.title}`,
-    });
+    };
+
+    // TRO-136: If saved payment method provided, auto-charge off-session
+    if (useSavedPaymentMethod) {
+      console.log('[stripe-create-payment-intent] Using saved payment method for off-session charge...');
+      paymentIntentOptions.customer = customerId;
+      paymentIntentOptions.payment_method = paymentMethodId;
+      paymentIntentOptions.off_session = true;
+      paymentIntentOptions.confirm = true; // Auto-confirm the payment
+    }
+
+    // Create Stripe Payment Intent
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentOptions);
 
     console.log('[stripe-create-payment-intent] ✅ Payment Intent created:', {
       paymentIntentId: paymentIntent.id,
       status: paymentIntent.status,
       amount: paymentIntent.amount,
+      wasAutoConfirmed: useSavedPaymentMethod,
     });
 
-    // Store payment record
+    // Check if payment was already confirmed (off-session charge succeeded)
+    const paymentAlreadySucceeded = paymentIntent.status === 'succeeded';
+
+    // Store payment record (mark as 'succeeded' if already confirmed)
     console.log('[stripe-create-payment-intent] Storing payment record in database...');
     const { data: paymentRecord, error: insertError } = await supabase
       .from('campaign_payments')
@@ -178,7 +203,8 @@ serve(async (req) => {
         amount_cents: amountCents,
         platform_fee_cents: 0, // No platform fee
         creator_payout_cents: creatorPayoutCents,
-        status: 'pending',
+        status: paymentAlreadySucceeded ? 'succeeded' : 'pending',
+        paid_at: paymentAlreadySucceeded ? new Date().toISOString() : null,
       })
       .select()
       .single();
@@ -209,30 +235,44 @@ serve(async (req) => {
       status: paymentRecord.status,
     });
 
-    // Update campaign with payment intent ID
+    // Update campaign with payment intent ID (and status if already paid)
     console.log('[stripe-create-payment-intent] Updating campaign with payment_intent_id...');
+    const campaignUpdate: Record<string, any> = {
+      payment_intent_id: paymentIntent.id,
+      payment_status: paymentAlreadySucceeded ? 'paid' : 'pending',
+    };
+
+    // If payment already succeeded (off-session), also activate the campaign
+    if (paymentAlreadySucceeded) {
+      campaignUpdate.status = 'active';
+      campaignUpdate.paid_at = new Date().toISOString();
+    }
+
     const { error: updateError } = await supabase
       .from('campaigns')
-      .update({
-        payment_intent_id: paymentIntent.id,
-        payment_status: 'pending',
-      })
+      .update(campaignUpdate)
       .eq('id', campaignId);
 
     if (updateError) {
       console.error('[stripe-create-payment-intent] ⚠️ Error updating campaign (non-fatal):', updateError);
       // Don't fail the request, but log the error
     } else {
-      console.log('[stripe-create-payment-intent] ✅ Campaign updated with payment_intent_id');
+      console.log('[stripe-create-payment-intent] ✅ Campaign updated with payment_intent_id', {
+        paymentAlreadySucceeded,
+      });
     }
 
     // Return success response
-    console.log('[stripe-create-payment-intent] ✅ Payment intent creation complete');
+    console.log('[stripe-create-payment-intent] ✅ Payment intent creation complete', {
+      paymentAlreadySucceeded,
+      status: paymentIntent.status,
+    });
     return new Response(
       JSON.stringify({
         success: true,
         paymentIntentId: paymentIntent.id,
-        clientSecret: paymentIntent.client_secret || undefined,
+        clientSecret: paymentAlreadySucceeded ? undefined : paymentIntent.client_secret,
+        paymentAlreadySucceeded, // TRO-136: Indicates if saved card was charged (no PaymentSheet needed)
       }),
       {
         status: 200,

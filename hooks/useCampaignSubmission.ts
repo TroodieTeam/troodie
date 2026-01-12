@@ -1,6 +1,6 @@
 import { PAYMENT_POLLING_CONFIG } from '@/constants/campaign';
 import { supabase } from '@/lib/supabase';
-import { createCampaignPaymentIntent, getCampaignPaymentStatus } from '@/services/paymentService';
+import { createCampaignPaymentIntent, getCampaignPaymentStatus, SavedPaymentMethodInfo } from '@/services/paymentService';
 import { CampaignFormData, RestaurantData, StripeAccountStatus } from '@/types/campaign';
 import { convertBudgetToCents, expandDeliverables, formatEndDate } from '@/utils/campaignTransformations';
 import { createStripeReturnURL } from '@/utils/stripeHelpers';
@@ -8,6 +8,14 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
+
+// TRO-136: Extended saved payment method info for campaign submission
+export interface CampaignSavedPaymentMethod {
+  paymentMethodId: string;
+  customerId: string;
+  last4?: string;
+  brand?: string;
+}
 
 export function useCampaignSubmission() {
   const router = useRouter();
@@ -19,9 +27,12 @@ export function useCampaignSubmission() {
       formData: CampaignFormData,
       restaurantData: RestaurantData | null,
       stripeAccountStatus: StripeAccountStatus,
-      userId: string
+      userId: string,
+      savedPaymentMethod?: CampaignSavedPaymentMethod // TRO-136: Saved card for off-session charging
     ) => {
-      console.log('[Campaign Submit] Starting campaign creation flow');
+      console.log('[Campaign Submit] Starting campaign creation flow', {
+        hasSavedPaymentMethod: !!savedPaymentMethod,
+      });
 
       // Validate before submission
       if (!restaurantData?.id) {
@@ -109,13 +120,28 @@ export function useCampaignSubmission() {
         console.log('[Campaign Submit] ✅ Session validated');
 
         // Create payment intent for the campaign
+        // TRO-136: If saved payment method exists, charge off-session (no PaymentSheet)
         console.log('[Campaign Submit] Creating payment intent...', {
           campaignId,
           businessId: userId,
           amountCents: budgetCents,
+          usingSavedPaymentMethod: !!savedPaymentMethod,
         });
 
-        const paymentResult = await createCampaignPaymentIntent(campaignId, userId, budgetCents);
+        // Build saved payment method info for off-session charging
+        const savedPaymentInfo: SavedPaymentMethodInfo | undefined = savedPaymentMethod
+          ? {
+              paymentMethodId: savedPaymentMethod.paymentMethodId,
+              customerId: savedPaymentMethod.customerId,
+            }
+          : undefined;
+
+        const paymentResult = await createCampaignPaymentIntent(
+          campaignId,
+          userId,
+          budgetCents,
+          savedPaymentInfo
+        );
 
         if (!paymentResult.success || !paymentResult.paymentIntentId) {
           console.error('[Campaign Submit] ❌ Payment intent creation failed:', paymentResult.error);
@@ -133,9 +159,26 @@ export function useCampaignSubmission() {
         console.log('[Campaign Submit] ✅ Payment intent created:', {
           paymentIntentId: paymentResult.paymentIntentId,
           clientSecret: paymentResult.clientSecret ? 'present' : 'missing',
+          paymentAlreadySucceeded: paymentResult.paymentAlreadySucceeded,
         });
 
-        // Present Stripe Payment Sheet to collect payment
+        // TRO-136: If payment already succeeded (saved card charged off-session), skip PaymentSheet
+        if (paymentResult.paymentAlreadySucceeded) {
+          console.log('[Campaign Submit] ✅ Saved card charged successfully! Campaign is active.');
+          Alert.alert(
+            'Campaign Created!',
+            `Your campaign is now active and your saved card (•••• ${savedPaymentMethod?.last4 || '****'}) has been charged.`,
+            [
+              {
+                text: 'View Campaigns',
+                onPress: () => router.replace('/business/campaigns'),
+              },
+            ]
+          );
+          return;
+        }
+
+        // Present Stripe Payment Sheet to collect payment (no saved card available)
         if (paymentResult.clientSecret) {
           await handlePaymentSheet(paymentResult.clientSecret, campaignId, paymentResult.paymentIntentId);
         } else {
