@@ -138,6 +138,24 @@ export function useCampaignActions(
 
     try {
       setProcessingPayment(true);
+
+      // FREE CAMPAIGN: If budget is $0, just activate without payment
+      if (campaign.budget_cents === 0) {
+        console.log('[CampaignActions] Free campaign - activating directly');
+        const { error } = await supabase
+          .from('campaigns')
+          .update({ 
+            status: 'active',
+            payment_status: 'paid', // Free = nothing to pay
+          })
+          .eq('id', campaign.id);
+
+        if (error) throw error;
+        Alert.alert('Campaign Activated', 'Your free campaign is now active!');
+        reloadData();
+        return;
+      }
+
       if (!initPaymentSheet || !presentPaymentSheet) {
         Alert.alert('Error', 'Payment not available');
         return;
