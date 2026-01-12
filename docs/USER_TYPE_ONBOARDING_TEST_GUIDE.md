@@ -92,20 +92,28 @@ RESTAURANT    DINER/CREATOR
            │             │      QUIZ           │
            ▼             └──────────┬──────────┘
 ┌─────────────────────┐             │
-│  RESTAURANT         │             ▼
-│  COMPLETE           │  ┌─────────────────────┐
-│  - Success message  │  │  PERSONA RESULT     │
-│  - CTAs:            │  └──────────┬──────────┘
-│    • Explore App    │             │
-│    • View Dashboard │             ▼
-└──────────┬──────────┘  ┌─────────────────────┐
-           │             │  FAVORITE SPOTS     │
-           │             └──────────┬──────────┘
+│  STRIPE CONNECT     │  (TRO-136)  ▼
+│  - Connect Stripe   │  ┌─────────────────────┐
+│  - Step 2 of 4      │  │  PERSONA RESULT     │
+└──────────┬──────────┘  └──────────┬──────────┘
            │                        │
-           │                        ▼
+           ▼                        ▼
+┌─────────────────────┐  ┌─────────────────────┐
+│  PAYMENT METHOD     │  │  FAVORITE SPOTS     │
+│  - Save card        │  └──────────┬──────────┘
+│  - Step 3 of 4      │             │
+└──────────┬──────────┘             ▼
            │             ┌─────────────────────┐
-           │             │    COMPLETE         │
-           │             └──────────┬──────────┘
+           ▼             │    COMPLETE         │
+┌─────────────────────┐  └──────────┬──────────┘
+│  RESTAURANT         │             │
+│  COMPLETE           │             │
+│  - Success message  │             │
+│  - Saved card info  │             │
+│  - CTAs:            │             │
+│    • Explore App    │             │
+│    • View Dashboard │             │
+└──────────┬──────────┘             │
            │                        │
            └────────────────────────┘
                         │
@@ -157,9 +165,47 @@ After onboarding, verify user_type is recorded:
 
 ## Pre-Test Setup
 
+### 0. Cleanup: Reset Test State (REQUIRED)
+
+> ⚠️ **Run this query BEFORE testing to clear all previous test data:**
+
+```sql
+-- CLEANUP: Remove all restaurant claims and reset claimed restaurants
+-- Run in DEV Supabase SQL Editor
+
+-- Step 1: Clear business profiles (this removes claims)
+DELETE FROM business_profiles 
+WHERE user_id IN (
+  SELECT id FROM users 
+  WHERE email LIKE 'test-%@bypass.com'
+);
+
+-- Step 2: Reset restaurant claims table if exists
+DELETE FROM restaurant_claims 
+WHERE submitter_id IN (
+  SELECT id FROM users 
+  WHERE email LIKE 'test-%@bypass.com'
+);
+
+-- Step 3: Reset test user accounts
+UPDATE users 
+SET 
+  onboarding_completed = false,
+  user_type = NULL,
+  account_type = 'consumer',
+  is_business = false,
+  is_creator = false
+WHERE email LIKE 'test-%@bypass.com';
+
+-- Step 4: Verify cleanup
+SELECT email, user_type, account_type, is_business, onboarding_completed
+FROM users 
+WHERE email LIKE 'test-%@bypass.com';
+```
+
 ### 1. Database Migration Verification
 
-Before testing, verify the migration has been applied:
+Before testing, verify the migrations have been applied:
 
 ```sql
 -- Check if user_type column exists
@@ -174,6 +220,12 @@ WHERE table_name = 'users' AND column_name = 'user_type';
 -- Check index exists
 SELECT indexname FROM pg_indexes 
 WHERE tablename = 'users' AND indexname = 'idx_users_user_type';
+
+-- TRO-136: Check payment columns in business_profiles
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'business_profiles' 
+AND column_name IN ('stripe_customer_id', 'default_payment_method_id', 'payment_method_last4', 'payment_setup_completed');
 ```
 
 ### 2. Clear Test Account State (Required for Fresh Onboarding Test)
@@ -222,14 +274,15 @@ LIMIT 10;
 
 ## Test Scenarios
 
-### Scenario A: Restaurant Owner Onboarding
+### Scenario A: Restaurant Owner Onboarding (TRO-136 Updated)
 
-**Objective:** Complete restaurant owner onboarding in under 3 minutes (per TRO-139 acceptance criteria)
+**Objective:** Complete restaurant owner onboarding in 5-10 minutes (updated per TRO-136)  
+**Key Change:** Now includes Stripe Connect and Payment Method setup
 
 **Test Account:** `test-consumer1@bypass.com` (or any consumer account)  
 **OTP:** `000000`
 
-> ⚠️ **First, reset the account** - See "Pre-Test Setup" section to clear onboarding state
+> ⚠️ **First, reset the account** - See "Pre-Test Setup" section (Step 0) to clear onboarding state
 
 #### Step-by-Step Test
 
@@ -250,12 +303,27 @@ LIMIT 10;
 | | - Full name: "Test Restaurant Owner" | Field accepts input | ☐ |
 | | - Email: Uses account email (pre-filled) | Email shown | ☐ |
 | | - Phone: "(555) 123-4567" | Field accepts input | ☐ |
-| 13 | Tap "Submit Claim" button | Loading state, then navigate to Restaurant Complete | ☐ |
-| 14 | Verify Restaurant Complete screen | Shows: success animation, restaurant name, "claim submitted" message | ☐ |
-| 15 | Verify CTAs on Complete screen | Two buttons: "Explore the App", "View Business Dashboard" | ☐ |
-| 16 | Tap "Explore the App" | Navigate to main tabs (Home tab) | ☐ |
-| 17 | Navigate to "More" tab | Business tools section visible (NOT "Claim Restaurant" option) | ☐ |
-| 18 | **TIME CHECK** | Total time from Welcome to Complete < 3 minutes | ☐ |
+| 13 | Tap "Submit Claim" button | Loading state, then navigate to **Stripe Connect** screen | ☐ |
+| **NEW: Stripe Connect Steps (TRO-136)** |||
+| 14 | Verify Stripe Connect screen displays | Shows: "Step 2 of 4", "Connect Stripe" card, security messaging | ☐ |
+| 15 | Tap "Connect with Stripe" button | Opens Stripe Express in browser | ☐ |
+| 16 | Complete Stripe onboarding (or tap Skip) | Returns to app, status updated OR skip alert shown | ☐ |
+| 17 | If skipped: Confirm skip | Navigate to Payment Method screen | ☐ |
+| 17a | If completed: Tap "Continue" | Navigate to Payment Method screen | ☐ |
+| **NEW: Payment Method Steps (TRO-136)** |||
+| 18 | Verify Payment Method screen displays | Shows: "Step 3 of 4", "Add Card" button, security badges | ☐ |
+| 19 | Tap "Add Card" button | Card input UI appears OR simulation prompt | ☐ |
+| 20 | Complete card entry (or simulate) | Card saved, shows "Card Saved" confirmation | ☐ |
+| 21 | Verify saved card display | Shows: card brand, •••• last4, "Change" link | ☐ |
+| 22 | Tap "Continue" | Navigate to Restaurant Complete screen | ☐ |
+| **Completion** |||
+| 23 | Verify Restaurant Complete screen | Shows: success animation, restaurant name, "claim submitted" | ☐ |
+| 24 | Verify saved card info displayed | Shows: "Payment Method Saved" card with last4 (if saved) | ☐ |
+| 25 | Verify Stripe Connected badge | Shows: "Stripe Connected" badge (if connected) | ☐ |
+| 26 | Verify CTAs on Complete screen | Two buttons: "Explore the App", "View Business Dashboard" | ☐ |
+| 27 | Tap "Explore the App" | Navigate to main tabs (Home tab) | ☐ |
+| 28 | Navigate to "More" tab | Business tools section visible (NOT "Claim Restaurant" option) | ☐ |
+| 29 | **TIME CHECK** | Total time from Welcome to Complete: 5-10 minutes | ☐ |
 
 #### Database Verification
 
@@ -279,7 +347,7 @@ WHERE email = 'test-consumer1@bypass.com';
 -- is_business: true
 -- onboarding_completed: true
 
--- Verify business profile was created
+-- Verify business profile was created with payment info (TRO-136)
 SELECT 
   bp.id,
   bp.user_id,
@@ -288,13 +356,28 @@ SELECT
   bp.business_email,
   bp.business_phone,
   bp.verification_status,
+  bp.stripe_account_id,
+  bp.stripe_onboarding_completed,
+  bp.stripe_customer_id,
+  bp.default_payment_method_id,
+  bp.payment_method_last4,
+  bp.payment_method_brand,
+  bp.payment_setup_completed,
   r.name as restaurant_name
 FROM business_profiles bp
 JOIN restaurants r ON bp.restaurant_id = r.id
 JOIN users u ON bp.user_id = u.id
 WHERE u.email = 'test-consumer1@bypass.com';
 
--- Expected: Record exists with all claim details
+-- Expected: Record exists with:
+-- - All claim details (admin_name, business_email, business_phone)
+-- - stripe_account_id (if Stripe connected)
+-- - stripe_onboarding_completed: true (if Stripe connected)
+-- - stripe_customer_id (if payment method saved)
+-- - default_payment_method_id (if card saved)
+-- - payment_method_last4: e.g., '4242' (if card saved)
+-- - payment_method_brand: e.g., 'visa' (if card saved)
+-- - payment_setup_completed: true (if payment setup done)
 ```
 
 ---
@@ -583,7 +666,7 @@ WHERE email = 'test-consumer1@bypass.com';
 
 ### TRO-139: User Type Segmentation
 - [ ] Restaurant owners sorted into dedicated onboarding path
-- [ ] Restaurant onboarding < 3 minutes (excluding external factors)
+- [ ] Restaurant onboarding completes in 5-10 minutes (including Stripe/payment)
 
 ### TRO-140: Radio Button Selection
 - [ ] Three options displayed with correct text and icons
@@ -591,7 +674,7 @@ WHERE email = 'test-consumer1@bypass.com';
 - [ ] Continue button requires selection
 
 ### TRO-141: Custom Onboarding Paths
-- [ ] Restaurant: Claim → Complete → App
+- [ ] Restaurant: Claim → Stripe → Payment → Complete → App
 - [ ] Diner: Quiz flow (unchanged)
 - [ ] Creator: Quiz flow (unchanged)
 
@@ -604,6 +687,26 @@ WHERE email = 'test-consumer1@bypass.com';
 - [ ] `user_type` column exists in users table
 - [ ] Value set on signup based on selection
 - [ ] Values: 'diner', 'content_creator', 'restaurant_admin'
+
+### TRO-136: Restaurant Payment Onboarding (NEW)
+- [ ] Restaurant Claim navigates to Stripe Connect screen
+- [ ] Stripe Connect screen shows "Step 2 of 4" indicator
+- [ ] "Connect with Stripe" opens Stripe Express onboarding
+- [ ] Skip option available for Stripe Connect
+- [ ] Payment Method screen shows "Step 3 of 4" indicator
+- [ ] "Add Card" saves payment method via SetupIntent
+- [ ] Skip option available for Payment Method
+- [ ] Restaurant Complete shows saved card info (if saved)
+- [ ] Restaurant Complete shows Stripe Connected badge (if connected)
+- [ ] Campaign creation shows saved payment method
+- [ ] Campaign creation shows "Card on file: •••• XXXX | Change"
+- [ ] No payment re-entry required when creating campaigns
+- [ ] `business_profiles` has payment columns:
+  - [ ] `stripe_customer_id`
+  - [ ] `default_payment_method_id`
+  - [ ] `payment_method_last4`
+  - [ ] `payment_method_brand`
+  - [ ] `payment_setup_completed`
 
 ---
 
@@ -655,3 +758,39 @@ When reporting bugs, include:
 - **Restaurant Onboarding Goal:** < 3 minutes
 - **Measure from:** Welcome screen "Get Started" tap
 - **Measure to:** Restaurant Complete screen displayed
+
+### Scenario D: Campaign Creation with Saved Payment (TRO-136)
+
+**Objective:** Verify campaign creation uses saved payment method (no re-entry)
+
+**Pre-requisite:** Complete Scenario A with payment method saved  
+**Test Account:** `test-consumer1@bypass.com` (with completed restaurant onboarding)  
+**OTP:** `000000`
+
+#### Step-by-Step Test
+
+| Step | Action | Expected Result | ✓ |
+|------|--------|-----------------|---|
+| 1 | Login as business user | Successful login, home tab displayed | ☐ |
+| 2 | Navigate to "More" tab | More tab with business tools section | ☐ |
+| 3 | Tap "Business Dashboard" or navigate to campaigns | Business dashboard displayed | ☐ |
+| 4 | Tap "Create Campaign" button | Campaign creation wizard opens | ☐ |
+| 5 | Complete Step 1: Campaign Details | Fill title, description, requirements | ☐ |
+| 6 | Complete Step 2: Timeline | Set dates and budget | ☐ |
+| 7 | Complete Step 3: Deliverables | Add at least one deliverable | ☐ |
+| 8 | Proceed to Step 4: Payment | Payment step displays | ☐ |
+| 9 | Verify saved payment method shown | Shows: "Card on file", card brand, •••• last4 | ☐ |
+| 10 | Verify "Change" link available | "Change" link visible next to card info | ☐ |
+| 11 | Verify budget charge messaging | Shows: "This will be charged to your [brand] •••• XXXX when you publish" | ☐ |
+| 12 | Tap "Create Campaign" | Campaign created successfully | ☐ |
+| 13 | **TIME CHECK** | Total time from Step 4 to completion < 30 seconds | ☐ |
+| 14 | **OVERALL TIME CHECK** | Total campaign creation time < 2 minutes | ☐ |
+
+#### Key Verification Points
+
+- [ ] No Stripe redirect or card entry required
+- [ ] Saved card brand and last4 displayed correctly
+- [ ] Payment charged to saved card on publish
+- [ ] "Change" link navigates to payment settings
+
+---

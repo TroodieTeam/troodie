@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { OnboardingState, QuizAnswer, FavoriteSpot, PersonaType, PersonaScores, UserType, RestaurantClaimData } from '@/types/onboarding';
+import { OnboardingState, QuizAnswer, FavoriteSpot, PersonaType, PersonaScores, UserType, RestaurantClaimData, StripeSetupData } from '@/types/onboarding';
 
 interface OnboardingContextType {
   state: OnboardingState;
@@ -18,6 +18,8 @@ interface OnboardingContextType {
   setUserType: (userType: UserType) => void;
   setRestaurantClaim: (data: RestaurantClaimData) => void;
   updateRestaurantClaim: (updates: Partial<RestaurantClaimData>) => void;
+  // NEW: Stripe setup methods (TRO-136)
+  updateStripeSetup: (updates: Partial<StripeSetupData>) => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -118,6 +120,14 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // NEW: Update Stripe setup data (TRO-136)
+  const updateStripeSetup = (updates: Partial<StripeSetupData>) => {
+    setState(prev => ({
+      ...prev,
+      stripeSetup: { ...prev.stripeSetup, ...updates }
+    }));
+  };
+
   return (
     <OnboardingContext.Provider
       value={{
@@ -135,7 +145,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         resetOnboarding,
         setUserType,
         setRestaurantClaim,
-        updateRestaurantClaim
+        updateRestaurantClaim,
+        updateStripeSetup
       }}
     >
       {children}

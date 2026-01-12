@@ -225,9 +225,9 @@ export default function RestaurantClaimOnboarding() {
         businessPhone,
       });
 
-      // Navigate to completion screen
-      setOnboardingStep('restaurant-complete');
-      router.push('/onboarding/restaurant-complete');
+      // Navigate to Stripe setup flow (TRO-136)
+      setOnboardingStep('restaurant-stripe');
+      router.push('/onboarding/restaurant-stripe');
 
     } catch (error: any) {
       console.error('[RestaurantClaimOnboarding] Error:', error);

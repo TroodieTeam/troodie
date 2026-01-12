@@ -89,8 +89,18 @@ export interface RestaurantClaimData {
   businessPhone?: string;
 }
 
+// Stripe setup data for restaurant onboarding (TRO-136)
+export interface StripeSetupData {
+  stripeAccountId?: string;
+  stripeOnboardingComplete?: boolean;
+  stripeCustomerId?: string;
+  paymentMethodId?: string;
+  paymentMethodLast4?: string;
+  paymentMethodBrand?: string;
+}
+
 export interface OnboardingState {
-  currentStep: 'welcome' | 'user-type' | 'signup' | 'verify' | 'quiz-intro' | 'quiz' | 'profile' | 'favorites' | 'complete' | 'restaurant-claim' | 'restaurant-complete';
+  currentStep: 'welcome' | 'user-type' | 'signup' | 'verify' | 'quiz-intro' | 'quiz' | 'profile' | 'favorites' | 'complete' | 'restaurant-claim' | 'restaurant-welcome' | 'restaurant-stripe' | 'restaurant-payment' | 'restaurant-complete';
   phoneNumber?: string;
   quizAnswers: QuizAnswer[];
   persona?: PersonaType;
@@ -104,4 +114,6 @@ export interface OnboardingState {
   userType?: UserType;
   // NEW: Restaurant-specific claim data
   restaurantClaim?: RestaurantClaimData;
+  // NEW: Stripe setup data for restaurant onboarding (TRO-136)
+  stripeSetup?: StripeSetupData;
 }

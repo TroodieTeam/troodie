@@ -6,7 +6,7 @@
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Building, CheckCircle, Clock, Mail } from 'lucide-react-native';
+import { Building, CheckCircle, Clock, CreditCard, Mail, Shield } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -75,6 +75,14 @@ export default function RestaurantCompleteScreen() {
   };
 
   const restaurantName = state.restaurantClaim?.restaurantName || 'Your restaurant';
+  const savedCardLast4 = state.stripeSetup?.paymentMethodLast4;
+  const savedCardBrand = state.stripeSetup?.paymentMethodBrand;
+  const stripeConnected = state.stripeSetup?.stripeOnboardingComplete;
+
+  const formatCardBrand = (brand: string | undefined) => {
+    if (!brand) return 'Card';
+    return brand.charAt(0).toUpperCase() + brand.slice(1);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -153,6 +161,31 @@ export default function RestaurantCompleteScreen() {
               </View>
             </View>
           </View>
+
+          {/* Saved Payment Info (TRO-136) */}
+          {savedCardLast4 && (
+            <View style={styles.paymentCard}>
+              <View style={styles.paymentHeader}>
+                <CreditCard size={20} color="#10B981" />
+                <Text style={styles.paymentTitle}>Payment Method Saved</Text>
+              </View>
+              <View style={styles.cardDetails}>
+                <Text style={styles.cardBrand}>{formatCardBrand(savedCardBrand)}</Text>
+                <Text style={styles.cardNumber}>•••• {savedCardLast4}</Text>
+              </View>
+              <Text style={styles.paymentNote}>
+                You can change this anytime in settings
+              </Text>
+            </View>
+          )}
+
+          {/* Stripe Connected Badge */}
+          {stripeConnected && (
+            <View style={styles.stripeConnectedBadge}>
+              <Shield size={16} color="#6366F1" />
+              <Text style={styles.stripeConnectedText}>Stripe Connected</Text>
+            </View>
+          )}
         </Animated.View>
 
         {/* Buttons inside scroll view for proper layout */}
@@ -299,5 +332,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_600SemiBold',
     color: '#FFAD27',
+  },
+  // Payment card styles (TRO-136)
+  paymentCard: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  paymentTitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#10B981',
+  },
+  cardDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  cardBrand: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#333',
+  },
+  cardNumber: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: '#666',
+    letterSpacing: 1,
+  },
+  paymentNote: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: '#047857',
+    textAlign: 'center',
+  },
+  stripeConnectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
+  },
+  stripeConnectedText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    color: '#6366F1',
   },
 });

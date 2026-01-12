@@ -4,6 +4,13 @@ import { CheckCircle, CreditCard, Shield } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 
+// Saved payment method info (TRO-136)
+export interface SavedPaymentMethod {
+  paymentMethodId: string | null;
+  last4: string | null;
+  brand: string | null;
+}
+
 interface CampaignStep4Props {
   stripeAccountStatus: StripeAccountStatus;
   formData: CampaignFormData;
@@ -11,6 +18,9 @@ interface CampaignStep4Props {
   onConnectStripe: () => void;
   onRefreshStatus: () => void;
   onManualRefresh: () => void;
+  // TRO-136: Saved payment method from onboarding
+  savedPaymentMethod?: SavedPaymentMethod | null;
+  onChangePaymentMethod?: () => void;
 }
 
 export function CampaignStep4({
@@ -20,7 +30,14 @@ export function CampaignStep4({
   onConnectStripe,
   onRefreshStatus,
   onManualRefresh,
+  savedPaymentMethod,
+  onChangePaymentMethod,
 }: CampaignStep4Props) {
+  // TRO-136: Format card brand for display
+  const formatCardBrand = (brand: string | null) => {
+    if (!brand) return 'Card';
+    return brand.charAt(0).toUpperCase() + brand.slice(1);
+  };
   if (stripeAccountStatus.checking) {
     return (
       <View style={{ alignItems: 'center', padding: DS.spacing.xl }}>
@@ -75,6 +92,39 @@ export function CampaignStep4({
           </Text>
         </View>
 
+        {/* TRO-136: Show saved payment method */}
+        {savedPaymentMethod?.last4 && (
+          <View
+            style={{
+              backgroundColor: DS.colors.surface,
+              padding: DS.spacing.md,
+              borderRadius: DS.borderRadius.md,
+              borderWidth: 1,
+              borderColor: '#10B981',
+              marginBottom: DS.spacing.lg,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <CreditCard size={24} color="#333" style={{ marginRight: DS.spacing.md }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.textDark }}>
+                Card on file
+              </Text>
+              <Text style={{ fontSize: 16, color: DS.colors.text, letterSpacing: 1 }}>
+                {formatCardBrand(savedPaymentMethod.brand)} •••• {savedPaymentMethod.last4}
+              </Text>
+            </View>
+            {onChangePaymentMethod && (
+              <TouchableOpacity onPress={onChangePaymentMethod}>
+                <Text style={{ color: DS.colors.primaryOrange, fontWeight: '600', fontSize: 14 }}>
+                  Change
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         <View
           style={{
             backgroundColor: DS.colors.surface,
@@ -111,7 +161,10 @@ export function CampaignStep4({
               opacity: 0.7,
             }}
           >
-            This amount will be charged when you publish the campaign.
+            {savedPaymentMethod?.last4 
+              ? `This will be charged to your ${formatCardBrand(savedPaymentMethod.brand)} •••• ${savedPaymentMethod.last4} when you publish.`
+              : 'This amount will be charged when you publish the campaign.'
+            }
           </Text>
         </View>
       </View>
