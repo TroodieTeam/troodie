@@ -89,6 +89,8 @@ export default function RestaurantPaymentScreen() {
     setError(null);
 
     try {
+      console.log('[RestaurantPayment] Calling stripe-create-setup-intent Edge Function...');
+      
       // Call Edge Function to create SetupIntent
       const { data, error: functionError } = await supabase.functions.invoke(
         'stripe-create-setup-intent',
@@ -97,7 +99,29 @@ export default function RestaurantPaymentScreen() {
         }
       );
 
+      console.log('[RestaurantPayment] Edge Function response:', { 
+        data, 
+        error: functionError,
+        errorMessage: functionError?.message,
+      });
+
       if (functionError) {
+        // Check if it's a deployment issue
+        if (functionError.message?.includes('non-2xx') || functionError.message?.includes('404')) {
+          console.error('[RestaurantPayment] Edge Function may not be deployed. Offering simulation...');
+          Alert.alert(
+            'Payment Setup',
+            'The payment service is being set up. Would you like to simulate adding a card for testing?',
+            [
+              {
+                text: 'Simulate Card',
+                onPress: () => simulatePaymentMethodSave(),
+              },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          );
+          return;
+        }
         throw new Error(functionError.message || 'Failed to initialize payment setup');
       }
 
