@@ -260,7 +260,7 @@ class AdminReviewService {
 
       const { data: existingProfile, error: profileCheckError } = await supabase
         .from('business_profiles')
-        .select('id')
+        .select('id, verification_status')
         .eq('user_id', claim.user_id)
         .single();
 
@@ -269,7 +269,29 @@ class AdminReviewService {
         error: profileCheckError,
       });
 
-      if (!existingProfile) {
+      if (existingProfile) {
+        // Profile exists (created during onboarding), just update to verified
+        console.log('[AdminReviewService] Updating existing business profile to verified:', {
+          profileId: existingProfile.id,
+          previousStatus: existingProfile.verification_status,
+        });
+
+        const { error: updateProfileError } = await supabase
+          .from('business_profiles')
+          .update({
+            verification_status: 'verified',
+            restaurant_id: claim.restaurant_id, // Ensure restaurant is linked
+            business_email: claim.email,
+          })
+          .eq('id', existingProfile.id);
+
+        if (updateProfileError) {
+          console.error('[AdminReviewService] Failed to update business profile:', updateProfileError);
+        } else {
+          console.log('[AdminReviewService] Business profile updated to verified');
+        }
+      } else {
+        // No profile exists, create one (fallback for older claims)
         console.log('[AdminReviewService] Creating business profile:', {
           userId: claim.user_id,
           restaurantId: claim.restaurant_id,

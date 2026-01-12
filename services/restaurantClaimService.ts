@@ -174,14 +174,54 @@ class RestaurantClaimService {
         error: userAfterError,
       });
 
-      // Check if business profile was created
-      const { data: businessProfile, error: bpError } = await supabase
+      // Check if business profile exists, create if not (TRO-136: needed for payment setup during onboarding)
+      const { data: existingProfile, error: profileCheckError } = await supabase
         .from('business_profiles')
         .select('id, restaurant_id, verification_status')
         .eq('user_id', user.id)
         .single();
 
       console.log('[RestaurantClaimService] Business profile check:', {
+        existingProfile,
+        error: profileCheckError,
+      });
+
+      // Create pending business profile if it doesn't exist
+      // This allows payment setup during onboarding before admin approval
+      if (!existingProfile) {
+        console.log('[RestaurantClaimService] Creating pending business profile for onboarding...');
+        
+        const { data: newProfile, error: createProfileError } = await supabase
+          .from('business_profiles')
+          .insert({
+            user_id: user.id,
+            restaurant_id: data.restaurantId,
+            verification_status: 'pending',
+            business_email: data.email || userProfile?.email || user.email,
+          })
+          .select()
+          .single();
+
+        if (createProfileError) {
+          console.error('[RestaurantClaimService] Failed to create business profile:', createProfileError);
+          // Don't fail the claim - just log the error
+          // Admin can still create the profile during approval
+        } else {
+          console.log('[RestaurantClaimService] Created pending business profile:', {
+            id: newProfile?.id,
+            verification_status: newProfile?.verification_status,
+          });
+        }
+      }
+
+      // Re-fetch business profile for logging
+      const { data: businessProfile, error: bpError } = await supabase
+        .from('business_profiles')
+        .select('id, restaurant_id, verification_status')
+        .eq('user_id', user.id)
+        .single();
+
+      console.log('[RestaurantClaimService] Final business profile state:', {
         businessProfile,
         error: bpError,
       });
