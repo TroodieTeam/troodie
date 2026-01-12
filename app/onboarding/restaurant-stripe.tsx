@@ -6,7 +6,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { StripeAccountType } from '@/lib/stripeTypes';
-import { createStripeAccount, checkAccountStatus } from '@/services/stripeService';
+import { createStripeAccount, checkAccountStatus, getOnboardingLink } from '@/services/stripeService';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -54,22 +54,32 @@ export default function RestaurantStripeScreen() {
   const checkExistingAccount = async () => {
     if (!user?.id) return;
 
+    console.log('[RestaurantStripe] Checking existing account for user:', user.id);
     setCheckingStatus(true);
     try {
       const result = await checkAccountStatus(user.id, 'business' as StripeAccountType);
+      console.log('[RestaurantStripe] Account status result:', {
+        success: result.success,
+        accountId: result.accountId,
+        onboardingCompleted: result.onboardingCompleted,
+      });
       
       if (result.success && result.accountId) {
         setStripeAccountId(result.accountId);
         
         if (result.onboardingCompleted) {
+          console.log('[RestaurantStripe] Onboarding already completed!');
           setStripeStatus('completed');
           updateStripeSetup({
             stripeAccountId: result.accountId,
             stripeOnboardingComplete: true,
           });
         } else {
+          console.log('[RestaurantStripe] Account exists but onboarding incomplete');
           setStripeStatus('in_progress');
         }
+      } else {
+        console.log('[RestaurantStripe] No existing account found');
       }
     } catch (error) {
       console.error('[RestaurantStripe] Error checking account:', error);
@@ -92,29 +102,63 @@ export default function RestaurantStripeScreen() {
     setError(null);
 
     try {
-      const result = await createStripeAccount(
-        user.id,
-        'business' as StripeAccountType,
-        user.email
-      );
+      let onboardingLink: string | undefined;
 
-      if (!result.success || !result.onboardingLink) {
-        throw new Error(result.error || 'Failed to create Stripe account');
+      // If we already have a Stripe account, get a fresh onboarding link
+      if (stripeAccountId) {
+        console.log('[RestaurantStripe] Getting fresh onboarding link for existing account:', stripeAccountId);
+        const linkResult = await getOnboardingLink(stripeAccountId, user.id, 'business' as StripeAccountType);
+        
+        if (linkResult.success && linkResult.onboardingLink) {
+          onboardingLink = linkResult.onboardingLink;
+        } else {
+          // If getting link fails, try creating account (might refresh the link)
+          console.log('[RestaurantStripe] Getting link failed, trying create:', linkResult.error);
+          const createResult = await createStripeAccount(
+            user.id,
+            'business' as StripeAccountType,
+            user.email
+          );
+          if (createResult.success && createResult.onboardingLink) {
+            onboardingLink = createResult.onboardingLink;
+            setStripeAccountId(createResult.accountId || null);
+          }
+        }
+      } else {
+        // No account exists, create one
+        console.log('[RestaurantStripe] Creating new Stripe account...');
+        const result = await createStripeAccount(
+          user.id,
+          'business' as StripeAccountType,
+          user.email
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to create Stripe account');
+        }
+
+        onboardingLink = result.onboardingLink;
+        setStripeAccountId(result.accountId || null);
       }
 
-      setStripeAccountId(result.accountId || null);
+      if (!onboardingLink) {
+        throw new Error('No onboarding link available. Please try again.');
+      }
+
+      console.log('[RestaurantStripe] Got onboarding link:', onboardingLink.substring(0, 80) + '...');
       setStripeStatus('in_progress');
 
       // Open Stripe onboarding in browser
-      const browserResult = await WebBrowser.openBrowserAsync(result.onboardingLink, {
+      console.log('[RestaurantStripe] Opening Stripe onboarding in browser...');
+      const browserResult = await WebBrowser.openBrowserAsync(onboardingLink, {
         dismissButtonStyle: 'done',
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
       });
+      console.log('[RestaurantStripe] Browser result:', browserResult);
 
       // After returning from browser, check status
-      if (browserResult.type === 'dismiss' || browserResult.type === 'cancel') {
-        await checkExistingAccount();
-      }
+      console.log('[RestaurantStripe] Browser closed, checking status...');
+      await checkExistingAccount();
     } catch (error: any) {
       console.error('[RestaurantStripe] Error:', error);
       setError(error.message || 'Failed to connect Stripe');
