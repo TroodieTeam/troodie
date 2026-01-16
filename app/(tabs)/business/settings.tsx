@@ -411,18 +411,18 @@ export default function RestaurantSettings() {
             restaurantName={restaurantData.name}
             currentUserId={user?.id || ''}
             isOwner={true}
-            onInviteMember={async (email: string, role: string) => {
-              // TODO: Connect to team invitation service
-              console.log('[TeamAccess] Invite member:', { email, role });
-            }}
-            onRemoveMember={async (memberId: string) => {
-              // TODO: Connect to team management service
-              console.log('[TeamAccess] Remove member:', memberId);
-            }}
-            onResendInvite={async (memberId: string) => {
-              // TODO: Connect to invitation service
-              console.log('[TeamAccess] Resend invite:', memberId);
-            }}
+          // onInviteMember={async (email: string, role: string) => {
+          //   // TODO: Connect to team invitation service
+          //   console.log('[TeamAccess] Invite member:', { email, role });
+          // }}
+          // onRemoveMember={async (memberId: string) => {
+          //   // TODO: Connect to team management service
+          //   console.log('[TeamAccess] Remove member:', memberId);
+          // }}
+          // onResendInvite={async (memberId: string) => {
+          //   // TODO: Connect to invitation service
+          //   console.log('[TeamAccess] Resend invite:', memberId);
+          // }}
           />
         </View>
 
