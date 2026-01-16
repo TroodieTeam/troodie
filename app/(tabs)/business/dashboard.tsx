@@ -1,28 +1,29 @@
+import { RestaurantSwitcher, Restaurant as SwitcherRestaurant } from '@/components/business/RestaurantSwitcher';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
-    ArrowLeft,
-    BarChart,
-    Bell,
-    CheckCircle,
-    Plus,
-    Search,
-    Settings,
-    Target,
-    Users
+  ArrowLeft,
+  BarChart,
+  Bell,
+  CheckCircle,
+  Plus,
+  Search,
+  Settings,
+  Target,
+  Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -73,14 +74,26 @@ export default function BusinessDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Multi-restaurant support state
+  // In the future, this will be loaded from a service that fetches all restaurants the user has access to
+  const [userRestaurants, setUserRestaurants] = useState<SwitcherRestaurant[]>([]);
+  const [currentRestaurantId, setCurrentRestaurantId] = useState<string | null>(null);
+
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [currentRestaurantId]); // Reload when restaurant changes
+
+  // Handle restaurant switch
+  const handleRestaurantChange = (restaurantId: string) => {
+    setCurrentRestaurantId(restaurantId);
+    // In future, this will also update a context or service to track the active restaurant
+    console.log('[Dashboard] Switched to restaurant:', restaurantId);
+  };
 
   const loadDashboardData = async () => {
     try {
       if (!user?.id) return;
-      
+
       // Get restaurant data
       const { data: businessProfile, error: profileError } = await supabase
         .from('business_profiles')
@@ -94,11 +107,40 @@ export default function BusinessDashboard() {
         `)
         .eq('user_id', user.id)
         .single();
-        
+
       if (profileError || !businessProfile?.restaurants) {
         setDashboardData(null);
         return;
       }
+
+      // --- MOCK DATA FOR TESTING RESTAURANT SWITCHER ---
+      // This simulates a user having access to 3 restaurants
+      const mockRestaurants: SwitcherRestaurant[] = [
+        {
+          id: businessProfile.restaurants.id,
+          name: businessProfile.restaurants.name,
+          image_url: businessProfile.restaurants.cover_photo_url,
+          role: 'owner',
+          is_verified: true
+        },
+        {
+          id: 'mock-rest-2',
+          name: 'Troodie Downtown',
+          role: 'admin',
+          is_verified: true
+        },
+        {
+          id: 'mock-rest-3',
+          name: 'Troodie Express',
+          role: 'manager',
+          is_verified: false
+        }
+      ];
+      setUserRestaurants(mockRestaurants);
+      if (!currentRestaurantId) {
+        setCurrentRestaurantId(businessProfile.restaurants.id);
+      }
+      // --------------------------------------------------
 
       // Get campaigns
       const { data: campaigns } = await supabase
@@ -114,7 +156,7 @@ export default function BusinessDashboard() {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const activeCampaigns = campaigns?.filter(c => c.status === 'active').length || 0;
-      
+
       // Get recent pending applications
       const { data: recentApps } = await supabase
         .from('campaign_applications')
@@ -224,7 +266,7 @@ export default function BusinessDashboard() {
           marginBottom: DS.spacing.lg,
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.push('/(tabs)/more')}
               style={{
                 marginRight: DS.spacing.md,
@@ -242,9 +284,9 @@ export default function BusinessDashboard() {
               </Text>
             </View>
           </View>
-          
+
           <View style={{ flexDirection: 'row', gap: DS.spacing.md }}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.push('/business/notifications')}
               style={{
                 width: 40,
@@ -270,7 +312,7 @@ export default function BusinessDashboard() {
                 }} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.push('/business/settings')}
               style={{
                 width: 40,
@@ -285,41 +327,56 @@ export default function BusinessDashboard() {
             </TouchableOpacity>
           </View>
         </View>
-        
-        {/* Restaurant Info Card */}
-        <View style={{ paddingHorizontal: DS.spacing.lg }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: DS.colors.surfaceLight,
-            padding: DS.spacing.md,
-            borderRadius: DS.borderRadius.lg,
-          }}>
-            <Image
-              source={{ uri: dashboardData.restaurant.image_url }}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: DS.borderRadius.md,
-                marginRight: DS.spacing.md,
-                backgroundColor: DS.colors.border,
-              }}
+
+        {/* Restaurant Switcher - shown when user has multiple restaurants */}
+        {userRestaurants.length > 1 && currentRestaurantId && (
+          <View style={{ paddingHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md }}>
+            <RestaurantSwitcher
+              restaurants={userRestaurants}
+              currentRestaurantId={currentRestaurantId}
+              onRestaurantChange={handleRestaurantChange}
             />
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>
-                  {dashboardData.restaurant.name}
+          </View>
+        )}
+
+
+
+        {/* Restaurant Info Card - shown when user has only one restaurant */}
+        {userRestaurants.length <= 1 && (
+          <View style={{ paddingHorizontal: DS.spacing.lg }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: DS.colors.surfaceLight,
+              padding: DS.spacing.md,
+              borderRadius: DS.borderRadius.lg,
+            }}>
+              <Image
+                source={{ uri: dashboardData.restaurant.image_url }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: DS.borderRadius.md,
+                  marginRight: DS.spacing.md,
+                  backgroundColor: DS.colors.border,
+                }}
+              />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>
+                    {dashboardData.restaurant.name}
+                  </Text>
+                  {dashboardData.restaurant.is_verified && (
+                    <CheckCircle size={16} color={DS.colors.success} fill={DS.colors.surface} />
+                  )}
+                </View>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray }}>
+                  Member since {new Date(dashboardData.restaurant.claimed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </Text>
-                {dashboardData.restaurant.is_verified && (
-                  <CheckCircle size={16} color={DS.colors.success} fill={DS.colors.surface} />
-                )}
               </View>
-              <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray }}>
-                Member since {new Date(dashboardData.restaurant.claimed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-              </Text>
             </View>
           </View>
-        </View>
+        )}
       </View>
 
       <ScrollView
@@ -376,8 +433,8 @@ export default function BusinessDashboard() {
           <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.md }}>
             Quick Actions
           </Text>
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: DS.spacing.md, paddingRight: DS.spacing.lg }}
           >
@@ -583,15 +640,15 @@ const CampaignCard = ({ campaign, onPress }: any) => {
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <View style={{ 
-            backgroundColor: campaign.status === 'active' ? '#DCFCE7' : '#F3F4F6', 
-            paddingHorizontal: 8, 
-            paddingVertical: 2, 
-            borderRadius: DS.borderRadius.full 
+          <View style={{
+            backgroundColor: campaign.status === 'active' ? '#DCFCE7' : '#F3F4F6',
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: DS.borderRadius.full
           }}>
-            <Text style={{ 
-              ...DS.typography.caption, 
-              fontWeight: '700', 
+            <Text style={{
+              ...DS.typography.caption,
+              fontWeight: '700',
               color: campaign.status === 'active' ? '#16A34A' : DS.colors.textGray,
               textTransform: 'uppercase'
             }}>
