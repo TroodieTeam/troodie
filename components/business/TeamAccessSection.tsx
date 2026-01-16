@@ -5,6 +5,7 @@
  */
 
 import { DS } from '@/components/design-system/tokens';
+import { restaurantTeamService, TeamMember as ServiceTeamMember, TeamInvitation } from '@/services/restaurantTeamService';
 import {
     Crown,
     Mail,
@@ -16,7 +17,7 @@ import {
     Users,
     X,
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -29,16 +30,19 @@ import {
     View,
 } from 'react-native';
 
-// Mock data for UI development - will be replaced with actual service calls
-export interface TeamMember {
+// UI Data shape
+export interface UITeamMember {
     id: string;
     name: string;
     email: string;
-    role: 'owner' | 'admin' | 'manager';
+    role: string;
     status: 'active' | 'pending';
     invited_at?: string;
     joined_at?: string;
     avatar_url?: string;
+    // Store original objects for operations
+    originalMember?: ServiceTeamMember;
+    originalInvitation?: TeamInvitation;
 }
 
 interface TeamAccessSectionProps {
@@ -46,22 +50,17 @@ interface TeamAccessSectionProps {
     restaurantName: string;
     currentUserId: string;
     isOwner: boolean;
-    // These will be connected to actual service calls later
     onInviteMember?: (email: string, role: string) => Promise<void>;
     onRemoveMember?: (memberId: string) => Promise<void>;
     onResendInvite?: (memberId: string) => Promise<void>;
 }
-
-// Role configuration
-// Role configuration - simplified, roles are hidden in UI for now
-// const ROLES = ... (removed)
 
 export function TeamAccessSection({
     restaurantId,
     restaurantName,
     currentUserId,
     isOwner,
-    onInviteMember,
+    onInviteMember, // Optional overrides
     onRemoveMember,
     onResendInvite,
 }: TeamAccessSectionProps) {
@@ -69,35 +68,72 @@ export function TeamAccessSection({
     const [inviteEmail, setInviteEmail] = useState('');
     const [selectedRole, setSelectedRole] = useState('admin');
     const [sending, setSending] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+    const [teamMembers, setTeamMembers] = useState<UITeamMember[]>([]);
 
-    // Mock team members for UI development
-    const [teamMembers] = useState<TeamMember[]>([
-        {
-            id: '1',
-            name: 'John Owner',
-            email: 'john@restaurant.com',
-            role: 'owner',
-            status: 'active',
-            joined_at: '2024-01-15T10:00:00Z',
-        },
-        {
-            id: '2',
-            name: 'Sarah Admin',
-            email: 'sarah@example.com',
-            role: 'admin',
-            status: 'active',
-            joined_at: '2024-06-20T14:30:00Z',
-        },
-        {
-            id: '3',
-            name: '',
-            email: 'pending@example.com',
-            role: 'manager',
-            status: 'pending',
-            invited_at: '2024-12-01T09:00:00Z',
-        },
-    ]);
+    useEffect(() => {
+        loadTeamData();
+    }, [restaurantId]);
+
+    const loadTeamData = async () => {
+        setLoading(true);
+        try {
+            // Fetch both members and pending invitations in parallel
+            const [membersResult, invitesResult] = await Promise.all([
+                restaurantTeamService.getTeamMembers(restaurantId),
+                restaurantTeamService.getPendingInvitations(restaurantId)
+            ]);
+
+            const uiMembers: UITeamMember[] = [];
+
+            // Process Active Members
+            if (membersResult.data) {
+                membersResult.data.forEach(m => {
+                    uiMembers.push({
+                        id: m.user_id, // Use user_id as ID for members
+                        name: m.email.split('@')[0], // Fallback name
+                        email: m.email,
+                        role: m.role,
+                        status: 'active',
+                        joined_at: m.joined_at,
+                        originalMember: m
+                    });
+                });
+            }
+
+            // Process Pending Invitations
+            if (invitesResult.data) {
+                invitesResult.data.forEach(inv => {
+                    uiMembers.push({
+                        id: inv.id, // Use invitation ID for pending
+                        name: '',
+                        email: inv.email,
+                        role: 'admin', // Default or stored in invite? Service doesn't store role in invite yet, assuming admin
+                        status: 'pending',
+                        invited_at: inv.created_at,
+                        originalInvitation: inv
+                    });
+                });
+            }
+
+            // Sort: Owner first, then members by join date, then pending by date
+            uiMembers.sort((a, b) => {
+                if (a.role === 'owner') return -1;
+                if (b.role === 'owner') return 1;
+                // Active before pending
+                if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+                return 0;
+            });
+
+            setTeamMembers(uiMembers);
+        } catch (error) {
+            console.error('Failed to load team data:', error);
+            Alert.alert('Error', 'Failed to load team members');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const validateEmail = (email: string) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -112,18 +148,22 @@ export function TeamAccessSection({
 
         // Check if email already exists in team
         if (teamMembers.some(m => m.email.toLowerCase() === inviteEmail.toLowerCase())) {
-            Alert.alert('Already a Member', 'This email is already associated with a team member.');
+            Alert.alert('Already a Member', 'This email is already associated with a team member or pending invitation.');
             return;
         }
 
         setSending(true);
         try {
-            // Call the invite service (to be implemented)
+            // Use props if provided (for flexibility), otherwise use service
             if (onInviteMember) {
                 await onInviteMember(inviteEmail, selectedRole);
+            } else {
+                const result = await restaurantTeamService.inviteTeamMember(restaurantId, inviteEmail);
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
             }
 
-            // For now, just show success
             Alert.alert(
                 'Invitation Sent!',
                 `An invitation has been sent to ${inviteEmail}. They'll receive a magic link to join your team.`,
@@ -132,17 +172,18 @@ export function TeamAccessSection({
                         setShowInviteModal(false);
                         setInviteEmail('');
                         setSelectedRole('admin');
+                        loadTeamData(); // Refresh list
                     }
                 }]
             );
-        } catch (error) {
-            Alert.alert('Error', 'Failed to send invitation. Please try again.');
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to send invitation. Please try again.');
         } finally {
             setSending(false);
         }
     };
 
-    const handleRemoveMember = (member: TeamMember) => {
+    const handleRemoveMember = (member: UITeamMember) => {
         if (member.role === 'owner') {
             Alert.alert('Cannot Remove Owner', 'The owner cannot be removed. Transfer ownership first.');
             return;
@@ -159,24 +200,41 @@ export function TeamAccessSection({
                     text: member.status === 'pending' ? 'Cancel Invite' : 'Remove',
                     style: 'destructive',
                     onPress: async () => {
-                        if (onRemoveMember) {
-                            await onRemoveMember(member.id);
+                        try {
+                            if (onRemoveMember) {
+                                await onRemoveMember(member.id);
+                            } else {
+                                if (member.status === 'pending') {
+                                    // Cancel invitation
+                                    const result = await restaurantTeamService.cancelInvitation(member.id);
+                                    if (!result.success) throw new Error(result.error);
+                                } else {
+                                    // Remove member
+                                    const result = await restaurantTeamService.removeTeamMember(restaurantId, member.id);
+                                    if (!result.success) throw new Error(result.error);
+                                }
+                            }
+                            loadTeamData(); // Refresh
+                        } catch (error: any) {
+                            Alert.alert('Error', error.message || 'Failed to remove member');
                         }
-                        // Handle removal (to be implemented with actual service)
                     },
                 },
             ]
         );
     };
 
-    const handleResendInvite = async (member: TeamMember) => {
+    const handleResendInvite = async (member: UITeamMember) => {
         try {
             if (onResendInvite) {
                 await onResendInvite(member.id);
+            } else {
+                const result = await restaurantTeamService.resendInvitation(member.id);
+                if (!result.success) throw new Error(result.error);
             }
             Alert.alert('Invitation Resent', `A new invitation has been sent to ${member.email}.`);
-        } catch (error) {
-            Alert.alert('Error', 'Failed to resend invitation. Please try again.');
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to resend invitation. Please try again.');
         }
     };
 
@@ -234,96 +292,108 @@ export function TeamAccessSection({
             </View>
 
             {/* Team Members List */}
-            <View style={styles.membersList}>
-                {teamMembers.map((member, index) => (
-                    <View
-                        key={member.id}
-                        style={[
-                            styles.memberCard,
-                            index === teamMembers.length - 1 && styles.memberCardLast,
-                            selectedMemberId === member.id && { zIndex: 100 }, // Ensure dropdown appears on top
-                        ]}
-                    >
-                        {/* Avatar */}
-                        <View style={[
-                            styles.avatar,
-                            member.status === 'pending' && styles.avatarPending,
-                        ]}>
-                            <Text style={styles.avatarText}>
-                                {member.name ? member.name.charAt(0).toUpperCase() : member.email.charAt(0).toUpperCase()}
-                            </Text>
+            {loading ? (
+                <View style={[styles.membersList, { padding: 32, alignItems: 'center' }]}>
+                    <ActivityIndicator color={DS.colors.primaryOrange} />
+                </View>
+            ) : (
+                <View style={styles.membersList}>
+                    {teamMembers.length === 0 ? (
+                        <View style={{ padding: 32, alignItems: 'center' }}>
+                            <Text style={{ ...DS.typography.body, color: DS.colors.textGray }}>No team members yet.</Text>
                         </View>
+                    ) : (
+                        teamMembers.map((member, index) => (
+                            <View
+                                key={member.id}
+                                style={[
+                                    styles.memberCard,
+                                    index === teamMembers.length - 1 && styles.memberCardLast,
+                                    selectedMemberId === member.id && { zIndex: 100 }, // Ensure dropdown appears on top
+                                ]}
+                            >
+                                {/* Avatar */}
+                                <View style={[
+                                    styles.avatar,
+                                    member.status === 'pending' && styles.avatarPending,
+                                ]}>
+                                    <Text style={styles.avatarText}>
+                                        {member.name ? member.name.charAt(0).toUpperCase() : member.email.charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
 
-                        {/* Member Info */}
-                        <View style={styles.memberInfo}>
-                            <View style={styles.memberNameRow}>
-                                <Text style={styles.memberName} numberOfLines={1}>
-                                    {member.name || member.email}
-                                </Text>
-                                {member.status === 'pending' && (
-                                    <View style={styles.pendingBadge}>
-                                        <Text style={styles.pendingBadgeText}>PENDING</Text>
+                                {/* Member Info */}
+                                <View style={styles.memberInfo}>
+                                    <View style={styles.memberNameRow}>
+                                        <Text style={styles.memberName} numberOfLines={1}>
+                                            {member.name || member.email}
+                                        </Text>
+                                        {member.status === 'pending' && (
+                                            <View style={styles.pendingBadge}>
+                                                <Text style={styles.pendingBadgeText}>PENDING</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                    <Text style={styles.memberEmail} numberOfLines={1}>
+                                        {member.name ? member.email : ''}
+                                    </Text>
+                                    <View style={styles.memberMeta}>
+                                        {getRoleIcon(member.role)}
+                                        <Text style={styles.memberRole}>{getRoleLabel(member.role)}</Text>
+                                        <Text style={styles.memberDot}>•</Text>
+                                        <Text style={styles.memberDate}>
+                                            {member.status === 'pending'
+                                                ? `Invited ${getTimeAgo(member.invited_at)}`
+                                                : `Joined ${getTimeAgo(member.joined_at)}`
+                                            }
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                {/* Actions */}
+                                {isOwner && member.role !== 'owner' && (
+                                    <TouchableOpacity
+                                        style={styles.memberActions}
+                                        onPress={() => setSelectedMemberId(selectedMemberId === member.id ? null : member.id)}
+                                    >
+                                        <MoreVertical size={20} color={DS.colors.textGray} />
+                                    </TouchableOpacity>
+                                )}
+
+                                {/* Action Menu */}
+                                {selectedMemberId === member.id && (
+                                    <View style={styles.actionMenu}>
+                                        {member.status === 'pending' && (
+                                            <TouchableOpacity
+                                                style={styles.actionMenuItem}
+                                                onPress={() => {
+                                                    setSelectedMemberId(null);
+                                                    handleResendInvite(member);
+                                                }}
+                                            >
+                                                <Mail size={16} color={DS.colors.textDark} />
+                                                <Text style={styles.actionMenuText}>Resend Invite</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        <TouchableOpacity
+                                            style={styles.actionMenuItem}
+                                            onPress={() => {
+                                                setSelectedMemberId(null);
+                                                handleRemoveMember(member);
+                                            }}
+                                        >
+                                            <Trash2 size={16} color={DS.colors.error} />
+                                            <Text style={[styles.actionMenuText, styles.actionMenuTextDanger]}>
+                                                {member.status === 'pending' ? 'Cancel Invite' : 'Remove Access'}
+                                            </Text>
+                                        </TouchableOpacity>
                                     </View>
                                 )}
                             </View>
-                            <Text style={styles.memberEmail} numberOfLines={1}>
-                                {member.name ? member.email : ''}
-                            </Text>
-                            <View style={styles.memberMeta}>
-                                {getRoleIcon(member.role)}
-                                <Text style={styles.memberRole}>{getRoleLabel(member.role)}</Text>
-                                <Text style={styles.memberDot}>•</Text>
-                                <Text style={styles.memberDate}>
-                                    {member.status === 'pending'
-                                        ? `Invited ${getTimeAgo(member.invited_at)}`
-                                        : `Joined ${getTimeAgo(member.joined_at)}`
-                                    }
-                                </Text>
-                            </View>
-                        </View>
-
-                        {/* Actions */}
-                        {isOwner && member.role !== 'owner' && (
-                            <TouchableOpacity
-                                style={styles.memberActions}
-                                onPress={() => setSelectedMemberId(selectedMemberId === member.id ? null : member.id)}
-                            >
-                                <MoreVertical size={20} color={DS.colors.textGray} />
-                            </TouchableOpacity>
-                        )}
-
-                        {/* Action Menu */}
-                        {selectedMemberId === member.id && (
-                            <View style={styles.actionMenu}>
-                                {member.status === 'pending' && (
-                                    <TouchableOpacity
-                                        style={styles.actionMenuItem}
-                                        onPress={() => {
-                                            setSelectedMemberId(null);
-                                            handleResendInvite(member);
-                                        }}
-                                    >
-                                        <Mail size={16} color={DS.colors.textDark} />
-                                        <Text style={styles.actionMenuText}>Resend Invite</Text>
-                                    </TouchableOpacity>
-                                )}
-                                <TouchableOpacity
-                                    style={styles.actionMenuItem}
-                                    onPress={() => {
-                                        setSelectedMemberId(null);
-                                        handleRemoveMember(member);
-                                    }}
-                                >
-                                    <Trash2 size={16} color={DS.colors.error} />
-                                    <Text style={[styles.actionMenuText, styles.actionMenuTextDanger]}>
-                                        {member.status === 'pending' ? 'Cancel Invite' : 'Remove Access'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </View>
-                ))}
-            </View>
+                        ))
+                    )}
+                </View>
+            )}
 
             {/* Invite Button */}
             {isOwner && (
@@ -383,9 +453,6 @@ export function TeamAccessSection({
                                     />
                                 </View>
                             </View>
-
-                            {/* Role Selection - Removed as requested */}
-                            {/* Defaults to 'admin' role */}
 
                             {/* Info Note */}
                             <View style={styles.infoNote}>
