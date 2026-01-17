@@ -39,7 +39,7 @@ export interface UITeamMember {
     status: 'active' | 'pending';
     invited_at?: string;
     joined_at?: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
     // Store original objects for operations
     originalMember?: ServiceTeamMember;
     originalInvitation?: TeamInvitation;
@@ -85,8 +85,6 @@ export function TeamAccessSection({
                 restaurantTeamService.getPendingInvitations(restaurantId)
             ]);
 
-            console.log('Members Result:', membersResult);
-            console.log('Invites Result:', invitesResult);
 
             const uiMembers: UITeamMember[] = [];
 
@@ -95,7 +93,8 @@ export function TeamAccessSection({
                 membersResult.data.forEach(m => {
                     uiMembers.push({
                         id: m.user_id, // Use user_id as ID for members
-                        name: m.email ? m.email.split('@')[0] : 'Team Member', // Fallback name
+                        name: m.name || m.username || m.email.split('@')[0],
+                        avatar_url: m.avatar_url,
                         email: m.email || '',
                         role: m.role,
                         status: 'active',
@@ -110,7 +109,8 @@ export function TeamAccessSection({
                 invitesResult.data.forEach(inv => {
                     uiMembers.push({
                         id: inv.id, // Use invitation ID for pending
-                        name: '',
+                        name: inv.user_details?.name || inv.user_details?.username || '',
+                        avatar_url: inv.user_details?.avatar_url,
                         email: inv.email,
                         role: 'admin', // Default or stored in invite? Service doesn't store role in invite yet, assuming admin
                         status: 'pending',

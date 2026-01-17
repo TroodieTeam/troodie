@@ -25,6 +25,11 @@ export interface TeamInvitation {
     expires_at: string;
     created_at: string;
     accepted_at?: string;
+    user_details?: {
+        name?: string;
+        username?: string;
+        avatar_url?: string | null;
+    } | null;
 }
 
 export interface TeamMember {
@@ -35,6 +40,9 @@ export interface TeamMember {
     role: string;
     joined_at: string;
     invited_by?: string;
+    name?: string;
+    username?: string;
+    avatar_url?: string | null;
 }
 
 export interface RestaurantAccess {
@@ -191,7 +199,7 @@ export async function getTeamMembers(
     try {
         const { data, error } = await supabase
             .from('restaurant_team_members')
-            .select('*')
+            .select('*, user:users!restaurant_team_members_user_id_fkey(email, name, username, avatar_url)')
             .eq('restaurant_id', restaurantId)
             .order('joined_at', { ascending: false });
 
@@ -200,7 +208,20 @@ export async function getTeamMembers(
             return { data: null, error: error.message };
         }
 
-        return { data };
+        // Map the result to flatten user details
+        const members = data.map((item: any) => ({
+            id: item.id,
+            restaurant_id: item.restaurant_id,
+            user_id: item.user_id,
+            role: item.role,
+            joined_at: item.joined_at,
+            invited_by: item.invited_by,
+            email: item.user?.email || '',
+            name: item.user?.name || item.user?.username || item.user?.email?.split('@')[0] || 'Team Member',
+            avatar_url: item.user?.avatar_url || null
+        }));
+
+        return { data: members };
     } catch (error: any) {
         console.error('[TeamService] Get team members error:', error);
         return { data: null, error: error.message };
@@ -218,7 +239,7 @@ export async function getPendingInvitations(
     restaurantId: string
 ): Promise<{ data: TeamInvitation[] | null; error?: string }> {
     try {
-        const { data, error } = await supabase
+        const { data: invitations, error } = await supabase
             .from('restaurant_team_invitations')
             .select('*')
             .eq('restaurant_id', restaurantId)
@@ -231,7 +252,32 @@ export async function getPendingInvitations(
             return { data: null, error: error.message };
         }
 
-        return { data };
+        // Check if any of these emails belong to existing users
+        const emails = invitations.map(i => i.email);
+        let enrichedInvitations = invitations;
+
+        if (emails.length > 0) {
+            const { data: users } = await supabase
+                .from('users')
+                .select('email, name, username, avatar_url')
+                .in('email', emails);
+
+            if (users) {
+                enrichedInvitations = invitations.map(inv => {
+                    const user = users.find(u => u.email === inv.email);
+                    return {
+                        ...inv,
+                        user_details: user ? {
+                            name: user.name,
+                            username: user.username,
+                            avatar_url: user.avatar_url
+                        } : null
+                    };
+                });
+            }
+        }
+
+        return { data: enrichedInvitations as TeamInvitation[] };
     } catch (error: any) {
         console.error('[TeamService] Get pending invitations error:', error);
         return { data: null, error: error.message };
@@ -456,4 +502,3 @@ export const restaurantTeamService = {
     getMyRestaurants,
     hasRestaurantAccess,
 };
-
