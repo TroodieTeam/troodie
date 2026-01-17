@@ -85,6 +85,9 @@ export function TeamAccessSection({
                 restaurantTeamService.getPendingInvitations(restaurantId)
             ]);
 
+            console.log('Members Result:', membersResult);
+            console.log('Invites Result:', invitesResult);
+
             const uiMembers: UITeamMember[] = [];
 
             // Process Active Members
@@ -92,8 +95,8 @@ export function TeamAccessSection({
                 membersResult.data.forEach(m => {
                     uiMembers.push({
                         id: m.user_id, // Use user_id as ID for members
-                        name: m.email.split('@')[0], // Fallback name
-                        email: m.email,
+                        name: m.email ? m.email.split('@')[0] : 'Team Member', // Fallback name
+                        email: m.email || '',
                         role: m.role,
                         status: 'active',
                         joined_at: m.joined_at,

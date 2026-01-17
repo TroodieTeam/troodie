@@ -1,6 +1,7 @@
-import { RestaurantSwitcher, Restaurant as SwitcherRestaurant } from '@/components/business/RestaurantSwitcher';
+import { RestaurantSwitcher } from '@/components/business/RestaurantSwitcher';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/contexts/RestaurantContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
@@ -74,19 +75,22 @@ export default function BusinessDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Multi-restaurant support state
-  // In the future, this will be loaded from a service that fetches all restaurants the user has access to
-  const [userRestaurants, setUserRestaurants] = useState<SwitcherRestaurant[]>([]);
-  const [currentRestaurantId, setCurrentRestaurantId] = useState<string | null>(null);
+  // Multi-restaurant support using Context
+  // This replaces local state with global context state
+  const { restaurants: userRestaurants, currentRestaurant, switchRestaurant, isLoading: contextLoading } = useRestaurant();
+  // Ensure we display something - derived from context
+  const currentRestaurantId = currentRestaurant?.restaurant_id || null;
 
   useEffect(() => {
-    loadDashboardData();
-  }, [currentRestaurantId]); // Reload when restaurant changes
+    // Only load data if we have a restaurant selected or if context is done loading
+    if (!contextLoading) {
+      loadDashboardData();
+    }
+  }, [currentRestaurantId, contextLoading]); // Reload when restaurant changes
 
   // Handle restaurant switch
   const handleRestaurantChange = (restaurantId: string) => {
-    setCurrentRestaurantId(restaurantId);
-    // In future, this will also update a context or service to track the active restaurant
+    switchRestaurant(restaurantId);
     console.log('[Dashboard] Switched to restaurant:', restaurantId);
   };
 
@@ -113,34 +117,12 @@ export default function BusinessDashboard() {
         return;
       }
 
-      // --- MOCK DATA FOR TESTING RESTAURANT SWITCHER ---
-      // This simulates a user having access to 3 restaurants
-      const mockRestaurants: SwitcherRestaurant[] = [
-        {
-          id: businessProfile.restaurants.id,
-          name: businessProfile.restaurants.name,
-          image_url: businessProfile.restaurants.cover_photo_url,
-          role: 'owner',
-          is_verified: true
-        },
-        {
-          id: 'mock-rest-2',
-          name: 'Troodie Downtown',
-          role: 'admin',
-          is_verified: true
-        },
-        {
-          id: 'mock-rest-3',
-          name: 'Troodie Express',
-          role: 'manager',
-          is_verified: false
-        }
-      ];
-      setUserRestaurants(mockRestaurants);
+      // If no current restaurant, we can't load dashboard data
       if (!currentRestaurantId) {
-        setCurrentRestaurantId(businessProfile.restaurants.id);
+        setDashboardData(null);
+        setLoading(false);
+        return;
       }
-      // --------------------------------------------------
 
       // Get campaigns
       const { data: campaigns } = await supabase
@@ -186,9 +168,9 @@ export default function BusinessDashboard() {
 
       setDashboardData({
         restaurant: {
-          id: businessProfile.restaurants.id,
-          name: businessProfile.restaurants.name,
-          image_url: businessProfile.restaurants.cover_photo_url || 'https://via.placeholder.com/150',
+          id: currentRestaurant?.restaurant_id || businessProfile?.restaurants.id,
+          name: currentRestaurant?.restaurant_name || businessProfile?.restaurants.name,
+          image_url: businessProfile?.restaurants.cover_photo_url || 'https://via.placeholder.com/150', // Fallback to profile fetch
           is_verified: true,
           claimed_at: new Date().toISOString(),
         },
@@ -332,7 +314,13 @@ export default function BusinessDashboard() {
         {userRestaurants.length > 1 && currentRestaurantId && (
           <View style={{ paddingHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md }}>
             <RestaurantSwitcher
-              restaurants={userRestaurants}
+              restaurants={userRestaurants.map(r => ({
+                id: r.restaurant_id,
+                name: r.restaurant_name,
+                image_url: undefined, // Context doesn't have image yet
+                role: r.is_owner ? 'owner' : 'manager',
+                is_verified: true
+              }))}
               currentRestaurantId={currentRestaurantId}
               onRestaurantChange={handleRestaurantChange}
             />
