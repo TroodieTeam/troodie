@@ -29,6 +29,11 @@ interface UserAccountInfo {
     restaurant_name?: string
     restaurant_address?: string
   })
+  managed_restaurants?: {
+    restaurant_id: string
+    restaurant_name: string
+    is_owner: boolean
+  }[]
 }
 
 export const accountService = {
@@ -36,8 +41,8 @@ export const accountService = {
    * Upgrade user account to creator or business type
    */
   async upgradeAccount(
-    userId: string, 
-    newAccountType: 'creator' | 'business', 
+    userId: string,
+    newAccountType: 'creator' | 'business',
     profileData: AccountUpgradeData = {}
   ): Promise<AccountUpgradeResult> {
     try {
@@ -55,9 +60,9 @@ export const accountService = {
       return data as AccountUpgradeResult
     } catch (error) {
       console.error('Error upgrading account:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
   },
@@ -90,7 +95,7 @@ export const accountService = {
     const permissions: Record<AccountType, string[]> = {
       consumer: [
         'explore_restaurants',
-        'save_restaurants', 
+        'save_restaurants',
         'create_posts',
         'follow_users',
         'join_communities'
@@ -99,7 +104,7 @@ export const accountService = {
         // All consumer permissions
         'explore_restaurants',
         'save_restaurants',
-        'create_posts', 
+        'create_posts',
         'follow_users',
         'join_communities',
         // Creator-specific permissions
@@ -114,7 +119,7 @@ export const accountService = {
         'explore_restaurants',
         'save_restaurants',
         'create_posts',
-        'follow_users', 
+        'follow_users',
         'join_communities',
         // Business-specific permissions
         'business_dashboard',
@@ -145,7 +150,7 @@ export const accountService = {
    * Update creator profile
    */
   async updateCreatorProfile(
-    userId: string, 
+    userId: string,
     updates: Partial<Database['public']['Tables']['creator_profiles']['Update']>
   ): Promise<boolean> {
     try {
@@ -291,7 +296,7 @@ export const accountService = {
   getAccountTypeDisplayName(accountType: AccountType): string {
     const displayNames: Record<AccountType, string> = {
       consumer: 'Food Explorer',
-      creator: 'Content Creator', 
+      creator: 'Content Creator',
       business: 'Business Owner'
     }
     return displayNames[accountType] || accountType
@@ -311,4 +316,4 @@ export const accountService = {
 }
 
 // Export types for use in other files
-export type { AccountType, AccountStatus, AccountUpgradeData, AccountUpgradeResult, UserAccountInfo }
+export type { AccountStatus, AccountType, AccountUpgradeData, AccountUpgradeResult, UserAccountInfo }
