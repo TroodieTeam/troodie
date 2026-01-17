@@ -107,16 +107,22 @@ export function TeamAccessSection({
             // Process Pending Invitations
             if (invitesResult.data) {
                 invitesResult.data.forEach(inv => {
-                    uiMembers.push({
-                        id: inv.id, // Use invitation ID for pending
-                        name: inv.user_details?.name || inv.user_details?.username || '',
-                        avatar_url: inv.user_details?.avatar_url,
-                        email: inv.email,
-                        role: 'admin', // Default or stored in invite? Service doesn't store role in invite yet, assuming admin
-                        status: 'pending',
-                        invited_at: inv.created_at,
-                        originalInvitation: inv
-                    });
+                    const isAlreadyMember = uiMembers.some(m =>
+                        m.email.toLowerCase() === inv.email.toLowerCase() && m.status === 'active'
+                    );
+                    if (isAlreadyMember) {
+                        uiMembers.push({
+                            id: inv.id, // Use invitation ID for pending
+                            name: inv.user_details?.name || inv.user_details?.username || '',
+                            avatar_url: inv.user_details?.avatar_url,
+                            email: inv.email,
+                            role: 'admin', // Default or stored in invite? Service doesn't store role in invite yet, assuming admin
+                            status: 'pending',
+                            invited_at: inv.created_at,
+                            originalInvitation: inv
+                        });
+                    }
+
                 });
             }
 

@@ -179,7 +179,13 @@ export async function acceptInvitation(
         }
 
         console.log('[TeamService] Invitation accepted:', data);
+        await supabase
+            .from('restaurant_team_invitations')
+            .delete()
+            .eq('token', token);
+
         return { success: true, restaurantId: data.restaurant_id };
+
     } catch (error: any) {
         console.error('[TeamService] Accept invitation error:', error);
         return { success: false, error: error.message };
