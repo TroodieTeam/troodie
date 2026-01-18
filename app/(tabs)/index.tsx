@@ -3,6 +3,7 @@ import { CitySelector } from '@/components/CitySelector';
 import { ErrorState } from '@/components/ErrorState';
 import QuickSavesBoard from '@/components/home/QuickSavesBoard';
 import { InfoModal } from '@/components/InfoModal';
+import { InviteCodeModal } from '@/components/InviteCodeModal';
 import { RestaurantCardWithSaveSkeleton } from '@/components/LoadingSkeleton';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -28,29 +29,29 @@ import { Notification } from '@/types/notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
-    Bell,
-    Bookmark,
-    Coffee,
-    Globe,
-    Lock,
-    MessageSquare,
-    Plus,
-    Search,
-    Sparkles,
-    UserPlus,
-    Users,
-    Utensils
+  Bell,
+  Bookmark,
+  Coffee,
+  Globe,
+  Lock,
+  MessageSquare,
+  Plus,
+  Search,
+  Sparkles,
+  UserPlus,
+  Users,
+  Utensils
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 
@@ -62,11 +63,12 @@ export default function HomeScreen() {
   const { state: onboardingState } = useOnboarding();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRecommendationsInfo, setShowRecommendationsInfo] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedCity, setSelectedCity] = useState('Charlotte');
   const [cityLoading, setCityLoading] = useState(false);
-  
+
   const persona = useMemo(
     () => onboardingState.persona && personas[onboardingState.persona],
     [onboardingState.persona]
@@ -79,7 +81,7 @@ export default function HomeScreen() {
       restaurantService.getTopRatedRestaurants(selectedCity),
       restaurantService.getFeaturedRestaurants(10)
     ]);
-    
+
     return { topRated, featured };
   }, [selectedCity]);
 
@@ -96,12 +98,12 @@ export default function HomeScreen() {
   }, [user?.id]);
 
   // Use smooth data fetching hooks
-  const { 
-    data: restaurantsData, 
-    loading, 
-    refreshing, 
+  const {
+    data: restaurantsData,
+    loading,
+    refreshing,
     error,
-    refresh: refreshRestaurants 
+    refresh: refreshRestaurants
   } = useSmoothDataFetch(fetchHomeData, [selectedCity], {
     minLoadingTime: 500,
     showLoadingOnRefetch: false,
@@ -109,8 +111,8 @@ export default function HomeScreen() {
     cacheDuration: 5000 // 5 seconds cache to prevent rapid re-fetches
   });
 
-  const { 
-    data: userBoards = [], 
+  const {
+    data: userBoards = [],
     refresh: refreshBoards,
     silentRefresh: silentRefreshBoards
   } = useSmoothDataFetch(fetchUserBoards, [user?.id], {
@@ -126,17 +128,17 @@ export default function HomeScreen() {
   // Check user progress
   const checkUserProgress = useCallback(async () => {
     if (!user?.id) return;
-    
+
     try {
       const [boards, posts, communitiesData] = await Promise.all([
         boardService.getUserBoards(user.id),
         postService.getUserPosts(user.id),
         communityService.getUserCommunities(user.id)
       ]);
-      
+
       // getUserCommunities returns { joined: [], created: [] }
       const hasJoined = (communitiesData.joined?.length > 0) || (communitiesData.created?.length > 0);
-      
+
       if (boards.length > 0 && !hasCreatedBoard) {
         updateNetworkProgress('board');
       }
@@ -169,18 +171,18 @@ export default function HomeScreen() {
   // Initialize location service with cleanup
   useEffect(() => {
     let isMounted = true;
-    
+
     const initializeLocation = async () => {
       await locationService.initialize();
       const city = await locationService.detectCurrentCity();
-      
+
       if (isMounted && locationService.isCityAvailable(city)) {
         setSelectedCity(city);
       }
     };
-    
+
     initializeLocation();
-    
+
     return () => {
       isMounted = false;
     };
@@ -240,7 +242,7 @@ export default function HomeScreen() {
 
           // Navigate with invitation_id as a query parameter
           router.push({
-            pathname: `/boards/${notification.related_id}`,
+            pathname: `/boards/${notification.related_id}` as any,
             params: invitationId ? { invitation_id: invitationId } : {}
           });
         } else if (notification.data && typeof notification.data === 'object' && ('board_id' in notification.data || 'boardId' in notification.data)) {
@@ -250,7 +252,7 @@ export default function HomeScreen() {
           console.log('[Feed] Navigating to board via data:', boardId, 'with invitation_id:', invitationId);
 
           router.push({
-            pathname: `/boards/${boardId}`,
+            pathname: `/boards/${boardId}` as any,
             params: invitationId ? { invitation_id: invitationId } : {}
           });
         }
@@ -294,7 +296,7 @@ export default function HomeScreen() {
       type: 'trending_spot' as const
     }));
   }, []);
-  
+
   // Transform top rated restaurants for display
   const topRatedContent = useMemo(
     () => transformToTopRatedContent(topRatedRestaurants),
@@ -345,7 +347,7 @@ export default function HomeScreen() {
   ];
 
   // Filter suggestions based on conditions
-  const filteredNetworkSuggestions = networkSuggestions.filter(suggestion => 
+  const filteredNetworkSuggestions = networkSuggestions.filter(suggestion =>
     suggestion.condition ? suggestion.condition() : true
   );
 
@@ -360,8 +362,8 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/explore')}>
             <Search size={24} color={designTokens.colors.textDark} />
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.headerButton} 
+          <TouchableOpacity
+            style={styles.headerButton}
             onPress={() => setShowNotificationCenter(true)}
           >
             <View style={styles.notificationContainer}>
@@ -390,8 +392,8 @@ export default function HomeScreen() {
               {strings.app.tagline}
             </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.welcomeCTA} 
+          <TouchableOpacity
+            style={styles.welcomeCTA}
             onPress={() => router.push('/explore')}
           >
             <Text style={styles.welcomeCTAText}>Get Started</Text>
@@ -422,8 +424,8 @@ export default function HomeScreen() {
         </View>
         <View style={styles.networkCards}>
           {filteredNetworkSuggestions.map((suggestion, index) => (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               style={[
                 styles.networkCard,
                 suggestion.completed && styles.networkCardCompleted
@@ -443,11 +445,11 @@ export default function HomeScreen() {
                 <Text style={styles.networkCardDescription}>{suggestion.description}</Text>
                 <Text style={styles.networkCardBenefit}>{suggestion.benefit}</Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.networkCardCTA,
                   suggestion.completed && styles.networkCardCTACompleted
-                ]} 
+                ]}
                 onPress={suggestion.onClick}
               >
                 <Text style={styles.networkCardCTAText}>
@@ -472,7 +474,7 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
-      
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
         <TouchableOpacity style={styles.categoryCard}>
           <View style={[styles.categoryIcon, { backgroundColor: '#FFE5B4' }]}>
@@ -509,7 +511,7 @@ export default function HomeScreen() {
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
       </View>
-      
+
       {(userBoards || []).length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyStateIcon}>
@@ -526,8 +528,8 @@ export default function HomeScreen() {
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
           {(userBoards || []).slice(0, 5).map((board) => (
-            <TouchableOpacity 
-              key={board.id} 
+            <TouchableOpacity
+              key={board.id}
               style={styles.boardCard}
               onPress={() => router.push(`/boards/${board.id}`)}
             >
@@ -562,7 +564,7 @@ export default function HomeScreen() {
   );
 
   const renderTopRatedSection = () => {
-    
+
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -577,7 +579,7 @@ export default function HomeScreen() {
             />
           </View>
         </View>
-        
+
         {cityLoading ? (
           <>
             <RestaurantCardWithSaveSkeleton />
@@ -595,8 +597,8 @@ export default function HomeScreen() {
             <Text style={styles.emptyStateDescription}>
               Be the first to discover and share amazing restaurants in this area!
             </Text>
-            <TouchableOpacity 
-              style={styles.emptyStateCTA} 
+            <TouchableOpacity
+              style={styles.emptyStateCTA}
               onPress={() => router.push('/add/save-restaurant')}
             >
               <Plus size={16} color="#FFFFFF" />
@@ -607,17 +609,17 @@ export default function HomeScreen() {
           topRatedContent.map((item, index) => (
             <View key={index} style={styles.trendingCard}>
               <RestaurantCardWithSave
-  restaurant={item.restaurant}
-  stats={item.stats}
-  onPress={() => {
-    router.push({
-      pathname: '/restaurant/[id]',
-      params: { id: item.restaurant.id },
-    });
-  }}
-  onRefresh={handleBoardUpdate}
-  highlights={item.highlights}
-/>
+                restaurant={item.restaurant}
+                stats={item.stats}
+                onPress={() => {
+                  router.push({
+                    pathname: '/restaurant/[id]',
+                    params: { id: item.restaurant.id },
+                  });
+                }}
+                onRefresh={handleBoardUpdate}
+                highlights={item.highlights}
+              />
             </View>
           ))
         )}
@@ -627,6 +629,10 @@ export default function HomeScreen() {
 
   const renderQuickActions = () => (
     <View style={styles.quickActions}>
+      <TouchableOpacity style={styles.quickActionButton} onPress={() => setShowInviteModal(true)}>
+        <UserPlus size={20} color="#FFFFFF" />
+        <Text style={styles.quickActionText}>Join Team</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.quickActionButton}>
         <Plus size={20} color="#FFFFFF" />
         <Text style={styles.quickActionText}>Add Place</Text>
@@ -663,7 +669,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -674,20 +680,20 @@ export default function HomeScreen() {
         }
       >
         {renderHeader()}
-        
+
         {userState.isNewUser && renderWelcomeBanner()}
-        
+
         {renderNetworkBuilding()}
-        
+
         {user && <QuickSavesBoard refreshTrigger={refreshTrigger} />}
-        
+
         {renderYourBoards()}
-        
+
         {renderTopRatedSection()}
-        
+
         <View style={styles.bottomPadding} />
       </ScrollView>
-      
+
       {renderQuickActions()}
 
       {showNotificationCenter && (
@@ -702,6 +708,15 @@ export default function HomeScreen() {
         onClose={() => setShowRecommendationsInfo(false)}
         title={strings.recommendations.modalTitle}
         content={strings.recommendations.modalDescription}
+      />
+
+      <InviteCodeModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onSuccess={() => {
+          // Optional: refresh user data or show success message if needed
+          // The modal handles navigation on success
+        }}
       />
     </SafeAreaView>
   );
