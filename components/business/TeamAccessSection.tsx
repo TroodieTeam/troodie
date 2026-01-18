@@ -6,11 +6,14 @@
 
 import { DS } from '@/components/design-system/tokens';
 import { restaurantTeamService, TeamMember as ServiceTeamMember, TeamInvitation } from '@/services/restaurantTeamService';
+import * as Clipboard from 'expo-clipboard';
 import {
+    Copy,
     Crown,
     Mail,
     MoreVertical,
     Plus,
+    Share2,
     Shield,
     Trash2,
     UserPlus,
@@ -22,7 +25,9 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    Platform,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TextInput,
@@ -40,6 +45,7 @@ export interface UITeamMember {
     invited_at?: string;
     joined_at?: string;
     avatar_url?: string | null;
+    token?: string; // Add token for pending members
     // Store original objects for operations
     originalMember?: ServiceTeamMember;
     originalInvitation?: TeamInvitation;
@@ -71,6 +77,10 @@ export function TeamAccessSection({
     const [loading, setLoading] = useState(true);
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
     const [teamMembers, setTeamMembers] = useState<UITeamMember[]>([]);
+
+    // Manual Sharing State
+    const [showInviteSuccess, setShowInviteSuccess] = useState(false);
+    const [invitationToken, setInvitationToken] = useState<string | null>(null);
 
     useEffect(() => {
         loadTeamData();
@@ -119,6 +129,7 @@ export function TeamAccessSection({
                             role: 'admin', // Default or stored in invite? Service doesn't store role in invite yet, assuming admin
                             status: 'pending',
                             invited_at: inv.created_at,
+                            token: inv.token, // Store token for re-sharing
                             originalInvitation: inv
                         });
                     }
@@ -144,6 +155,22 @@ export function TeamAccessSection({
         }
     };
 
+    const handleCopyToken = async (token: string) => {
+        await Clipboard.setStringAsync(token);
+        Alert.alert('Copied!', 'Invitation code copied to clipboard.');
+    };
+
+    const handleShareToken = async (token: string, email: string) => {
+        try {
+            await Share.share({
+                message: `Join our restaurant team on Troodie!\n\nUse this invitation code: ${token}\n\nEmail: ${email}`,
+                title: 'Restaurant Team Invitation',
+            });
+        } catch (error) {
+            console.error('Error sharing invitation:', error);
+        }
+    };
+
     const validateEmail = (email: string) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
@@ -163,28 +190,28 @@ export function TeamAccessSection({
 
         setSending(true);
         try {
-            // Use props if provided (for flexibility), otherwise use service
-            if (onInviteMember) {
-                await onInviteMember(inviteEmail, selectedRole);
-            } else {
+            if (!onInviteMember) {
                 const result = await restaurantTeamService.inviteTeamMember(restaurantId, inviteEmail);
                 if (!result.success) {
                     throw new Error(result.error);
                 }
-            }
 
-            Alert.alert(
-                'Invitation Sent!',
-                `An invitation has been sent to ${inviteEmail}. They'll receive a magic link to join your team.`,
-                [{
-                    text: 'OK', onPress: () => {
-                        setShowInviteModal(false);
-                        setInviteEmail('');
-                        setSelectedRole('admin');
-                        loadTeamData(); // Refresh list
-                    }
-                }]
-            );
+                if (result.invitation) {
+                    setInvitationToken(result.invitation.token);
+                    setShowInviteSuccess(true);
+                    loadTeamData(); // Refresh list in background
+                } else {
+                    Alert.alert('Success', 'Invitation created successfully.');
+                    setShowInviteModal(false);
+                    setInviteEmail('');
+                    loadTeamData();
+                }
+            } else {
+                await onInviteMember(inviteEmail, selectedRole);
+                setShowInviteModal(false);
+                setInviteEmail('');
+                loadTeamData();
+            }
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to send invitation. Please try again.');
         } finally {
@@ -241,7 +268,8 @@ export function TeamAccessSection({
                 const result = await restaurantTeamService.resendInvitation(member.id);
                 if (!result.success) throw new Error(result.error);
             }
-            Alert.alert('Invitation Resent', `A new invitation has been sent to ${member.email}.`);
+            Alert.alert('Invitation Reset', `The invitation has been reset. You can share the code from the team list.`);
+            loadTeamData();
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to resend invitation. Please try again.');
         }
@@ -372,17 +400,39 @@ export function TeamAccessSection({
                                 {/* Action Menu */}
                                 {selectedMemberId === member.id && (
                                     <View style={styles.actionMenu}>
-                                        {member.status === 'pending' && (
-                                            <TouchableOpacity
-                                                style={styles.actionMenuItem}
-                                                onPress={() => {
-                                                    setSelectedMemberId(null);
-                                                    handleResendInvite(member);
-                                                }}
-                                            >
-                                                <Mail size={16} color={DS.colors.textDark} />
-                                                <Text style={styles.actionMenuText}>Resend Invite</Text>
-                                            </TouchableOpacity>
+                                        {member.status === 'pending' && member.token && (
+                                            <>
+                                                <TouchableOpacity
+                                                    style={styles.actionMenuItem}
+                                                    onPress={() => {
+                                                        setSelectedMemberId(null);
+                                                        handleCopyToken(member.token!);
+                                                    }}
+                                                >
+                                                    <Copy size={16} color={DS.colors.textDark} />
+                                                    <Text style={styles.actionMenuText}>Copy Code</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.actionMenuItem}
+                                                    onPress={() => {
+                                                        setSelectedMemberId(null);
+                                                        handleShareToken(member.token!, member.email);
+                                                    }}
+                                                >
+                                                    <Share2 size={16} color={DS.colors.textDark} />
+                                                    <Text style={styles.actionMenuText}>Share Invitation</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.actionMenuItem}
+                                                    onPress={() => {
+                                                        setSelectedMemberId(null);
+                                                        handleResendInvite(member);
+                                                    }}
+                                                >
+                                                    <Mail size={16} color={DS.colors.textDark} />
+                                                    <Text style={styles.actionMenuText}>Reset & Resend</Text>
+                                                </TouchableOpacity>
+                                            </>
                                         )}
                                         <TouchableOpacity
                                             style={styles.actionMenuItem}
@@ -438,65 +488,120 @@ export function TeamAccessSection({
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {/* Restaurant Info */}
-                            <View style={styles.inviteRestaurantInfo}>
-                                <Text style={styles.inviteRestaurantLabel}>Inviting to</Text>
-                                <Text style={styles.inviteRestaurantName}>{restaurantName}</Text>
-                            </View>
+                        {showInviteSuccess && invitationToken ? (
+                            <View style={styles.successView}>
+                                <View style={styles.successIconContainer}>
+                                    <View style={styles.successCircle}>
+                                        <UserPlus size={32} color="#FFFFFF" />
+                                    </View>
+                                </View>
 
-                            {/* Email Input */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Email Address</Text>
-                                <View style={styles.emailInputContainer}>
-                                    <Mail size={20} color={DS.colors.textGray} />
-                                    <TextInput
-                                        style={styles.emailInput}
-                                        value={inviteEmail}
-                                        onChangeText={setInviteEmail}
-                                        placeholder="colleague@email.com"
-                                        placeholderTextColor={DS.colors.textLight}
-                                        keyboardType="email-address"
-                                        autoCapitalize="none"
-                                        autoCorrect={false}
-                                    />
+                                <Text style={styles.successTitle}>Invitation Created!</Text>
+                                <Text style={styles.successDescription}>
+                                    Share this unique code with {inviteEmail} to grant them team access.
+                                </Text>
+
+                                <View style={styles.tokenContainer}>
+                                    <View style={styles.tokenBox}>
+                                        <Text style={styles.tokenLabel}>Invitation Code</Text>
+                                        <Text style={styles.tokenValue}>{invitationToken}</Text>
+                                    </View>
+
+                                    <View style={styles.tokenActionsRow}>
+                                        <TouchableOpacity
+                                            style={styles.tokenActionBtn}
+                                            onPress={() => handleCopyToken(invitationToken)}
+                                        >
+                                            <Copy size={16} color={DS.colors.primaryOrange} />
+                                            <Text style={styles.tokenActionText}>Copy</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[styles.tokenActionBtn, styles.tokenActionBtnPrimary]}
+                                            onPress={() => handleShareToken(invitationToken, inviteEmail)}
+                                        >
+                                            <Share2 size={16} color="#FFFFFF" />
+                                            <Text style={[styles.tokenActionText, { color: '#FFFFFF' }]}>Share Code</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                <View style={styles.modalFooter}>
+                                    <TouchableOpacity
+                                        style={styles.doneButton}
+                                        onPress={() => {
+                                            setShowInviteModal(false);
+                                            setShowInviteSuccess(false);
+                                            setInvitationToken(null);
+                                            setInviteEmail('');
+                                        }}
+                                    >
+                                        <Text style={styles.doneButtonText}>Done</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
+                        ) : (
+                            <>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    {/* Restaurant Info */}
+                                    <View style={styles.inviteRestaurantInfo}>
+                                        <Text style={styles.inviteRestaurantLabel}>Inviting to</Text>
+                                        <Text style={styles.inviteRestaurantName}>{restaurantName}</Text>
+                                    </View>
 
-                            {/* Info Note */}
-                            <View style={styles.infoNote}>
-                                <Text style={styles.infoNoteText}>
-                                    They'll receive an email with a magic link to join your team. The link expires in 7 days.
-                                </Text>
-                            </View>
-                        </ScrollView>
+                                    {/* Email Input */}
+                                    <View style={styles.inputGroup}>
+                                        <Text style={styles.inputLabel}>Email Address</Text>
+                                        <View style={styles.emailInputContainer}>
+                                            <Mail size={20} color={DS.colors.textGray} />
+                                            <TextInput
+                                                style={styles.emailInput}
+                                                value={inviteEmail}
+                                                onChangeText={setInviteEmail}
+                                                placeholder="colleague@email.com"
+                                                placeholderTextColor={DS.colors.textLight}
+                                                keyboardType="email-address"
+                                                autoCapitalize="none"
+                                                autoCorrect={false}
+                                            />
+                                        </View>
+                                    </View>
 
-                        {/* Modal Footer */}
-                        <View style={styles.modalFooter}>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => setShowInviteModal(false)}
-                            >
-                                <Text style={styles.cancelButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.sendButton,
-                                    (!inviteEmail || sending) && styles.sendButtonDisabled,
-                                ]}
-                                onPress={handleInvite}
-                                disabled={!inviteEmail || sending}
-                            >
-                                {sending ? (
-                                    <ActivityIndicator size="small" color="#FFFFFF" />
-                                ) : (
-                                    <>
-                                        <Plus size={18} color="#FFFFFF" />
-                                        <Text style={styles.sendButtonText}>Send Invitation</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </View>
+                                    {/* Info Note */}
+                                    <View style={styles.infoNote}>
+                                        <Text style={styles.infoNoteText}>
+                                            An invitation will be created and you'll receive a code to share manually.
+                                        </Text>
+                                    </View>
+                                </ScrollView>
+
+                                <View style={styles.modalFooter}>
+                                    <TouchableOpacity
+                                        style={styles.cancelButton}
+                                        onPress={() => setShowInviteModal(false)}
+                                    >
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.sendButton,
+                                            (!inviteEmail || sending) && styles.sendButtonDisabled,
+                                        ]}
+                                        onPress={handleInvite}
+                                        disabled={!inviteEmail || sending}
+                                    >
+                                        {sending ? (
+                                            <ActivityIndicator size="small" color="#FFFFFF" />
+                                        ) : (
+                                            <>
+                                                <Plus size={18} color="#FFFFFF" />
+                                                <Text style={styles.sendButtonText}>Create Invitation</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -530,8 +635,7 @@ const styles = StyleSheet.create({
         backgroundColor: DS.colors.surface,
         borderRadius: DS.borderRadius.lg,
         ...DS.shadows.sm,
-        // overflow: 'hidden', // Removed to allow dropdown to show
-        zIndex: 1, // Ensure dropdown overlaps subsequent elements (like the invite button)
+        zIndex: 1,
     },
     memberCard: {
         flexDirection: 'row',
@@ -780,6 +884,99 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     sendButtonText: {
+        ...DS.typography.button,
+        color: '#FFFFFF',
+    },
+
+    // Success View Styles
+    successView: {
+        alignItems: 'center',
+        padding: DS.spacing.lg,
+        paddingBottom: 0,
+    },
+    successIconContainer: {
+        marginBottom: DS.spacing.lg,
+    },
+    successCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#10B981',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    successTitle: {
+        ...DS.typography.h2,
+        color: DS.colors.textDark,
+        marginBottom: DS.spacing.xs,
+        textAlign: 'center',
+    },
+    successDescription: {
+        ...DS.typography.body,
+        color: DS.colors.textGray,
+        textAlign: 'center',
+        paddingHorizontal: DS.spacing.md,
+    },
+    tokenContainer: {
+        marginVertical: 24,
+        width: '100%',
+        backgroundColor: DS.colors.surfaceLight,
+        padding: DS.spacing.lg,
+        borderRadius: DS.borderRadius.lg,
+        borderWidth: 1,
+        borderColor: DS.colors.border,
+    },
+    tokenBox: {
+        alignItems: 'center',
+        marginBottom: DS.spacing.lg,
+    },
+    tokenLabel: {
+        ...DS.typography.caption,
+        color: DS.colors.textGray,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    tokenValue: {
+        ...DS.typography.h1,
+        color: DS.colors.primaryOrange,
+        letterSpacing: 4,
+        fontWeight: '700',
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    tokenActionsRow: {
+        flexDirection: 'row',
+        gap: DS.spacing.md,
+    },
+    tokenActionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: DS.colors.primaryOrange,
+        paddingVertical: 12,
+        borderRadius: DS.borderRadius.md,
+        gap: 8,
+    },
+    tokenActionBtnPrimary: {
+        backgroundColor: DS.colors.primaryOrange,
+    },
+    tokenActionText: {
+        ...DS.typography.button,
+        color: DS.colors.primaryOrange,
+        fontSize: 14,
+    },
+    doneButton: {
+        width: '100%',
+        height: 52,
+        backgroundColor: DS.colors.textDark,
+        borderRadius: DS.borderRadius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    doneButtonText: {
         ...DS.typography.button,
         color: '#FFFFFF',
     },
