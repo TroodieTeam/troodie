@@ -7,6 +7,7 @@ import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
+import { RestaurantProvider } from '@/contexts/RestaurantContext';
 import { useRouter } from 'expo-router';
 
 export default function TabLayout() {
@@ -22,99 +23,101 @@ export default function TabLayout() {
   );
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: '#999',
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: 'absolute',
-            borderTopWidth: 1,
-            borderTopColor: '#F0F0F0',
-            backgroundColor: '#FFFFFF',
+    <RestaurantProvider>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: '#999',
+          headerShown: false,
+          tabBarButton: HapticTab,
+          tabBarBackground: TabBarBackground,
+          tabBarStyle: Platform.select({
+            ios: {
+              position: 'absolute',
+              borderTopWidth: 1,
+              borderTopColor: '#F0F0F0',
+              backgroundColor: '#FFFFFF',
+            },
+            default: {
+              borderTopWidth: 1,
+              borderTopColor: '#F0F0F0',
+              backgroundColor: '#FFFFFF',
+            },
+          }),
+          tabBarLabelStyle: {
+            fontSize: 10, // Reduced from 11
+            fontFamily: 'Inter_500Medium',
+            marginTop: -2,
           },
-          default: {
-            borderTopWidth: 1,
-            borderTopColor: '#F0F0F0',
-            backgroundColor: '#FFFFFF',
-          },
-        }),
-        tabBarLabelStyle: {
-          fontSize: 10, // Reduced from 11
-          fontFamily: 'Inter_500Medium',
-          marginTop: -2,
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarTestID: 'tab-home',
-          tabBarIcon: ({ color, focused }) => (
-            <Home size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarTestID: 'tab-explore',
-          tabBarIcon: ({ color, focused }) => (
-            <Compass size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="add"
-        options={{
-          title: '',
-          tabBarTestID: 'tab-add',
-          tabBarIcon: () => <FloatingAddButton />,
-        }}
-      />
-      <Tabs.Screen
-        name="activity"
-        options={{
-          title: 'Activity',
-          tabBarTestID: 'tab-activity',
-          tabBarIcon: ({ color, focused }) => (
-            <Heart size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'More',
-          tabBarTestID: 'tab-more',
-          tabBarIcon: ({ color, focused }) => (
-            <MoreHorizontal size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="business"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="creator"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
-    </Tabs>
+        }}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarTestID: 'tab-home',
+            tabBarIcon: ({ color, focused }) => (
+              <Home size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="explore"
+          options={{
+            title: 'Explore',
+            tabBarTestID: 'tab-explore',
+            tabBarIcon: ({ color, focused }) => (
+              <Compass size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="add"
+          options={{
+            title: '',
+            tabBarTestID: 'tab-add',
+            tabBarIcon: () => <FloatingAddButton />,
+          }}
+        />
+        <Tabs.Screen
+          name="activity"
+          options={{
+            title: 'Activity',
+            tabBarTestID: 'tab-activity',
+            tabBarIcon: ({ color, focused }) => (
+              <Heart size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="more"
+          options={{
+            title: 'More',
+            tabBarTestID: 'tab-more',
+            tabBarIcon: ({ color, focused }) => (
+              <MoreHorizontal size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            href: null, // Hide from tab bar
+          }}
+        />
+        <Tabs.Screen
+          name="business"
+          options={{
+            href: null, // Hide from tab bar
+          }}
+        />
+        <Tabs.Screen
+          name="creator"
+          options={{
+            href: null, // Hide from tab bar
+          }}
+        />
+      </Tabs>
+    </RestaurantProvider>
   );
 }
 

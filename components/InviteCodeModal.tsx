@@ -17,6 +17,8 @@ import {
 import Toast from 'react-native-toast-message';
 
 import { applyShadow, designTokens } from '@/constants/designTokens';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/contexts/RestaurantContext';
 import { restaurantTeamService } from '@/services/restaurantTeamService';
 
 interface InviteCodeModalProps {
@@ -30,6 +32,10 @@ export const InviteCodeModal = ({ visible, onClose, onSuccess }: InviteCodeModal
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Now safe to use because it's wrapped in TabLayout
+    const { refreshRestaurants } = useRestaurant();
+    const { refreshAccountInfo } = useAuth();
 
     const handleVerify = async () => {
         if (!code.trim()) {
@@ -52,6 +58,16 @@ export const InviteCodeModal = ({ visible, onClose, onSuccess }: InviteCodeModal
 
                 onClose();
                 if (onSuccess) onSuccess();
+
+                // Refresh restaurant and account context
+                try {
+                    await Promise.all([
+                        refreshRestaurants(),
+                        refreshAccountInfo()
+                    ]);
+                } catch (err) {
+                    console.error('Failed to refresh contexts after invite:', err);
+                }
 
                 // Navigate to the business dashboard or the specific restaurant if ID is returned
                 // For now, let's go to the main business tab which should show the new access

@@ -110,7 +110,7 @@ export function TeamAccessSection({
                     const isAlreadyMember = uiMembers.some(m =>
                         m.email.toLowerCase() === inv.email.toLowerCase() && m.status === 'active'
                     );
-                    if (isAlreadyMember) {
+                    if (!isAlreadyMember) {
                         uiMembers.push({
                             id: inv.id, // Use invitation ID for pending
                             name: inv.user_details?.name || inv.user_details?.username || '',
