@@ -26,6 +26,7 @@ import { restaurantService } from '@/services/restaurantService';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
 import { getErrorType } from '@/types/errors';
 import { Notification } from '@/types/notifications';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -45,6 +46,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -58,6 +60,7 @@ import {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
   const { userState, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, networkProgress, updateNetworkProgress } = useApp();
   const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
@@ -238,7 +241,6 @@ export default function HomeScreen() {
             ? (notification.data as any).invitation_id
             : undefined;
 
-          console.log('[Feed] Navigating to board:', notification.related_id, 'with invitation_id:', invitationId);
 
           // Navigate with invitation_id as a query parameter
           router.push({
@@ -249,7 +251,6 @@ export default function HomeScreen() {
           const boardId = (notification.data as any).board_id || (notification.data as any).boardId;
           const invitationId = (notification.data as any).invitation_id;
 
-          console.log('[Feed] Navigating to board via data:', boardId, 'with invitation_id:', invitationId);
 
           router.push({
             pathname: `/boards/${boardId}` as any,
@@ -267,7 +268,6 @@ export default function HomeScreen() {
         break;
       // Add other notification types as needed
       default:
-        console.log('[Feed] Unhandled notification type:', notification.type);
         break;
     }
   };
@@ -628,15 +628,15 @@ export default function HomeScreen() {
   };
 
   const renderQuickActions = () => (
-    <View style={styles.quickActions}>
+    <View style={[styles.quickActions, { bottom: Platform.OS === 'ios' ? tabBarHeight + 20 : 20 }]}>
       <TouchableOpacity style={styles.quickActionButton} onPress={() => setShowInviteModal(true)}>
         <UserPlus size={20} color="#FFFFFF" />
         <Text style={styles.quickActionText}>Join Team</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.quickActionButton}>
+      {/* <TouchableOpacity style={styles.quickActionButton}>
         <Plus size={20} color="#FFFFFF" />
         <Text style={styles.quickActionText}>Add Place</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 
@@ -713,10 +713,6 @@ export default function HomeScreen() {
       <InviteCodeModal
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
-        onSuccess={() => {
-          // Optional: refresh user data or show success message if needed
-          // The modal handles navigation on success
-        }}
       />
     </SafeAreaView>
   );
@@ -1059,7 +1055,7 @@ const styles = StyleSheet.create({
     color: designTokens.colors.white,
   },
   bottomPadding: {
-    height: 100,
+    height: 120,
   },
   networkHeader: {
     flexDirection: 'row',

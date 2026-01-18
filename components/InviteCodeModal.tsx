@@ -123,7 +123,7 @@ export const InviteCodeModal = ({ visible, onClose, onSuccess }: InviteCodeModal
                         </View>
 
                         <Text style={styles.description}>
-                            Enter the unique code or magic link OTP sent to your email to join the team.
+                            Enter the invitation code sent to you to join the restaurant team.
                         </Text>
 
                         <View style={styles.inputContainer}>
