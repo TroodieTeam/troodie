@@ -64,7 +64,7 @@ export default {
   expo: {
     name: "Troodie",
     slug: "troodie",
-    version: "1.0.10",
+    version: "1.0.11",
     orientation: "portrait",
     icon: "./assets/images/troodie_icon_logo.jpg",
     scheme: "troodie",
