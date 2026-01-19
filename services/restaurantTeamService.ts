@@ -335,7 +335,7 @@ export async function cancelInvitation(
     try {
         const { error } = await supabase
             .from('restaurant_team_invitations')
-            .update({ status: 'cancelled' })
+            .delete()
             .eq('id', invitationId)
             .eq('status', 'pending'); // Only cancel pending invitations
 
