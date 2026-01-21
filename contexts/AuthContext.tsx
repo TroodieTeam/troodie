@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { accountService, AccountType, UserAccountInfo } from '@/services/accountService'
 import { authService } from '@/services/authService'
+import { restaurantTeamService } from '@/services/restaurantTeamService'
 import { userService } from '@/services/userService'
 import { Session, User } from '@supabase/supabase-js'
 import React, { createContext, useContext, useEffect, useState } from 'react'
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Profile loaded successfully
         setProfile(profile)
       }
-      
+
       // Load account info
       await loadAccountInfo(userId)
     } catch (error) {
@@ -71,6 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('[AuthContext] Loading account info for user:', userId)
       const accountInfo = await accountService.getUserAccountInfo(userId)
+
+      // Load managed restaurants
+      const { data: managedRestaurants } = await restaurantTeamService.getMyRestaurants()
+      if (accountInfo && managedRestaurants) {
+        accountInfo.managed_restaurants = managedRestaurants
+      }
+
       console.log('[AuthContext] Account info loaded:', accountInfo)
       setAccountInfo(accountInfo)
     } catch (error) {
@@ -85,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Refreshing auth state
       const { data: { session } } = await supabase.auth.getSession()
       console.log('[AuthContext] Supabase session found:', !!session, session?.user?.email)
-      
+
       if (session) {
         console.log('[AuthContext] Session found during refresh, loading profile')
         // Session found during refresh
@@ -121,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] Auth state change event:', event)
       console.log('[AuthContext] Session in event:', !!session)
       console.log('[AuthContext] User in event:', session?.user?.email)
-      
+
       if (event === 'TOKEN_REFRESHED' && session) {
         console.log('[AuthContext] Token refreshed, updating session')
         // Token refreshed
@@ -166,27 +174,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthContext] verifyOtp called with email:', email, 'token:', token)
     setError(null)
     setLoading(true)
-    
+
     try {
       // Verifying OTP
       const result = await authService.verifyOtp(email, token)
       console.log('[AuthContext] verifyOtp result:', result.success, result.session ? 'session exists' : 'no session')
-      
+
       // No special handling needed - password auth returns a real session
-      
+
       if (result.success && result.session) {
         // OTP verified successfully
         console.log('[AuthContext] OTP verified successfully, setting session and user')
-        
+
         // Directly set our state - don't rely on auth state changes
         setSession(result.session)
         setUser(result.session.user)
-        
+
         // Load profile
         console.log('[AuthContext] Loading user profile...')
         await loadUserProfile(result.session.user.id)
         console.log('[AuthContext] Profile loading completed')
-        
+
         return { ...result, session: result.session }
       } else {
         // OTP verification failed
@@ -212,13 +220,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthContext] signOut called')
     console.log('[AuthContext] Current session before signOut:', !!session)
     console.log('[AuthContext] Current user before signOut:', user?.email)
-    
+
     setLoading(true)
     try {
       // Check if we actually have a session before trying to sign out
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       console.log('[AuthContext] Current Supabase session:', !!currentSession)
-      
+
       if (!currentSession) {
         console.log('[AuthContext] No Supabase session found, clearing local state directly')
         // No session to sign out from, just clear our local state
@@ -229,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAnonymous(false)
         return
       }
-      
+
       console.log('[AuthContext] Calling supabase.auth.signOut()...')
       const { error } = await supabase.auth.signOut()
       if (error) {
@@ -278,18 +286,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     try {
       const result = await accountService.upgradeAccount(user.id, newType, profileData)
-      
+
       if (result.success) {
         // Refresh account info and profile
         await refreshAccountInfo()
         await loadUserProfile(user.id)
       }
-      
+
       return result
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       }
     } finally {
       setLoading(false)

@@ -1,31 +1,34 @@
+import { TeamAccessSection } from '@/components/business/TeamAccessSection';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/contexts/RestaurantContext';
 import { supabase } from '@/lib/supabase';
 import { restaurantImageService } from '@/services/restaurantImageService';
+import { restaurantService } from '@/services/restaurantService';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import {
-    AlertCircle,
-    ArrowLeft,
-    Camera,
-    Globe,
-    Mail,
-    MapPin,
-    Phone,
-    Store,
-    Trash2
+  AlertCircle,
+  ArrowLeft,
+  Camera,
+  Globe,
+  Mail,
+  MapPin,
+  Phone,
+  Store,
+  Trash2
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -54,6 +57,7 @@ interface BusinessSettings {
 export default function RestaurantSettings() {
   const router = useRouter();
   const { user } = useAuth();
+  const { currentRestaurant, isLoading: contextLoading } = useRestaurant();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [restaurantData, setRestaurantData] = useState<RestaurantData | null>(null);
@@ -67,53 +71,76 @@ export default function RestaurantSettings() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
-    loadRestaurantData();
-  }, []);
+    if (!contextLoading) {
+      loadRestaurantData();
+    }
+  }, [currentRestaurant?.restaurant_id, contextLoading]);
 
   const loadRestaurantData = async () => {
     try {
       if (!user?.id) return;
 
-      const { data: profile, error: profileError } = await supabase
+      // If no restaurant selected, we can't load settings
+      if (!currentRestaurant) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      // 1. Fetch Restaurant Details
+      const restaurant = await restaurantService.getRestaurantDetails(currentRestaurant.restaurant_id);
+
+      if (restaurant) {
+        setRestaurantData({
+          id: restaurant.id,
+          name: restaurant.name,
+          address: restaurant.address || '',
+          city: restaurant.city || '',
+          state: restaurant.state || '',
+          zip_code: restaurant.zip_code || '',
+          phone: restaurant.phone || '',
+          website: restaurant.website || '',
+          cuisine_types: restaurant.cuisine_types || [],
+          price_range: restaurant.price_range || '',
+          cover_photo_url: restaurant.cover_photo_url || '',
+          is_verified: restaurant.is_verified || false
+        });
+      }
+
+      // 2. Fetch Business Profile / Settings (This might need adjustment for multi-restaurant)
+      // For now, we'll try to get the profile. If it's a manager role, they might not have a business_profile 
+      // linked to this restaurant directly in the same way, or business_profile is user-centric.
+      const { data: profile } = await supabase
         .from('business_profiles')
-        .select(`
-          business_email,
-          business_role,
-          restaurants (
-            id,
-            name,
-            address,
-            city,
-            state,
-            zip_code,
-            phone,
-            website,
-            cuisine_types,
-            price_range,
-            cover_photo_url,
-            is_verified
-          )
-        `)
+        .select('business_email, business_role')
         .eq('user_id', user.id)
         .single();
 
-      if (profileError) throw profileError;
-
-      if (profile?.restaurants) {
-        setRestaurantData(profile.restaurants as any);
+      if (profile) {
         setBusinessSettings(prev => ({
           ...prev,
           business_email: profile.business_email || user.email || '',
-          business_role: profile.business_role || 'Owner',
+          business_role: profile.business_role || (currentRestaurant.is_owner ? 'Owner' : 'Manager')
+        }));
+      } else {
+        // Fallback if no profile found
+        setBusinessSettings(prev => ({
+          ...prev,
+          business_email: user.email || '',
+          business_role: currentRestaurant.is_owner ? 'Owner' : 'Manager'
         }));
       }
+
     } catch (error) {
-      console.error('Failed to load restaurant data:', error);
+      console.error('Error loading restaurant settings:', error);
       Alert.alert('Error', 'Failed to load restaurant settings');
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const handlePickCoverImage = async () => {
     if (!restaurantData) return;
@@ -231,7 +258,7 @@ export default function RestaurantSettings() {
           <ArrowLeft size={24} color={DS.colors.textDark} />
         </TouchableOpacity>
         <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>Restaurant Settings</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={editMode ? handleSave : () => setEditMode(true)}
           disabled={saving}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
@@ -285,7 +312,7 @@ export default function RestaurantSettings() {
                 </View>
               )}
             </View>
-            
+
             <View style={{ flexDirection: 'row', gap: DS.spacing.sm, marginBottom: DS.spacing.sm }}>
               <MapPin size={16} color={DS.colors.textGray} />
               <Text style={{ ...DS.typography.body, color: DS.colors.textGray, flex: 1 }}>
@@ -403,6 +430,28 @@ export default function RestaurantSettings() {
           </View>
         </View>
 
+        {/* Team Access */}
+        <View style={{ marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.lg }}>
+          <TeamAccessSection
+            restaurantId={restaurantData.id}
+            restaurantName={restaurantData.name}
+            currentUserId={user?.id || ''}
+            isOwner={true}
+          // onInviteMember={async (email: string, role: string) => {
+          //   // TODO: Connect to team invitation service
+          //   console.log('[TeamAccess] Invite member:', { email, role });
+          // }}
+          // onRemoveMember={async (memberId: string) => {
+          //   // TODO: Connect to team management service
+          //   console.log('[TeamAccess] Remove member:', memberId);
+          // }}
+          // onResendInvite={async (memberId: string) => {
+          //   // TODO: Connect to invitation service
+          //   console.log('[TeamAccess] Resend invite:', memberId);
+          // }}
+          />
+        </View>
+
         {/* Danger Zone */}
         <View style={{ marginHorizontal: DS.spacing.lg, marginBottom: DS.spacing.xxl }}>
           <View style={{ backgroundColor: '#FEF2F2', borderRadius: DS.borderRadius.lg, padding: DS.spacing.lg, borderWidth: 1, borderColor: '#FECACA' }}>
@@ -410,17 +459,17 @@ export default function RestaurantSettings() {
               <AlertCircle size={20} color="#DC2626" style={{ marginRight: DS.spacing.sm }} />
               <Text style={{ ...DS.typography.h3, color: '#DC2626' }}>Danger Zone</Text>
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: DS.spacing.sm }}
               onPress={() => Alert.alert('Contact Support', 'Please contact support to transfer ownership.')}
             >
               <Text style={{ ...DS.typography.button, color: '#DC2626' }}>Transfer Ownership</Text>
             </TouchableOpacity>
-            
+
             <View style={{ height: 1, backgroundColor: '#FECACA', marginVertical: DS.spacing.sm }} />
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: DS.spacing.sm }}
               onPress={() => Alert.alert('Warning', 'This action cannot be undone. Are you sure?', [{ text: 'Cancel' }, { text: 'Remove', style: 'destructive' }])}
             >

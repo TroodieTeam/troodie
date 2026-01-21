@@ -1,28 +1,30 @@
+import { RestaurantSwitcher } from '@/components/business/RestaurantSwitcher';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/contexts/RestaurantContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
-    ArrowLeft,
-    BarChart,
-    Bell,
-    CheckCircle,
-    Plus,
-    Search,
-    Settings,
-    Target,
-    Users
+  ArrowLeft,
+  BarChart,
+  Bell,
+  CheckCircle,
+  Plus,
+  Search,
+  Settings,
+  Target,
+  Users
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -73,14 +75,29 @@ export default function BusinessDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Multi-restaurant support using Context
+  // This replaces local state with global context state
+  const { restaurants: userRestaurants, currentRestaurant, switchRestaurant, isLoading: contextLoading } = useRestaurant();
+  // Ensure we display something - derived from context
+  const currentRestaurantId = currentRestaurant?.restaurant_id || null;
+
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    // Only load data if we have a restaurant selected or if context is done loading
+    if (!contextLoading) {
+      loadDashboardData();
+    }
+  }, [currentRestaurantId, contextLoading]); // Reload when restaurant changes
+
+  // Handle restaurant switch
+  const handleRestaurantChange = (restaurantId: string) => {
+    switchRestaurant(restaurantId);
+    console.log('[Dashboard] Switched to restaurant:', restaurantId);
+  };
 
   const loadDashboardData = async () => {
     try {
       if (!user?.id) return;
-      
+
       // Get restaurant data
       const { data: businessProfile, error: profileError } = await supabase
         .from('business_profiles')
@@ -94,9 +111,16 @@ export default function BusinessDashboard() {
         `)
         .eq('user_id', user.id)
         .single();
-        
+
       if (profileError || !businessProfile?.restaurants) {
         setDashboardData(null);
+        return;
+      }
+
+      // If no current restaurant, we can't load dashboard data
+      if (!currentRestaurantId) {
+        setDashboardData(null);
+        setLoading(false);
         return;
       }
 
@@ -114,7 +138,7 @@ export default function BusinessDashboard() {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const activeCampaigns = campaigns?.filter(c => c.status === 'active').length || 0;
-      
+
       // Get recent pending applications
       const { data: recentApps } = await supabase
         .from('campaign_applications')
@@ -144,9 +168,9 @@ export default function BusinessDashboard() {
 
       setDashboardData({
         restaurant: {
-          id: businessProfile.restaurants.id,
-          name: businessProfile.restaurants.name,
-          image_url: businessProfile.restaurants.cover_photo_url || 'https://via.placeholder.com/150',
+          id: currentRestaurant?.restaurant_id || businessProfile?.restaurants.id,
+          name: currentRestaurant?.restaurant_name || businessProfile?.restaurants.name,
+          image_url: businessProfile?.restaurants.cover_photo_url || 'https://via.placeholder.com/150', // Fallback to profile fetch
           is_verified: true,
           claimed_at: new Date().toISOString(),
         },
@@ -224,7 +248,7 @@ export default function BusinessDashboard() {
           marginBottom: DS.spacing.lg,
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.push('/(tabs)/more')}
               style={{
                 marginRight: DS.spacing.md,
@@ -242,9 +266,9 @@ export default function BusinessDashboard() {
               </Text>
             </View>
           </View>
-          
+
           <View style={{ flexDirection: 'row', gap: DS.spacing.md }}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.push('/business/notifications')}
               style={{
                 width: 40,
@@ -270,7 +294,7 @@ export default function BusinessDashboard() {
                 }} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.push('/business/settings')}
               style={{
                 width: 40,
@@ -285,41 +309,62 @@ export default function BusinessDashboard() {
             </TouchableOpacity>
           </View>
         </View>
-        
-        {/* Restaurant Info Card */}
-        <View style={{ paddingHorizontal: DS.spacing.lg }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: DS.colors.surfaceLight,
-            padding: DS.spacing.md,
-            borderRadius: DS.borderRadius.lg,
-          }}>
-            <Image
-              source={{ uri: dashboardData.restaurant.image_url }}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: DS.borderRadius.md,
-                marginRight: DS.spacing.md,
-                backgroundColor: DS.colors.border,
-              }}
+
+        {/* Restaurant Switcher - shown when user has multiple restaurants */}
+        {userRestaurants.length > 1 && currentRestaurantId && (
+          <View style={{ paddingHorizontal: DS.spacing.lg, marginBottom: DS.spacing.md }}>
+            <RestaurantSwitcher
+              restaurants={userRestaurants.map(r => ({
+                id: r.restaurant_id,
+                name: r.restaurant_name,
+                image_url: undefined, // Context doesn't have image yet
+                role: r.is_owner ? 'owner' : 'manager',
+                is_verified: true
+              }))}
+              currentRestaurantId={currentRestaurantId}
+              onRestaurantChange={handleRestaurantChange}
             />
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>
-                  {dashboardData.restaurant.name}
+          </View>
+        )}
+
+
+
+        {/* Restaurant Info Card - shown when user has only one restaurant */}
+        {userRestaurants.length <= 1 && (
+          <View style={{ paddingHorizontal: DS.spacing.lg }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: DS.colors.surfaceLight,
+              padding: DS.spacing.md,
+              borderRadius: DS.borderRadius.lg,
+            }}>
+              <Image
+                source={{ uri: dashboardData.restaurant.image_url }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: DS.borderRadius.md,
+                  marginRight: DS.spacing.md,
+                  backgroundColor: DS.colors.border,
+                }}
+              />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>
+                    {dashboardData.restaurant.name}
+                  </Text>
+                  {dashboardData.restaurant.is_verified && (
+                    <CheckCircle size={16} color={DS.colors.success} fill={DS.colors.surface} />
+                  )}
+                </View>
+                <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray }}>
+                  Member since {new Date(dashboardData.restaurant.claimed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </Text>
-                {dashboardData.restaurant.is_verified && (
-                  <CheckCircle size={16} color={DS.colors.success} fill={DS.colors.surface} />
-                )}
               </View>
-              <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray }}>
-                Member since {new Date(dashboardData.restaurant.claimed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-              </Text>
             </View>
           </View>
-        </View>
+        )}
       </View>
 
       <ScrollView
@@ -376,8 +421,8 @@ export default function BusinessDashboard() {
           <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.md }}>
             Quick Actions
           </Text>
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: DS.spacing.md, paddingRight: DS.spacing.lg }}
           >
@@ -583,15 +628,15 @@ const CampaignCard = ({ campaign, onPress }: any) => {
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <View style={{ 
-            backgroundColor: campaign.status === 'active' ? '#DCFCE7' : '#F3F4F6', 
-            paddingHorizontal: 8, 
-            paddingVertical: 2, 
-            borderRadius: DS.borderRadius.full 
+          <View style={{
+            backgroundColor: campaign.status === 'active' ? '#DCFCE7' : '#F3F4F6',
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: DS.borderRadius.full
           }}>
-            <Text style={{ 
-              ...DS.typography.caption, 
-              fontWeight: '700', 
+            <Text style={{
+              ...DS.typography.caption,
+              fontWeight: '700',
               color: campaign.status === 'active' ? '#16A34A' : DS.colors.textGray,
               textTransform: 'uppercase'
             }}>

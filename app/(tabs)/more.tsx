@@ -80,7 +80,8 @@ export default function MoreScreen() {
     accountType,
     isCreator,
     isBusiness,
-    businessProfile
+    businessProfile,
+    accountInfo
   } = useAccountType();
   const { profileId: creatorProfileId } = useCreatorProfileId();
 
@@ -96,7 +97,7 @@ export default function MoreScreen() {
     'a5c480d6-351e-44a2-987b-b3de05244697',  // Dev Admin (team@troodieapp.com)
   ];
   const isAdmin = user?.id && ADMIN_USER_IDS.includes(user.id);
-  
+
   // Debug logging for admin access
   React.useEffect(() => {
     if (user?.id) {
@@ -359,12 +360,13 @@ export default function MoreScreen() {
   ] : [];
 
   // Business Tools Section
+  // Business Tools Section
   const businessItems: MenuItem[] = isBusiness ? [
     {
       id: 'business-dashboard',
       title: 'Business Dashboard',
-      subtitle: businessProfile?.restaurant_name
-        ? `Managing ${businessProfile.restaurant_name}`
+      subtitle: businessProfile?.restaurant_name || accountInfo?.managed_restaurants?.[0]?.restaurant_name
+        ? `Managing ${businessProfile?.restaurant_name || accountInfo?.managed_restaurants?.[0]?.restaurant_name}`
         : 'Restaurant overview',
       icon: Store,
       iconColor: '#DC2626',
@@ -396,13 +398,13 @@ export default function MoreScreen() {
       iconColor: '#059669',
       action: () => router.push('/business/analytics'),
     },
-    ...(businessProfile?.restaurant_id ? [{
+    ...(businessProfile?.restaurant_id || accountInfo?.managed_restaurants?.[0]?.restaurant_id ? [{
       id: 'restaurant-analytics',
       title: 'Restaurant Analytics',
       subtitle: 'Saves, mentions & engagement metrics',
       icon: TrendingUp,
       iconColor: '#F59E0B',
-      action: () => router.push(`/restaurant/${businessProfile.restaurant_id}/analytics`),
+      action: () => router.push(`/restaurant/${businessProfile?.restaurant_id || accountInfo?.managed_restaurants?.[0]?.restaurant_id}/analytics`),
     }] : []),
     {
       id: 'restaurant-settings',
@@ -504,7 +506,7 @@ export default function MoreScreen() {
       adminItemsLength: adminItems.length,
       adminItems,
     });
-    
+
     const baseSections: MenuSection[] = [
       // Admin Tools (highest priority for admins)
       ...(adminItems.length > 0 ? [{
@@ -653,13 +655,13 @@ export default function MoreScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.profileInfo}>
-              <Image 
-                source={{ 
+              <Image
+                source={{
                   uri: getAvatarUrlWithFallback(
-                    userProfile?.avatar_url, 
+                    userProfile?.avatar_url,
                     userProfile?.name || userProfile?.username
                   )
-                }} 
+                }}
                 style={styles.avatar}
                 resizeMode="cover"
               />
