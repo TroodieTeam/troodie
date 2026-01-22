@@ -99,6 +99,21 @@ function InnerLayout() {
             const id = cleanPath.replace('boards/', '');
             console.log('Navigating to board:', id);
             router.push(`/boards/${id}`);
+          } else if (cleanPath.startsWith('invite/')) {
+            // Handle restaurant team invitation deep links
+            const token = cleanPath.replace('invite/', '');
+            console.log('[Deep Link] ✅ Invitation link detected!', { 
+              token: token.substring(0, 8) + '...',
+              path: cleanPath,
+              fullUrl: url,
+              parsed
+            });
+            
+            if (token && token.trim().length > 0) {
+              router.push(`/invite/${token}`);
+            } else {
+              console.error('[Deep Link] Invalid invitation token');
+            }
           } else if (cleanPath.startsWith('stripe/onboarding/')) {
             // Handle Stripe onboarding deep links
             const isReturn = cleanPath.includes('/return');
@@ -256,6 +271,7 @@ function InnerLayout() {
             <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
             <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
             <Stack.Screen name="quick-saves" options={{ headerShown: false }} />
+            <Stack.Screen name="invite/[token]" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="dark" />

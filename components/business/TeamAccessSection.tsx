@@ -77,6 +77,7 @@ export function TeamAccessSection({
     const [loading, setLoading] = useState(true);
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
     const [teamMembers, setTeamMembers] = useState<UITeamMember[]>([]);
+    const [hasAccess, setHasAccess] = useState(isOwner); // Start with isOwner, update when team data loads
 
     // Manual Sharing State
     const [showInviteSuccess, setShowInviteSuccess] = useState(false);
@@ -85,6 +86,19 @@ export function TeamAccessSection({
     useEffect(() => {
         loadTeamData();
     }, [restaurantId]);
+
+    // Update hasAccess when teamMembers loads
+    useEffect(() => {
+        if (isOwner) {
+            setHasAccess(true);
+        } else {
+            // Check if current user is in the team members list
+            const isTeamMember = teamMembers.some(member => 
+                member.originalMember?.user_id === currentUserId && member.status === 'active'
+            );
+            setHasAccess(isTeamMember);
+        }
+    }, [isOwner, teamMembers, currentUserId]);
 
     const loadTeamData = async () => {
         setLoading(true);
@@ -454,8 +468,8 @@ export function TeamAccessSection({
                 </View>
             )}
 
-            {/* Invite Button */}
-            {isOwner && (
+            {/* Invite Button - Show for owner or team members */}
+            {hasAccess && (
                 <TouchableOpacity
                     style={styles.inviteButton}
                     onPress={() => setShowInviteModal(true)}
