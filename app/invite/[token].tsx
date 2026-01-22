@@ -122,7 +122,7 @@ export default function InviteScreen() {
         // Store the token so we can process it after auth
         // Then navigate to login
         router.push({
-            pathname: '/onboarding/email',
+            pathname: '/onboarding/login',
             params: { returnTo: `/invite/${token}` }
         });
     };
