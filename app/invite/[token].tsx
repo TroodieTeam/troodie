@@ -86,7 +86,6 @@ export default function InviteScreen() {
         setError(null);
 
         try {
-            console.log('[InviteScreen] Processing invitation token:', invitationToken.substring(0, 8) + '...');
 
             // Use service layer instead of direct RPC call
             const result = await restaurantTeamService.acceptInvitation(invitationToken);
