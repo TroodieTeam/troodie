@@ -14,10 +14,11 @@ import React, { useState } from 'react';
 import {
     Image,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 
 export interface Restaurant {
@@ -132,7 +133,7 @@ export function RestaurantSwitcher({
                             </Text>
                         </View>
 
-                        <View style={styles.dropdownList}>
+                        <ScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
                             {restaurants.map((restaurant, index) => {
                                 const isSelected = restaurant.id === currentRestaurantId;
                                 return (
@@ -188,7 +189,7 @@ export function RestaurantSwitcher({
                                     </TouchableOpacity>
                                 );
                             })}
-                        </View>
+                        </ScrollView>
                     </View>
                 </TouchableOpacity>
             </Modal>
