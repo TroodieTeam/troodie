@@ -5,19 +5,17 @@
  * This screen processes team invitation tokens and handles:
  * 1. Validating the token
  * 2. Ensuring user is authenticated
- * 3. Accepting the invitation via service layer
- * 4. Refreshing restaurant context
- * 5. Redirecting to the business dashboard
+ * 3. Accepting the invitation
+ * 4. Redirecting to the business dashboard
  */
 
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant } from '@/contexts/RestaurantContext';
-import { restaurantTeamService } from '@/services/restaurantTeamService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     StyleSheet,
@@ -27,196 +25,119 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const INVITATION_TOKEN_KEY = 'pending_invitation_token';
-
 type InvitationStatus = 'loading' | 'auth_required' | 'processing' | 'success' | 'error';
+
+interface InvitationResult {
+    success: boolean;
+    restaurant_id?: string;
+    member_id?: string;
+    error?: string;
+}
 
 export default function InviteScreen() {
     const { token } = useLocalSearchParams<{ token: string }>();
     const router = useRouter();
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { user, isAuthenticated, isLoading: authLoading, refreshAccountInfo } = useAuth();
     const { refreshRestaurants } = useRestaurant();
 
     const [status, setStatus] = useState<InvitationStatus>('loading');
     const [error, setError] = useState<string | null>(null);
     const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
-    // Validate and normalize token
-    const normalizedToken = token && typeof token === 'string' ? token.trim() : null;
+    useEffect(() => {
+        if (authLoading) return;
 
-    // Store token for return after auth
-    const storeTokenForReturn = useCallback(async (tokenToStore: string) => {
-        try {
-            await AsyncStorage.setItem(INVITATION_TOKEN_KEY, tokenToStore);
-        } catch (err) {
-            console.error('[InviteScreen] Failed to store token:', err);
+        if (!isAuthenticated || !user) {
+            setStatus('auth_required');
+            return;
         }
-    }, []);
 
-    // Retrieve stored token
-    const getStoredToken = useCallback(async (): Promise<string | null> => {
-        try {
-            const stored = await AsyncStorage.getItem(INVITATION_TOKEN_KEY);
-            return stored;
-        } catch (err) {
-            console.error('[InviteScreen] Failed to retrieve stored token:', err);
-            return null;
-        }
-    }, []);
+        // User is authenticated, process the invitation
+        processInvitation();
+    }, [authLoading, isAuthenticated, user, token]);
 
-    // Clear stored token
-    const clearStoredToken = useCallback(async () => {
-        try {
-            await AsyncStorage.removeItem(INVITATION_TOKEN_KEY);
-        } catch (err) {
-            console.error('[InviteScreen] Failed to clear stored token:', err);
-        }
-    }, []);
-
-    // Process invitation using service layer
-    const processInvitation = useCallback(async (invitationToken: string) => {
-        // Validate token
-        if (!invitationToken || invitationToken.trim().length === 0) {
+    const processInvitation = async () => {
+        if (!token) {
             setError('Invalid invitation link - no token provided');
             setStatus('error');
             return;
         }
 
         setStatus('processing');
-        setError(null);
 
         try {
+            console.log('[InviteScreen] Processing invitation token:', token.substring(0, 8) + '...');
 
-            // Use service layer instead of direct RPC call
-            const result = await restaurantTeamService.acceptInvitation(invitationToken);
-
-            console.log('[InviteScreen] Service result:', { 
-                success: result.success, 
-                restaurantId: result.restaurantId,
-                error: result.error 
+            // Call the database function to accept the invitation
+            const { data, error: rpcError } = await supabase.rpc('accept_team_invitation', {
+                p_token: token
             });
 
-            if (!result.success) {
-                // Provide user-friendly error messages
-                let userFriendlyError = result.error || 'Failed to accept invitation';
-                
-                // Map common errors to user-friendly messages
-                if (result.error?.includes('expired')) {
-                    userFriendlyError = 'This invitation has expired. Please ask for a new invitation.';
-                } else if (result.error?.includes('different email')) {
-                    userFriendlyError = 'This invitation was sent to a different email address. Please sign in with the email that received the invitation.';
-                } else if (result.error?.includes('Invalid or expired')) {
-                    userFriendlyError = 'This invitation is invalid or has expired. Please contact the restaurant owner for a new invitation.';
-                }
+            console.log('[InviteScreen] RPC result:', { data, error: rpcError });
 
-                setError(userFriendlyError);
+            if (rpcError) {
+                console.error('[InviteScreen] RPC error:', rpcError);
+                setError(rpcError.message);
+                setStatus('error');
+                return;
+            }
+
+            const result = data as InvitationResult;
+
+            if (!result.success) {
+                setError(result.error || 'Failed to accept invitation');
                 setStatus('error');
                 return;
             }
 
             // Success!
-            setRestaurantId(result.restaurantId || null);
+            setRestaurantId(result.restaurant_id || null);
             setStatus('success');
 
-            // Clear stored token since we've successfully processed it
-            await clearStoredToken();
-
-            // Refresh restaurant context to show new access immediately
+            // Refresh contexts to ensure the new restaurant is available
             try {
-                await refreshRestaurants();
-                console.log('[InviteScreen] Restaurant context refreshed');
-            } catch (refreshError) {
-                console.error('[InviteScreen] Failed to refresh restaurant context:', refreshError);
-                // Don't fail the flow if refresh fails
+                await Promise.all([
+                    refreshRestaurants(),
+                    refreshAccountInfo()
+                ]);
+                console.log('[InviteScreen] Contexts refreshed successfully');
+            } catch (refreshErr) {
+                console.error('[InviteScreen] Error refreshing contexts:', refreshErr);
+                // We still proceed with the success state and redirect
             }
 
-            // Auto-redirect after 3 seconds (increased from 2 for better UX)
+            // Auto-redirect after 2 seconds
             setTimeout(() => {
-                router.replace('/(tabs)/business/dashboard');
-            }, 3000);
+                router.replace('/business/dashboard');
+            }, 2000);
 
         } catch (err) {
             console.error('[InviteScreen] Error:', err);
             setError(err instanceof Error ? err.message : 'An unexpected error occurred');
             setStatus('error');
         }
-    }, [clearStoredToken, refreshRestaurants, router]);
-
-    // Main effect to handle invitation processing
-    useEffect(() => {
-        const handleInvitation = async () => {
-            // Wait for auth to finish loading
-            if (authLoading) {
-                return;
-            }
-
-            // Check if we have a token from URL params or stored
-            let tokenToProcess = normalizedToken;
-            
-            // If no token in URL, check for stored token (return after auth)
-            if (!tokenToProcess) {
-                const storedToken = await getStoredToken();
-                if (storedToken) {
-                    tokenToProcess = storedToken;
-                    console.log('[InviteScreen] Using stored token from return after auth');
-                }
-            }
-
-            // If still no token, show error
-            if (!tokenToProcess) {
-                setError('Invalid invitation link - no token provided');
-                setStatus('error');
-                return;
-            }
-
-            // If user is not authenticated, store token and show auth required
-            if (!isAuthenticated || !user) {
-                // Store token for return after authentication
-                await storeTokenForReturn(tokenToProcess);
-                setStatus('auth_required');
-                return;
-            }
-
-            // User is authenticated, process the invitation
-            processInvitation(tokenToProcess);
-        };
-
-        handleInvitation();
-    }, [authLoading, isAuthenticated, user, normalizedToken, getStoredToken, storeTokenForReturn, processInvitation]);
+    };
 
     const handleSignIn = () => {
-        // Token is already stored, navigate to login
-        // The onboarding flow should handle returning to this screen
+        // Store the token so we can process it after auth
+        // Then navigate to login
         router.push({
-            pathname: '/login',
-            params: { returnTo: `/invite/${normalizedToken || 'pending'}` }
+            pathname: '/onboarding/email',
+            params: { returnTo: `/invite/${token}` }
         });
     };
 
     const handleRetry = () => {
         setError(null);
-        if (normalizedToken) {
-            processInvitation(normalizedToken);
-        } else {
-            // Try to get stored token
-            getStoredToken().then((storedToken) => {
-                if (storedToken) {
-                    processInvitation(storedToken);
-                } else {
-                    setError('No invitation token found. Please use the link from your email.');
-                    setStatus('error');
-                }
-            });
-        }
+        processInvitation();
     };
 
     const handleGoHome = () => {
-        clearStoredToken();
         router.replace('/(tabs)');
     };
 
     const handleGoToDashboard = () => {
-        router.replace('/(tabs)/business/dashboard');
+        router.replace('/business/dashboard');
     };
 
     // Loading state
@@ -387,3 +308,4 @@ const styles = StyleSheet.create({
         gap: DS.spacing.md,
     },
 });
+

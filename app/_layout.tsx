@@ -67,7 +67,7 @@ function InnerLayout() {
       // Parse the URL to extract the path
       const parsed = Linking.parse(url);
       console.log('[Deep Link] Parsed:', parsed);
-      
+
       // Extract the path from the URL
       // Handle Expo dev URLs that have --/ prefix
       let path = parsed.path || '';
@@ -80,7 +80,7 @@ function InnerLayout() {
         // Remove leading slash if present
         const cleanPath = path.startsWith('/') ? path.substring(1) : path;
         console.log('[Deep Link] Clean path:', cleanPath);
-        
+
         // Add a small delay to ensure navigation is ready
         setTimeout(() => {
           // Check for different route patterns
@@ -103,13 +103,13 @@ function InnerLayout() {
           } else if (cleanPath.startsWith('invite/')) {
             // Handle restaurant team invitation deep links
             const token = cleanPath.replace('invite/', '');
-            console.log('[Deep Link] ✅ Invitation link detected!', { 
+            console.log('[Deep Link] ✅ Invitation link detected!', {
               token: token.substring(0, 8) + '...',
               path: cleanPath,
               fullUrl: url,
               parsed
             });
-            
+
             if (token && token.trim().length > 0) {
               router.push(`/invite/${token}`);
             } else {
@@ -119,23 +119,23 @@ function InnerLayout() {
             // Handle Stripe onboarding deep links
             const isReturn = cleanPath.includes('/return');
             const isRefresh = cleanPath.includes('/refresh');
-            
-            console.log('[Deep Link] ✅ Stripe onboarding callback detected!', { 
-              isReturn, 
-              isRefresh, 
+
+            console.log('[Deep Link] ✅ Stripe onboarding callback detected!', {
+              isReturn,
+              isRefresh,
               path: cleanPath,
               fullUrl: url,
               parsed
             });
-            
+
             // Extract account_type from query params if present
             const accountType = parsed.queryParams?.account_type || 'business';
-            
+
             console.log('[Deep Link] Navigating to campaign creation with params:', {
               stripeRefresh: 'true',
               accountType
             });
-            
+
             // Navigate to campaign creation page with refresh trigger
             // The campaign creation page will handle refreshing the Stripe account status
             router.push({
@@ -145,7 +145,7 @@ function InnerLayout() {
                 accountType: accountType as string,
               },
             });
-            
+
             console.log('[Deep Link] Navigation triggered');
           } else {
             console.log('[Deep Link] ⚠️ Unhandled deep link path:', cleanPath);
@@ -171,7 +171,7 @@ function InnerLayout() {
       console.log('[Deep Link] App received URL event:', url);
       handleDeepLink(url);
     });
-    
+
     // Also listen for app state changes (when app comes to foreground)
     // This helps catch deep links when returning from browser
     const handleAppStateChange = (nextAppState: string) => {
@@ -187,10 +187,10 @@ function InnerLayout() {
         }, 500);
       }
     };
-    
+
     // Note: AppState listener would need to be imported from react-native
     // For now, the Linking.addEventListener should handle it
-    
+
     return () => {
       subscription.remove();
     };
@@ -250,35 +250,35 @@ function InnerLayout() {
   const AppContent = (
     <AppProvider>
       <OnboardingProvider>
-      <RestaurantProvider>
-        <ThemeProvider value={DefaultTheme}>
-          <NetworkStatusBanner />
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="add" options={{ headerShown: false }} />
-            <Stack.Screen name="boards" options={{ headerShown: false }} />
-            <Stack.Screen name="business" options={{ headerShown: false }} />
-            <Stack.Screen name="creator" options={{ headerShown: false }} />
-            <Stack.Screen name="restaurant/[id]/analytics" options={{ headerShown: false }} />
-            <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="posts/[id]/comments" options={{ headerShown: false }} />
-            <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="find-friends" options={{ headerShown: false }} />
-            <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
-            <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
-            <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
-            <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
-            <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
-            <Stack.Screen name="quick-saves" options={{ headerShown: false }} />
-            <Stack.Screen name="invite/[token]" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="dark" />
-          <Toast config={toastConfig} />
-        </ThemeProvider>
+        <RestaurantProvider>
+          <ThemeProvider value={DefaultTheme}>
+            <NetworkStatusBanner />
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              <Stack.Screen name="add" options={{ headerShown: false }} />
+              <Stack.Screen name="boards" options={{ headerShown: false }} />
+              <Stack.Screen name="business" options={{ headerShown: false }} />
+              <Stack.Screen name="creator" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/[id]/analytics" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="posts/[id]/comments" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="find-friends" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
+              <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
+              <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
+              <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
+              <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
+              <Stack.Screen name="quick-saves" options={{ headerShown: false }} />
+              <Stack.Screen name="invite/[token]" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style="dark" />
+            <Toast config={toastConfig} />
+          </ThemeProvider>
         </RestaurantProvider>
       </OnboardingProvider>
     </AppProvider>
@@ -292,7 +292,7 @@ function InnerLayout() {
   return (
     <SafeAreaProvider>
       {config.stripePublishableKey ? (
-        <StripeProvider 
+        <StripeProvider
           publishableKey={config.stripePublishableKey}
           urlScheme={urlScheme}
         >
