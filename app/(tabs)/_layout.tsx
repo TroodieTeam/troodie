@@ -1,14 +1,11 @@
-import { Tabs } from 'expo-router';
-import { Compass, Heart, Home, MoreHorizontal, Plus } from 'lucide-react-native';
-import React from 'react';
-import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
-
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
-import { RestaurantProvider } from '@/contexts/RestaurantContext';
-import { useRouter } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import { Compass, Heart, Home, MoreHorizontal, Plus } from 'lucide-react-native';
+import React from 'react';
+import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
 
 export default function TabLayout() {
   const router = useRouter();
@@ -23,7 +20,7 @@ export default function TabLayout() {
   );
 
   return (
-    <RestaurantProvider>
+ 
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: theme.colors.primary,
@@ -117,7 +114,7 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-    </RestaurantProvider>
+  
   );
 }
 

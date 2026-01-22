@@ -28,6 +28,7 @@ import { NetworkStatusBanner } from '@/components/NetworkStatusBanner';
 import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
+import { RestaurantProvider } from '@/contexts/RestaurantContext';
 import config from '@/lib/config';
 import { BackgroundTaskManager } from '@/utils/backgroundTasks';
 import * as Sentry from '@sentry/react-native';
@@ -249,6 +250,7 @@ function InnerLayout() {
   const AppContent = (
     <AppProvider>
       <OnboardingProvider>
+      <RestaurantProvider>
         <ThemeProvider value={DefaultTheme}>
           <NetworkStatusBanner />
           <Stack>
@@ -277,6 +279,7 @@ function InnerLayout() {
           <StatusBar style="dark" />
           <Toast config={toastConfig} />
         </ThemeProvider>
+        </RestaurantProvider>
       </OnboardingProvider>
     </AppProvider>
   );
