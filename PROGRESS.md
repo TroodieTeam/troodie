@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Building
-**Current Task:** Task 5 - Database function update for advanced filtering
+**Current Task:** Task 6 - Update CreatorFilters interface and service
 **Blocker:** None
 
 ## Completed Tasks
@@ -12,10 +12,11 @@
 - [x] Task 2: Update creatorDiscoveryService with new fields
 - [x] Task 3: Creator profile edit - social stats section
 - [x] Task 4: Creator profile edit - compensation & collabs section
+- [x] Task 5: Database function update for advanced filtering
 
 ## In Progress
 
-- [ ] Task 5: Database function update for advanced filtering ← NEXT
+- [ ] Task 6: Update CreatorFilters interface and service ← NEXT
 
 ## Pending Tasks
 
@@ -49,6 +50,13 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 6 - 2026-01-26
+- Completed Task 5: Enhanced get_creators() database function
+- Added p_max_followers parameter for bucket filtering
+- Added p_compensation_types parameter for compensation filtering
+- Added p_sort_by parameter (recentlyActive, followersHigh, followersLow)
+- Returns new fields: primary_city, instagram_handle, tiktok_handle, preferred_compensation
 
 ### Iteration 5 - 2026-01-26
 - Completed Task 4: Added compensation & collabs section to profile edit
