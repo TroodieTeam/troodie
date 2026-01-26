@@ -650,6 +650,7 @@ export class NotificationService implements NotificationServiceInterface {
 
   /**
    * TRO-146: Create notification for creator about new campaign opportunity
+   * Uses 'system' type since 'campaign' is not in the allowed notification types
    */
   async createCampaignOpportunityNotification(
     creatorUserId: string,
@@ -659,7 +660,7 @@ export class NotificationService implements NotificationServiceInterface {
   ): Promise<Notification> {
     return this.createNotification({
       userId: creatorUserId,
-      type: 'campaign',
+      type: 'system',
       title: 'New Campaign Opportunity!',
       message: `${restaurantName} is looking for creators`,
       data: {
@@ -677,6 +678,7 @@ export class NotificationService implements NotificationServiceInterface {
 
   /**
    * TRO-146: Create notification for restaurant about new campaign applicant
+   * Uses 'system' type since 'campaign' is not in the allowed notification types
    */
   async createCampaignApplicantNotification(
     restaurantOwnerUserId: string,
@@ -687,7 +689,7 @@ export class NotificationService implements NotificationServiceInterface {
   ): Promise<Notification> {
     return this.createNotification({
       userId: restaurantOwnerUserId,
-      type: 'campaign',
+      type: 'system',
       title: 'New Campaign Applicant',
       message: `${creatorName} applied to ${campaignTitle}`,
       data: {

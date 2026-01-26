@@ -802,7 +802,7 @@ const SubscriptionStatusBanner = ({
   subscriptionInfo: SubscriptionInfo;
   onManageSubscription: () => void;
 }) => {
-  const { status, trialDaysRemaining, canPostCampaigns } = subscriptionInfo;
+  const { status, daysUntilTrialEnds, canPostCampaigns } = subscriptionInfo;
 
   // Determine banner style and message based on status
   const getBannerConfig = () => {
@@ -812,7 +812,7 @@ const SubscriptionStatusBanner = ({
           backgroundColor: '#FFFBEB',
           borderColor: '#FCD34D',
           iconColor: '#F59E0B',
-          title: `Trial: ${trialDaysRemaining} days left`,
+          title: `Trial: ${daysUntilTrialEnds ?? 0} days left`,
           subtitle: 'Subscribe to keep posting after trial ends',
           showAction: true,
         };
