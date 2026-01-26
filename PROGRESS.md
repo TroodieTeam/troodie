@@ -3,17 +3,18 @@
 ## Current Status
 
 **Phase:** Building
-**Current Task:** Task 3 - Creator profile edit - social stats section
+**Current Task:** Task 4 - Creator profile edit - compensation & collabs section
 **Blocker:** None
 
 ## Completed Tasks
 
 - [x] Task 1: Database migration for creator stats fields
 - [x] Task 2: Update creatorDiscoveryService with new fields
+- [x] Task 3: Creator profile edit - social stats section
 
 ## In Progress
 
-- [ ] Task 3: Creator profile edit - social stats section ← NEXT
+- [ ] Task 4: Creator profile edit - compensation & collabs section ← NEXT
 
 ## Pending Tasks
 
@@ -47,6 +48,13 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 4 - 2026-01-26
+- Completed Task 3: Added social stats section to profile edit screen
+- Added Instagram fields: handle, followers, engagement rate
+- Added TikTok fields: handle, followers, engagement rate
+- Integrated with updateCreatorStats() service function
+- Fields load from existing profile and save on form submit
 
 ### Iteration 3 - 2026-01-26
 - Completed Task 2: Updated creatorDiscoveryService.ts

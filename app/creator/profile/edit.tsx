@@ -18,7 +18,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCreatorProfile } from '@/hooks/useCreatorProfileId';
 import { supabase } from '@/lib/supabase';
 import {
-  updateCreatorProfile
+  updateCreatorProfile,
+  updateCreatorStats,
 } from '@/services/creatorDiscoveryService';
 import { addPortfolioItems } from '@/services/creatorUpgradeService';
 import { ImageUploadServiceV2 } from '@/services/imageUploadServiceV2';
@@ -59,7 +60,17 @@ export default function EditCreatorProfileScreen() {
   const [availabilityStatus, setAvailabilityStatus] = useState<'available' | 'busy' | 'not_accepting'>('available');
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  
+
+  // TRO-144: Social stats fields
+  const [instagramHandle, setInstagramHandle] = useState('');
+  const [instagramFollowers, setInstagramFollowers] = useState('');
+  const [instagramEngagementRate, setInstagramEngagementRate] = useState('');
+  const [instagramLastPostDate, setInstagramLastPostDate] = useState('');
+  const [tiktokHandle, setTiktokHandle] = useState('');
+  const [tiktokFollowers, setTiktokFollowers] = useState('');
+  const [tiktokEngagementRate, setTiktokEngagementRate] = useState('');
+  const [tiktokLastPostDate, setTiktokLastPostDate] = useState('');
+
   // CM-15: Portfolio management
   const [portfolioItems, setPortfolioItems] = useState<Array<{ 
     id: string; 
@@ -84,7 +95,17 @@ export default function EditCreatorProfileScreen() {
       setProfileImageUrl(creatorProfile.avatar_url || null);
       setOpenToCollabs(creatorProfile.open_to_collabs ?? true);
       setAvailabilityStatus((creatorProfile.availability_status as 'available' | 'busy' | 'not_accepting') || 'available');
-      
+
+      // TRO-144: Load social stats
+      setInstagramHandle((creatorProfile as any).instagram_handle || '');
+      setInstagramFollowers((creatorProfile as any).instagram_followers?.toString() || '');
+      setInstagramEngagementRate((creatorProfile as any).instagram_engagement_rate?.toString() || '');
+      setInstagramLastPostDate((creatorProfile as any).instagram_last_post_date || '');
+      setTiktokHandle((creatorProfile as any).tiktok_handle || '');
+      setTiktokFollowers((creatorProfile as any).tiktok_followers?.toString() || '');
+      setTiktokEngagementRate((creatorProfile as any).tiktok_engagement_rate?.toString() || '');
+      setTiktokLastPostDate((creatorProfile as any).tiktok_last_post_date || '');
+
       // CM-15: Load portfolio items
       if (creatorProfile.id) {
         loadPortfolioItems();
@@ -359,6 +380,8 @@ export default function EditCreatorProfileScreen() {
     if (!creatorProfile?.id) return;
 
     setSaving(true);
+
+    // Update basic profile info
     const result = await updateCreatorProfile(creatorProfile.id, {
       displayName: displayName || undefined,
       bio: bio || undefined,
@@ -368,11 +391,30 @@ export default function EditCreatorProfileScreen() {
       avatarUrl: profileImageUrl || undefined,
     });
 
-    if (result.success) {
-      Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => router.push('/(tabs)/more') }]);
-    } else {
+    if (!result.success) {
       Alert.alert('Error', result.error || 'Failed to update profile');
+      setSaving(false);
+      return;
     }
+
+    // TRO-144: Update social stats
+    const statsResult = await updateCreatorStats(creatorProfile.id, {
+      instagramHandle: instagramHandle || null,
+      instagramFollowers: instagramFollowers ? parseInt(instagramFollowers, 10) : null,
+      instagramEngagementRate: instagramEngagementRate ? parseFloat(instagramEngagementRate) : null,
+      instagramLastPostDate: instagramLastPostDate || null,
+      tiktokHandle: tiktokHandle || null,
+      tiktokFollowers: tiktokFollowers ? parseInt(tiktokFollowers, 10) : null,
+      tiktokEngagementRate: tiktokEngagementRate ? parseFloat(tiktokEngagementRate) : null,
+      tiktokLastPostDate: tiktokLastPostDate || null,
+    });
+
+    if (!statsResult.success) {
+      console.warn('[EditCreatorProfileScreen] Failed to update social stats:', statsResult.error);
+      // Don't fail the whole save, just warn
+    }
+
+    Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => router.push('/(tabs)/more') }]);
     setSaving(false);
   };
 
@@ -683,8 +725,8 @@ export default function EditCreatorProfileScreen() {
             }}
             onPress={() => setShowLocationPicker(true)}
           >
-            <Text style={{ 
-              fontSize: 14, 
+            <Text style={{
+              fontSize: 14,
               color: location ? DS.colors.text : DS.colors.textLight,
               flex: 1,
             }}>
@@ -694,6 +736,182 @@ export default function EditCreatorProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* TRO-144: Social Stats Section */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 4 }}>
+            Social Media Stats
+          </Text>
+          <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 16 }}>
+            Help restaurants understand your reach and engagement
+          </Text>
+
+          {/* Instagram */}
+          <View style={{
+            backgroundColor: DS.colors.backgroundWhite,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+            padding: 16,
+            marginBottom: 12,
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>
+              Instagram
+            </Text>
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Handle (without @)</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: DS.colors.border,
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 14,
+                  color: DS.colors.text,
+                  backgroundColor: DS.colors.background,
+                }}
+                value={instagramHandle}
+                onChangeText={(text) => {
+                  setInstagramHandle(text.replace(/^@/, ''));
+                  setHasChanges(true);
+                }}
+                placeholder="yourhandle"
+                placeholderTextColor={DS.colors.textLight}
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Followers</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={instagramFollowers}
+                  onChangeText={(text) => {
+                    setInstagramFollowers(text.replace(/[^0-9]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="10000"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Engagement %</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={instagramEngagementRate}
+                  onChangeText={(text) => {
+                    setInstagramEngagementRate(text.replace(/[^0-9.]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="3.5"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* TikTok */}
+          <View style={{
+            backgroundColor: DS.colors.backgroundWhite,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+            padding: 16,
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>
+              TikTok
+            </Text>
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Handle (without @)</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: DS.colors.border,
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 14,
+                  color: DS.colors.text,
+                  backgroundColor: DS.colors.background,
+                }}
+                value={tiktokHandle}
+                onChangeText={(text) => {
+                  setTiktokHandle(text.replace(/^@/, ''));
+                  setHasChanges(true);
+                }}
+                placeholder="yourhandle"
+                placeholderTextColor={DS.colors.textLight}
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Followers</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={tiktokFollowers}
+                  onChangeText={(text) => {
+                    setTiktokFollowers(text.replace(/[^0-9]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="50000"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Engagement %</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={tiktokEngagementRate}
+                  onChangeText={(text) => {
+                    setTiktokEngagementRate(text.replace(/[^0-9.]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="5.0"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          </View>
+        </View>
 
         {/* Open to Collabs */}
         <View
