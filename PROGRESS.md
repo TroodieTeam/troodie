@@ -2,17 +2,17 @@
 
 ## Current Status
 
-**Phase:** Ready for Building
-**Current Task:** Task 1 - Database migration for creator stats fields
+**Phase:** Building
+**Current Task:** Task 2 - Update creatorDiscoveryService with new fields
 **Blocker:** None
 
 ## Completed Tasks
 
-_No tasks completed yet_
+- [x] Task 1: Database migration for creator stats fields
 
 ## In Progress
 
-- [ ] Task 1: Database migration for creator stats fields ← NEXT
+- [ ] Task 2: Update creatorDiscoveryService with new fields ← NEXT
 
 ## Pending Tasks
 
@@ -46,6 +46,14 @@ _No tasks completed yet_
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 2 - 2026-01-26
+- Completed Task 1: Created migration 20260126_creator_stats_fields.sql
+- Added columns: primary_city, instagram_handle, instagram_engagement_rate, instagram_last_post_date
+- Added columns: tiktok_handle, tiktok_engagement_rate, tiktok_last_post_date
+- Added columns: persona, preferred_compensation, past_restaurant_collabs
+- Added columns: social_stats_verified, social_stats_verified_at
+- Added indexes for city and compensation filtering
 
 ### Session 1 - 2026-01-26
 - Initialized Ralph Loop structure
