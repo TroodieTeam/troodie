@@ -18,10 +18,11 @@
 - [x] Task 8: Filter UI - Compensation and city filters
 - [x] Task 9: Sort dropdown implementation
 - [x] Task 10: Database schema for subscriptions
+- [x] Task 11: Create subscriptionService
 
 ## In Progress
 
-- [ ] Task 11: Create subscriptionService ← NEXT
+- [ ] Task 12: Stripe subscription creation integration ← NEXT
 
 ## Pending Tasks
 
@@ -55,6 +56,13 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 10 - 2026-01-26
+- Completed Task 11: Created subscriptionService.ts
+- Functions: getSubscriptionStatus, checkCanPostCampaign, createSubscription
+- Functions: dismissSubscriptionReminder, startTrial, getCustomerPortalUrl
+- Functions: isFirstCampaign
+- Wraps Edge Functions for Stripe API calls
 
 ### Iteration 9 - 2026-01-26
 - Completed Task 10: Database schema for subscriptions
