@@ -3,16 +3,17 @@
 ## Current Status
 
 **Phase:** Building
-**Current Task:** Task 2 - Update creatorDiscoveryService with new fields
+**Current Task:** Task 3 - Creator profile edit - social stats section
 **Blocker:** None
 
 ## Completed Tasks
 
 - [x] Task 1: Database migration for creator stats fields
+- [x] Task 2: Update creatorDiscoveryService with new fields
 
 ## In Progress
 
-- [ ] Task 2: Update creatorDiscoveryService with new fields ← NEXT
+- [ ] Task 3: Creator profile edit - social stats section ← NEXT
 
 ## Pending Tasks
 
@@ -46,6 +47,14 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 3 - 2026-01-26
+- Completed Task 2: Updated creatorDiscoveryService.ts
+- Extended CreatorProfile interface with 13 new fields
+- Added CreatorStatsUpdate interface and CreatorFilters extensions
+- Added updateCreatorStats() function for profile editing
+- Added getFollowerRange() helper for bucket filtering
+- Updated transformCreator() and getCreatorProfile() to include new fields
 
 ### Iteration 2 - 2026-01-26
 - Completed Task 1: Created migration 20260126_creator_stats_fields.sql

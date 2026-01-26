@@ -27,6 +27,20 @@ export interface CreatorProfile {
   completedCampaigns?: number; // CM-14
   avgRating?: number; // CM-14
   portfolioItems?: PortfolioItem[]; // CM-14
+  // TRO-144: Extended profile fields
+  primaryCity?: string | null;
+  instagramHandle?: string | null;
+  instagramFollowers?: number;
+  instagramEngagementRate?: number | null;
+  instagramLastPostDate?: string | null;
+  tiktokHandle?: string | null;
+  tiktokFollowers?: number;
+  tiktokEngagementRate?: number | null;
+  tiktokLastPostDate?: string | null;
+  persona?: string | null;
+  preferredCompensation?: string[];
+  pastRestaurantCollabs?: string | null;
+  socialStatsVerified?: boolean;
 }
 
 export interface PortfolioItem {
@@ -48,6 +62,26 @@ export interface CreatorFilters {
   minFollowers?: number;
   minEngagement?: number;
   collabTypes?: string[];
+  // TRO-145: Extended filter options
+  followerBucket?: 'under5k' | '5k-20k' | '20kplus';
+  preferredCompensation?: string[];
+  sortBy?: 'recentlyActive' | 'followersHigh' | 'followersLow';
+}
+
+// TRO-144: Stats update interface
+export interface CreatorStatsUpdate {
+  primaryCity?: string | null;
+  instagramHandle?: string | null;
+  instagramFollowers?: number | null;
+  instagramEngagementRate?: number | null;
+  instagramLastPostDate?: string | null;
+  tiktokHandle?: string | null;
+  tiktokFollowers?: number | null;
+  tiktokEngagementRate?: number | null;
+  tiktokLastPostDate?: string | null;
+  persona?: string | null;
+  preferredCompensation?: string[];
+  pastRestaurantCollabs?: string | null;
 }
 
 /**
@@ -147,7 +181,7 @@ function transformCreator(row: any): CreatorProfile {
     availability_status: row.availability_status,
     hasAvailabilityStatus: 'availability_status' in row,
   });
-  
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -169,6 +203,20 @@ function transformCreator(row: any): CreatorProfile {
         restaurantName: p.restaurant_name,
       }))
       .filter((p: any) => p.imageUrl), // Filter out posts without images
+    // TRO-144: Extended profile fields
+    primaryCity: row.primary_city || null,
+    instagramHandle: row.instagram_handle || null,
+    instagramFollowers: row.instagram_followers || 0,
+    instagramEngagementRate: row.instagram_engagement_rate ? parseFloat(row.instagram_engagement_rate) : null,
+    instagramLastPostDate: row.instagram_last_post_date || null,
+    tiktokHandle: row.tiktok_handle || null,
+    tiktokFollowers: row.tiktok_followers || 0,
+    tiktokEngagementRate: row.tiktok_engagement_rate ? parseFloat(row.tiktok_engagement_rate) : null,
+    tiktokLastPostDate: row.tiktok_last_post_date || null,
+    persona: row.persona || null,
+    preferredCompensation: row.preferred_compensation || [],
+    pastRestaurantCollabs: row.past_restaurant_collabs || null,
+    socialStatsVerified: row.social_stats_verified || false,
   };
 }
 
@@ -362,6 +410,20 @@ export async function getCreatorProfile(
       specialties: cp.specialties || [],
       completedCampaigns, // CM-14
       avgRating, // CM-14
+      // TRO-144: Extended profile fields
+      primaryCity: cp.primary_city || null,
+      instagramHandle: cp.instagram_handle || null,
+      instagramFollowers: cp.instagram_followers || 0,
+      instagramEngagementRate: cp.instagram_engagement_rate ? parseFloat(cp.instagram_engagement_rate) : null,
+      instagramLastPostDate: cp.instagram_last_post_date || null,
+      tiktokHandle: cp.tiktok_handle || null,
+      tiktokFollowers: cp.tiktok_followers || 0,
+      tiktokEngagementRate: cp.tiktok_engagement_rate ? parseFloat(cp.tiktok_engagement_rate) : null,
+      tiktokLastPostDate: cp.tiktok_last_post_date || null,
+      persona: cp.persona || null,
+      preferredCompensation: cp.preferred_compensation || [],
+      pastRestaurantCollabs: cp.past_restaurant_collabs || null,
+      socialStatsVerified: cp.social_stats_verified || false,
       portfolioItems: portfolioItems?.map((item: any) => {
         // Handle both base schema (image_url only) and extended schema (with video_url)
         const videoUrl = item.video_url || '';
@@ -587,6 +649,68 @@ export async function toggleOpenToCollabs(
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * TRO-144: Update creator social stats and extended profile fields
+ */
+export async function updateCreatorStats(
+  creatorId: string,
+  stats: CreatorStatsUpdate
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const updateData: Record<string, unknown> = {};
+
+    // Map camelCase to snake_case for database columns
+    if (stats.primaryCity !== undefined) updateData.primary_city = stats.primaryCity;
+    if (stats.instagramHandle !== undefined) updateData.instagram_handle = stats.instagramHandle;
+    if (stats.instagramFollowers !== undefined) updateData.instagram_followers = stats.instagramFollowers;
+    if (stats.instagramEngagementRate !== undefined) updateData.instagram_engagement_rate = stats.instagramEngagementRate;
+    if (stats.instagramLastPostDate !== undefined) updateData.instagram_last_post_date = stats.instagramLastPostDate;
+    if (stats.tiktokHandle !== undefined) updateData.tiktok_handle = stats.tiktokHandle;
+    if (stats.tiktokFollowers !== undefined) updateData.tiktok_followers = stats.tiktokFollowers;
+    if (stats.tiktokEngagementRate !== undefined) updateData.tiktok_engagement_rate = stats.tiktokEngagementRate;
+    if (stats.tiktokLastPostDate !== undefined) updateData.tiktok_last_post_date = stats.tiktokLastPostDate;
+    if (stats.persona !== undefined) updateData.persona = stats.persona;
+    if (stats.preferredCompensation !== undefined) updateData.preferred_compensation = stats.preferredCompensation;
+    if (stats.pastRestaurantCollabs !== undefined) updateData.past_restaurant_collabs = stats.pastRestaurantCollabs;
+
+    // Add updated_at timestamp
+    updateData.updated_at = new Date().toISOString();
+
+    console.log('[updateCreatorStats] Updating creator stats:', {
+      creatorId,
+      fieldsUpdating: Object.keys(updateData),
+    });
+
+    const { error } = await supabase
+      .from('creator_profiles')
+      .update(updateData)
+      .eq('id', creatorId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[updateCreatorStats] Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * TRO-145: Get follower range for bucket filtering
+ */
+export function getFollowerRange(bucket: 'under5k' | '5k-20k' | '20kplus'): { min: number; max: number | null } {
+  switch (bucket) {
+    case 'under5k':
+      return { min: 0, max: 4999 };
+    case '5k-20k':
+      return { min: 5000, max: 19999 };
+    case '20kplus':
+      return { min: 20000, max: null };
+    default:
+      return { min: 0, max: null };
   }
 }
 
