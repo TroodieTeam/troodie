@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Building
-**Current Task:** Task 4 - Creator profile edit - compensation & collabs section
+**Current Task:** Task 5 - Database function update for advanced filtering
 **Blocker:** None
 
 ## Completed Tasks
@@ -11,10 +11,11 @@
 - [x] Task 1: Database migration for creator stats fields
 - [x] Task 2: Update creatorDiscoveryService with new fields
 - [x] Task 3: Creator profile edit - social stats section
+- [x] Task 4: Creator profile edit - compensation & collabs section
 
 ## In Progress
 
-- [ ] Task 4: Creator profile edit - compensation & collabs section ← NEXT
+- [ ] Task 5: Database function update for advanced filtering ← NEXT
 
 ## Pending Tasks
 
@@ -48,6 +49,13 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 5 - 2026-01-26
+- Completed Task 4: Added compensation & collabs section to profile edit
+- Added multi-select chips for compensation preferences (5 options)
+- Added past restaurant collaborations text field
+- Maps location to primary_city on save
+- TRO-144 UI tasks complete!
 
 ### Iteration 4 - 2026-01-26
 - Completed Task 3: Added social stats section to profile edit screen

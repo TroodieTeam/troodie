@@ -71,6 +71,10 @@ export default function EditCreatorProfileScreen() {
   const [tiktokEngagementRate, setTiktokEngagementRate] = useState('');
   const [tiktokLastPostDate, setTiktokLastPostDate] = useState('');
 
+  // TRO-144: Compensation preferences and collabs
+  const [preferredCompensation, setPreferredCompensation] = useState<string[]>([]);
+  const [pastRestaurantCollabs, setPastRestaurantCollabs] = useState('');
+
   // CM-15: Portfolio management
   const [portfolioItems, setPortfolioItems] = useState<Array<{ 
     id: string; 
@@ -105,6 +109,8 @@ export default function EditCreatorProfileScreen() {
       setTiktokFollowers((creatorProfile as any).tiktok_followers?.toString() || '');
       setTiktokEngagementRate((creatorProfile as any).tiktok_engagement_rate?.toString() || '');
       setTiktokLastPostDate((creatorProfile as any).tiktok_last_post_date || '');
+      setPreferredCompensation((creatorProfile as any).preferred_compensation || []);
+      setPastRestaurantCollabs((creatorProfile as any).past_restaurant_collabs || '');
 
       // CM-15: Load portfolio items
       if (creatorProfile.id) {
@@ -397,8 +403,9 @@ export default function EditCreatorProfileScreen() {
       return;
     }
 
-    // TRO-144: Update social stats
+    // TRO-144: Update social stats and compensation preferences
     const statsResult = await updateCreatorStats(creatorProfile.id, {
+      primaryCity: location || null, // Map location to primary_city
       instagramHandle: instagramHandle || null,
       instagramFollowers: instagramFollowers ? parseInt(instagramFollowers, 10) : null,
       instagramEngagementRate: instagramEngagementRate ? parseFloat(instagramEngagementRate) : null,
@@ -407,6 +414,8 @@ export default function EditCreatorProfileScreen() {
       tiktokFollowers: tiktokFollowers ? parseInt(tiktokFollowers, 10) : null,
       tiktokEngagementRate: tiktokEngagementRate ? parseFloat(tiktokEngagementRate) : null,
       tiktokLastPostDate: tiktokLastPostDate || null,
+      preferredCompensation: preferredCompensation,
+      pastRestaurantCollabs: pastRestaurantCollabs || null,
     });
 
     if (!statsResult.success) {
@@ -911,6 +920,86 @@ export default function EditCreatorProfileScreen() {
               </View>
             </View>
           </View>
+        </View>
+
+        {/* TRO-144: Compensation Preferences */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 4 }}>
+            Compensation Preferences
+          </Text>
+          <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 12 }}>
+            What types of compensation are you open to? (Select all that apply)
+          </Text>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {[
+              { value: 'free', label: 'Free (no comp)' },
+              { value: 'compensated_meals', label: 'Compensated meals' },
+              { value: 'pay_under_150', label: 'Under $150' },
+              { value: 'pay_150_500', label: '$150 - $500' },
+              { value: 'pay_over_500', label: '$500+' },
+            ].map((option) => {
+              const isSelected = preferredCompensation.includes(option.value);
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: isSelected ? DS.colors.primary : DS.colors.border,
+                    backgroundColor: isSelected ? '#FFFBEB' : DS.colors.backgroundWhite,
+                  }}
+                  onPress={() => {
+                    if (isSelected) {
+                      setPreferredCompensation(preferredCompensation.filter(v => v !== option.value));
+                    } else {
+                      setPreferredCompensation([...preferredCompensation, option.value]);
+                    }
+                    setHasChanges(true);
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 14,
+                    color: isSelected ? DS.colors.primary : DS.colors.text,
+                    fontWeight: isSelected ? '600' : '400',
+                  }}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* TRO-144: Past Restaurant Collaborations */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>
+            Past Restaurant Collaborations
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+              borderColor: DS.colors.border,
+              borderRadius: 12,
+              padding: 12,
+              fontSize: 14,
+              color: DS.colors.text,
+              backgroundColor: DS.colors.backgroundWhite,
+              minHeight: 80,
+              textAlignVertical: 'top',
+            }}
+            value={pastRestaurantCollabs}
+            onChangeText={(text) => {
+              setPastRestaurantCollabs(text);
+              setHasChanges(true);
+            }}
+            multiline
+            numberOfLines={3}
+            placeholder="List restaurants you've worked with (e.g., Sweetgreen, Shake Shack, local favorites...)"
+            placeholderTextColor={DS.colors.textLight}
+          />
         </View>
 
         {/* Open to Collabs */}
