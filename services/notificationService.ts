@@ -642,6 +642,140 @@ export class NotificationService implements NotificationServiceInterface {
       priority: 3,
     });
   }
+
+  // =========================================================================
+  // TRO-146: Campaign Notification Methods
+  // =========================================================================
+
+  /**
+   * TRO-146: Create notification for creator about new campaign opportunity
+   */
+  async createCampaignOpportunityNotification(
+    creatorUserId: string,
+    campaignId: string,
+    restaurantName: string,
+    campaignTitle: string
+  ): Promise<Notification> {
+    return this.createNotification({
+      userId: creatorUserId,
+      type: 'campaign',
+      title: 'New Campaign Opportunity!',
+      message: `${restaurantName} is looking for creators`,
+      data: {
+        campaignId,
+        restaurantName,
+        campaignTitle,
+        notificationType: 'new_campaign_opportunity',
+        route: `/creator/campaigns/${campaignId}`,
+      },
+      relatedId: campaignId,
+      relatedType: 'campaign',
+      priority: 2,
+    });
+  }
+
+  /**
+   * TRO-146: Create notification for restaurant about new campaign applicant
+   */
+  async createCampaignApplicantNotification(
+    restaurantOwnerUserId: string,
+    campaignId: string,
+    applicationId: string,
+    creatorName: string,
+    campaignTitle: string
+  ): Promise<Notification> {
+    return this.createNotification({
+      userId: restaurantOwnerUserId,
+      type: 'campaign',
+      title: 'New Campaign Applicant',
+      message: `${creatorName} applied to ${campaignTitle}`,
+      data: {
+        campaignId,
+        applicationId,
+        creatorName,
+        campaignTitle,
+        notificationType: 'new_campaign_applicant',
+        route: `/business/campaigns/${campaignId}/applications`,
+      },
+      relatedId: applicationId,
+      relatedType: 'campaign_application',
+      priority: 2,
+    });
+  }
+
+  /**
+   * TRO-146: Notify matching creators about a new campaign
+   * Returns the number of notifications sent
+   */
+  async notifyMatchingCreators(
+    campaignId: string,
+    restaurantName: string,
+    campaignTitle: string,
+    campaignCity?: string,
+    compensationTypes?: string[]
+  ): Promise<{ count: number; error?: string }> {
+    try {
+      console.log('[notificationService] Notifying matching creators:', {
+        campaignId,
+        restaurantName,
+        campaignCity,
+        compensationTypes,
+      });
+
+      // Find creators matching campaign criteria
+      let query = supabase
+        .from('creator_profiles')
+        .select('user_id')
+        .eq('open_to_collabs', true)
+        .in('availability_status', ['available', 'busy']);
+
+      // Filter by city if provided
+      if (campaignCity) {
+        query = query.or(`location.ilike.%${campaignCity}%,primary_city.ilike.%${campaignCity}%`);
+      }
+
+      // Filter by compensation if provided
+      if (compensationTypes && compensationTypes.length > 0) {
+        query = query.overlaps('preferred_compensation', compensationTypes);
+      }
+
+      const { data: creators, error: queryError } = await query.limit(100);
+
+      if (queryError) {
+        console.error('[notificationService] Error finding matching creators:', queryError);
+        return { count: 0, error: queryError.message };
+      }
+
+      if (!creators || creators.length === 0) {
+        console.log('[notificationService] No matching creators found');
+        return { count: 0 };
+      }
+
+      console.log('[notificationService] Found matching creators:', creators.length);
+
+      // Create notifications for each creator
+      let successCount = 0;
+      for (const creator of creators) {
+        try {
+          await this.createCampaignOpportunityNotification(
+            creator.user_id,
+            campaignId,
+            restaurantName,
+            campaignTitle
+          );
+          successCount++;
+        } catch (err) {
+          console.error('[notificationService] Error notifying creator:', creator.user_id, err);
+        }
+      }
+
+      console.log('[notificationService] Successfully notified creators:', successCount);
+      return { count: successCount };
+    } catch (error: any) {
+      console.error('[notificationService] Exception in notifyMatchingCreators:', error);
+      return { count: 0, error: error.message };
+    }
+  }
 }
 
 // Export singleton instance
