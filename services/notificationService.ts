@@ -6,6 +6,7 @@ import {
     NotificationServiceInterface,
     PushNotification
 } from '@/types/notifications';
+import { pushNotificationService } from './pushNotificationService';
 
 export class NotificationService implements NotificationServiceInterface {
   
@@ -705,7 +706,7 @@ export class NotificationService implements NotificationServiceInterface {
 
   /**
    * TRO-146: Notify matching creators about a new campaign
-   * Returns the number of notifications sent
+   * Returns the number of notifications sent (includes in-app + push)
    */
   async notifyMatchingCreators(
     campaignId: string,
@@ -722,7 +723,7 @@ export class NotificationService implements NotificationServiceInterface {
         compensationTypes,
       });
 
-      // Find creators matching campaign criteria
+      // Find creators matching campaign criteria with their push tokens
       let query = supabase
         .from('creator_profiles')
         .select('user_id')
@@ -753,7 +754,9 @@ export class NotificationService implements NotificationServiceInterface {
 
       console.log('[notificationService] Found matching creators:', creators.length);
 
-      // Create notifications for each creator
+      const userIds = creators.map(c => c.user_id);
+
+      // Create in-app notifications for each creator
       let successCount = 0;
       for (const creator of creators) {
         try {
@@ -769,11 +772,112 @@ export class NotificationService implements NotificationServiceInterface {
         }
       }
 
+      // Send push notifications to creators with push tokens
+      await this.sendCampaignPushNotifications(
+        userIds,
+        'New Campaign Opportunity!',
+        `${restaurantName} is looking for creators`,
+        { campaignId, route: `/creator/campaigns/${campaignId}` }
+      );
+
       console.log('[notificationService] Successfully notified creators:', successCount);
       return { count: successCount };
     } catch (error: any) {
       console.error('[notificationService] Exception in notifyMatchingCreators:', error);
       return { count: 0, error: error.message };
+    }
+  }
+
+  /**
+   * TRO-146: Send push notifications to users for campaign events
+   * Fetches push tokens and sends via Expo push service
+   */
+  private async sendCampaignPushNotifications(
+    userIds: string[],
+    title: string,
+    body: string,
+    data: Record<string, any>
+  ): Promise<void> {
+    try {
+      if (userIds.length === 0) return;
+
+      // Get push tokens for these users
+      const { data: tokens, error: tokenError } = await supabase
+        .from('push_tokens')
+        .select('token')
+        .in('user_id', userIds)
+        .eq('is_active', true);
+
+      if (tokenError || !tokens || tokens.length === 0) {
+        console.log('[notificationService] No push tokens found for users');
+        return;
+      }
+
+      const tokenStrings = tokens.map(t => t.token);
+      console.log('[notificationService] Sending push to', tokenStrings.length, 'devices');
+
+      await pushNotificationService.sendBulkPushNotifications(tokenStrings, {
+        title,
+        body,
+        data,
+        sound: 'default',
+      });
+    } catch (error) {
+      console.error('[notificationService] Error sending campaign push notifications:', error);
+      // Don't throw - push failures shouldn't break the flow
+    }
+  }
+
+  /**
+   * TRO-146: Notify restaurant owner about new campaign applicant
+   * Sends both in-app and push notification
+   */
+  async notifyRestaurantOfApplicant(
+    campaignId: string,
+    applicationId: string,
+    creatorName: string,
+    campaignTitle: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get the campaign owner (restaurant owner)
+      const { data: campaign, error: campaignError } = await supabase
+        .from('campaigns')
+        .select('owner_id, restaurant:restaurants(name)')
+        .eq('id', campaignId)
+        .single();
+
+      if (campaignError || !campaign) {
+        console.error('[notificationService] Error fetching campaign:', campaignError);
+        return { success: false, error: 'Campaign not found' };
+      }
+
+      const restaurantOwnerUserId = campaign.owner_id;
+
+      // Create in-app notification
+      await this.createCampaignApplicantNotification(
+        restaurantOwnerUserId,
+        campaignId,
+        applicationId,
+        creatorName,
+        campaignTitle
+      );
+
+      // Send push notification
+      await this.sendCampaignPushNotifications(
+        [restaurantOwnerUserId],
+        'New Campaign Applicant',
+        `${creatorName} applied to ${campaignTitle}`,
+        {
+          campaignId,
+          applicationId,
+          route: `/business/campaigns/${campaignId}/applications`,
+        }
+      );
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('[notificationService] Error notifying restaurant of applicant:', error);
+      return { success: false, error: error.message };
     }
   }
 }

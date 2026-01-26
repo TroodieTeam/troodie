@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Building
-**Current Task:** Task 11 - Create subscriptionService
+**Current Task:** Task 19-21 - Campaign notification triggers
 **Blocker:** None
 
 ## Completed Tasks
@@ -22,6 +22,11 @@
 - [x] Task 12: Stripe subscription creation integration (service layer)
 - [x] Task 13: Trial modal after first campaign
 - [x] Task 15: Payment required modal (PaymentRequiredModal.tsx)
+- [x] Task 17: Add notification preference types (migration)
+- [x] Task 18: Notification helper functions (notificationService.ts)
+- [x] Task 19: Push notification integration for campaigns
+- [x] Task 20: Trigger notifications on campaign create
+- [x] Task 21: Trigger notifications on application submit
 
 ## In Progress
 
@@ -60,6 +65,19 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 12 - 2026-01-26
+- Completed Tasks 17-21: TRO-146 Creator Notifications
+- Added campaign notification preference types migration
+- Added notificationService methods:
+  - createCampaignOpportunityNotification
+  - createCampaignApplicantNotification
+  - notifyMatchingCreators (in-app + push)
+  - notifyRestaurantOfApplicant (in-app + push)
+- Integrated with pushNotificationService for device push
+- Updated useCampaignSubmission.ts to notify creators on campaign activation
+- Updated campaignApplicationService.ts to notify restaurants on new applicants
+- TRO-146 complete!
 
 ### Iteration 11 - 2026-01-26
 - Completed Tasks 12, 13, 15: TRO-137 UI components
