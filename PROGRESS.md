@@ -19,10 +19,14 @@
 - [x] Task 9: Sort dropdown implementation
 - [x] Task 10: Database schema for subscriptions
 - [x] Task 11: Create subscriptionService
+- [x] Task 12: Stripe subscription creation integration (service layer)
+- [x] Task 13: Trial modal after first campaign
+- [x] Task 15: Payment required modal (PaymentRequiredModal.tsx)
 
 ## In Progress
 
-- [ ] Task 12: Stripe subscription creation integration ← NEXT
+- [ ] Task 14: Webhook handlers for subscription events ← BLOCKED (needs Edge Function)
+- [ ] Task 16: Dashboard subscription status display ← NEXT
 
 ## Pending Tasks
 
@@ -56,6 +60,12 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 11 - 2026-01-26
+- Completed Tasks 12, 13, 15: TRO-137 UI components
+- Created SubscriptionTrialModal.tsx - shown after first campaign
+- Created PaymentRequiredModal.tsx - shown when subscription lapsed
+- Task 14 blocked: webhook handlers need Edge Function implementation
 
 ### Iteration 10 - 2026-01-26
 - Completed Task 11: Created subscriptionService.ts
