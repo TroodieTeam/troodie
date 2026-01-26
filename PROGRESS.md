@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Building
-**Current Task:** Task 7 - Filter UI - Follower count buckets
+**Current Task:** Task 10 - Database schema for subscriptions
 **Blocker:** None
 
 ## Completed Tasks
@@ -14,10 +14,13 @@
 - [x] Task 4: Creator profile edit - compensation & collabs section
 - [x] Task 5: Database function update for advanced filtering
 - [x] Task 6: Update CreatorFilters interface and service
+- [x] Task 7: Filter UI - Follower count buckets
+- [x] Task 8: Filter UI - Compensation and city filters
+- [x] Task 9: Sort dropdown implementation
 
 ## In Progress
 
-- [ ] Task 7: Filter UI - Follower count buckets ← NEXT
+- [ ] Task 10: Database schema for subscriptions ← NEXT
 
 ## Pending Tasks
 
@@ -51,6 +54,17 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 8 - 2026-01-26
+- Completed Tasks 7, 8, 9: Full filter UI for browse creators screen
+- Added follower bucket filter (All, Under 5K, 5K-20K, 20K+)
+- Added compensation multi-select filter
+- Added city text input filter
+- Added sort dropdown (Default, Recently Active, Followers High/Low)
+- Added filter toggle button in search bar
+- Added clear filters functionality
+- Filters trigger server-side reload via getCreators()
+- TRO-145 complete!
 
 ### Iteration 7 - 2026-01-26
 - Completed Task 6: Updated getCreators() service to use new parameters

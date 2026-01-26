@@ -11,7 +11,7 @@ import { DS } from '@/components/design-system/tokens';
 import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { formatFollowers, getCreators } from '@/services/creatorDiscoveryService';
+import { CreatorFilters, formatFollowers, getCreators } from '@/services/creatorDiscoveryService';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Clock, Filter, MapPin, Play, Search, Star, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -62,19 +62,45 @@ export default function BrowseCreators() {
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
 
+  // TRO-145: Filter state
+  const [followerBucket, setFollowerBucket] = useState<'under5k' | '5k-20k' | '20kplus' | null>(null);
+  const [selectedCompensation, setSelectedCompensation] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<'recentlyActive' | 'followersHigh' | 'followersLow' | null>(null);
+  const [cityFilter, setCityFilter] = useState<string>('');
+
   useEffect(() => {
     loadCreators();
-  }, []);
+  }, [followerBucket, selectedCompensation, sortBy, cityFilter]);
 
   useEffect(() => {
     applyFilters();
   }, [searchQuery, creators]);
 
+  // TRO-145: Check if any filters are active
+  const hasActiveFilters = followerBucket !== null || selectedCompensation.length > 0 || sortBy !== null || cityFilter !== '';
+
+  // TRO-145: Clear all filters
+  const clearFilters = () => {
+    setFollowerBucket(null);
+    setSelectedCompensation([]);
+    setSortBy(null);
+    setCityFilter('');
+    setSearchQuery('');
+  };
+
   const loadCreators = async () => {
     try {
       setLoading(true);
-      console.log('[BrowseCreators] Loading creators...');
-      const { data, error } = await getCreators({}, 50, 0);
+
+      // TRO-145: Build filter object
+      const filters: CreatorFilters = {};
+      if (cityFilter) filters.city = cityFilter;
+      if (followerBucket) filters.followerBucket = followerBucket;
+      if (selectedCompensation.length > 0) filters.preferredCompensation = selectedCompensation;
+      if (sortBy) filters.sortBy = sortBy;
+
+      console.log('[BrowseCreators] Loading creators with filters:', filters);
+      const { data, error } = await getCreators(filters, 50, 0);
       
       if (error) {
         console.error('[BrowseCreators] Error loading creators:', error);
@@ -706,8 +732,172 @@ export default function BrowseCreators() {
               color: DS.colors.text,
             }}
           />
+          <TouchableOpacity
+            onPress={() => setShowFilters(!showFilters)}
+            style={{
+              padding: 8,
+              backgroundColor: hasActiveFilters ? DS.colors.primary : 'transparent',
+              borderRadius: 6,
+            }}
+          >
+            <Filter size={18} color={hasActiveFilters ? 'white' : DS.colors.textLight} />
+          </TouchableOpacity>
         </View>
       </View>
+
+      {/* TRO-145: Filter Section */}
+      {showFilters && (
+        <View style={{ backgroundColor: DS.colors.backgroundWhite, paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: DS.colors.border }}>
+          {/* Sort Options */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>Sort by</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {[
+                { value: null, label: 'Default' },
+                { value: 'recentlyActive' as const, label: 'Recently Active' },
+                { value: 'followersHigh' as const, label: 'Followers (High)' },
+                { value: 'followersLow' as const, label: 'Followers (Low)' },
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.value || 'default'}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: sortBy === option.value ? DS.colors.primary : DS.colors.border,
+                    backgroundColor: sortBy === option.value ? '#FFFBEB' : 'transparent',
+                  }}
+                  onPress={() => setSortBy(option.value)}
+                >
+                  <Text style={{
+                    fontSize: 13,
+                    color: sortBy === option.value ? DS.colors.primary : DS.colors.text,
+                    fontWeight: sortBy === option.value ? '600' : '400',
+                  }}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Follower Buckets */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>Follower Count</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {[
+                { value: null, label: 'All' },
+                { value: 'under5k' as const, label: 'Under 5K' },
+                { value: '5k-20k' as const, label: '5K - 20K' },
+                { value: '20kplus' as const, label: '20K+' },
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.value || 'all'}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: followerBucket === option.value ? DS.colors.primary : DS.colors.border,
+                    backgroundColor: followerBucket === option.value ? '#FFFBEB' : 'transparent',
+                  }}
+                  onPress={() => setFollowerBucket(option.value)}
+                >
+                  <Text style={{
+                    fontSize: 13,
+                    color: followerBucket === option.value ? DS.colors.primary : DS.colors.text,
+                    fontWeight: followerBucket === option.value ? '600' : '400',
+                  }}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Compensation Preferences */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>Compensation</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {[
+                { value: 'free', label: 'Free' },
+                { value: 'compensated_meals', label: 'Comp Meals' },
+                { value: 'pay_under_150', label: 'Under $150' },
+                { value: 'pay_150_500', label: '$150-500' },
+                { value: 'pay_over_500', label: '$500+' },
+              ].map((option) => {
+                const isSelected = selectedCompensation.includes(option.value);
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: isSelected ? DS.colors.primary : DS.colors.border,
+                      backgroundColor: isSelected ? '#FFFBEB' : 'transparent',
+                    }}
+                    onPress={() => {
+                      if (isSelected) {
+                        setSelectedCompensation(selectedCompensation.filter(v => v !== option.value));
+                      } else {
+                        setSelectedCompensation([...selectedCompensation, option.value]);
+                      }
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 13,
+                      color: isSelected ? DS.colors.primary : DS.colors.text,
+                      fontWeight: isSelected ? '600' : '400',
+                    }}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* City Filter */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>City</Text>
+            <TextInput
+              value={cityFilter}
+              onChangeText={setCityFilter}
+              placeholder="Enter city name..."
+              placeholderTextColor={DS.colors.textLight}
+              style={{
+                borderWidth: 1,
+                borderColor: DS.colors.border,
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 14,
+                color: DS.colors.text,
+                backgroundColor: DS.colors.background,
+              }}
+            />
+          </View>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <TouchableOpacity
+              onPress={clearFilters}
+              style={{
+                paddingVertical: 10,
+                alignItems: 'center',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: DS.colors.border,
+              }}
+            >
+              <Text style={{ fontSize: 14, color: DS.colors.textLight, fontWeight: '500' }}>Clear All Filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Results Count */}
       <View style={{ padding: 12, backgroundColor: DS.colors.background }}>
