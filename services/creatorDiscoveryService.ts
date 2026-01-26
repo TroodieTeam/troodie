@@ -93,19 +93,34 @@ export async function getCreators(
   offset: number = 0
 ): Promise<{ data: CreatorProfile[]; error?: string; hasMore: boolean }> {
   try {
+    // TRO-145: Convert follower bucket to min/max range
+    let minFollowers = filters.minFollowers || null;
+    let maxFollowers: number | null = null;
+
+    if (filters.followerBucket) {
+      const range = getFollowerRange(filters.followerBucket);
+      minFollowers = range.min;
+      maxFollowers = range.max;
+    }
+
     console.log('[getCreators] Fetching creators with filters:', {
       city: filters.city,
-      minFollowers: filters.minFollowers,
+      minFollowers,
+      maxFollowers,
       minEngagement: filters.minEngagement,
+      preferredCompensation: filters.preferredCompensation,
+      sortBy: filters.sortBy,
       limit,
       offset,
     });
 
     const { data, error } = await supabase.rpc('get_creators', {
       p_city: filters.city || null,
-      p_min_followers: filters.minFollowers || null,
+      p_min_followers: minFollowers,
+      p_max_followers: maxFollowers,
       p_min_engagement: filters.minEngagement || null,
-      // Removed: p_collab_types (column removed in CM-10)
+      p_compensation_types: filters.preferredCompensation || null,
+      p_sort_by: filters.sortBy || 'engagement',
       p_limit: limit + 1, // Fetch one extra to check hasMore
       p_offset: offset,
     });
