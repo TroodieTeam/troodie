@@ -3,7 +3,7 @@
 ## Current Status
 
 **Phase:** Building
-**Current Task:** Task 10 - Database schema for subscriptions
+**Current Task:** Task 11 - Create subscriptionService
 **Blocker:** None
 
 ## Completed Tasks
@@ -17,10 +17,11 @@
 - [x] Task 7: Filter UI - Follower count buckets
 - [x] Task 8: Filter UI - Compensation and city filters
 - [x] Task 9: Sort dropdown implementation
+- [x] Task 10: Database schema for subscriptions
 
 ## In Progress
 
-- [ ] Task 10: Database schema for subscriptions ← NEXT
+- [ ] Task 11: Create subscriptionService ← NEXT
 
 ## Pending Tasks
 
@@ -54,6 +55,13 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 9 - 2026-01-26
+- Completed Task 10: Database schema for subscriptions
+- Added to restaurant_claims: stripe_subscription_id, subscription_status,
+  trial_start_date, trial_end_date, subscription_reminder_dismissed_at
+- Created can_restaurant_post_campaign() function for checking posting eligibility
+- Status values: none, trialing, active, past_due, canceled, unpaid
 
 ### Iteration 8 - 2026-01-26
 - Completed Tasks 7, 8, 9: Full filter UI for browse creators screen
