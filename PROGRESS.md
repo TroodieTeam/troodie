@@ -27,11 +27,11 @@
 - [x] Task 19: Push notification integration for campaigns
 - [x] Task 20: Trigger notifications on campaign create
 - [x] Task 21: Trigger notifications on application submit
+- [x] Task 16: Dashboard subscription status display
 
 ## In Progress
 
 - [ ] Task 14: Webhook handlers for subscription events ← BLOCKED (needs Edge Function)
-- [ ] Task 16: Dashboard subscription status display ← NEXT
 
 ## Pending Tasks
 
@@ -65,6 +65,14 @@
 - [ ] Task 21: Trigger notifications on application submit
 
 ## Session Log
+
+### Iteration 13 - 2026-01-26
+- Completed Task 16: Dashboard subscription status display
+- Added SubscriptionStatusBanner component to business dashboard
+- Shows trial days remaining, active status, or payment issues
+- Fetches subscription status via getSubscriptionStatus()
+- Links to subscription management page
+- TRO-137 nearly complete (Task 14 blocked, needs Edge Function)
 
 ### Iteration 12 - 2026-01-26
 - Completed Tasks 17-21: TRO-146 Creator Notifications

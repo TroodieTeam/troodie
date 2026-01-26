@@ -3,12 +3,14 @@ import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant } from '@/contexts/RestaurantContext';
 import { supabase } from '@/lib/supabase';
+import { getSubscriptionStatus, SubscriptionInfo } from '@/services/subscriptionService';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
   BarChart,
   Bell,
   CheckCircle,
+  CreditCard,
   Plus,
   Search,
   Settings,
@@ -72,6 +74,7 @@ export default function BusinessDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -122,6 +125,19 @@ export default function BusinessDashboard() {
         setDashboardData(null);
         setLoading(false);
         return;
+      }
+
+      // TRO-137: Fetch subscription status for current restaurant
+      const { data: restaurantClaim } = await supabase
+        .from('restaurant_claims')
+        .select('id')
+        .eq('restaurant_id', currentRestaurantId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (restaurantClaim) {
+        const { data: subInfo } = await getSubscriptionStatus(restaurantClaim.id);
+        setSubscriptionInfo(subInfo);
       }
 
       // Get campaigns
@@ -366,6 +382,14 @@ export default function BusinessDashboard() {
           </View>
         )}
       </View>
+
+      {/* TRO-137: Subscription Status Banner */}
+      {subscriptionInfo && (
+        <SubscriptionStatusBanner
+          subscriptionInfo={subscriptionInfo}
+          onManageSubscription={() => router.push('/business/settings/subscription')}
+        />
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -769,3 +793,129 @@ const EmptyDashboard = ({ onCreateCampaign }: any) => (
     </View>
   </SafeAreaView>
 );
+
+// TRO-137: Subscription Status Banner Component
+const SubscriptionStatusBanner = ({
+  subscriptionInfo,
+  onManageSubscription,
+}: {
+  subscriptionInfo: SubscriptionInfo;
+  onManageSubscription: () => void;
+}) => {
+  const { status, trialDaysRemaining, canPostCampaigns } = subscriptionInfo;
+
+  // Determine banner style and message based on status
+  const getBannerConfig = () => {
+    switch (status) {
+      case 'trialing':
+        return {
+          backgroundColor: '#FFFBEB',
+          borderColor: '#FCD34D',
+          iconColor: '#F59E0B',
+          title: `Trial: ${trialDaysRemaining} days left`,
+          subtitle: 'Subscribe to keep posting after trial ends',
+          showAction: true,
+        };
+      case 'active':
+        return {
+          backgroundColor: '#DCFCE7',
+          borderColor: '#86EFAC',
+          iconColor: '#22C55E',
+          title: 'Subscription Active',
+          subtitle: 'Unlimited campaign posting',
+          showAction: false,
+        };
+      case 'past_due':
+        return {
+          backgroundColor: '#FEE2E2',
+          borderColor: '#FCA5A5',
+          iconColor: '#EF4444',
+          title: 'Payment Failed',
+          subtitle: 'Update your payment method to continue',
+          showAction: true,
+        };
+      case 'canceled':
+        return {
+          backgroundColor: '#FEE2E2',
+          borderColor: '#FCA5A5',
+          iconColor: '#EF4444',
+          title: 'Subscription Canceled',
+          subtitle: 'Resubscribe to post new campaigns',
+          showAction: true,
+        };
+      case 'unpaid':
+        return {
+          backgroundColor: '#FEE2E2',
+          borderColor: '#FCA5A5',
+          iconColor: '#EF4444',
+          title: 'Payment Required',
+          subtitle: 'Resolve outstanding balance to continue',
+          showAction: true,
+        };
+      default:
+        // status === 'none' - no subscription yet
+        if (!canPostCampaigns) {
+          return {
+            backgroundColor: '#FEF3C7',
+            borderColor: '#FCD34D',
+            iconColor: '#F59E0B',
+            title: 'Trial Ended',
+            subtitle: 'Subscribe to post new campaigns',
+            showAction: true,
+          };
+        }
+        return null;
+    }
+  };
+
+  const config = getBannerConfig();
+
+  // Don't show banner for active subscriptions or valid state
+  if (!config) return null;
+
+  return (
+    <TouchableOpacity
+      onPress={config.showAction ? onManageSubscription : undefined}
+      activeOpacity={config.showAction ? 0.7 : 1}
+      style={{
+        marginHorizontal: DS.spacing.lg,
+        marginTop: DS.spacing.md,
+        marginBottom: DS.spacing.sm,
+        backgroundColor: config.backgroundColor,
+        borderWidth: 1,
+        borderColor: config.borderColor,
+        borderRadius: DS.borderRadius.lg,
+        padding: DS.spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: DS.borderRadius.md,
+          backgroundColor: `${config.iconColor}20`,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: DS.spacing.md,
+        }}
+      >
+        <CreditCard size={20} color={config.iconColor} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
+          {config.title}
+        </Text>
+        <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>
+          {config.subtitle}
+        </Text>
+      </View>
+      {config.showAction && (
+        <Text style={{ ...DS.typography.button, color: config.iconColor }}>
+          Manage
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+};
