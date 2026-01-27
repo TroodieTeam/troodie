@@ -131,7 +131,7 @@ export default function BusinessDashboard() {
           *,
           campaign_applications (id, status)
         `)
-        .eq('owner_id', user.id)
+        .eq('restaurant_id', currentRestaurantId)
         .order('created_at', { ascending: false });
 
       // Calculate metrics
