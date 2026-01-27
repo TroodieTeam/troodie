@@ -1,7 +1,7 @@
 {
   "name": "troodie",
   "main": "expo-router/entry",
-  "version": "1.0.12",
+  "version": "1.0.14",
   "scripts": {
     "start": "expo start",
     "start:production": "EAS_BUILD_PROFILE=production expo start",
