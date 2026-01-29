@@ -24,6 +24,7 @@ export const linking = {
       'settings/privacy': 'settings/privacy',
       'find-friends': 'find-friends',
       'quick-saves': 'quick-saves',
+      'invite/[token]': 'invite/:token',
       '+not-found': '*',
     },
   },

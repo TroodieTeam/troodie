@@ -88,6 +88,13 @@ export async function inviteTeamMember(
         if (email.toLowerCase() === user.email?.toLowerCase()) {
             return { success: false, error: 'You cannot invite yourself' };
         }
+        // Clean up any old invitations for this email before creating new one
+
+        await supabase
+            .from('restaurant_team_invitations')
+            .delete()
+            .eq('restaurant_id', restaurantId)
+            .eq('email', email.toLowerCase());
 
         // Create invitation
         const { data: invitation, error: insertError } = await supabase
@@ -101,10 +108,6 @@ export async function inviteTeamMember(
             .single();
 
         if (insertError) {
-            // Check for unique violation (already invited)
-            if (insertError.code === '23505') {
-                return { success: false, error: 'An invitation has already been sent to this email' };
-            }
             console.error('[TeamService] Insert error:', insertError);
             return { success: false, error: insertError.message };
         }
