@@ -1,20 +1,20 @@
 import { supabase } from '@/lib/supabase';
 import {
-    CreateNotificationParams,
-    Notification,
-    NotificationInsert,
-    NotificationServiceInterface,
-    PushNotification
+  CreateNotificationParams,
+  Notification,
+  NotificationInsert,
+  NotificationServiceInterface,
+  PushNotification
 } from '@/types/notifications';
 
 export class NotificationService implements NotificationServiceInterface {
-  
+
   /**
    * Create a new notification
    */
   async createNotification(params: CreateNotificationParams): Promise<Notification> {
     const { userId, type, title, message, data, relatedId, relatedType, priority = 1, expiresAt } = params;
-    
+
     // Try using the SECURITY DEFINER function first (bypasses RLS)
     const { data: notificationId, error: functionError } = await supabase
       .rpc('create_notification', {
@@ -222,7 +222,7 @@ export class NotificationService implements NotificationServiceInterface {
   async sendBulkPushNotifications(tokens: string[], notification: PushNotification): Promise<void> {
     // This would integrate with a push notification service like Expo Notifications
     // For now, we'll log the notification
-    
+
     // TODO: Implement actual push notification sending
     // This would typically use Expo Notifications or a similar service
   }
@@ -640,6 +640,39 @@ export class NotificationService implements NotificationServiceInterface {
       relatedId: deliverableId,
       relatedType: 'deliverable',
       priority: 3,
+    });
+  }
+  async createCampaignOpportunityNotification(
+    creatorId: string,
+    campaignId: string,
+    campaignTitle: string,
+    restaurantId: string,
+    restaurantName: string,
+    restaurantCity: string,
+    budgetCents?: number,
+    proposedRateCents?: number,
+    endDate?: string,
+    restaurantPhotoUrl?: string
+  ): Promise<Notification> {
+    return this.createNotification({
+      userId: creatorId,
+      type: 'campaign_opportunity',
+      title: 'New Campaign Opportunity Posted',
+      message: `New campaign opportunity at ${restaurantName}`,
+      data: {
+        campaignId,
+        campaignTitle,
+        restaurantId,
+        restaurantName,
+        restaurantCity,
+        budgetCents,
+        proposedRateCents,
+        endDate,
+        restaurantPhotoUrl,
+      },
+      relatedId: campaignId,
+      relatedType: 'campaign',
+      priority: 2,
     });
   }
 }
