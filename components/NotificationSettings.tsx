@@ -8,6 +8,7 @@ import {
 import {
   Bell,
   Briefcase,
+  CheckCircle,
   ChevronRight,
   Heart,
   MapPin,
@@ -76,6 +77,13 @@ const categoryConfigs: CategoryConfig[] = [
     description: 'New creators applying to your campaigns',
     icon: Users,
     color: '#8B5CF6'
+  },
+  {
+    key: 'application_approved',
+    title: 'Application Approvals',
+    description: 'When restaurants approve your applications',
+    icon: CheckCircle,
+    color: '#10B981'
   },
   {
     key: 'system',

@@ -275,6 +275,14 @@ export default function HomeScreen() {
           router.push(`/business/campaigns/${campaignId}?tab=applications`);
         }
         break;
+      case 'application_approved':
+        if (notification.data && typeof notification.data === 'object' && 'campaign_id' in notification.data) {
+          const campaignId = (notification.data as any).campaign_id;
+          console.log('Navigating to approved campaign:', campaignId);
+          // Navigate to creator's campaigns page (shows accepted campaigns)
+          router.push('/creator/campaigns');
+        }
+        break;
       default:
         break;
     }

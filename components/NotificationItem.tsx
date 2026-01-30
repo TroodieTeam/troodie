@@ -4,6 +4,7 @@ import {
   AtSign,
   Bell,
   Briefcase,
+  CheckCircle,
   Heart,
   MapPin,
   MessageCircle,
@@ -55,6 +56,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'campaign_opportunity': return Briefcase;
       case 'system': return Settings;
       case 'campaign_application_submitted': return Users;
+      case 'application_approved': return CheckCircle;
       default: return Bell;
     }
   };
@@ -72,6 +74,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'campaign_opportunity': return '#F97316';
       case 'system': return '#6B7280';
       case 'campaign_application_submitted': return '#8B5CF6';
+      case 'application_approved': return '#10B981';
       default: return designTokens.colors.primaryOrange;
     }
   };

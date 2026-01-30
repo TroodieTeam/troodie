@@ -25,6 +25,7 @@ export type NotificationType =
   | 'milestone'
   | 'campaign_opportunity'
   | 'campaign_application_submitted'
+  | 'application_approved'
   | 'system';
 
 // Notification category enum
@@ -35,6 +36,7 @@ export type NotificationCategory =
   | 'boards'
   | 'campaign_opportunities'
   | 'campaign_application_submitted'
+  | 'application_approved'
   | 'system';
 
 // Notification frequency enum
@@ -130,6 +132,11 @@ export interface CampaignOpportunityNotificationData {
   restaurantPhotoUrl?: string;
 }
 
+export interface ApplicationApprovedNotificationData {
+  campaign_id: string;
+  application_id: string;
+  restaurant_id?: string;
+}
 // Union type for all notification data
 export type NotificationData =
   | LikeNotificationData
@@ -142,7 +149,8 @@ export type NotificationData =
   | MilestoneData
   | CampaignOpportunityNotificationData
   | SystemNotificationData
-  | CampaignApplicationNotificationData;
+  | CampaignApplicationNotificationData
+  | ApplicationApprovedNotificationData;
 
 // Notification creation interface
 export interface CreateNotificationParams {
@@ -200,6 +208,12 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   campaign_application_submitted: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  application_approved: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;
