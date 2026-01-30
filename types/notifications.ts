@@ -24,6 +24,7 @@ export type NotificationType =
   | 'post_mention'
   | 'milestone'
   | 'campaign_opportunity'
+  | 'campaign_application_submitted'
   | 'system';
 
 // Notification category enum
@@ -33,6 +34,7 @@ export type NotificationCategory =
   | 'restaurants'
   | 'boards'
   | 'campaign_opportunities'
+  | 'campaign_application_submitted'
   | 'system';
 
 // Notification frequency enum
@@ -90,6 +92,10 @@ export interface BoardInviteData {
   inviterName: string;
   inviterAvatar?: string;
 }
+export interface CampaignApplicationNotificationData {
+  campaign_id: string;
+  application_id: string;
+}
 
 export interface PostMentionData {
   postId: string;
@@ -135,7 +141,8 @@ export type NotificationData =
   | PostMentionData
   | MilestoneData
   | CampaignOpportunityNotificationData
-  | SystemNotificationData;
+  | SystemNotificationData
+  | CampaignApplicationNotificationData;
 
 // Notification creation interface
 export interface CreateNotificationParams {
@@ -187,6 +194,12 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   campaign_opportunities: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  campaign_application_submitted: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;

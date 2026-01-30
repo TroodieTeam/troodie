@@ -47,14 +47,6 @@ Deno.serve(async (req) => {
 
         const notification = payload.record
 
-        // 2. Filter for campaign_opportunity (redundant if webhook filter exists, but safe)
-        if (notification.type !== 'campaign_opportunity') {
-            console.log(`ℹ️ [PushNotification] Skipping type: ${notification.type}`)
-            return new Response(JSON.stringify({ message: 'Skipped non-campaign type' }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
-        }
-
         console.log(`Processing notification ${notification.id} for user ${notification.user_id}`)
 
         // 3. Get user's active push tokens

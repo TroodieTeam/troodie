@@ -71,6 +71,13 @@ const categoryConfigs: CategoryConfig[] = [
     color: '#F97316'
   },
   {
+    key: 'campaign_application_submitted',
+    title: 'Creator Applications',
+    description: 'New creators applying to your campaigns',
+    icon: Users,
+    color: '#8B5CF6'
+  },
+  {
     key: 'system',
     title: 'System',
     description: 'App updates, maintenance, and announcements',

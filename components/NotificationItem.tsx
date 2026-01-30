@@ -54,6 +54,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'milestone': return Target;
       case 'campaign_opportunity': return Briefcase;
       case 'system': return Settings;
+      case 'campaign_application_submitted': return Users;
       default: return Bell;
     }
   };
@@ -70,6 +71,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'milestone': return '#84CC16';
       case 'campaign_opportunity': return '#F97316';
       case 'system': return '#6B7280';
+      case 'campaign_application_submitted': return '#8B5CF6';
       default: return designTokens.colors.primaryOrange;
     }
   };

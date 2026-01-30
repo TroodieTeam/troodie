@@ -30,8 +30,9 @@ export function useCampaignDetail(id: string | undefined) {
       ];
       const isAdmin = ADMIN_USER_IDS.includes(user.id);
 
-      // Load campaign details - admins can see all campaigns, regular users only their own
-      let query = supabase
+      // Load campaign details
+      // Note: Campaign ownership is validated through RLS policies that check restaurants.owner_id
+      const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
         .select(`
           *,
@@ -41,13 +42,8 @@ export function useCampaignDetail(id: string | undefined) {
             cover_photo_url
           )
         `)
-        .eq('id', id);
-
-      if (!isAdmin) {
-        query = query.eq('owner_id', user.id);
-      }
-
-      const { data: campaignData, error: campaignError } = await query.single();
+        .eq('id', id)
+        .single();
 
       if (campaignError) {
         throw campaignError;
@@ -58,7 +54,7 @@ export function useCampaignDetail(id: string | undefined) {
         restaurant: campaignData.restaurants,
       };
       setCampaign(campaignObj);
-      
+
       // Check if this is a test campaign
       const title = campaignData.title || campaignData.name || '';
       setIsTestCampaign(
@@ -81,7 +77,7 @@ export function useCampaignDetail(id: string | undefined) {
         `)
         .eq('campaign_id', id)
         .order('applied_at', { ascending: false });
-      
+
       // Include rating fields (CM-16)
       const applicationsWithRatings = applicationsData?.map(app => ({
         ...app,
@@ -93,7 +89,7 @@ export function useCampaignDetail(id: string | undefined) {
       if (appsError) {
         throw appsError;
       }
-      
+
       setApplications(applicationsWithRatings);
 
       // Load content
