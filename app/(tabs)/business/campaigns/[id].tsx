@@ -1,7 +1,7 @@
 import { DS } from '@/components/design-system/tokens';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertCircle, ArrowLeft, Edit } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,10 +20,17 @@ import { TabNavigation, TabType } from '@/components/campaigns/detail/TabNavigat
 
 export default function CampaignDetail() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
+
   // State for UI
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  // Set initial tab from query parameter
+  useEffect(() => {
+    if (tab && ['overview', 'applications', 'deliverables', 'invitations'].includes(tab)) {
+      setActiveTab(tab as TabType);
+    }
+  }, [tab]);
 
   // Custom Hooks
   const {
@@ -99,15 +106,15 @@ export default function CampaignDetail() {
         justifyContent: 'space-between',
         backgroundColor: DS.colors.background,
       }}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => router.back()}
           style={{ padding: DS.spacing.xs, marginLeft: -DS.spacing.xs }}
         >
           <ArrowLeft size={24} color={DS.colors.textDark} />
         </TouchableOpacity>
-        
-        <Text style={{ 
-          ...DS.typography.h3, 
+
+        <Text style={{
+          ...DS.typography.h3,
           color: DS.colors.textDark,
           flex: 1,
           textAlign: 'center',
@@ -115,8 +122,8 @@ export default function CampaignDetail() {
         }} numberOfLines={1}>
           {campaign.title || campaign.name}
         </Text>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           onPress={() => router.push(`/business/campaigns/${id}/edit`)}
           style={{ padding: DS.spacing.xs }}
         >
@@ -124,7 +131,7 @@ export default function CampaignDetail() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={DS.colors.primaryOrange} />
@@ -152,9 +159,9 @@ export default function CampaignDetail() {
 
         <CampaignHero campaign={campaign} />
 
-        <TabNavigation 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
+        <TabNavigation
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           counts={{
             applications: applications.filter(a => a.status === 'pending').length,
             invitations: invitations.filter(i => i.status === 'pending').length,
@@ -164,7 +171,7 @@ export default function CampaignDetail() {
 
         <View style={{ paddingHorizontal: DS.spacing.lg }}>
           {activeTab === 'overview' && (
-            <OverviewTab 
+            <OverviewTab
               campaign={campaign}
               applications={applications}
               deliverables={deliverables}
@@ -174,7 +181,7 @@ export default function CampaignDetail() {
           )}
 
           {activeTab === 'applications' && (
-            <ApplicationsList 
+            <ApplicationsList
               applications={applications}
               onAction={handleApplicationAction}
               onOpenRating={handleOpenRatingModal}
@@ -182,7 +189,7 @@ export default function CampaignDetail() {
           )}
 
           {activeTab === 'deliverables' && (
-            <DeliverablesList 
+            <DeliverablesList
               deliverables={deliverables}
               onStatusChange={handleDeliverableStatusChange}
               onRateCreator={handleOpenRatingModal}
@@ -190,7 +197,7 @@ export default function CampaignDetail() {
           )}
 
           {activeTab === 'invitations' && (
-            <InvitationsList 
+            <InvitationsList
               invitations={invitations}
               onWithdraw={handleWithdrawInvitation}
             />
@@ -198,7 +205,7 @@ export default function CampaignDetail() {
         </View>
       </ScrollView>
 
-      <RatingModal 
+      <RatingModal
         visible={ratingModalVisible}
         onClose={() => setRatingModalVisible(false)}
         rating={rating}

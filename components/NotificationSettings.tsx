@@ -1,28 +1,30 @@
 import { designTokens } from '@/constants/designTokens';
 import {
-    NotificationCategory,
-    NotificationFrequency,
-    NotificationSettingsProps,
-    UserNotificationPreferences
+  NotificationCategory,
+  NotificationFrequency,
+  NotificationSettingsProps,
+  UserNotificationPreferences
 } from '@/types/notifications';
 import {
-    Bell,
-    ChevronRight,
-    Heart,
-    MapPin,
-    Settings,
-    Trophy,
-    Users
+  Bell,
+  Briefcase,
+  CheckCircle,
+  ChevronRight,
+  Heart,
+  MapPin,
+  Settings,
+  Trophy,
+  Users
 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface CategoryConfig {
@@ -63,6 +65,27 @@ const categoryConfigs: CategoryConfig[] = [
     color: '#06B6D4'
   },
   {
+    key: 'campaign_opportunities',
+    title: 'Campaign Opportunities',
+    description: 'New campaigns posted in your city',
+    icon: Briefcase,
+    color: '#F97316'
+  },
+  {
+    key: 'campaign_application_submitted',
+    title: 'Creator Applications',
+    description: 'New creators applying to your campaigns',
+    icon: Users,
+    color: '#8B5CF6'
+  },
+  {
+    key: 'application_approved',
+    title: 'Application Approvals',
+    description: 'When restaurants approve your applications',
+    icon: CheckCircle,
+    color: '#10B981'
+  },
+  {
     key: 'system',
     title: 'System',
     description: 'App updates, maintenance, and announcements',
@@ -77,11 +100,11 @@ const frequencyOptions: { value: NotificationFrequency; label: string }[] = [
   { value: 'weekly', label: 'Weekly digest' }
 ];
 
-export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ 
-  preferences, 
-  onPreferencesChange, 
-  onSave, 
-  loading = false 
+export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
+  preferences,
+  onPreferencesChange,
+  onSave,
+  loading = false
 }) => {
   const [localPreferences, setLocalPreferences] = useState<UserNotificationPreferences>(preferences);
   const [expandedCategory, setExpandedCategory] = useState<NotificationCategory | null>(null);
@@ -130,14 +153,14 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           <View style={styles.categoryActions}>
             <Switch
               value={categoryPrefs.in_app_enabled}
-              onValueChange={(value) => 
+              onValueChange={(value) =>
                 updateCategoryPreference(config.key, 'in_app_enabled', value)
               }
               trackColor={{ false: designTokens.colors.borderLight, true: `${config.color}40` }}
               thumbColor={categoryPrefs.in_app_enabled ? config.color : designTokens.colors.textLight}
             />
-            <ChevronRight 
-              size={16} 
+            <ChevronRight
+              size={16}
               color={designTokens.colors.textLight}
               style={[styles.expandIcon, isExpanded && styles.expandIconRotated]}
             />
@@ -150,19 +173,19 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
               <Text style={styles.settingLabel}>Push notifications</Text>
               <Switch
                 value={categoryPrefs.push_enabled}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   updateCategoryPreference(config.key, 'push_enabled', value)
                 }
                 trackColor={{ false: designTokens.colors.borderLight, true: `${config.color}40` }}
                 thumbColor={categoryPrefs.push_enabled ? config.color : designTokens.colors.textLight}
               />
             </View>
-            
+
             <View style={styles.settingRow}>
               <Text style={styles.settingLabel}>Email notifications</Text>
               <Switch
                 value={categoryPrefs.email_enabled}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   updateCategoryPreference(config.key, 'email_enabled', value)
                 }
                 trackColor={{ false: designTokens.colors.borderLight, true: `${config.color}40` }}
@@ -180,7 +203,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
                       styles.frequencyOption,
                       categoryPrefs.frequency === option.value && styles.frequencyOptionSelected
                     ]}
-                    onPress={() => 
+                    onPress={() =>
                       updateCategoryPreference(config.key, 'frequency', option.value)
                     }
                   >

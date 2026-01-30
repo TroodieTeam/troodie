@@ -14,23 +14,29 @@ export type PushTokenInsert = Database['public']['Tables']['push_tokens']['Inser
 export type PushTokenUpdate = Database['public']['Tables']['push_tokens']['Update'];
 
 // Notification type enum
-export type NotificationType = 
-  | 'like' 
-  | 'comment' 
-  | 'follow' 
-  | 'achievement' 
+export type NotificationType =
+  | 'like'
+  | 'comment'
+  | 'follow'
+  | 'achievement'
   | 'restaurant_recommendation'
-  | 'board_invite' 
-  | 'post_mention' 
-  | 'milestone' 
+  | 'board_invite'
+  | 'post_mention'
+  | 'milestone'
+  | 'campaign_opportunity'
+  | 'campaign_application_submitted'
+  | 'application_approved'
   | 'system';
 
 // Notification category enum
-export type NotificationCategory = 
+export type NotificationCategory =
   | 'social'
   | 'achievements'
   | 'restaurants'
   | 'boards'
+  | 'campaign_opportunities'
+  | 'campaign_application_submitted'
+  | 'application_approved'
   | 'system';
 
 // Notification frequency enum
@@ -88,6 +94,10 @@ export interface BoardInviteData {
   inviterName: string;
   inviterAvatar?: string;
 }
+export interface CampaignApplicationNotificationData {
+  campaign_id: string;
+  application_id: string;
+}
 
 export interface PostMentionData {
   postId: string;
@@ -110,8 +120,25 @@ export interface SystemNotificationData {
   metadata?: Record<string, any>;
 }
 
+export interface CampaignOpportunityNotificationData {
+  campaignId: string;
+  campaignTitle: string;
+  restaurantId: string;
+  restaurantName: string;
+  restaurantCity: string;
+  budgetCents?: number;
+  proposedRateCents?: number;
+  endDate?: string;
+  restaurantPhotoUrl?: string;
+}
+
+export interface ApplicationApprovedNotificationData {
+  campaign_id: string;
+  application_id: string;
+  restaurant_id?: string;
+}
 // Union type for all notification data
-export type NotificationData = 
+export type NotificationData =
   | LikeNotificationData
   | CommentNotificationData
   | FollowNotificationData
@@ -120,7 +147,10 @@ export type NotificationData =
   | BoardInviteData
   | PostMentionData
   | MilestoneData
-  | SystemNotificationData;
+  | CampaignOpportunityNotificationData
+  | SystemNotificationData
+  | CampaignApplicationNotificationData
+  | ApplicationApprovedNotificationData;
 
 // Notification creation interface
 export interface CreateNotificationParams {
@@ -166,6 +196,24 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   boards: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  campaign_opportunities: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  campaign_application_submitted: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  application_approved: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;

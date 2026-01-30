@@ -1,16 +1,18 @@
 import { designTokens } from '@/constants/designTokens';
 import { NotificationItemProps } from '@/types/notifications';
 import {
-    AtSign,
-    Bell,
-    Heart,
-    MapPin,
-    MessageCircle,
-    Settings,
-    Target,
-    Trophy,
-    UserPlus,
-    Users
+  AtSign,
+  Bell,
+  Briefcase,
+  CheckCircle,
+  Heart,
+  MapPin,
+  MessageCircle,
+  Settings,
+  Target,
+  Trophy,
+  UserPlus,
+  Users
 } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -36,10 +38,10 @@ const formatRelativeTime = (dateString: string): string => {
   }
 };
 
-export const NotificationItem: React.FC<NotificationItemProps> = ({ 
-  notification, 
-  onPress, 
-  onSwipeDelete 
+export const NotificationItem: React.FC<NotificationItemProps> = ({
+  notification,
+  onPress,
+  onSwipeDelete
 }) => {
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -51,7 +53,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'board_invite': return Users;
       case 'post_mention': return AtSign;
       case 'milestone': return Target;
+      case 'campaign_opportunity': return Briefcase;
       case 'system': return Settings;
+      case 'campaign_application_submitted': return Users;
+      case 'application_approved': return CheckCircle;
       default: return Bell;
     }
   };
@@ -66,7 +71,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'board_invite': return '#06B6D4';
       case 'post_mention': return '#EC4899';
       case 'milestone': return '#84CC16';
+      case 'campaign_opportunity': return '#F97316';
       case 'system': return '#6B7280';
+      case 'campaign_application_submitted': return '#8B5CF6';
+      case 'application_approved': return '#10B981';
       default: return designTokens.colors.primaryOrange;
     }
   };
@@ -96,7 +104,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       <View style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}>
         <Icon size={20} color={iconColor} />
       </View>
-      
+
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={1}>
           {notification.title}
@@ -108,7 +116,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
           {formatRelativeTime(notification.created_at)}
         </Text>
       </View>
-      
+
       {!notification.is_read && <View style={styles.unreadDot} />}
     </TouchableOpacity>
   );
