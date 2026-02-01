@@ -42,6 +42,7 @@ export class NotificationService implements NotificationServiceInterface {
     }
 
     // Fallback to direct insert (for backwards compatibility)
+    // This should work if RLS policy "Allow authenticated insert" exists
     const notificationData: NotificationInsert = {
       user_id: userId,
       type,
@@ -63,7 +64,15 @@ export class NotificationService implements NotificationServiceInterface {
       .single();
 
     if (error) {
-      console.error('Error creating notification:', error);
+      console.error('[NotificationService] Error creating notification:', error);
+      console.error('[NotificationService] Function error was:', functionError);
+      console.error('[NotificationService] Attempted to create notification for user:', userId);
+      
+      // If RPC function failed and direct insert also fails, log both errors
+      if (functionError) {
+        console.error('[NotificationService] RPC function error:', functionError);
+      }
+      
       throw new Error(`Failed to create notification: ${error.message}`);
     }
 

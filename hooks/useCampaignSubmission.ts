@@ -2,6 +2,7 @@ import { PAYMENT_POLLING_CONFIG } from '@/constants/campaign';
 import { supabase } from '@/lib/supabase';
 import { notificationService } from '@/services/notificationService';
 import { createCampaignPaymentIntent, getCampaignPaymentStatus, SavedPaymentMethodInfo } from '@/services/paymentService';
+import { isFirstCampaign, startTrial } from '@/services/subscriptionService';
 import { CampaignFormData, RestaurantData, StripeAccountStatus } from '@/types/campaign';
 import { convertBudgetToCents, expandDeliverables, formatEndDate } from '@/utils/campaignTransformations';
 import { createStripeReturnURL } from '@/utils/stripeHelpers';
@@ -22,6 +23,11 @@ export function useCampaignSubmission() {
   const router = useRouter();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(false);
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [trialModalData, setTrialModalData] = useState<{
+    restaurantClaimId: string;
+    trialEndDate?: string;
+  } | null>(null);
 
   const submitCampaign = useCallback(
     async (
@@ -211,13 +217,21 @@ export function useCampaignSubmission() {
             formData.title
           ).catch(err => console.error('[Campaign Submit] Notification error:', err));
 
+          // TRO-137: Check if this is first campaign and show trial modal
+          const trialStarted = await handleFirstCampaignTrial(restaurantData.id, userId);
+
           Alert.alert(
             'Campaign Created!',
             `Your campaign is now active and your saved card (${'....'}${savedPaymentMethod?.last4 || '****'}) has been charged.`,
             [
               {
-                text: 'View Campaigns',
-                onPress: () => router.replace('/business/campaigns'),
+                text: 'OK',
+                onPress: () => {
+                  // Modal will show automatically if trial was started
+                  if (!trialStarted) {
+                    router.replace('/business/campaigns');
+                  }
+                },
               },
             ]
           );
@@ -373,6 +387,53 @@ export function useCampaignSubmission() {
     [router]
   );
 
+  // TRO-137: Handle first campaign trial logic
+  const handleFirstCampaignTrial = useCallback(
+    async (restaurantId: string, userId: string): Promise<boolean> => {
+      try {
+        // Get restaurant claim ID
+        const { data: claim, error: claimError } = await supabase
+          .from('restaurant_claims')
+          .select('id')
+          .eq('restaurant_id', restaurantId)
+          .eq('user_id', userId)
+          .single();
+
+        if (claimError || !claim) {
+          console.log('[Campaign Submit] No restaurant claim found, skipping trial check');
+          return false;
+        }
+
+        // Check if this is the first campaign
+        const firstCampaign = await isFirstCampaign(restaurantId);
+        if (firstCampaign) {
+          console.log('[Campaign Submit] ✅ First campaign detected, starting trial');
+          
+          // Start the trial
+          const { success, trialEndDate, error } = await startTrial(claim.id);
+          if (success) {
+            console.log('[Campaign Submit] ✅ Trial started, end date:', trialEndDate);
+            // Set modal data to show after alert
+            setTrialModalData({
+              restaurantClaimId: claim.id,
+              trialEndDate: trialEndDate,
+            });
+            setShowTrialModal(true);
+            return true; // Trial was started
+          } else {
+            console.error('[Campaign Submit] Failed to start trial:', error);
+            return false;
+          }
+        }
+        return false;
+      } catch (error) {
+        console.error('[Campaign Submit] Error checking first campaign:', error);
+        return false;
+      }
+    },
+    []
+  );
+
   const handlePaymentConfirmed = useCallback(
     async (campaignId: string) => {
       // Campaign should already be active from webhook, but ensure it's set
@@ -397,28 +458,47 @@ export function useCampaignSubmission() {
         // Fetch campaign details for notification
         const { data: campaignDetails } = await supabase
           .from('campaigns')
-          .select('title, restaurant:restaurants(name)')
+          .select('title, restaurant_id, owner_id, restaurant:restaurants(name)')
           .eq('id', campaignId)
           .single();
 
-        if (campaignDetails) {
-          const restaurantName = (campaignDetails.restaurant as any)?.name || 'A restaurant';
-          notificationService.notifyMatchingCreators(
-            campaignId,
-            restaurantName,
-            campaignDetails.title
-          ).catch(err => console.error('[Campaign Submit] Notification error:', err));
-        }
+          if (campaignDetails) {
+            const restaurantName = (campaignDetails.restaurant as any)?.name || 'A restaurant';
+            notificationService.notifyMatchingCreators(
+              campaignId,
+              restaurantName,
+              campaignDetails.title
+            ).catch(err => console.error('[Campaign Submit] Notification error:', err));
 
-        Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/business/campaigns'),
-          },
-        ]);
+            // TRO-137: Check if this is first campaign and show trial modal
+            let trialStarted = false;
+            if (campaignDetails.restaurant_id && campaignDetails.owner_id) {
+              trialStarted = await handleFirstCampaignTrial(campaignDetails.restaurant_id, campaignDetails.owner_id);
+            }
+
+            // Show alert, but trial modal will appear after if it's first campaign
+            Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Don't navigate immediately if trial modal should show
+                  if (!trialStarted) {
+                    router.replace('/business/campaigns');
+                  }
+                },
+              },
+            ]);
+          } else {
+            Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/business/campaigns'),
+              },
+            ]);
+          }
       }
     },
-    [router]
+    [router, handleFirstCampaignTrial]
   );
 
   const handlePaymentPending = useCallback(
@@ -450,7 +530,7 @@ export function useCampaignSubmission() {
           // TRO-146: Notify matching creators about the new campaign
           const { data: campaignDetails } = await supabase
             .from('campaigns')
-            .select('title, restaurant:restaurants(name)')
+            .select('title, restaurant_id, owner_id, restaurant:restaurants(name)')
             .eq('id', campaignId)
             .single();
 
@@ -461,14 +541,32 @@ export function useCampaignSubmission() {
               restaurantName,
               campaignDetails.title
             ).catch(err => console.error('[Campaign Submit] Notification error:', err));
-          }
 
-          Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/business/campaigns'),
-            },
-          ]);
+            // TRO-137: Check if this is first campaign and show trial modal
+            let trialStarted = false;
+            if (campaignDetails.restaurant_id && campaignDetails.owner_id) {
+              trialStarted = await handleFirstCampaignTrial(campaignDetails.restaurant_id, campaignDetails.owner_id);
+            }
+
+            Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Don't navigate immediately if trial modal should show
+                  if (!trialStarted) {
+                    router.replace('/business/campaigns');
+                  }
+                },
+              },
+            ]);
+          } else {
+            Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/business/campaigns'),
+              },
+            ]);
+          }
           return;
         }
       }
@@ -484,11 +582,15 @@ export function useCampaignSubmission() {
         ]
       );
     },
-    [router]
+    [router, handleFirstCampaignTrial]
   );
 
   return {
     submitCampaign,
     loading,
+    showTrialModal,
+    trialModalData,
+    setShowTrialModal,
+    setTrialModalData,
   };
 }
