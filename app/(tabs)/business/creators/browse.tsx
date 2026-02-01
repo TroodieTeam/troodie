@@ -11,14 +11,17 @@ import { DS } from '@/components/design-system/tokens';
 import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { CreatorFilters, formatFollowers, getCreators } from '@/services/creatorDiscoveryService';
+import { CreatorFilters, formatFollowers, getCreators, getCitiesWithCreators } from '@/services/creatorDiscoveryService';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Clock, Filter, MapPin, Play, Search, Star, Users } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Clock, Filter, MapPin, Play, Search, Star, Users, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
     Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
@@ -39,7 +42,7 @@ interface Creator {
   openToCollabs: boolean;
   availabilityStatus?: 'available' | 'busy' | 'not_accepting'; // CM-11
   specialties: string[];
-  rating: number;
+  rating: number | null;
   completedCampaigns: number;
   priceRange: string;
   isVerified: boolean;
@@ -55,6 +58,7 @@ export default function BrowseCreators() {
   const router = useRouter();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [loadingCreators, setLoadingCreators] = useState(false);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [filteredCreators, setFilteredCreators] = useState<Creator[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,42 +66,95 @@ export default function BrowseCreators() {
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
 
-  // TRO-145: Filter state
-  const [followerBucket, setFollowerBucket] = useState<'under5k' | '5k-20k' | '20kplus' | null>(null);
-  const [selectedCompensation, setSelectedCompensation] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'recentlyActive' | 'followersHigh' | 'followersLow' | null>(null);
-  const [cityFilter, setCityFilter] = useState<string>('');
+  // TRO-145: Applied filter state (what's actually being used for search)
+  const [appliedFollowerBucket, setAppliedFollowerBucket] = useState<'under5k' | '5k-20k' | '20kplus' | null>(null);
+  const [appliedCompensation, setAppliedCompensation] = useState<string[]>([]);
+  const [appliedSortBy, setAppliedSortBy] = useState<'recentlyActive' | 'followersHigh' | 'followersLow' | null>(null);
+  const [appliedCityFilter, setAppliedCityFilter] = useState<string>('');
 
+  // Local filter state (what user is selecting before applying)
+  const [localFollowerBucket, setLocalFollowerBucket] = useState<'under5k' | '5k-20k' | '20kplus' | null>(null);
+  const [localCompensation, setLocalCompensation] = useState<string[]>([]);
+  const [localSortBy, setLocalSortBy] = useState<'recentlyActive' | 'followersHigh' | 'followersLow' | null>(null);
+  const [localCityFilter, setLocalCityFilter] = useState<string>('');
+
+  // City dropdown state
+  const [showCityPicker, setShowCityPicker] = useState(false);
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // Load creators when applied filters change
+  // Convert array to string for stable comparison to avoid infinite loops
+  const appliedCompensationKey = JSON.stringify(appliedCompensation.sort());
+  
   useEffect(() => {
     loadCreators();
-  }, [followerBucket, selectedCompensation, sortBy, cityFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedFollowerBucket, appliedCompensationKey, appliedSortBy, appliedCityFilter]);
 
+  // Load available cities on mount
   useEffect(() => {
-    applyFilters();
-  }, [searchQuery, creators]);
+    loadAvailableCities();
+  }, []);
 
-  // TRO-145: Check if any filters are active
-  const hasActiveFilters = followerBucket !== null || selectedCompensation.length > 0 || sortBy !== null || cityFilter !== '';
+  // Load available cities
+  const loadAvailableCities = async () => {
+    setLoadingCities(true);
+    const { data, error } = await getCitiesWithCreators();
+    if (!error && data) {
+      setAvailableCities(data);
+    }
+    setLoadingCities(false);
+  };
+
+  // TRO-145: Check if any filters are active (applied filters)
+  const hasActiveFilters = appliedFollowerBucket !== null || appliedCompensation.length > 0 || appliedSortBy !== null || appliedCityFilter !== '';
+
+  // Check if local filters differ from applied filters
+  const hasUnsavedFilters = 
+    localFollowerBucket !== appliedFollowerBucket ||
+    JSON.stringify(localCompensation.sort()) !== JSON.stringify(appliedCompensation.sort()) ||
+    localSortBy !== appliedSortBy ||
+    localCityFilter !== appliedCityFilter;
+
+  // TRO-145: Apply filters (copy local to applied)
+  const applyFilters = () => {
+    setAppliedFollowerBucket(localFollowerBucket);
+    setAppliedCompensation([...localCompensation]);
+    setAppliedSortBy(localSortBy);
+    setAppliedCityFilter(localCityFilter);
+    setShowFilters(false); // Close filter modal after applying
+  };
 
   // TRO-145: Clear all filters
   const clearFilters = () => {
-    setFollowerBucket(null);
-    setSelectedCompensation([]);
-    setSortBy(null);
-    setCityFilter('');
+    setLocalFollowerBucket(null);
+    setLocalCompensation([]);
+    setLocalSortBy(null);
+    setLocalCityFilter('');
+    setAppliedFollowerBucket(null);
+    setAppliedCompensation([]);
+    setAppliedSortBy(null);
+    setAppliedCityFilter('');
     setSearchQuery('');
   };
 
   const loadCreators = async () => {
     try {
-      setLoading(true);
+      // Only show FlatList spinner if we already have creators (filter change)
+      // Otherwise show full screen spinner (initial load)
+      if (creators.length > 0) {
+        setLoadingCreators(true);
+      } else {
+        setLoading(true);
+      }
 
-      // TRO-145: Build filter object
+      // TRO-145: Build filter object from applied filters
       const filters: CreatorFilters = {};
-      if (cityFilter) filters.city = cityFilter;
-      if (followerBucket) filters.followerBucket = followerBucket;
-      if (selectedCompensation.length > 0) filters.preferredCompensation = selectedCompensation;
-      if (sortBy) filters.sortBy = sortBy;
+      if (appliedCityFilter) filters.city = appliedCityFilter;
+      if (appliedFollowerBucket) filters.followerBucket = appliedFollowerBucket;
+      if (appliedCompensation.length > 0) filters.preferredCompensation = appliedCompensation;
+      if (appliedSortBy) filters.sortBy = appliedSortBy;
 
       console.log('[BrowseCreators] Loading creators with filters:', filters);
       const { data, error } = await getCreators(filters, 50, 0);
@@ -325,6 +382,14 @@ export default function BrowseCreators() {
             priceRange = '$50 - $200';
           }
 
+          // Use Instagram or TikTok engagement as fallback when Troodie engagement is 0
+          const bestEngagementRate =
+            (creator.instagramEngagementRate && creator.instagramEngagementRate > 0)
+              ? creator.instagramEngagementRate
+              : (creator.tiktokEngagementRate && creator.tiktokEngagementRate > 0)
+                ? creator.tiktokEngagementRate
+                : creator.engagementRate;
+
           return {
             id: creator.id,
             userId: creator.userId,
@@ -334,11 +399,11 @@ export default function BrowseCreators() {
             bio: creator.bio,
             location: creator.location,
             totalFollowers: creator.totalFollowers,
-            engagementRate: creator.engagementRate,
+            engagementRate: bestEngagementRate,
             openToCollabs: creator.openToCollabs,
             availabilityStatus: creator.availabilityStatus || 'available', // CM-11
             specialties: creator.specialties,
-            rating: rating || 4.5,
+            rating: rating,
             completedCampaigns: completedCampaigns || Math.floor(Math.random() * 20),
             priceRange,
             isVerified: completedCampaigns >= 5, // Verified if 5+ campaigns
@@ -392,10 +457,11 @@ export default function BrowseCreators() {
       console.error('[BrowseCreators] Failed to load creators:', error);
     } finally {
       setLoading(false);
+      setLoadingCreators(false);
     }
   };
 
-  const applyFilters = () => {
+  const applySearchFilter = () => {
     let filtered = [...creators];
 
     if (searchQuery.trim()) {
@@ -409,6 +475,10 @@ export default function BrowseCreators() {
 
     setFilteredCreators(filtered);
   };
+
+  useEffect(() => {
+    applySearchFilter();
+  }, [searchQuery, creators]);
 
   const handleInviteCreator = (creator: Creator) => {
     setSelectedCreator(creator);
@@ -528,9 +598,9 @@ export default function BrowseCreators() {
         {/* Rating and Campaigns */}
         <View style={{ alignItems: 'flex-end' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-            <Star size={14} color="#FFB800" fill="#FFB800" />
+            <Star size={14} color={creator.rating ? "#FFB800" : "#D1D5DB"} fill={creator.rating ? "#FFB800" : "#D1D5DB"} />
             <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginLeft: 4 }}>
-              {creator.rating.toFixed(1)}
+              {creator.rating ? creator.rating.toFixed(1) : '—'}
             </Text>
           </View>
           {/* <Text style={{ fontSize: 12, color: DS.colors.textLight }}>
@@ -573,7 +643,7 @@ export default function BrowseCreators() {
             Portfolio
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {creator.portfolioItems.slice(0, 6).map((item) => {
+            {creator.portfolioItems.slice(0, 4).map((item) => {
               // For videos, use the actual video URL (mediaUrl contains the video URL from creatorDiscoveryService)
               // For images, use mediaUrl directly
               const videoUrl = item.mediaType === 'video' ? item.mediaUrl : null;
@@ -695,7 +765,16 @@ export default function BrowseCreators() {
         <Text style={{ fontSize: 17, fontWeight: '600', color: DS.colors.text }}>
           Browse Creators
         </Text>
-        <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
+        <TouchableOpacity onPress={() => {
+          // Sync local filters with applied filters when opening
+          if (!showFilters) {
+            setLocalFollowerBucket(appliedFollowerBucket);
+            setLocalCompensation([...appliedCompensation]);
+            setLocalSortBy(appliedSortBy);
+            setLocalCityFilter(appliedCityFilter);
+          }
+          setShowFilters(!showFilters);
+        }}>
           <Filter size={24} color={DS.colors.text} />
         </TouchableOpacity>
       </View>
@@ -732,16 +811,6 @@ export default function BrowseCreators() {
               color: DS.colors.text,
             }}
           />
-          <TouchableOpacity
-            onPress={() => setShowFilters(!showFilters)}
-            style={{
-              padding: 8,
-              backgroundColor: hasActiveFilters ? DS.colors.primary : 'transparent',
-              borderRadius: 6,
-            }}
-          >
-            <Filter size={18} color={hasActiveFilters ? 'white' : DS.colors.textLight} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -765,15 +834,15 @@ export default function BrowseCreators() {
                     paddingVertical: 6,
                     borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: sortBy === option.value ? DS.colors.primary : DS.colors.border,
-                    backgroundColor: sortBy === option.value ? '#FFFBEB' : 'transparent',
+                    borderColor: localSortBy === option.value ? DS.colors.primary : DS.colors.border,
+                    backgroundColor: localSortBy === option.value ? '#FFFBEB' : 'transparent',
                   }}
-                  onPress={() => setSortBy(option.value)}
+                  onPress={() => setLocalSortBy(option.value)}
                 >
                   <Text style={{
                     fontSize: 13,
-                    color: sortBy === option.value ? DS.colors.primary : DS.colors.text,
-                    fontWeight: sortBy === option.value ? '600' : '400',
+                    color: localSortBy === option.value ? DS.colors.primary : DS.colors.text,
+                    fontWeight: localSortBy === option.value ? '600' : '400',
                   }}>
                     {option.label}
                   </Text>
@@ -799,15 +868,15 @@ export default function BrowseCreators() {
                     paddingVertical: 6,
                     borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: followerBucket === option.value ? DS.colors.primary : DS.colors.border,
-                    backgroundColor: followerBucket === option.value ? '#FFFBEB' : 'transparent',
+                    borderColor: localFollowerBucket === option.value ? DS.colors.primary : DS.colors.border,
+                    backgroundColor: localFollowerBucket === option.value ? '#FFFBEB' : 'transparent',
                   }}
-                  onPress={() => setFollowerBucket(option.value)}
+                  onPress={() => setLocalFollowerBucket(option.value)}
                 >
                   <Text style={{
                     fontSize: 13,
-                    color: followerBucket === option.value ? DS.colors.primary : DS.colors.text,
-                    fontWeight: followerBucket === option.value ? '600' : '400',
+                    color: localFollowerBucket === option.value ? DS.colors.primary : DS.colors.text,
+                    fontWeight: localFollowerBucket === option.value ? '600' : '400',
                   }}>
                     {option.label}
                   </Text>
@@ -827,7 +896,7 @@ export default function BrowseCreators() {
                 { value: 'pay_150_500', label: '$150-500' },
                 { value: 'pay_over_500', label: '$500+' },
               ].map((option) => {
-                const isSelected = selectedCompensation.includes(option.value);
+                const isSelected = localCompensation.includes(option.value);
                 return (
                   <TouchableOpacity
                     key={option.value}
@@ -841,9 +910,9 @@ export default function BrowseCreators() {
                     }}
                     onPress={() => {
                       if (isSelected) {
-                        setSelectedCompensation(selectedCompensation.filter(v => v !== option.value));
+                        setLocalCompensation(localCompensation.filter(v => v !== option.value));
                       } else {
-                        setSelectedCompensation([...selectedCompensation, option.value]);
+                        setLocalCompensation([...localCompensation, option.value]);
                       }
                     }}
                   >
@@ -861,25 +930,61 @@ export default function BrowseCreators() {
           </View>
 
           {/* City Filter */}
-          <View style={{ marginBottom: 12 }}>
+          <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>City</Text>
-            <TextInput
-              value={cityFilter}
-              onChangeText={setCityFilter}
-              placeholder="Enter city name..."
-              placeholderTextColor={DS.colors.textLight}
+            <TouchableOpacity
+              onPress={() => setShowCityPicker(true)}
               style={{
                 borderWidth: 1,
                 borderColor: DS.colors.border,
                 borderRadius: 8,
                 paddingHorizontal: 12,
-                paddingVertical: 8,
-                fontSize: 14,
-                color: DS.colors.text,
+                paddingVertical: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 backgroundColor: DS.colors.background,
               }}
-            />
+            >
+              <Text style={{
+                fontSize: 14,
+                color: localCityFilter ? DS.colors.text : DS.colors.textLight,
+              }}>
+                {localCityFilter || 'Select city...'}
+              </Text>
+              <ChevronDown size={18} color={DS.colors.textLight} />
+            </TouchableOpacity>
           </View>
+
+          {/* Apply Filters Button */}
+          {hasUnsavedFilters && (
+            <TouchableOpacity
+              onPress={applyFilters}
+              style={{
+                paddingVertical: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 12,
+                backgroundColor: DS.colors.primaryOrange,
+                marginBottom: 12,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ 
+                fontSize: 16, 
+                color: '#FFFFFF', 
+                fontWeight: '700',
+                letterSpacing: 0.2,
+              }}>
+                Apply Filters
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Clear Filters Button */}
           {hasActiveFilters && (
@@ -907,26 +1012,45 @@ export default function BrowseCreators() {
       </View>
 
       {/* Creators List */}
-      <FlatList
-        data={filteredCreators}
-        keyExtractor={(item) => item.id}
-        renderItem={renderCreatorCard}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 }}
-        ListEmptyComponent={
-          <EmptyState
-            icon={Users}
-            title="No Creators Found"
-            message={
-              searchQuery
-                ? "Try adjusting your filters or check back later for new creators."
-                : "No creators are currently available. Check back later for new creators."
-            }
-            ctaLabel={searchQuery ? "Clear Search" : undefined}
-            onCtaPress={searchQuery ? () => setSearchQuery('') : undefined}
-          />
-        }
-      />
+      {loadingCreators ? (
+        <View style={{ 
+          flex: 1, 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          paddingVertical: 60,
+        }}>
+          <ActivityIndicator size="large" color={DS.colors.primaryOrange} />
+          <Text style={{ 
+            marginTop: 16, 
+            fontSize: 14, 
+            color: DS.colors.textLight,
+          }}>
+            Loading creators...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredCreators}
+          keyExtractor={(item) => item.id}
+          renderItem={renderCreatorCard}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 16 }}
+          scrollEnabled={!showCityPicker}
+          ListEmptyComponent={
+            <EmptyState
+              icon={Users}
+              title="No Creators Found"
+              message={
+                searchQuery
+                  ? "Try adjusting your filters or check back later for new creators."
+                  : "No creators are currently available. Check back later for new creators."
+              }
+              ctaLabel={searchQuery ? "Clear Search" : undefined}
+              onCtaPress={searchQuery ? () => setSearchQuery('') : undefined}
+            />
+          }
+        />
+      )}
 
       {/* Invite Modal */}
       {selectedCreator && (
@@ -944,6 +1068,198 @@ export default function BrowseCreators() {
           }}
         />
       )}
+
+      {/* City Picker Modal - Matching InviteCreatorModal Pattern */}
+      <Modal
+        visible={showCityPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCityPicker(false)}
+        statusBarTranslucent={true}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: DS.colors.overlay,
+          justifyContent: 'flex-end',
+        }}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFillObject} 
+            activeOpacity={1} 
+            onPress={() => setShowCityPicker(false)}
+          />
+          <SafeAreaView edges={['bottom']} style={{ maxHeight: '90%', width: '100%' }} pointerEvents="box-none">
+            <View style={{
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: DS.borderRadius.xl,
+              borderTopRightRadius: DS.borderRadius.xl,
+              height: '100%',
+              flexDirection: 'column',
+              ...DS.shadows.lg,
+            }} onStartShouldSetResponder={() => true}>
+              {/* Drag Handle */}
+              <View style={{
+                width: 40,
+                height: 4,
+                backgroundColor: DS.colors.border,
+                borderRadius: 2,
+                alignSelf: 'center',
+                marginTop: DS.spacing.sm,
+                marginBottom: DS.spacing.xs,
+              }} />
+              
+              {/* Header */}
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: DS.spacing.lg,
+                paddingTop: DS.spacing.xl,
+                borderBottomWidth: 1,
+                borderBottomColor: DS.colors.border,
+                backgroundColor: '#FFFFFF',
+              }}>
+                <Text style={{
+                  ...DS.typography.h2,
+                  color: DS.colors.textDark,
+                  flex: 1,
+                  marginRight: DS.spacing.md,
+                }}>
+                  Select City
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowCityPicker(false)}
+                  style={{ padding: DS.spacing.xs }}
+                >
+                  <X size={24} color={DS.colors.textDark} />
+                </TouchableOpacity>
+              </View>
+
+              {/* City List */}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: DS.spacing.lg }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Clear selection option */}
+                <TouchableOpacity
+                  style={{
+                    paddingHorizontal: DS.spacing.lg,
+                    paddingVertical: DS.spacing.md,
+                    borderBottomWidth: 1,
+                    borderBottomColor: DS.colors.borderLight,
+                    backgroundColor: !localCityFilter 
+                      ? '#FFFBEB' 
+                      : DS.colors.surfaceLight,
+                  }}
+                  onPress={() => {
+                    setLocalCityFilter('');
+                    setShowCityPicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{
+                      ...DS.typography.h3,
+                      color: DS.colors.textDark,
+                      fontWeight: !localCityFilter ? '600' : '500',
+                    }}>
+                      All Cities
+                    </Text>
+                    {!localCityFilter && (
+                      <View style={{
+                        marginLeft: 8,
+                        width: 6,
+                        height: 6,
+                        borderRadius: 3,
+                        backgroundColor: DS.colors.primaryOrange,
+                      }} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                {loadingCities ? (
+                  <View style={{ padding: 40, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color={DS.colors.primaryOrange} />
+                    <Text style={{
+                      marginTop: DS.spacing.sm,
+                      ...DS.typography.body,
+                      color: DS.colors.textGray,
+                    }}>
+                      Loading cities...
+                    </Text>
+                  </View>
+                ) : availableCities.length === 0 ? (
+                  <View style={{ padding: DS.spacing.xxl, alignItems: 'center' }}>
+                    <Text style={{
+                      ...DS.typography.h3,
+                      color: DS.colors.textDark,
+                      marginBottom: DS.spacing.xs,
+                    }}>
+                      No cities available
+                    </Text>
+                    <Text style={{
+                      ...DS.typography.body,
+                      color: DS.colors.textGray,
+                      textAlign: 'center',
+                    }}>
+                      Check back later for new creators
+                    </Text>
+                  </View>
+                ) : (
+                  availableCities.map((city, index) => (
+                    <TouchableOpacity
+                      key={city}
+                      style={{
+                        paddingHorizontal: DS.spacing.lg,
+                        paddingVertical: DS.spacing.md,
+                        borderBottomWidth: index === availableCities.length - 1 ? 0 : 1,
+                        borderBottomColor: DS.colors.borderLight,
+                        backgroundColor: localCityFilter === city
+                          ? '#FFFBEB'
+                          : DS.colors.surface,
+                      }}
+                      onPress={() => {
+                        setLocalCityFilter(city);
+                        setShowCityPicker(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MapPin
+                          size={18}
+                          color={
+                            localCityFilter === city
+                              ? DS.colors.primaryOrange
+                              : DS.colors.textGray
+                          }
+                          style={{ marginRight: 12 }}
+                        />
+                        <Text style={{
+                          ...DS.typography.h3,
+                          color: DS.colors.textDark,
+                          fontWeight: localCityFilter === city ? '600' : '400',
+                        }}>
+                          {city}
+                        </Text>
+                        {localCityFilter === city && (
+                          <View style={{
+                            marginLeft: 'auto',
+                            width: 6,
+                            height: 6,
+                            borderRadius: 3,
+                            backgroundColor: DS.colors.primaryOrange,
+                          }} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -85,6 +85,50 @@ export interface CreatorStatsUpdate {
 }
 
 /**
+ * Get list of cities that have creators
+ */
+export async function getCitiesWithCreators(): Promise<{ data: string[]; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('creator_profiles')
+      .select('location, primary_city')
+      .eq('open_to_collabs', true)
+      .not('location', 'is', null)
+      .or('primary_city.not.is.null');
+
+    if (error) throw error;
+
+    // Extract unique cities from both location and primary_city fields
+    const cities = new Set<string>();
+    
+    (data || []).forEach((profile: any) => {
+      // Extract city from location (format: "City, State" or just "City")
+      if (profile.location) {
+        const cityMatch = profile.location.split(',')[0]?.trim();
+        if (cityMatch) {
+          cities.add(cityMatch);
+        }
+      }
+      // Also check primary_city
+      if (profile.primary_city) {
+        const cityMatch = profile.primary_city.split(',')[0]?.trim();
+        if (cityMatch) {
+          cities.add(cityMatch);
+        }
+      }
+    });
+
+    // Sort cities alphabetically
+    const sortedCities = Array.from(cities).sort();
+
+    return { data: sortedCities };
+  } catch (error: any) {
+    console.error('[getCitiesWithCreators] Error:', error);
+    return { data: [], error: error.message };
+  }
+}
+
+/**
  * Get filtered list of creators
  */
 export async function getCreators(

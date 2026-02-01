@@ -55,12 +55,12 @@ export default function ClaimRestaurantSimple() {
   };
 
   const handleBetaAccessClose = () => {
-    router.back();
+    router.push('/(tabs)/more');
   };
 
   const handleBack = () => {
     if (currentStep === 'search') {
-      router.back();
+      router.push('/(tabs)/more');
     } else if (currentStep === 'contact') {
       setCurrentStep('search');
     }

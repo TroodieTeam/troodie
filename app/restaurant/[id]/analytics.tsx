@@ -281,7 +281,7 @@ export default function RestaurantAnalyticsScreen() {
           borderBottomColor: DS.colors.border,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
           <ArrowLeft size={24} color={DS.colors.text} />
         </TouchableOpacity>
         <Text style={{ fontSize: 18, fontWeight: '600', color: DS.colors.text }}>Restaurant Analytics</Text>

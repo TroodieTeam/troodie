@@ -16,7 +16,7 @@ import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { CreatorProfile, getCreatorProfile } from '@/services/creatorDiscoveryService';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Briefcase, Clock, Edit, MapPin, Play, Star, XCircle } from 'lucide-react-native';
+import { ArrowLeft, Briefcase, Clock, Edit, MapPin, Play, Star, XCircle, Instagram, TrendingUp, Users, Calendar } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -164,7 +164,7 @@ export default function CreatorProfileScreen() {
           borderBottomColor: DS.colors.border,
         }}
       >
-        <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
+        <TouchableOpacity onPress={() => router.back()}>
           <ArrowLeft size={24} color={DS.colors.text} />
         </TouchableOpacity>
         <Text style={{ fontSize: 18, fontWeight: '600', color: DS.colors.text }}>Creator Profile</Text>
@@ -205,6 +205,13 @@ export default function CreatorProfileScreen() {
           {/* CM-14: Username */}
           {profile.username && (
             <Text style={{ fontSize: 14, color: DS.colors.textLight, marginTop: 4 }}>@{profile.username}</Text>
+          )}
+
+          {/* Troodie Persona */}
+          {profile.persona && (
+            <Text style={{ fontSize: 14, color: DS.colors.primary, marginTop: 4, fontStyle: 'italic' }}>
+              {profile.persona}
+            </Text>
           )}
 
           {profile.location && (
@@ -297,6 +304,214 @@ export default function CreatorProfileScreen() {
           )}
         </View>
 
+        {/* TRO-144: Social Stats Section */}
+        {(profile.instagramHandle || profile.tiktokHandle || profile.preferredCompensation?.length || profile.pastRestaurantCollabs) && (
+          <View style={{ padding: 16, backgroundColor: DS.colors.backgroundWhite, marginTop: 8 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: DS.colors.text, marginBottom: 16 }}>Social Media & Stats</Text>
+            
+            {/* Social Platforms Grid */}
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+              {/* Instagram Card */}
+              {profile.instagramHandle && (
+                <View style={{ 
+                  flex: 1, 
+                  backgroundColor: '#FAFAFA', 
+                  borderRadius: 12, 
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: '#E5E5E5',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <Instagram size={20} color="#E4405F" />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginLeft: 6 }}>
+                      Instagram
+                    </Text>
+                  </View>
+                  
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: DS.colors.text, marginBottom: 8 }}>
+                    @{profile.instagramHandle}
+                  </Text>
+                  
+                  {profile.instagramFollowers && profile.instagramFollowers > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                      <Users size={14} color={DS.colors.textLight} />
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: DS.colors.text, marginLeft: 6 }}>
+                        {profile.instagramFollowers.toLocaleString()}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: DS.colors.textLight, marginLeft: 4 }}>
+                        followers
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {profile.instagramEngagementRate && (
+                    <View style={{ 
+                      flexDirection: 'row', 
+                      alignItems: 'center', 
+                      backgroundColor: profile.instagramEngagementRate >= 3 ? '#ECFDF5' : '#FEF3C7',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      alignSelf: 'flex-start',
+                      marginTop: 4,
+                    }}>
+                      <TrendingUp size={12} color={profile.instagramEngagementRate >= 3 ? '#10B981' : '#F59E0B'} />
+                      <Text style={{ 
+                        fontSize: 13, 
+                        fontWeight: '600', 
+                        color: profile.instagramEngagementRate >= 3 ? '#10B981' : '#F59E0B',
+                        marginLeft: 4,
+                      }}>
+                        {profile.instagramEngagementRate.toFixed(2)}%
+                      </Text>
+                      <Text style={{ 
+                        fontSize: 11, 
+                        color: profile.instagramEngagementRate >= 3 ? '#10B981' : '#F59E0B',
+                        marginLeft: 2,
+                      }}>
+                        engagement
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {profile.instagramLastPostDate && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                      <Calendar size={12} color={DS.colors.textLight} />
+                      <Text style={{ fontSize: 11, color: DS.colors.textLight, marginLeft: 4 }}>
+                        {new Date(profile.instagramLastPostDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* TikTok Card */}
+              {profile.tiktokHandle && (
+                <View style={{ 
+                  flex: 1, 
+                  backgroundColor: '#FAFAFA', 
+                  borderRadius: 12, 
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: '#E5E5E5',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 20 }}>🎵</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginLeft: 6 }}>
+                      TikTok
+                    </Text>
+                  </View>
+                  
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: DS.colors.text, marginBottom: 8 }}>
+                    @{profile.tiktokHandle}
+                  </Text>
+                  
+                  {profile.tiktokFollowers && profile.tiktokFollowers > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                      <Users size={14} color={DS.colors.textLight} />
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: DS.colors.text, marginLeft: 6 }}>
+                        {profile.tiktokFollowers.toLocaleString()}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: DS.colors.textLight, marginLeft: 4 }}>
+                        followers
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {profile.tiktokEngagementRate && (
+                    <View style={{ 
+                      flexDirection: 'row', 
+                      alignItems: 'center', 
+                      backgroundColor: profile.tiktokEngagementRate >= 3 ? '#ECFDF5' : '#FEF3C7',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      alignSelf: 'flex-start',
+                      marginTop: 4,
+                    }}>
+                      <TrendingUp size={12} color={profile.tiktokEngagementRate >= 3 ? '#10B981' : '#F59E0B'} />
+                      <Text style={{ 
+                        fontSize: 13, 
+                        fontWeight: '600', 
+                        color: profile.tiktokEngagementRate >= 3 ? '#10B981' : '#F59E0B',
+                        marginLeft: 4,
+                      }}>
+                        {profile.tiktokEngagementRate.toFixed(2)}%
+                      </Text>
+                      <Text style={{ 
+                        fontSize: 11, 
+                        color: profile.tiktokEngagementRate >= 3 ? '#10B981' : '#F59E0B',
+                        marginLeft: 2,
+                      }}>
+                        engagement
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {profile.tiktokLastPostDate && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                      <Calendar size={12} color={DS.colors.textLight} />
+                      <Text style={{ fontSize: 11, color: DS.colors.textLight, marginLeft: 4 }}>
+                        {new Date(profile.tiktokLastPostDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Compensation Preferences */}
+            {profile.preferredCompensation && profile.preferredCompensation.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: DS.colors.text, marginBottom: 10 }}>Compensation Preferences</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {profile.preferredCompensation.map((comp) => {
+                    const labels: Record<string, string> = {
+                      free: 'Free',
+                      compensated_meals: 'Compensated Meals',
+                      pay_under_150: 'Under $150',
+                      pay_150_500: '$150-$500',
+                      pay_over_500: '$500+',
+                    };
+                    return (
+                      <View
+                        key={comp}
+                        style={{
+                          backgroundColor: '#F3E8FF',
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 16,
+                          borderWidth: 1,
+                          borderColor: '#C084FC',
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, color: '#7C3AED', fontWeight: '600' }}>
+                          {labels[comp] || comp}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Past Collaborations */}
+            {profile.pastRestaurantCollabs && (
+              <View style={{
+                backgroundColor: '#F9FAFB',
+                padding: 14,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+              }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>Past Collaborations</Text>
+                <Text style={{ fontSize: 14, color: DS.colors.text, lineHeight: 20 }}>
+                  {profile.pastRestaurantCollabs}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Portfolio Section */}
         <View style={{ padding: 16, backgroundColor: DS.colors.backgroundWhite, marginTop: 8 }}>

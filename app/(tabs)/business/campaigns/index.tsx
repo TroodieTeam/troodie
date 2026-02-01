@@ -179,7 +179,7 @@ export default function ManageCampaigns() {
           justifyContent: 'space-between',
           marginBottom: DS.spacing.md,
         }}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.push('/(tabs)/more')}
             style={{
               padding: DS.spacing.xs,

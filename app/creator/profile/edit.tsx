@@ -49,7 +49,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function EditCreatorProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { profile: creatorProfile, loading: profileLoading } = useCreatorProfile();
+  const { profile: creatorProfile, loading: profileLoading, refetch: refetchProfile } = useCreatorProfile();
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
@@ -101,16 +101,16 @@ export default function EditCreatorProfileScreen() {
       setAvailabilityStatus((creatorProfile.availability_status as 'available' | 'busy' | 'not_accepting') || 'available');
 
       // TRO-144: Load social stats
-      setInstagramHandle((creatorProfile as any).instagram_handle || '');
-      setInstagramFollowers((creatorProfile as any).instagram_followers?.toString() || '');
-      setInstagramEngagementRate((creatorProfile as any).instagram_engagement_rate?.toString() || '');
-      setInstagramLastPostDate((creatorProfile as any).instagram_last_post_date || '');
-      setTiktokHandle((creatorProfile as any).tiktok_handle || '');
-      setTiktokFollowers((creatorProfile as any).tiktok_followers?.toString() || '');
-      setTiktokEngagementRate((creatorProfile as any).tiktok_engagement_rate?.toString() || '');
-      setTiktokLastPostDate((creatorProfile as any).tiktok_last_post_date || '');
-      setPreferredCompensation((creatorProfile as any).preferred_compensation || []);
-      setPastRestaurantCollabs((creatorProfile as any).past_restaurant_collabs || '');
+      setInstagramHandle(creatorProfile.instagram_handle || '');
+      setInstagramFollowers(creatorProfile.instagram_followers?.toString() || '');
+      setInstagramEngagementRate(creatorProfile.instagram_engagement_rate?.toString() || '');
+      setInstagramLastPostDate(creatorProfile.instagram_last_post_date || '');
+      setTiktokHandle(creatorProfile.tiktok_handle || '');
+      setTiktokFollowers(creatorProfile.tiktok_followers?.toString() || '');
+      setTiktokEngagementRate(creatorProfile.tiktok_engagement_rate?.toString() || '');
+      setTiktokLastPostDate(creatorProfile.tiktok_last_post_date || '');
+      setPreferredCompensation(creatorProfile.preferred_compensation || []);
+      setPastRestaurantCollabs(creatorProfile.past_restaurant_collabs || '');
 
       // CM-15: Load portfolio items
       if (creatorProfile.id) {
@@ -423,7 +423,20 @@ export default function EditCreatorProfileScreen() {
       // Don't fail the whole save, just warn
     }
 
-    Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => router.push('/(tabs)/more') }]);
+    // Refetch profile to get updated stats
+    await refetchProfile();
+
+    Alert.alert('Success', 'Profile updated!', [{ 
+      text: 'OK', 
+      onPress: () => {
+        // Navigate back to creator profile screen
+        if (creatorProfile?.id) {
+          router.push(`/creator/${creatorProfile.id}`);
+        } else {
+          router.push('/(tabs)/more');
+        }
+      }
+    }]);
     setSaving(false);
   };
 
@@ -431,10 +444,10 @@ export default function EditCreatorProfileScreen() {
     if (hasChanges) {
       Alert.alert('Discard Changes?', 'You have unsaved changes.', [
         { text: 'Keep Editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => router.push('/(tabs)/more') },
+        { text: 'Discard', style: 'destructive', onPress: () => router.back() },
       ]);
     } else {
-      router.push('/(tabs)/more');
+      router.back();
     }
   };
 
@@ -466,7 +479,7 @@ export default function EditCreatorProfileScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
         <View style={{ padding: 16 }}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
+          <TouchableOpacity onPress={() => router.back()}>
             <X size={24} color={DS.colors.text} />
           </TouchableOpacity>
         </View>

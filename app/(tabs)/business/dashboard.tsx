@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant } from '@/contexts/RestaurantContext';
 import { supabase } from '@/lib/supabase';
 import { getSubscriptionStatus, SubscriptionInfo } from '@/services/subscriptionService';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ArrowLeft,
   BarChart,
@@ -17,7 +17,7 @@ import {
   Target,
   Users
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -90,6 +90,34 @@ export default function BusinessDashboard() {
       loadDashboardData();
     }
   }, [currentRestaurantId, contextLoading]); // Reload when restaurant changes
+
+  // Refresh subscription status when screen comes into focus
+  // This ensures banner shows correctly after creating first campaign and starting trial
+  useFocusEffect(
+    useCallback(() => {
+      if (!contextLoading && currentRestaurantId && user?.id) {
+        // Refresh subscription status when navigating back to dashboard
+        const refreshSubscriptionStatus = async () => {
+          try {
+            const { data: restaurantClaim } = await supabase
+              .from('restaurant_claims')
+              .select('id')
+              .eq('restaurant_id', currentRestaurantId)
+              .eq('user_id', user.id)
+              .single();
+
+            if (restaurantClaim) {
+              const { data: subInfo } = await getSubscriptionStatus(restaurantClaim.id);
+              setSubscriptionInfo(subInfo);
+            }
+          } catch (error) {
+            console.error('[Dashboard] Error refreshing subscription status:', error);
+          }
+        };
+        refreshSubscriptionStatus();
+      }
+    }, [currentRestaurantId, contextLoading, user?.id])
+  );
 
   // Handle restaurant switch
   const handleRestaurantChange = (restaurantId: string) => {
@@ -802,7 +830,7 @@ const SubscriptionStatusBanner = ({
   subscriptionInfo: SubscriptionInfo;
   onManageSubscription: () => void;
 }) => {
-  const { status, daysUntilTrialEnds, canPostCampaigns } = subscriptionInfo;
+  const { status, daysUntilTrialEnds, trialEndDate } = subscriptionInfo;
 
   // Determine banner style and message based on status
   const getBannerConfig = () => {
@@ -854,16 +882,24 @@ const SubscriptionStatusBanner = ({
         };
       default:
         // status === 'none' - no subscription yet
-        if (!canPostCampaigns) {
-          return {
-            backgroundColor: '#FEF3C7',
-            borderColor: '#FCD34D',
-            iconColor: '#F59E0B',
-            title: 'Trial Ended',
-            subtitle: 'Subscribe to post new campaigns',
-            showAction: true,
-          };
+        // Only show "Trial Ended" if they actually had a trial that ended
+        // Check if trial_end_date exists and is in the past
+        if (trialEndDate) {
+          const trialEnd = new Date(trialEndDate);
+          const now = new Date();
+          if (trialEnd < now) {
+            // Trial actually ended
+            return {
+              backgroundColor: '#FEF3C7',
+              borderColor: '#FCD34D',
+              iconColor: '#F59E0B',
+              title: 'Trial Ended',
+              subtitle: 'Subscribe to post new campaigns',
+              showAction: true,
+            };
+          }
         }
+        // No trial started yet, or trial hasn't ended - don't show banner
         return null;
     }
   };
