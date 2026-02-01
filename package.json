@@ -4,6 +4,7 @@
   "version": "1.0.14",
   "scripts": {
     "start": "expo start",
+    "start:agent": "EXPO_PUBLIC_AGENT_BRIDGE_ENABLED=true expo start",
     "start:production": "EAS_BUILD_PROFILE=production expo start",
     "start:staging": "EAS_BUILD_PROFILE=staging expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -55,6 +56,7 @@
     "prod:setup:test-users": "node scripts/setup-production-test-users.js"
   },
   "dependencies": {
+    "@agent-expo/bridge": "file:../open-source/agent-expo/packages/bridge",
     "@expo-google-fonts/inter": "^0.4.1",
     "@expo-google-fonts/poppins": "^0.4.0",
     "@expo/metro-runtime": "~6.1.2",
