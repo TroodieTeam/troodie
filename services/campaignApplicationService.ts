@@ -8,6 +8,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { notificationService } from './notificationService';
 
 export interface ApplyToCampaignParams {
   campaignId: string;
@@ -113,7 +114,7 @@ export async function applyToCampaign(
     // Step 4: Verify campaign is still accepting applications
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id, status, max_creators, selected_creators_count')
+      .select('id, title, status, max_creators, selected_creators_count')
       .eq('id', params.campaignId)
       .single();
 
@@ -178,6 +179,24 @@ export async function applyToCampaign(
         errorCode: 'UNKNOWN',
       };
     }
+
+    // TRO-146: Notify restaurant owner about the new applicant
+    // Fetch creator name for notification
+    const { data: creatorData } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', user.id)
+      .single();
+
+    const creatorName = creatorData?.name || 'A creator';
+
+    // Send notification to restaurant owner
+    notificationService.notifyRestaurantOfApplicant(
+      params.campaignId,
+      application.id,
+      creatorName,
+      campaign.title || 'your campaign'
+    ).catch(err => console.error('[CampaignApplication] Notification error:', err));
 
     return {
       success: true,

@@ -27,6 +27,20 @@ export interface CreatorProfile {
   completedCampaigns?: number; // CM-14
   avgRating?: number; // CM-14
   portfolioItems?: PortfolioItem[]; // CM-14
+  // TRO-144: Extended profile fields
+  primaryCity?: string | null;
+  instagramHandle?: string | null;
+  instagramFollowers?: number;
+  instagramEngagementRate?: number | null;
+  instagramLastPostDate?: string | null;
+  tiktokHandle?: string | null;
+  tiktokFollowers?: number;
+  tiktokEngagementRate?: number | null;
+  tiktokLastPostDate?: string | null;
+  persona?: string | null;
+  preferredCompensation?: string[];
+  pastRestaurantCollabs?: string | null;
+  socialStatsVerified?: boolean;
 }
 
 export interface PortfolioItem {
@@ -48,6 +62,70 @@ export interface CreatorFilters {
   minFollowers?: number;
   minEngagement?: number;
   collabTypes?: string[];
+  // TRO-145: Extended filter options
+  followerBucket?: 'under5k' | '5k-20k' | '20kplus';
+  preferredCompensation?: string[];
+  sortBy?: 'recentlyActive' | 'followersHigh' | 'followersLow';
+}
+
+// TRO-144: Stats update interface
+export interface CreatorStatsUpdate {
+  primaryCity?: string | null;
+  instagramHandle?: string | null;
+  instagramFollowers?: number | null;
+  instagramEngagementRate?: number | null;
+  instagramLastPostDate?: string | null;
+  tiktokHandle?: string | null;
+  tiktokFollowers?: number | null;
+  tiktokEngagementRate?: number | null;
+  tiktokLastPostDate?: string | null;
+  persona?: string | null;
+  preferredCompensation?: string[];
+  pastRestaurantCollabs?: string | null;
+}
+
+/**
+ * Get list of cities that have creators
+ */
+export async function getCitiesWithCreators(): Promise<{ data: string[]; error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('creator_profiles')
+      .select('location, primary_city')
+      .eq('open_to_collabs', true)
+      .not('location', 'is', null)
+      .or('primary_city.not.is.null');
+
+    if (error) throw error;
+
+    // Extract unique cities from both location and primary_city fields
+    const cities = new Set<string>();
+    
+    (data || []).forEach((profile: any) => {
+      // Extract city from location (format: "City, State" or just "City")
+      if (profile.location) {
+        const cityMatch = profile.location.split(',')[0]?.trim();
+        if (cityMatch) {
+          cities.add(cityMatch);
+        }
+      }
+      // Also check primary_city
+      if (profile.primary_city) {
+        const cityMatch = profile.primary_city.split(',')[0]?.trim();
+        if (cityMatch) {
+          cities.add(cityMatch);
+        }
+      }
+    });
+
+    // Sort cities alphabetically
+    const sortedCities = Array.from(cities).sort();
+
+    return { data: sortedCities };
+  } catch (error: any) {
+    console.error('[getCitiesWithCreators] Error:', error);
+    return { data: [], error: error.message };
+  }
 }
 
 /**
@@ -59,19 +137,34 @@ export async function getCreators(
   offset: number = 0
 ): Promise<{ data: CreatorProfile[]; error?: string; hasMore: boolean }> {
   try {
+    // TRO-145: Convert follower bucket to min/max range
+    let minFollowers = filters.minFollowers || null;
+    let maxFollowers: number | null = null;
+
+    if (filters.followerBucket) {
+      const range = getFollowerRange(filters.followerBucket);
+      minFollowers = range.min;
+      maxFollowers = range.max;
+    }
+
     console.log('[getCreators] Fetching creators with filters:', {
       city: filters.city,
-      minFollowers: filters.minFollowers,
+      minFollowers,
+      maxFollowers,
       minEngagement: filters.minEngagement,
+      preferredCompensation: filters.preferredCompensation,
+      sortBy: filters.sortBy,
       limit,
       offset,
     });
 
     const { data, error } = await supabase.rpc('get_creators', {
       p_city: filters.city || null,
-      p_min_followers: filters.minFollowers || null,
+      p_min_followers: minFollowers,
+      p_max_followers: maxFollowers,
       p_min_engagement: filters.minEngagement || null,
-      // Removed: p_collab_types (column removed in CM-10)
+      p_compensation_types: filters.preferredCompensation || null,
+      p_sort_by: filters.sortBy || 'engagement',
       p_limit: limit + 1, // Fetch one extra to check hasMore
       p_offset: offset,
     });
@@ -147,7 +240,7 @@ function transformCreator(row: any): CreatorProfile {
     availability_status: row.availability_status,
     hasAvailabilityStatus: 'availability_status' in row,
   });
-  
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -169,6 +262,20 @@ function transformCreator(row: any): CreatorProfile {
         restaurantName: p.restaurant_name,
       }))
       .filter((p: any) => p.imageUrl), // Filter out posts without images
+    // TRO-144: Extended profile fields
+    primaryCity: row.primary_city || null,
+    instagramHandle: row.instagram_handle || null,
+    instagramFollowers: row.instagram_followers || 0,
+    instagramEngagementRate: row.instagram_engagement_rate ? parseFloat(row.instagram_engagement_rate) : null,
+    instagramLastPostDate: row.instagram_last_post_date || null,
+    tiktokHandle: row.tiktok_handle || null,
+    tiktokFollowers: row.tiktok_followers || 0,
+    tiktokEngagementRate: row.tiktok_engagement_rate ? parseFloat(row.tiktok_engagement_rate) : null,
+    tiktokLastPostDate: row.tiktok_last_post_date || null,
+    persona: row.persona || null,
+    preferredCompensation: row.preferred_compensation || [],
+    pastRestaurantCollabs: row.past_restaurant_collabs || null,
+    socialStatsVerified: row.social_stats_verified || false,
   };
 }
 
@@ -362,6 +469,20 @@ export async function getCreatorProfile(
       specialties: cp.specialties || [],
       completedCampaigns, // CM-14
       avgRating, // CM-14
+      // TRO-144: Extended profile fields
+      primaryCity: cp.primary_city || null,
+      instagramHandle: cp.instagram_handle || null,
+      instagramFollowers: cp.instagram_followers || 0,
+      instagramEngagementRate: cp.instagram_engagement_rate ? parseFloat(cp.instagram_engagement_rate) : null,
+      instagramLastPostDate: cp.instagram_last_post_date || null,
+      tiktokHandle: cp.tiktok_handle || null,
+      tiktokFollowers: cp.tiktok_followers || 0,
+      tiktokEngagementRate: cp.tiktok_engagement_rate ? parseFloat(cp.tiktok_engagement_rate) : null,
+      tiktokLastPostDate: cp.tiktok_last_post_date || null,
+      persona: cp.persona || null,
+      preferredCompensation: cp.preferred_compensation || [],
+      pastRestaurantCollabs: cp.past_restaurant_collabs || null,
+      socialStatsVerified: cp.social_stats_verified || false,
       portfolioItems: portfolioItems?.map((item: any) => {
         // Handle both base schema (image_url only) and extended schema (with video_url)
         const videoUrl = item.video_url || '';
@@ -587,6 +708,68 @@ export async function toggleOpenToCollabs(
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * TRO-144: Update creator social stats and extended profile fields
+ */
+export async function updateCreatorStats(
+  creatorId: string,
+  stats: CreatorStatsUpdate
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const updateData: Record<string, unknown> = {};
+
+    // Map camelCase to snake_case for database columns
+    if (stats.primaryCity !== undefined) updateData.primary_city = stats.primaryCity;
+    if (stats.instagramHandle !== undefined) updateData.instagram_handle = stats.instagramHandle;
+    if (stats.instagramFollowers !== undefined) updateData.instagram_followers = stats.instagramFollowers;
+    if (stats.instagramEngagementRate !== undefined) updateData.instagram_engagement_rate = stats.instagramEngagementRate;
+    if (stats.instagramLastPostDate !== undefined) updateData.instagram_last_post_date = stats.instagramLastPostDate;
+    if (stats.tiktokHandle !== undefined) updateData.tiktok_handle = stats.tiktokHandle;
+    if (stats.tiktokFollowers !== undefined) updateData.tiktok_followers = stats.tiktokFollowers;
+    if (stats.tiktokEngagementRate !== undefined) updateData.tiktok_engagement_rate = stats.tiktokEngagementRate;
+    if (stats.tiktokLastPostDate !== undefined) updateData.tiktok_last_post_date = stats.tiktokLastPostDate;
+    if (stats.persona !== undefined) updateData.persona = stats.persona;
+    if (stats.preferredCompensation !== undefined) updateData.preferred_compensation = stats.preferredCompensation;
+    if (stats.pastRestaurantCollabs !== undefined) updateData.past_restaurant_collabs = stats.pastRestaurantCollabs;
+
+    // Add updated_at timestamp
+    updateData.updated_at = new Date().toISOString();
+
+    console.log('[updateCreatorStats] Updating creator stats:', {
+      creatorId,
+      fieldsUpdating: Object.keys(updateData),
+    });
+
+    const { error } = await supabase
+      .from('creator_profiles')
+      .update(updateData)
+      .eq('id', creatorId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[updateCreatorStats] Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * TRO-145: Get follower range for bucket filtering
+ */
+export function getFollowerRange(bucket: 'under5k' | '5k-20k' | '20kplus'): { min: number; max: number | null } {
+  switch (bucket) {
+    case 'under5k':
+      return { min: 0, max: 4999 };
+    case '5k-20k':
+      return { min: 5000, max: 19999 };
+    case '20kplus':
+      return { min: 20000, max: null };
+    default:
+      return { min: 0, max: null };
   }
 }
 

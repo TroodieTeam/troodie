@@ -18,7 +18,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCreatorProfile } from '@/hooks/useCreatorProfileId';
 import { supabase } from '@/lib/supabase';
 import {
-  updateCreatorProfile
+  updateCreatorProfile,
+  updateCreatorStats,
 } from '@/services/creatorDiscoveryService';
 import { addPortfolioItems } from '@/services/creatorUpgradeService';
 import { ImageUploadServiceV2 } from '@/services/imageUploadServiceV2';
@@ -48,7 +49,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function EditCreatorProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { profile: creatorProfile, loading: profileLoading } = useCreatorProfile();
+  const { profile: creatorProfile, loading: profileLoading, refetch: refetchProfile } = useCreatorProfile();
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
@@ -59,7 +60,21 @@ export default function EditCreatorProfileScreen() {
   const [availabilityStatus, setAvailabilityStatus] = useState<'available' | 'busy' | 'not_accepting'>('available');
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  
+
+  // TRO-144: Social stats fields
+  const [instagramHandle, setInstagramHandle] = useState('');
+  const [instagramFollowers, setInstagramFollowers] = useState('');
+  const [instagramEngagementRate, setInstagramEngagementRate] = useState('');
+  const [instagramLastPostDate, setInstagramLastPostDate] = useState('');
+  const [tiktokHandle, setTiktokHandle] = useState('');
+  const [tiktokFollowers, setTiktokFollowers] = useState('');
+  const [tiktokEngagementRate, setTiktokEngagementRate] = useState('');
+  const [tiktokLastPostDate, setTiktokLastPostDate] = useState('');
+
+  // TRO-144: Compensation preferences and collabs
+  const [preferredCompensation, setPreferredCompensation] = useState<string[]>([]);
+  const [pastRestaurantCollabs, setPastRestaurantCollabs] = useState('');
+
   // CM-15: Portfolio management
   const [portfolioItems, setPortfolioItems] = useState<Array<{ 
     id: string; 
@@ -84,7 +99,19 @@ export default function EditCreatorProfileScreen() {
       setProfileImageUrl(creatorProfile.avatar_url || null);
       setOpenToCollabs(creatorProfile.open_to_collabs ?? true);
       setAvailabilityStatus((creatorProfile.availability_status as 'available' | 'busy' | 'not_accepting') || 'available');
-      
+
+      // TRO-144: Load social stats
+      setInstagramHandle(creatorProfile.instagram_handle || '');
+      setInstagramFollowers(creatorProfile.instagram_followers?.toString() || '');
+      setInstagramEngagementRate(creatorProfile.instagram_engagement_rate?.toString() || '');
+      setInstagramLastPostDate(creatorProfile.instagram_last_post_date || '');
+      setTiktokHandle(creatorProfile.tiktok_handle || '');
+      setTiktokFollowers(creatorProfile.tiktok_followers?.toString() || '');
+      setTiktokEngagementRate(creatorProfile.tiktok_engagement_rate?.toString() || '');
+      setTiktokLastPostDate(creatorProfile.tiktok_last_post_date || '');
+      setPreferredCompensation(creatorProfile.preferred_compensation || []);
+      setPastRestaurantCollabs(creatorProfile.past_restaurant_collabs || '');
+
       // CM-15: Load portfolio items
       if (creatorProfile.id) {
         loadPortfolioItems();
@@ -359,6 +386,8 @@ export default function EditCreatorProfileScreen() {
     if (!creatorProfile?.id) return;
 
     setSaving(true);
+
+    // Update basic profile info
     const result = await updateCreatorProfile(creatorProfile.id, {
       displayName: displayName || undefined,
       bio: bio || undefined,
@@ -368,11 +397,46 @@ export default function EditCreatorProfileScreen() {
       avatarUrl: profileImageUrl || undefined,
     });
 
-    if (result.success) {
-      Alert.alert('Success', 'Profile updated!', [{ text: 'OK', onPress: () => router.push('/(tabs)/more') }]);
-    } else {
+    if (!result.success) {
       Alert.alert('Error', result.error || 'Failed to update profile');
+      setSaving(false);
+      return;
     }
+
+    // TRO-144: Update social stats and compensation preferences
+    const statsResult = await updateCreatorStats(creatorProfile.id, {
+      primaryCity: location || null, // Map location to primary_city
+      instagramHandle: instagramHandle || null,
+      instagramFollowers: instagramFollowers ? parseInt(instagramFollowers, 10) : null,
+      instagramEngagementRate: instagramEngagementRate ? parseFloat(instagramEngagementRate) : null,
+      instagramLastPostDate: instagramLastPostDate || null,
+      tiktokHandle: tiktokHandle || null,
+      tiktokFollowers: tiktokFollowers ? parseInt(tiktokFollowers, 10) : null,
+      tiktokEngagementRate: tiktokEngagementRate ? parseFloat(tiktokEngagementRate) : null,
+      tiktokLastPostDate: tiktokLastPostDate || null,
+      preferredCompensation: preferredCompensation,
+      pastRestaurantCollabs: pastRestaurantCollabs || null,
+    });
+
+    if (!statsResult.success) {
+      console.warn('[EditCreatorProfileScreen] Failed to update social stats:', statsResult.error);
+      // Don't fail the whole save, just warn
+    }
+
+    // Refetch profile to get updated stats
+    await refetchProfile();
+
+    Alert.alert('Success', 'Profile updated!', [{ 
+      text: 'OK', 
+      onPress: () => {
+        // Navigate back to creator profile screen
+        if (creatorProfile?.id) {
+          router.push(`/creator/${creatorProfile.id}`);
+        } else {
+          router.push('/(tabs)/more');
+        }
+      }
+    }]);
     setSaving(false);
   };
 
@@ -380,10 +444,10 @@ export default function EditCreatorProfileScreen() {
     if (hasChanges) {
       Alert.alert('Discard Changes?', 'You have unsaved changes.', [
         { text: 'Keep Editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => router.push('/(tabs)/more') },
+        { text: 'Discard', style: 'destructive', onPress: () => router.back() },
       ]);
     } else {
-      router.push('/(tabs)/more');
+      router.back();
     }
   };
 
@@ -415,7 +479,7 @@ export default function EditCreatorProfileScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
         <View style={{ padding: 16 }}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/more')}>
+          <TouchableOpacity onPress={() => router.back()}>
             <X size={24} color={DS.colors.text} />
           </TouchableOpacity>
         </View>
@@ -683,8 +747,8 @@ export default function EditCreatorProfileScreen() {
             }}
             onPress={() => setShowLocationPicker(true)}
           >
-            <Text style={{ 
-              fontSize: 14, 
+            <Text style={{
+              fontSize: 14,
               color: location ? DS.colors.text : DS.colors.textLight,
               flex: 1,
             }}>
@@ -694,6 +758,262 @@ export default function EditCreatorProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* TRO-144: Social Stats Section */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 4 }}>
+            Social Media Stats
+          </Text>
+          <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 16 }}>
+            Help restaurants understand your reach and engagement
+          </Text>
+
+          {/* Instagram */}
+          <View style={{
+            backgroundColor: DS.colors.backgroundWhite,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+            padding: 16,
+            marginBottom: 12,
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>
+              Instagram
+            </Text>
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Handle (without @)</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: DS.colors.border,
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 14,
+                  color: DS.colors.text,
+                  backgroundColor: DS.colors.background,
+                }}
+                value={instagramHandle}
+                onChangeText={(text) => {
+                  setInstagramHandle(text.replace(/^@/, ''));
+                  setHasChanges(true);
+                }}
+                placeholder="yourhandle"
+                placeholderTextColor={DS.colors.textLight}
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Followers</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={instagramFollowers}
+                  onChangeText={(text) => {
+                    setInstagramFollowers(text.replace(/[^0-9]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="10000"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Engagement %</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={instagramEngagementRate}
+                  onChangeText={(text) => {
+                    setInstagramEngagementRate(text.replace(/[^0-9.]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="3.5"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* TikTok */}
+          <View style={{
+            backgroundColor: DS.colors.backgroundWhite,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+            padding: 16,
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text, marginBottom: 12 }}>
+              TikTok
+            </Text>
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Handle (without @)</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: DS.colors.border,
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 14,
+                  color: DS.colors.text,
+                  backgroundColor: DS.colors.background,
+                }}
+                value={tiktokHandle}
+                onChangeText={(text) => {
+                  setTiktokHandle(text.replace(/^@/, ''));
+                  setHasChanges(true);
+                }}
+                placeholder="yourhandle"
+                placeholderTextColor={DS.colors.textLight}
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Followers</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={tiktokFollowers}
+                  onChangeText={(text) => {
+                    setTiktokFollowers(text.replace(/[^0-9]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="50000"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 4 }}>Engagement %</Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: DS.colors.border,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: DS.colors.text,
+                    backgroundColor: DS.colors.background,
+                  }}
+                  value={tiktokEngagementRate}
+                  onChangeText={(text) => {
+                    setTiktokEngagementRate(text.replace(/[^0-9.]/g, ''));
+                    setHasChanges(true);
+                  }}
+                  placeholder="5.0"
+                  placeholderTextColor={DS.colors.textLight}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* TRO-144: Compensation Preferences */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 4 }}>
+            Compensation Preferences
+          </Text>
+          <Text style={{ fontSize: 13, color: DS.colors.textLight, marginBottom: 12 }}>
+            What types of compensation are you open to? (Select all that apply)
+          </Text>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {[
+              { value: 'free', label: 'Free (no comp)' },
+              { value: 'compensated_meals', label: 'Compensated meals' },
+              { value: 'pay_under_150', label: 'Under $150' },
+              { value: 'pay_150_500', label: '$150 - $500' },
+              { value: 'pay_over_500', label: '$500+' },
+            ].map((option) => {
+              const isSelected = preferredCompensation.includes(option.value);
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: isSelected ? DS.colors.primary : DS.colors.border,
+                    backgroundColor: isSelected ? '#FFFBEB' : DS.colors.backgroundWhite,
+                  }}
+                  onPress={() => {
+                    if (isSelected) {
+                      setPreferredCompensation(preferredCompensation.filter(v => v !== option.value));
+                    } else {
+                      setPreferredCompensation([...preferredCompensation, option.value]);
+                    }
+                    setHasChanges(true);
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 14,
+                    color: isSelected ? DS.colors.primary : DS.colors.text,
+                    fontWeight: isSelected ? '600' : '400',
+                  }}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* TRO-144: Past Restaurant Collaborations */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginBottom: 8 }}>
+            Past Restaurant Collaborations
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+              borderColor: DS.colors.border,
+              borderRadius: 12,
+              padding: 12,
+              fontSize: 14,
+              color: DS.colors.text,
+              backgroundColor: DS.colors.backgroundWhite,
+              minHeight: 80,
+              textAlignVertical: 'top',
+            }}
+            value={pastRestaurantCollabs}
+            onChangeText={(text) => {
+              setPastRestaurantCollabs(text);
+              setHasChanges(true);
+            }}
+            multiline
+            numberOfLines={3}
+            placeholder="List restaurants you've worked with (e.g., Sweetgreen, Shake Shack, local favorites...)"
+            placeholderTextColor={DS.colors.textLight}
+          />
+        </View>
 
         {/* Open to Collabs */}
         <View

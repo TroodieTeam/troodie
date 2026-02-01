@@ -21,7 +21,7 @@ export default function CreatorOnboardingScreen() {
 
   const handleCancel = () => {
     // Navigate back to More tab if cancelled
-    router.back();
+    router.push('/(tabs)/more');
   };
 
   const handleBetaAccessGranted = () => {
@@ -31,7 +31,7 @@ export default function CreatorOnboardingScreen() {
 
   const handleBetaAccessClose = () => {
     // If user closes beta gate without access, go back
-    router.back();
+    router.push('/(tabs)/more');
   };
 
   if (!hasAccess) {

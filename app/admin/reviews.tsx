@@ -184,7 +184,7 @@ export default function AdminReviewsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/more')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={20} color="#333" />
         </TouchableOpacity>
         <View style={styles.headerContent}>

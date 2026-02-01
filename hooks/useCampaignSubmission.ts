@@ -1,5 +1,6 @@
 import { PAYMENT_POLLING_CONFIG } from '@/constants/campaign';
 import { supabase } from '@/lib/supabase';
+import { notificationService } from '@/services/notificationService';
 import { createCampaignPaymentIntent, getCampaignPaymentStatus, SavedPaymentMethodInfo } from '@/services/paymentService';
 import { CampaignFormData, RestaurantData, StripeAccountStatus } from '@/types/campaign';
 import { convertBudgetToCents, expandDeliverables, formatEndDate } from '@/utils/campaignTransformations';
@@ -107,7 +108,7 @@ export function useCampaignSubmission() {
         // FREE CAMPAIGN: Skip payment if budget is $0
         if (budgetCents === 0) {
           console.log('[Campaign Submit] ✅ Free campaign - skipping payment, activating immediately');
-          
+
           // Activate the campaign directly (no payment needed - mark as 'paid' since nothing to pay)
           const { error: activateError } = await supabase
             .from('campaigns')
@@ -120,6 +121,13 @@ export function useCampaignSubmission() {
           if (activateError) {
             console.error('[Campaign Submit] ⚠️ Error activating free campaign:', activateError);
           }
+
+          // TRO-146: Notify matching creators about the new campaign
+          notificationService.notifyMatchingCreators(
+            campaignId,
+            restaurantData.name || 'A restaurant',
+            formData.title
+          ).catch(err => console.error('[Campaign Submit] Notification error:', err));
 
           Alert.alert(
             'Campaign Created!',
@@ -195,9 +203,17 @@ export function useCampaignSubmission() {
         // TRO-136: If payment already succeeded (saved card charged off-session), skip PaymentSheet
         if (paymentResult.paymentAlreadySucceeded) {
           console.log('[Campaign Submit] ✅ Saved card charged successfully! Campaign is active.');
+
+          // TRO-146: Notify matching creators about the new campaign
+          notificationService.notifyMatchingCreators(
+            campaignId,
+            restaurantData.name || 'A restaurant',
+            formData.title
+          ).catch(err => console.error('[Campaign Submit] Notification error:', err));
+
           Alert.alert(
             'Campaign Created!',
-            `Your campaign is now active and your saved card (•••• ${savedPaymentMethod?.last4 || '****'}) has been charged.`,
+            `Your campaign is now active and your saved card (${'....'}${savedPaymentMethod?.last4 || '****'}) has been charged.`,
             [
               {
                 text: 'View Campaigns',
@@ -376,6 +392,24 @@ export function useCampaignSubmission() {
         );
       } else {
         console.log('[Campaign Submit] ✅ Campaign activated successfully');
+
+        // TRO-146: Notify matching creators about the new campaign
+        // Fetch campaign details for notification
+        const { data: campaignDetails } = await supabase
+          .from('campaigns')
+          .select('title, restaurant:restaurants(name)')
+          .eq('id', campaignId)
+          .single();
+
+        if (campaignDetails) {
+          const restaurantName = (campaignDetails.restaurant as any)?.name || 'A restaurant';
+          notificationService.notifyMatchingCreators(
+            campaignId,
+            restaurantName,
+            campaignDetails.title
+          ).catch(err => console.error('[Campaign Submit] Notification error:', err));
+        }
+
         Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
           {
             text: 'OK',
@@ -412,6 +446,23 @@ export function useCampaignSubmission() {
 
         if (!manualUpdateError) {
           console.log('[Campaign Submit] ✅ Manually activated campaign after payment confirmation');
+
+          // TRO-146: Notify matching creators about the new campaign
+          const { data: campaignDetails } = await supabase
+            .from('campaigns')
+            .select('title, restaurant:restaurants(name)')
+            .eq('id', campaignId)
+            .single();
+
+          if (campaignDetails) {
+            const restaurantName = (campaignDetails.restaurant as any)?.name || 'A restaurant';
+            notificationService.notifyMatchingCreators(
+              campaignId,
+              restaurantName,
+              campaignDetails.title
+            ).catch(err => console.error('[Campaign Submit] Notification error:', err));
+          }
+
           Alert.alert('Payment Successful', 'Your campaign is now active! Creators can now apply.', [
             {
               text: 'OK',
