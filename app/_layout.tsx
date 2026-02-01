@@ -37,6 +37,20 @@ import Constants from 'expo-constants';
 import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 
+// Agent-expo bridge for AI automation (only when EXPO_PUBLIC_AGENT_BRIDGE_ENABLED=true)
+const agentBridgeEnabled = process.env.EXPO_PUBLIC_AGENT_BRIDGE_ENABLED === 'true';
+let AgentBridgeProvider: React.ComponentType<{ children: React.ReactNode; config?: any }> =
+  ({ children }) => <>{children}</>;
+
+if (__DEV__ && agentBridgeEnabled) {
+  try {
+    AgentBridgeProvider = require('@agent-expo/bridge').AgentBridgeProvider;
+    console.log('[agent-expo] Bridge loaded');
+  } catch (e) {
+    console.log('[agent-expo] Bridge not available:', e);
+  }
+}
+
 Sentry.init({
   dsn: 'https://154af650ab170036784f1db10af4e5b8@o4509745606230016.ingest.us.sentry.io/4509745609900032',
 
@@ -323,8 +337,10 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <InnerLayout />
-    </AuthProvider>
+    <AgentBridgeProvider config={{ enabled: agentBridgeEnabled }}>
+      <AuthProvider>
+        <InnerLayout />
+      </AuthProvider>
+    </AgentBridgeProvider>
   );
 });

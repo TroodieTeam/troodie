@@ -261,6 +261,7 @@ export async function getCustomerPortalUrl(
 
 /**
  * Check if this is the restaurant's first campaign
+ * Note: Should be called AFTER campaign is created, so count of 1 means first campaign
  */
 export async function isFirstCampaign(restaurantId: string): Promise<boolean> {
   try {
@@ -274,8 +275,8 @@ export async function isFirstCampaign(restaurantId: string): Promise<boolean> {
       return false;
     }
 
-    // If count is 0, this is about to be their first campaign
-    return (count || 0) === 0;
+    // If count is 1, this is their first campaign (campaign was just created)
+    return (count || 0) === 1;
   } catch (error) {
     console.error('[subscriptionService] Exception checking campaign count:', error);
     return false;

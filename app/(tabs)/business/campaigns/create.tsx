@@ -4,6 +4,7 @@ import { CampaignStep2 } from '@/components/campaigns/CampaignStep2';
 import { CampaignStep3 } from '@/components/campaigns/CampaignStep3';
 import { CampaignStep4, SavedPaymentMethod } from '@/components/campaigns/CampaignStep4';
 import { CampaignStepIndicator } from '@/components/campaigns/CampaignStepIndicator';
+import { SubscriptionTrialModal } from '@/components/business/SubscriptionTrialModal';
 import { DS } from '@/components/design-system/tokens';
 import { TOTAL_STEPS } from '@/constants/campaign';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,7 +42,7 @@ export default function CreateCampaign() {
 
   const { restaurantData, loadingState, errorMessage, loadRestaurantData } = useRestaurantData();
 
-  const { submitCampaign, loading: submissionLoading } = useCampaignSubmission();
+  const { submitCampaign, loading: submissionLoading, showTrialModal, trialModalData, setShowTrialModal, setTrialModalData } = useCampaignSubmission();
 
   // TRO-136: Fetch saved payment method from business profile (including customer ID for off-session charging)
   useEffect(() => {
@@ -335,6 +336,25 @@ export default function CreateCampaign() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* TRO-137: Subscription Trial Modal */}
+      {trialModalData && (
+        <SubscriptionTrialModal
+          visible={showTrialModal}
+          onClose={() => {
+            setShowTrialModal(false);
+            setTrialModalData(null);
+            router.replace('/business/campaigns');
+          }}
+          restaurantClaimId={trialModalData.restaurantClaimId}
+          trialEndDate={trialModalData.trialEndDate}
+          onSubscribeSuccess={() => {
+            setShowTrialModal(false);
+            setTrialModalData(null);
+            router.replace('/business/campaigns');
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
