@@ -14,6 +14,7 @@ import {
   Clock,
   FileCheck,
   Heart,
+  Mail,
   MapPin,
   Settings,
   Trophy,
@@ -108,6 +109,13 @@ const categoryConfigs: CategoryConfig[] = [
     description: 'When you get paid for approved content',
     icon: Banknote,
     color: '#10B981'
+  },
+  {
+    key: 'campaign_invite',
+    title: 'Campaign Invites',
+    description: 'When a restaurant invites you to a campaign',
+    icon: Mail,
+    color: '#3B82F6'
   },
   {
     key: 'system',

@@ -304,6 +304,13 @@ export default function HomeScreen() {
         // Navigate to creator payments/wallet page
         router.push('/creator/payments');
         break;
+      case 'campaign_invite':
+        if (notification.data && typeof notification.data === 'object' && 'campaign_id' in notification.data) {
+          const campaignId = (notification.data as any).campaign_id;
+          // Navigate to campaign detail
+          router.push(`/creator/apply/${campaignId}`);
+        }
+        break;
       default:
         break;
     }

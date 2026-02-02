@@ -29,6 +29,7 @@ export type NotificationType =
   | 'campaign_deadline_approaching'
   | 'deliverables_submitted'
   | 'payment_received'
+  | 'campaign_invite'
   | 'system';
 
 // Notification category enum
@@ -43,6 +44,7 @@ export type NotificationCategory =
   | 'campaign_deadline_approaching'
   | 'deliverables_submitted'
   | 'payment_received'
+  | 'campaign_invite'
   | 'system';
 
 // Notification frequency enum
@@ -123,6 +125,11 @@ export interface PaymentReceivedData {
   amount_formatted?: string; // "$50.00"
   deliverable_id: string;
 }
+export interface CampaignInviteNotificationData {
+  campaign_id: string;
+  restaurant_name: string;
+  invitation_id: string;
+}
 export interface PostMentionData {
   postId: string;
   mentionerId: string;
@@ -177,6 +184,7 @@ export type NotificationData =
   | CampaignDeadlineNotificationData
   | DeliverablesSubmittedNotificationData
   | PaymentReceivedData
+  | CampaignInviteNotificationData
   | ApplicationApprovedNotificationData;
 
 // Notification creation interface
@@ -259,6 +267,12 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   payment_received: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  campaign_invite: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;

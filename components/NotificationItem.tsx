@@ -9,6 +9,7 @@ import {
   Clock,
   FileCheck,
   Heart,
+  Mail,
   MapPin,
   MessageCircle,
   Settings,
@@ -63,6 +64,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'campaign_deadline_approaching': return Clock;
       case 'payment_received': return Banknote;
       case 'deliverables_submitted': return FileCheck;
+      case 'campaign_invite': return Mail;
       default: return Bell;
     }
   };
@@ -84,6 +86,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'campaign_deadline_approaching': return '#F59E0B';
       case 'deliverables_submitted': return '#10B981';
       case 'payment_received': return '#10B981';
+      case 'campaign_invite': return '#3B82F6';
       default: return designTokens.colors.primaryOrange;
     }
   };
