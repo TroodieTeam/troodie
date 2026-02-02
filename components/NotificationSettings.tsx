@@ -11,6 +11,7 @@ import {
   CheckCircle,
   ChevronRight,
   Clock,
+  FileCheck,
   Heart,
   MapPin,
   Settings,
@@ -92,6 +93,13 @@ const categoryConfigs: CategoryConfig[] = [
     description: 'Reminders when campaign deliverables are due soon',
     icon: Clock,
     color: '#F59E0B'
+  },
+  {
+    key: 'deliverables_submitted',
+    title: 'Content Submissions',
+    description: 'When creators submit deliverables for review',
+    icon: FileCheck,
+    color: '#10B981'
   },
   {
     key: 'system',

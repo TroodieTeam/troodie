@@ -291,6 +291,14 @@ export default function HomeScreen() {
           router.push('/creator/campaigns');
         }
         break;
+      case 'deliverables_submitted':
+        if (notification.data && typeof notification.data === 'object' && 'campaign_id' in notification.data) {
+          const campaignId = (notification.data as any).campaign_id;
+          console.log('Navigating to campaign deliverables:', campaignId);
+          // Navigate to campaign detail → deliverables tab
+          router.push(`/business/campaigns/${campaignId}?tab=deliverables`);
+        }
+        break;
       default:
         break;
     }

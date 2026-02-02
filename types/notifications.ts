@@ -27,6 +27,7 @@ export type NotificationType =
   | 'campaign_application_submitted'
   | 'application_approved'
   | 'campaign_deadline_approaching'
+  | 'deliverables_submitted'
   | 'system';
 
 // Notification category enum
@@ -39,6 +40,7 @@ export type NotificationCategory =
   | 'campaign_application_submitted'
   | 'application_approved'
   | 'campaign_deadline_approaching'
+  | 'deliverables_submitted'
   | 'system';
 
 // Notification frequency enum
@@ -106,6 +108,13 @@ export interface CampaignDeadlineNotificationData {
   days_remaining: number;
   restaurant_id?: string;
 }
+export interface DeliverablesSubmittedNotificationData {
+  campaign_id: string;
+  deliverable_id: string;
+  creator_id: string;
+  application_id: string;
+  content_type?: string;
+}
 
 export interface PostMentionData {
   postId: string;
@@ -159,6 +168,7 @@ export type NotificationData =
   | SystemNotificationData
   | CampaignApplicationNotificationData
   | CampaignDeadlineNotificationData
+  | DeliverablesSubmittedNotificationData
   | ApplicationApprovedNotificationData;
 
 // Notification creation interface
@@ -229,6 +239,12 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   campaign_deadline_approaching: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  deliverables_submitted: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;
