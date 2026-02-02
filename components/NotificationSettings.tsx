@@ -10,6 +10,7 @@ import {
   Briefcase,
   CheckCircle,
   ChevronRight,
+  Clock,
   Heart,
   MapPin,
   Settings,
@@ -84,6 +85,13 @@ const categoryConfigs: CategoryConfig[] = [
     description: 'When restaurants approve your applications',
     icon: CheckCircle,
     color: '#10B981'
+  },
+  {
+    key: 'campaign_deadline_approaching',
+    title: 'Deadline Reminders',
+    description: 'Reminders when campaign deliverables are due soon',
+    icon: Clock,
+    color: '#F59E0B'
   },
   {
     key: 'system',

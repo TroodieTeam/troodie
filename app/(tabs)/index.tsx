@@ -283,6 +283,14 @@ export default function HomeScreen() {
           router.push('/creator/campaigns');
         }
         break;
+      case 'campaign_deadline_approaching':
+        if (notification.data && typeof notification.data === 'object' && 'campaign_id' in notification.data) {
+          const campaignId = (notification.data as any).campaign_id;
+          console.log('Navigating to campaign with deadline:', campaignId);
+          // Navigate to creator campaigns list (safest option)
+          router.push('/creator/campaigns');
+        }
+        break;
       default:
         break;
     }
