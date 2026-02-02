@@ -28,6 +28,7 @@ export type NotificationType =
   | 'application_approved'
   | 'campaign_deadline_approaching'
   | 'deliverables_submitted'
+  | 'payment_received'
   | 'system';
 
 // Notification category enum
@@ -41,6 +42,7 @@ export type NotificationCategory =
   | 'application_approved'
   | 'campaign_deadline_approaching'
   | 'deliverables_submitted'
+  | 'payment_received'
   | 'system';
 
 // Notification frequency enum
@@ -115,7 +117,12 @@ export interface DeliverablesSubmittedNotificationData {
   application_id: string;
   content_type?: string;
 }
-
+export interface PaymentReceivedData {
+  campaign_id: string;
+  amount: number;         // Amount in cents
+  amount_formatted?: string; // "$50.00"
+  deliverable_id: string;
+}
 export interface PostMentionData {
   postId: string;
   mentionerId: string;
@@ -169,6 +176,7 @@ export type NotificationData =
   | CampaignApplicationNotificationData
   | CampaignDeadlineNotificationData
   | DeliverablesSubmittedNotificationData
+  | PaymentReceivedData
   | ApplicationApprovedNotificationData;
 
 // Notification creation interface
@@ -245,6 +253,12 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   deliverables_submitted: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  payment_received: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;

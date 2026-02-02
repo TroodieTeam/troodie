@@ -2,6 +2,7 @@ import { designTokens } from '@/constants/designTokens';
 import { NotificationItemProps } from '@/types/notifications';
 import {
   AtSign,
+  Banknote,
   Bell,
   Briefcase,
   CheckCircle,
@@ -60,6 +61,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'campaign_application_submitted': return Users;
       case 'application_approved': return CheckCircle;
       case 'campaign_deadline_approaching': return Clock;
+      case 'payment_received': return Banknote;
       case 'deliverables_submitted': return FileCheck;
       default: return Bell;
     }
@@ -81,6 +83,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'application_approved': return '#10B981';
       case 'campaign_deadline_approaching': return '#F59E0B';
       case 'deliverables_submitted': return '#10B981';
+      case 'payment_received': return '#10B981';
       default: return designTokens.colors.primaryOrange;
     }
   };

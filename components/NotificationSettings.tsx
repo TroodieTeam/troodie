@@ -6,6 +6,7 @@ import {
   UserNotificationPreferences
 } from '@/types/notifications';
 import {
+  Banknote,
   Bell,
   Briefcase,
   CheckCircle,
@@ -99,6 +100,13 @@ const categoryConfigs: CategoryConfig[] = [
     title: 'Content Submissions',
     description: 'When creators submit deliverables for review',
     icon: FileCheck,
+    color: '#10B981'
+  },
+  {
+    key: 'payment_received',
+    title: 'Payments',
+    description: 'When you get paid for approved content',
+    icon: Banknote,
     color: '#10B981'
   },
   {

@@ -299,6 +299,11 @@ export default function HomeScreen() {
           router.push(`/business/campaigns/${campaignId}?tab=deliverables`);
         }
         break;
+      case 'payment_received':
+        console.log('Navigating to payments page');
+        // Navigate to creator payments/wallet page
+        router.push('/creator/payments');
+        break;
       default:
         break;
     }
