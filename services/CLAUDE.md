@@ -23,14 +23,12 @@ This directory contains all service layer modules for the Troodie app. Services 
 
 #### Content Services
 - **postService.ts** - Post CRUD, feed queries
-- **postEngagementService.ts** - Likes, comments, saves
-- **enhancedPostEngagementService.ts** - Advanced engagement features
 - **postMediaService.ts** - Post image/video handling
 - **shareService.ts** - Share posts/boards/restaurants
+- **engagement/UnifiedEngagementService.ts** - Likes, comments, saves (canonical service)
 
 #### Board Services
-- **boardService.ts** - Board CRUD, members, restaurants
-- **boardServiceExtended.ts** - Advanced board features
+- **boardService.ts** - Board CRUD, members, restaurants, saves
 - **boardInvitationService.ts** - Board invitations (send, accept, decline)
 - **saveService.ts** - Save restaurants to boards
 
@@ -56,11 +54,11 @@ This directory contains all service layer modules for the Troodie app. Services 
 - **statusNotificationService.ts** - Status update notifications
 
 #### Media Services
-- **imageUploadService.ts** - Base64 image uploads (legacy)
-- **imageUploadServiceV2.ts** - Modern image uploads
-- **imageUploadServiceFormData.ts** - FormData uploads
+- **imageUploadServiceV2.ts** - Modern image uploads (canonical)
 - **storageService.ts** - Supabase Storage operations
 - **intelligentCoverPhotoService.ts** - Auto-select cover photos
+- **videoUploadService.ts** - Video uploads
+- **cloudinaryVideoService.ts** - Cloudinary video integration
 
 #### Creator/Business Services
 - **creatorApplicationService.ts** - Creator account applications

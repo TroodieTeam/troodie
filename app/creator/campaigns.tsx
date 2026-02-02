@@ -1,4 +1,4 @@
-import { EmptyState } from '@/components/common/EmptyState';
+import { EmptyState } from '@/components/design-system';
 import { CreatorHeader } from '@/components/creator/CreatorHeader';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
@@ -564,11 +564,12 @@ export default function MyCampaigns() {
     
     return (
       <EmptyState
+        type="custom"
         icon={Target}
         title={message.title}
         message={message.description}
-        ctaLabel={message.ctaLabel}
-        onCtaPress={message.onCtaPress}
+        actionLabel={message.ctaLabel}
+        onAction={message.onCtaPress}
       />
     );
   };

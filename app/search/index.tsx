@@ -18,7 +18,7 @@ import {
   View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import EmptyState from '../../components/EmptyState';
+import { EmptyState } from '@/components/design-system';
 import FilterBadge from '../../components/FilterBadge';
 import UserSearchResult from '../../components/UserSearchResult';
 import { SearchUserResult } from '../../lib/supabase';
@@ -137,9 +137,9 @@ export default function UserSearchScreen() {
 
     return (
       <EmptyState
-        icon="search"
+        type="no-results"
         title="No users found"
-        description="Try adjusting your search or filters"
+        message="Try adjusting your search or filters"
       />
     )
   }

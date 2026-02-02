@@ -114,10 +114,16 @@ Example services:
 - Component patterns: Functional components with TypeScript, hooks for state/effects
 
 ### Image Handling
-- **Upload service**: `services/imageUploadService.ts` (base64), `imageUploadServiceV2.ts` (newer)
-- **Storage buckets**: avatars, restaurant-photos, board-covers, community-images
+- **Upload service**: `services/imageUploadServiceV2.ts` (canonical image upload service)
+- **Storage buckets**: avatars, restaurant-photos, board-covers, community-images, portfolio
 - **Image manipulation**: Uses `expo-image-manipulator` for resizing/compression before upload
 - Intelligent cover photo selection in `services/intelligentCoverPhotoService.ts`
+
+### Video Handling
+- **Upload service**: `services/videoUploadService.ts`, `services/cloudinaryVideoService.ts`
+- **Optimization**: Compression before upload for performance
+- **Storage**: Cloudinary integration for portfolios and post videos
+- Used in creator portfolios and campaign deliverables
 
 ### Notifications
 - **Push notifications**: `services/pushNotificationService.ts` + `hooks/usePushNotifications.ts`
@@ -138,6 +144,18 @@ Core tables (see migrations in `supabase/migrations/`):
 - `creator_applications` - Creator account upgrade applications
 - `restaurant_claims` - Restaurant ownership claims
 - `campaigns` - Business-to-creator marketing campaigns
+
+Creator Marketplace tables:
+- `creator_profiles` - Extended creator data, Stripe accounts, social stats
+- `portfolio_items` - Creator portfolio content (images, videos)
+- `campaign_applications` - Creator applications to campaigns
+- `campaign_deliverables` - Submitted content with approval status
+- `campaign_invitations` - Direct creator invitations from businesses
+- `campaign_payments` - Payment records for campaigns
+
+Business tables:
+- `restaurant_team_invitations` - Team member access invitations
+- `restaurant_subscriptions` - Business subscription status
 
 ## Important Patterns
 
@@ -180,6 +198,27 @@ Pattern for real-time features:
   - `creatorApplicationService.ts` for creator upgrades
   - `restaurantClaimService.ts` for business upgrades
 - UI adapts based on account type (check `useAccountType.ts` hook)
+
+### Creator Marketplace
+- **Campaign browsing**: `app/creator/explore-campaigns.tsx`
+- **Campaign applications**: `services/campaignApplicationService.ts`
+- **Deliverable submissions**: `services/deliverableSubmissionService.ts`
+- **Creator profiles**: Extended fields (Instagram/TikTok stats, portfolio, availability)
+- **Payout system**: Stripe Connect via `services/payoutService.ts`
+- **Portfolio management**: `app/creator/portfolio/` screens
+
+### Business Dashboard
+- **Restaurant subscriptions**: $49/month via `services/subscriptionService.ts`
+- **Campaign creation**: `app/(tabs)/business/campaigns/` screens
+- **Creator discovery**: `services/creatorDiscoveryService.ts` with filters (location, niche, rates)
+- **Deliverable review**: `services/deliverableReviewService.ts` for approving/rejecting content
+- **Team management**: `services/restaurantTeamService.ts` with email invitations
+
+### Payments Integration
+- **Stripe Connect**: Creator payouts via `services/stripeService.ts`
+- **Restaurant billing**: Subscription management for businesses
+- **Deliverable payments**: Auto-pay on approval via Edge Functions
+- **Edge Functions**: `supabase/functions/` for payment processing
 
 ### Deep Linking
 - URL scheme: `troodie://`

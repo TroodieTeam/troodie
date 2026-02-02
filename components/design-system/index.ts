@@ -82,6 +82,7 @@ export { RestaurantCard } from './RestaurantCard';
 export type { RestaurantCardProps } from './RestaurantCard';
 
 // Empty States
+import { EmptyState as EmptyStateComponent } from './EmptyState';
 export { EmptyState } from './EmptyState';
 export type {
   EmptyStateProps,
@@ -136,7 +137,7 @@ export const DesignSystem = {
     Text: TextButton,
   },
   Feedback: {
-    EmptyState,
+    EmptyState: EmptyStateComponent,
     Skeleton,
     SkeletonGroup,
   },

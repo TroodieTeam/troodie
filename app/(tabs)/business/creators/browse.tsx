@@ -6,7 +6,7 @@
  */
 
 import InviteCreatorModal from '@/components/business/InviteCreatorModal';
-import { EmptyState } from '@/components/common/EmptyState';
+import { EmptyState } from '@/components/design-system';
 import { DS } from '@/components/design-system/tokens';
 import { VideoThumbnail } from '@/components/VideoThumbnail';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1038,6 +1038,7 @@ export default function BrowseCreators() {
           scrollEnabled={!showCityPicker}
           ListEmptyComponent={
             <EmptyState
+              type="custom"
               icon={Users}
               title="No Creators Found"
               message={
@@ -1045,8 +1046,8 @@ export default function BrowseCreators() {
                   ? "Try adjusting your filters or check back later for new creators."
                   : "No creators are currently available. Check back later for new creators."
               }
-              ctaLabel={searchQuery ? "Clear Search" : undefined}
-              onCtaPress={searchQuery ? () => setSearchQuery('') : undefined}
+              actionLabel={searchQuery ? "Clear Search" : undefined}
+              onAction={searchQuery ? () => setSearchQuery('') : undefined}
             />
           }
         />

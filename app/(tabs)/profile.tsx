@@ -15,7 +15,6 @@ import { useSmoothDataFetch } from '@/hooks/useSmoothDataFetch';
 import { supabase } from '@/lib/supabase';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
-import { boardServiceExtended } from '@/services/boardServiceExtended';
 import { communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { Profile, profileService } from '@/services/profileService';
@@ -118,7 +117,7 @@ export default function ProfileScreen() {
 
       // If no Quick Saves board, get ALL saves
       if (!quickSaves || quickSaves.length === 0) {
-        quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 50);
+        quickSaves = await boardService.getAllUserSaves(user.id, 50);
       }
 
       if (!quickSaves || quickSaves.length === 0) {
