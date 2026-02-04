@@ -38,6 +38,7 @@ export type NotificationCategory =
   | 'achievements'
   | 'restaurants'
   | 'boards'
+  | 'follow'
   | 'campaign_opportunities'
   | 'campaign_application_submitted'
   | 'application_approved'
@@ -231,6 +232,12 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   boards: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  follow: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;

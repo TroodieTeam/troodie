@@ -311,6 +311,11 @@ export default function HomeScreen() {
           router.push(`/creator/apply/${campaignId}`);
         }
         break;
+      case 'follow':
+        if (notification.related_id) {
+          router.push(`/user/${notification.related_id}` as any);
+        }
+        break;
       default:
         break;
     }

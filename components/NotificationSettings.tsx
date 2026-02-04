@@ -18,6 +18,7 @@ import {
   MapPin,
   Settings,
   Trophy,
+  UserPlus,
   Users
 } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -116,6 +117,13 @@ const categoryConfigs: CategoryConfig[] = [
     description: 'When a restaurant invites you to a campaign',
     icon: Mail,
     color: '#3B82F6'
+  },
+  {
+    key: 'follow',
+    title: 'New Followers',
+    description: 'When someone starts following you',
+    icon: UserPlus,
+    color: '#10B981'
   },
   {
     key: 'system',
