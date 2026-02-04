@@ -140,6 +140,7 @@ export interface FriendPostRestaurantNotificationData {
   username: string;
   restaurant_name: string;
   restaurant_id: string;
+  post_type?: string;
 }
 export interface PostMentionData {
   postId: string;

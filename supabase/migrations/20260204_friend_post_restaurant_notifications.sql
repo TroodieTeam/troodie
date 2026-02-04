@@ -96,7 +96,8 @@ BEGIN
         'post_id', NEW.id,
         'username', v_username,
         'restaurant_name', v_restaurant_name,
-        'restaurant_id', NEW.restaurant_id
+        'restaurant_id', NEW.restaurant_id,
+        'post_type', NEW.post_type
       ),
       'post',
       NEW.id,

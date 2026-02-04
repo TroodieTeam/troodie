@@ -322,7 +322,14 @@ export default function HomeScreen() {
       case 'friend_post_restaurant':
         if (notification.data && typeof notification.data === 'object' && 'post_id' in notification.data) {
           const postId = (notification.data as any).post_id;
-          router.push(`/post/${postId}` as any);
+          const postType = (notification.data as any).post_type;
+
+          // Route reviews to review screen, everything else to post screen
+          if (postType === 'review') {
+            router.push(`/review/${postId}` as any);
+          } else {
+            router.push(`/post/${postId}` as any);
+          }
         }
         break;
       default:
