@@ -316,6 +316,9 @@ export default function HomeScreen() {
           router.push(`/user/${notification.related_id}` as any);
         }
         break;
+      case 'weekly_recap':
+        router.push('/add/create-post' as any);
+        break;
       default:
         break;
     }

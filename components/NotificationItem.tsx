@@ -5,6 +5,7 @@ import {
   Banknote,
   Bell,
   Briefcase,
+  Calendar,
   CheckCircle,
   Clock,
   FileCheck,
@@ -65,6 +66,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'payment_received': return Banknote;
       case 'deliverables_submitted': return FileCheck;
       case 'campaign_invite': return Mail;
+      case 'weekly_recap': return Calendar;
       default: return Bell;
     }
   };
@@ -87,6 +89,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'deliverables_submitted': return '#10B981';
       case 'payment_received': return '#10B981';
       case 'campaign_invite': return '#3B82F6';
+      case 'weekly_recap': return '#EC4899';
       default: return designTokens.colors.primaryOrange;
     }
   };

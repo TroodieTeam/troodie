@@ -30,6 +30,7 @@ export type NotificationType =
   | 'deliverables_submitted'
   | 'payment_received'
   | 'campaign_invite'
+  | 'weekly_recap'
   | 'system';
 
 // Notification category enum
@@ -46,6 +47,7 @@ export type NotificationCategory =
   | 'deliverables_submitted'
   | 'payment_received'
   | 'campaign_invite'
+  | 'weekly_recap'
   | 'system';
 
 // Notification frequency enum
@@ -285,6 +287,12 @@ export interface UserNotificationPreferences {
     email_enabled: boolean;
     frequency: NotificationFrequency;
   };
+  weekly_recap: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  }
   system: {
     push_enabled: boolean;
     in_app_enabled: boolean;

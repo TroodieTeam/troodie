@@ -9,6 +9,7 @@ import {
   Banknote,
   Bell,
   Briefcase,
+  Calendar,
   CheckCircle,
   ChevronRight,
   Clock,
@@ -124,6 +125,13 @@ const categoryConfigs: CategoryConfig[] = [
     description: 'When someone starts following you',
     icon: UserPlus,
     color: '#10B981'
+  },
+  {
+    key: 'weekly_recap',
+    title: 'Weekly Recap',
+    description: 'Reminder to share your weekly food experiences',
+    icon: Calendar,
+    color: '#EC4899'
   },
   {
     key: 'system',
