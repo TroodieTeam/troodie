@@ -1,6 +1,5 @@
-import { supabase } from '../lib/supabase'
-import { authService } from './authService'
-import { NotificationService } from './notificationService'
+import { supabase } from '../lib/supabase';
+import { authService } from './authService';
 
 export class FollowService {
   private static activeRequests = new Map<string, Promise<{ success: boolean; error?: string }>>();
@@ -105,7 +104,7 @@ export class FollowService {
   static async isFollowing(userId: string): Promise<boolean> {
     try {
       const currentUserId = await authService.getCurrentUserId()
-      
+
       if (!currentUserId) return false
 
       const { data, error } = await supabase
@@ -129,7 +128,7 @@ export class FollowService {
   static async getFollowers(userId: string, offset = 0, limit = 20): Promise<{ data: any[], error: any }> {
     try {
       const currentUserId = await authService.getCurrentUserId()
-      
+
       const { data, error } = await supabase
         .from('user_relationships')
         .select(`
@@ -153,10 +152,16 @@ export class FollowService {
       // Check if current user follows each follower
       const followers = await Promise.all((data || []).map(async (item) => {
         const follower = item.follower
-        if (currentUserId && follower?.id !== currentUserId) {
+
+        // Skip if follower is null or doesn't exist
+        if (!follower || !follower.id) {
+          return null
+        }
+
+        if (currentUserId && follower.id !== currentUserId) {
           follower.isFollowing = await this.isFollowing(follower.id)
         }
-        follower.isCurrentUser = follower?.id === currentUserId
+        follower.isCurrentUser = follower.id === currentUserId
         return follower
       }))
 
@@ -170,7 +175,7 @@ export class FollowService {
   static async getFollowing(userId: string, offset = 0, limit = 20): Promise<{ data: any[], error: any }> {
     try {
       const currentUserId = await authService.getCurrentUserId()
-      
+
       const { data, error } = await supabase
         .from('user_relationships')
         .select(`
@@ -194,10 +199,16 @@ export class FollowService {
       // Check if current user follows each following user
       const following = await Promise.all((data || []).map(async (item) => {
         const followingUser = item.following
-        if (currentUserId && followingUser?.id !== currentUserId) {
+
+        // Skip if following user is null or doesn't exist
+        if (!followingUser || !followingUser.id) {
+          return null
+        }
+
+        if (currentUserId && followingUser.id !== currentUserId) {
           followingUser.isFollowing = await this.isFollowing(followingUser.id)
         }
-        followingUser.isCurrentUser = followingUser?.id === currentUserId
+        followingUser.isCurrentUser = followingUser.id === currentUserId
         return followingUser
       }))
 

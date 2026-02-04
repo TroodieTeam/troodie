@@ -134,6 +134,13 @@ const categoryConfigs: CategoryConfig[] = [
     color: '#EC4899'
   },
   {
+    key: 'friend_post_restaurant',
+    title: 'Friend Activity',
+    description: 'When friends post at restaurants',
+    icon: MapPin,
+    color: '#F97316'
+  },
+  {
     key: 'system',
     title: 'System',
     description: 'App updates, maintenance, and announcements',

@@ -67,6 +67,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'deliverables_submitted': return FileCheck;
       case 'campaign_invite': return Mail;
       case 'weekly_recap': return Calendar;
+      case 'friend_post_restaurant': return MapPin;
       default: return Bell;
     }
   };
@@ -90,6 +91,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'payment_received': return '#10B981';
       case 'campaign_invite': return '#3B82F6';
       case 'weekly_recap': return '#EC4899';
+      case 'friend_post_restaurant': return '#F97316';
       default: return designTokens.colors.primaryOrange;
     }
   };

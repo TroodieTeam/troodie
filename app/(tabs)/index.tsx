@@ -319,6 +319,12 @@ export default function HomeScreen() {
       case 'weekly_recap':
         router.push('/add/create-post' as any);
         break;
+      case 'friend_post_restaurant':
+        if (notification.data && typeof notification.data === 'object' && 'post_id' in notification.data) {
+          const postId = (notification.data as any).post_id;
+          router.push(`/post/${postId}` as any);
+        }
+        break;
       default:
         break;
     }

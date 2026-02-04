@@ -31,6 +31,7 @@ export type NotificationType =
   | 'payment_received'
   | 'campaign_invite'
   | 'weekly_recap'
+  | 'friend_post_restaurant'
   | 'system';
 
 // Notification category enum
@@ -48,6 +49,7 @@ export type NotificationCategory =
   | 'payment_received'
   | 'campaign_invite'
   | 'weekly_recap'
+  | 'friend_post_restaurant'
   | 'system';
 
 // Notification frequency enum
@@ -133,6 +135,12 @@ export interface CampaignInviteNotificationData {
   restaurant_name: string;
   invitation_id: string;
 }
+export interface FriendPostRestaurantNotificationData {
+  post_id: string;
+  username: string;
+  restaurant_name: string;
+  restaurant_id: string;
+}
 export interface PostMentionData {
   postId: string;
   mentionerId: string;
@@ -188,6 +196,7 @@ export type NotificationData =
   | DeliverablesSubmittedNotificationData
   | PaymentReceivedData
   | CampaignInviteNotificationData
+  | FriendPostRestaurantNotificationData
   | ApplicationApprovedNotificationData;
 
 // Notification creation interface
@@ -293,6 +302,12 @@ export interface UserNotificationPreferences {
     email_enabled: boolean;
     frequency: NotificationFrequency;
   }
+  friend_post_restaurant: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
   system: {
     push_enabled: boolean;
     in_app_enabled: boolean;
