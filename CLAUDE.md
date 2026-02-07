@@ -22,6 +22,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - [Board Invitation Modal Fix](./BOARD_INVITATION_FIX_SUMMARY.md)
 - [Board Invitation RLS Fix](./BOARD_INVITATION_RLS_FIX.md)
 
+**Development Workflow Skills:**
+- `/explore` - Expand a raw idea into a structured idea spec
+- `/groom` - Refine a ticket/idea into a technical spec with stakeholder questions
+- `/groom --approve [name]` - Incorporate stakeholder answers and approve spec
+- `/execute` - Implement an approved spec with self-testing and artifacts
+- `/spec-interview` - Deep interactive interview for complex features (existing)
+
+**Feature Lifecycle:**
+- `specs/ideas/` - DRAFT idea specs from `/explore`
+- `specs/features/[name]/` - Feature specs from `/groom` (spec.md, questions.md, status.md)
+- `testing/manual/` - Manual test scripts from `/execute`
+- `testing/sql/` - Verification and reset SQL from `/execute`
+
 ---
 
 ## Project Overview
