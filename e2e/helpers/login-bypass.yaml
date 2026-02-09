@@ -11,13 +11,38 @@ appId: com.troodie.troodie.com
     clearState: true
     clearKeychain: true
 
-# Wait for welcome screen
-- assertVisible:
-    text: "Welcome"
-    timeout: 10000
+# Handle Expo Dev Client launcher if shown
+- tapOn:
+    text: "http://localhost:8081"
     optional: true
 
-# Tap Get Started or Sign In
+- waitForAnimationToEnd
+
+# Dismiss Expo developer menu if shown
+- tapOn:
+    text: "Close"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Or tap Continue if shown
+- tapOn:
+    text: "Continue"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Wait for welcome/onboarding screen
+- extendedWaitUntil:
+    visible: "GET STARTED"
+    timeout: 15000
+
+# Tap Log in (for existing accounts)
+- tapOn:
+    text: "Log in"
+    optional: true
+
+# Or tap Get Started / Sign In
 - tapOn:
     text: "Get Started"
     optional: true
@@ -26,7 +51,14 @@ appId: com.troodie.troodie.com
     text: "Sign In"
     optional: true
 
-# Enter email
+# Wait for email screen to load
+- waitForAnimationToEnd
+
+# Enter email - tap on placeholder to focus
+- tapOn:
+    text: "user@example.com"
+    optional: true
+
 - tapOn:
     id: "email-input"
     optional: true
@@ -38,35 +70,49 @@ appId: com.troodie.troodie.com
 - inputText: ${TEST_EMAIL}
 - hideKeyboard
 
-# Continue to OTP
+# Continue to OTP - try multiple button texts
 - tapOn:
-    text: "Continue"
+    text: "Send Code"
     optional: true
 
 - tapOn:
-    text: "Send Code"
+    text: "Continue"
     optional: true
 
 - tapOn:
     text: "Next"
     optional: true
 
-# Wait for OTP screen
 - waitForAnimationToEnd
 
-# Enter OTP: 000000 (bypass code)
-- inputText: "000000"
-
-# Wait for login
-- waitForAnimationToEnd
-
-# Verify logged in - look for main navigation
-- assertVisible:
-    id: "tab-bar"
-    timeout: 15000
-    optional: true
-
-- assertVisible:
-    text: "Home"
+# Wait for OTP screen to load
+- extendedWaitUntil:
+    visible: "Enter the code sent"
     timeout: 10000
+
+# Enter OTP digits one by one (6-digit code: 000000)
+# The OTP field auto-focuses on first input
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+
+# OTP should auto-submit when all 6 digits are entered
+# But tap Verify as backup
+- tapOn:
+    text: "Verify"
     optional: true
+
+# Handle potential auth error dialog
+- tapOn:
+    text: "OK"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Wait for login to complete - look for content that appears after login
+- extendedWaitUntil:
+    visible: "Your Saves"
+    timeout: 15000

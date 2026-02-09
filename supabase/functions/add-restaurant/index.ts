@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import ApifyClient from 'https://esm.sh/apify-client@2.9.0';
+import { ApifyClient } from 'https://esm.sh/apify-client@2.9.0';
 // ===== CONSTANTS =====
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -526,8 +526,20 @@ serve(async (req)=>{
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     // Check if restaurant already exists
-    const { data: existingRestaurant } = await supabase.from('restaurants').select('id, name').or(`google_place_id.eq.${placeId},and(name.ilike.%${restaurantName}%,address.ilike.%${address}%)`).single();
+    // Use .maybeSingle() instead of .single() to avoid errors when no rows found
+    const { data: existingRestaurant, error: checkError } = await supabase
+      .from('restaurants')
+      .select('id, name')
+      .or(`google_place_id.eq.${placeId},and(name.ilike.%${restaurantName}%,address.ilike.%${address}%)`)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error('❌ Error checking for existing restaurant:', checkError);
+      // Don't fail on check error, just log it and continue
+    }
+    
     if (existingRestaurant) {
+      console.log(`⚠️ Restaurant already exists: ${existingRestaurant.name} (ID: ${existingRestaurant.id})`);
       return new Response(JSON.stringify({
         error: 'Restaurant already exists',
         restaurant: existingRestaurant
@@ -619,6 +631,32 @@ serve(async (req)=>{
     if (insertError) {
       console.error('❌ Database insertion error:', insertError);
       console.error('❌ Error details:', JSON.stringify(insertError, null, 2));
+      console.error('❌ Attempted to insert:', JSON.stringify(processedRestaurant, null, 2));
+      
+      // Check if it's a duplicate key error (race condition)
+      if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) {
+        console.log('⚠️ Duplicate key error detected - restaurant may have been added concurrently');
+        // Try to fetch the existing restaurant
+        const { data: existing } = await supabase
+          .from('restaurants')
+          .select('id, name')
+          .eq('google_place_id', placeId)
+          .maybeSingle();
+        
+        if (existing) {
+          return new Response(JSON.stringify({
+            error: 'Restaurant already exists',
+            restaurant: existing
+          }), {
+            status: 409,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json'
+            }
+          });
+        }
+      }
+      
       return new Response(JSON.stringify({
         error: 'Failed to save restaurant',
         details: insertError.message,
