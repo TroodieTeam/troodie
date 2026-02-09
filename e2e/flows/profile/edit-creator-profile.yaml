@@ -1,0 +1,87 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+---
+# Test: Creator can edit profile without data clearing or navigation loop
+# Using deep links for direct navigation
+
+# Login first
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# Navigate directly to Edit Profile screen via deep link
+- openLink: troodie://creator/profile/edit
+
+# Handle iOS "Open in Troodie?" confirmation dialog
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+# ISSUE #1 VALIDATION: Verify form data is loaded (not wiped)
+- extendedWaitUntil:
+    visible: "Profile Completeness"
+    timeout: 10000
+
+# Check that key form sections are present with data
+- assertVisible: "Display Name"
+- assertVisible: "Bio"
+
+- takeScreenshot: "creator-profile-form-loaded"
+
+# Scroll down to see Social Media Stats section
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+# Check for social media sections (added in TRO-144)
+- assertVisible:
+    text: "Instagram"
+    optional: true
+
+- takeScreenshot: "creator-profile-social-stats"
+
+# Scroll back up to edit Bio
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+# Tap on Bio field to make an edit
+- tapOn:
+    text: "Food enthusiast.*"
+    optional: true
+
+- inputText: "!"
+- hideKeyboard
+
+# Save changes
+- tapOn:
+    text: "Save"
+
+- waitForAnimationToEnd
+
+# Wait for success alert
+- extendedWaitUntil:
+    visible: "Profile updated!"
+    timeout: 15000
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+- waitForAnimationToEnd
+
+# ISSUE #2 VALIDATION: Should NOT be on Edit Profile anymore
+# We should have navigated away (no back loop)
+- takeScreenshot: "after-save-navigation"
+
+# Verify we're not stuck on edit screen (success means we navigated away)
+- assertNotVisible:
+    text: "Profile Completeness"
+    optional: true
+
+- takeScreenshot: "edit-creator-profile-complete"

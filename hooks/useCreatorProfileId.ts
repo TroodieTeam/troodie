@@ -136,6 +136,17 @@ export interface CreatorProfile {
   total_followers?: number;
   troodie_engagement_rate?: number;
   avatar_url?: string;
+  // TRO-144: Social stats fields
+  instagram_handle?: string;
+  instagram_followers?: number;
+  instagram_engagement_rate?: number;
+  instagram_last_post_date?: string;
+  tiktok_handle?: string;
+  tiktok_followers?: number;
+  tiktok_engagement_rate?: number;
+  tiktok_last_post_date?: string;
+  preferred_compensation?: string[];
+  past_restaurant_collabs?: string;
 }
 
 interface UseCreatorProfileResult {
@@ -194,7 +205,17 @@ export function useCreatorProfile(): UseCreatorProfileResult {
           portfolio_uploaded,
           total_followers,
           troodie_engagement_rate,
-          avatar_url
+          avatar_url,
+          instagram_handle,
+          instagram_followers,
+          instagram_engagement_rate,
+          instagram_last_post_date,
+          tiktok_handle,
+          tiktok_followers,
+          tiktok_engagement_rate,
+          tiktok_last_post_date,
+          preferred_compensation,
+          past_restaurant_collabs
         `
         )
         .eq('user_id', user.id)

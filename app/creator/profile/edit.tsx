@@ -426,14 +426,17 @@ export default function EditCreatorProfileScreen() {
     // Refetch profile to get updated stats
     await refetchProfile();
 
-    Alert.alert('Success', 'Profile updated!', [{ 
-      text: 'OK', 
+    // Reset hasChanges before navigation to prevent "Discard changes?" prompt
+    setHasChanges(false);
+
+    Alert.alert('Success', 'Profile updated!', [{
+      text: 'OK',
       onPress: () => {
-        // Navigate back to creator profile screen
+        // Use replace to remove Edit screen from nav stack, preventing back navigation loop
         if (creatorProfile?.id) {
-          router.push(`/creator/${creatorProfile.id}`);
+          router.replace(`/creator/${creatorProfile.id}`);
         } else {
-          router.push('/(tabs)/more');
+          router.replace('/(tabs)/more');
         }
       }
     }]);

@@ -148,10 +148,16 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
 
 
       if (error) {
+        console.error('[AddRestaurantModal] Supabase function error:', error);
+        console.error('[AddRestaurantModal] Error name:', error.name);
+        console.error('[AddRestaurantModal] Error message:', error.message);
+        console.error('[AddRestaurantModal] Error context:', error.context);
+        
         // Try to parse the error response if it's a FunctionsHttpError
         if (error.name === 'FunctionsHttpError' && error.context) {
           try {
             const errorData = await error.context.json();
+            console.error('[AddRestaurantModal] Parsed error data:', errorData);
             
             // Check if this is a duplicate restaurant error
             if (errorData.details?.includes('duplicate key') || 
@@ -163,9 +169,11 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
               return; // Exit early, don't throw
             }
             
-            // Handle unexpected errors
-            throw new Error(errorData.error || errorData.message || 'Failed to add restaurant');
+            // Handle unexpected errors - include more details
+            const errorMsg = errorData.error || errorData.message || errorData.details || 'Failed to add restaurant';
+            throw new Error(errorMsg);
           } catch (parseError) {
+            console.error('[AddRestaurantModal] Error parsing error response:', parseError);
             // If parsing fails, use the original error message
             throw new Error(error.message || 'Failed to add restaurant');
           }
@@ -175,6 +183,9 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
       }
 
       if (data && data.error) {
+        console.error('[AddRestaurantModal] Response contains error:', data.error);
+        console.error('[AddRestaurantModal] Full response data:', JSON.stringify(data, null, 2));
+        
         // Check for duplicate restaurant errors
         if (data.error.includes('already exists') || 
             data.error.includes('Similar restaurant') ||
@@ -184,7 +195,7 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
           await handleExistingRestaurant(placeDetails);
         } else {
           setSubmissionStatus('error');
-          setSubmissionMessage(data.error);
+          setSubmissionMessage(data.error || data.details || 'Failed to add restaurant');
         }
       } else if (data && data.success) {
         // Restaurant added successfully - also save it to user's profile
@@ -237,6 +248,13 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
         setSubmissionMessage('Unexpected response from server. Please try again.');
       }
     } catch (error: any) {
+      // Log the full error for debugging
+      console.error('[AddRestaurantModal] Error adding restaurant:', error);
+      console.error('[AddRestaurantModal] Error name:', error?.name);
+      console.error('[AddRestaurantModal] Error message:', error?.message);
+      console.error('[AddRestaurantModal] Error context:', error?.context);
+      console.error('[AddRestaurantModal] Full error object:', JSON.stringify(error, null, 2));
+      
       // Check for duplicate key errors in the catch block too
       if (error.message?.includes('duplicate key') || 
           error.message?.includes('restaurants_google_place_id_key') ||
@@ -253,8 +271,10 @@ export function AddRestaurantModal({ visible, onClose, onRestaurantAdded, initia
         setSubmissionStatus('error');
         setSubmissionMessage('Network error. Please check your connection.');
       } else {
+        // Show more detailed error message if available
+        const errorMessage = error?.message || error?.error || 'Unable to add restaurant at this time. Please try again later.';
         setSubmissionStatus('error');
-        setSubmissionMessage('Unable to add restaurant at this time. Please try again later.');
+        setSubmissionMessage(errorMessage);
       }
     } finally {
       setIsSubmitting(false);

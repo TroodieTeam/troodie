@@ -1,0 +1,10 @@
+appId: com.troodie.troodie.com
+---
+# Simple test to verify Maestro works
+
+- launchApp
+
+- assertVisible:
+    text: "Welcome"
+
+- takeScreenshot: "test-simple"
