@@ -244,7 +244,7 @@ function transformCreator(row: any): CreatorProfile {
   return {
     id: row.id,
     userId: row.user_id,
-    displayName: row.display_name || 'Creator',
+    displayName: row.display_name || 'Unknown Creator',
     bio: row.bio,
     location: row.location,
     avatarUrl: row.avatar_url,
