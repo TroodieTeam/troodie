@@ -457,7 +457,7 @@ export async function getCreatorProfile(
     const profile: CreatorProfile = {
       id: cp.id,
       userId: cp.user_id,
-      displayName: cp.display_name || cp.users.name || cp.users.username || 'Creator',
+      displayName: cp.display_name || cp.users.name || cp.users.username || 'Unknown Creator',
       username: cp.users.username, // CM-14
       bio: cp.bio,
       location: cp.location,
