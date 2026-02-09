@@ -7,22 +7,25 @@
 
 **Phase**: 1 of 1
 **Last Updated**: 2026-02-09
-**Last Task Completed**: None
+**Last Task Completed**: Task 1.4 - Validation and testing artifacts
 
 ## Task List
 
 ### Phase 1: Fix Creator Name Display
 
-- [ ] Task 1.1: Update `transformCreator()` fallback
-- [ ] Task 1.2: Update Browse Creators fetch and displayName fallback chain
-- [ ] Task 1.3: Update `getCreatorProfile()` fallback
-- [ ] Task 1.4: Validation and testing artifacts
+- [x] Task 1.1: Update `transformCreator()` fallback
+- [x] Task 1.2: Update Browse Creators fetch and displayName fallback chain
+- [x] Task 1.3: Update `getCreatorProfile()` fallback
+- [x] Task 1.4: Validation and testing artifacts
 
 ## Completed Tasks
 
 | Task | Completed | Notes |
 |------|-----------|-------|
-| -    | -         | -     |
+| Task 1.1: transformCreator fallback | 2026-02-09 | Changed "Creator" → "Unknown Creator" in line 247 |
+| Task 1.2: Browse Creators fallback chain | 2026-02-09 | Fetch name+username, build fallback chain, hide grey @username when promoted to bold |
+| Task 1.3: getCreatorProfile fallback | 2026-02-09 | Changed "Creator" → "Unknown Creator" in line 460 |
+| Task 1.4: Validation & testing | 2026-02-09 | TypeScript ✅, ESLint ✅ (0 errors), testing artifacts created |
 
 ## Blockers
 
