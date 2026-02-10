@@ -1,4 +1,5 @@
 import { DS } from '@/components/design-system/tokens';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertCircle, ArrowLeft, Edit } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
@@ -21,6 +22,7 @@ import { TabNavigation, TabType } from '@/components/campaigns/detail/TabNavigat
 export default function CampaignDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const tabBarHeight = useBottomTabBarHeight();
   
   // State for UI
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -124,12 +126,13 @@ export default function CampaignDetail() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
+        testID="campaign-detail-scroll"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={DS.colors.primaryOrange} />
         }
-        contentContainerStyle={{ paddingBottom: DS.spacing.xxxl }}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + DS.spacing.xxxl }}
       >
         {isTestCampaign && (
           <View style={{

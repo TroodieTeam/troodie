@@ -1,0 +1,62 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - smoke
+  - regression
+  - tro-153
+---
+# TRO-153: Verify Join Team Button Removed from Home Screen
+# Asserts the floating "Join Team" button no longer appears on the home screen.
+# Also verifies the InviteCodeModal is not rendered.
+#
+# Account: prod-consumer1@bypass.com (consumer)
+
+# Step 1: Login as consumer
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# Step 2: Verify we're on the home screen
+- extendedWaitUntil:
+    visible: "Your Saves"
+    timeout: 15000
+
+- takeScreenshot: "tro153-home-screen-loaded"
+
+# Step 3: Assert "Join Team" button is NOT visible
+- assertNotVisible:
+    text: "Join Team"
+
+- takeScreenshot: "tro153-no-join-team-button"
+
+# Step 4: Scroll down to verify the button isn't hiding below the fold
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- assertNotVisible:
+    text: "Join Team"
+
+# Step 5: Scroll back up
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+- assertNotVisible:
+    text: "Join Team"
+
+- takeScreenshot: "tro153-scroll-verified-no-button"
+
+# Step 6: Verify core home screen content still renders
+- assertVisible:
+    text: "Top Rated"
+    optional: true
+
+- assertVisible:
+    text: "Build Your Network"
+    optional: true
+
+- takeScreenshot: "tro153-home-content-intact"

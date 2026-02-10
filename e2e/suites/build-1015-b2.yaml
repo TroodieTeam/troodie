@@ -1,0 +1,17 @@
+# Build 1.0.15-b2 Feature Verification Suite
+# Tests: TRO-154, TRO-153, TRO-152
+# Runtime: ~4 minutes
+#
+# Prerequisites:
+# 1. App running via: npm start (development mode)
+# 2. iOS Simulator booted
+# 3. Bypass test accounts configured in dev Supabase (test-*@bypass.com)
+#
+# Run:
+#   maestro test \
+#     e2e/flows/home-screen-cleanup/no-join-team-button.yaml \
+#     e2e/flows/update-banner/update-banner-display.yaml \
+#     e2e/flows/campaign-scroll-fix/campaign-detail-scroll.yaml
+#
+# Or use tags:
+#   maestro test --include-tags=regression e2e/flows/

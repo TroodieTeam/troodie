@@ -2,7 +2,7 @@ appId: com.troodie.troodie.com
 ---
 # Reusable: Login with bypass account (OTP: 000000)
 # Usage: runFlow with env.TEST_EMAIL set
-# Example: 
+# Example:
 #   env:
 #     TEST_EMAIL: prod-creator1@bypass.com
 #   - runFlow: helpers/login-bypass.yaml
@@ -11,76 +11,56 @@ appId: com.troodie.troodie.com
     clearState: true
     clearKeychain: true
 
-# Handle Expo Dev Client launcher if shown
+# Handle Expo Dev Client launcher if shown (multiple UI variants)
+# Variant 1: Tap the server URL to connect
 - tapOn:
     text: "http://localhost:8081"
     optional: true
 
 - waitForAnimationToEnd
 
-# Dismiss Expo developer menu if shown
+# Variant 2: Expo Dev Client modal with "Go home" button (SDK 54+)
+- tapOn:
+    text: "Go home"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Variant 3: Dismiss Expo developer menu via Close
+# NOTE: Do NOT tap "Skip" here - it conflicts with the welcome screen's Skip button
 - tapOn:
     text: "Close"
     optional: true
 
 - waitForAnimationToEnd
 
-# Or tap Continue if shown
-- tapOn:
-    text: "Continue"
-    optional: true
-
-- waitForAnimationToEnd
-
-# Wait for welcome/onboarding screen
+# Wait for welcome screen - use unique text that only appears on onboarding welcome
+# "Discover Your Perfect" is unique to the welcome screen (not the home screen)
 - extendedWaitUntil:
-    visible: "GET STARTED"
+    visible: "Discover Your Perfect"
     timeout: 15000
 
-# Tap Log in (for existing accounts)
+# Tap Log in (for existing accounts) - use testID for reliable matching
+# The "Log in" text is inside a nested TouchableOpacity that text selectors miss
 - tapOn:
-    text: "Log in"
-    optional: true
+    id: "login-link"
 
-# Or tap Get Started / Sign In
-- tapOn:
-    text: "Get Started"
-    optional: true
+# Wait for login screen to load
+- extendedWaitUntil:
+    visible: "Welcome back!"
+    timeout: 10000
 
-- tapOn:
-    text: "Sign In"
-    optional: true
-
-# Wait for email screen to load
-- waitForAnimationToEnd
-
-# Enter email - tap on placeholder to focus
-- tapOn:
-    text: "user@example.com"
-    optional: true
-
+# Tap email input field (has autoFocus but tap to ensure focus)
 - tapOn:
     id: "email-input"
-    optional: true
-
-- tapOn:
-    text: "Continue with Email"
-    optional: true
 
 - inputText: ${TEST_EMAIL}
 - hideKeyboard
+- waitForAnimationToEnd
 
-# Continue to OTP - try multiple button texts
+# Tap Send Code button (optional - hideKeyboard may have already triggered it)
 - tapOn:
     text: "Send Code"
-    optional: true
-
-- tapOn:
-    text: "Continue"
-    optional: true
-
-- tapOn:
-    text: "Next"
     optional: true
 
 - waitForAnimationToEnd
@@ -90,8 +70,7 @@ appId: com.troodie.troodie.com
     visible: "Enter the code sent"
     timeout: 10000
 
-# Enter OTP digits one by one (6-digit code: 000000)
-# The OTP field auto-focuses on first input
+# Enter OTP code: 000000 (one digit at a time for auto-advancing fields)
 - inputText: "0"
 - inputText: "0"
 - inputText: "0"

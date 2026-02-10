@@ -12,7 +12,7 @@ interface ApplicationsListProps {
 
 export const ApplicationsList: React.FC<ApplicationsListProps> = ({ applications, onAction, onOpenRating }) => {
   return (
-    <View style={{ gap: DS.spacing.md }}>
+    <View testID="applications-list" style={{ gap: DS.spacing.md }}>
       {applications.length === 0 ? (
         <View style={{ alignItems: 'center', padding: DS.spacing.xxl }}>
           <Users size={48} color={DS.colors.textLight} />
@@ -20,7 +20,7 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ applications
         </View>
       ) : (
         applications.map((app) => (
-          <View key={app.id} style={{
+          <View key={app.id} testID={`application-card-${app.id}`} style={{
             backgroundColor: DS.colors.surface,
             borderRadius: DS.borderRadius.lg,
             padding: DS.spacing.lg,
@@ -64,13 +64,13 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ applications
                   style={{ flex: 1, backgroundColor: DS.colors.surface, borderWidth: 1, borderColor: DS.colors.error, padding: DS.spacing.sm, borderRadius: DS.borderRadius.md, alignItems: 'center' }}
                   onPress={() => onAction(app.id, 'rejected')}
                 >
-                  <Text style={{ ...DS.typography.button, color: DS.colors.error }}>Reject</Text>
+                  <Text testID="reject-button" style={{ ...DS.typography.button, color: DS.colors.error }}>Reject</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={{ flex: 1, backgroundColor: DS.colors.success, padding: DS.spacing.sm, borderRadius: DS.borderRadius.md, alignItems: 'center' }}
                   onPress={() => onAction(app.id, 'accepted')}
                 >
-                  <Text style={{ ...DS.typography.button, color: 'white' }}>Accept</Text>
+                  <Text testID="accept-button" style={{ ...DS.typography.button, color: 'white' }}>Accept</Text>
                 </TouchableOpacity>
               </View>
             )}
