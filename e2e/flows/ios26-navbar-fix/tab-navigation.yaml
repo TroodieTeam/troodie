@@ -1,0 +1,48 @@
+appId: com.troodie.troodie.com
+---
+# iOS 26 Nav Bar Fix - Tab Navigation Verification
+# Tests: All 5 tab bar buttons are tappable and navigate correctly
+
+# Auth setup
+- runFlow: ../../helpers/login-bypass.yaml
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: "Home"
+    timeout: 10000
+
+# Test Home tab
+- tapOn:
+    id: "tab-home"
+- assertVisible: "Home"
+- takeScreenshot: "ios26-navbar-fix-home"
+
+# Test Explore tab
+- tapOn:
+    id: "tab-explore"
+- assertVisible: "Explore"
+- takeScreenshot: "ios26-navbar-fix-explore"
+
+# Test Add button
+- tapOn:
+    id: "tab-add"
+- takeScreenshot: "ios26-navbar-fix-add"
+- back
+
+# Test Activity tab
+- tapOn:
+    id: "tab-activity"
+- assertVisible: "Activity"
+- takeScreenshot: "ios26-navbar-fix-activity"
+
+# Test More tab
+- tapOn:
+    id: "tab-more"
+- assertVisible: "More"
+- takeScreenshot: "ios26-navbar-fix-more"
+
+# Navigate back to Home to confirm round-trip
+- tapOn:
+    id: "tab-home"
+- assertVisible: "Home"
+- takeScreenshot: "ios26-navbar-fix-home-return"

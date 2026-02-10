@@ -81,6 +81,7 @@ export default {
       }
     },
     android: {
+      package: "com.troodie.troodie.com",
       adaptiveIcon: {
         foregroundImage: "./assets/images/troodie_icon_logo.jpg",
         backgroundColor: "#ffffff"
