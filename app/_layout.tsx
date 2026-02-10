@@ -253,27 +253,27 @@ function InnerLayout() {
         <RestaurantProvider>
           <ThemeProvider value={DefaultTheme}>
             <NetworkStatusBanner />
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              <Stack.Screen name="add" options={{ headerShown: false }} />
-              <Stack.Screen name="boards" options={{ headerShown: false }} />
-              <Stack.Screen name="business" options={{ headerShown: false }} />
-              <Stack.Screen name="creator" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/[id]/analytics" options={{ headerShown: false }} />
-              <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="boards/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="posts/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="posts/[id]/comments" options={{ headerShown: false }} />
-              <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="find-friends" options={{ headerShown: false }} />
-              <Stack.Screen name="user/[id]/following" options={{ headerShown: false }} />
-              <Stack.Screen name="user/[id]/followers" options={{ headerShown: false }} />
-              <Stack.Screen name="settings/blocked-users" options={{ headerShown: false }} />
-              <Stack.Screen name="settings/content-creator" options={{ headerShown: false }} />
-              <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
-              <Stack.Screen name="quick-saves" options={{ headerShown: false }} />
-              <Stack.Screen name="invite/[token]" options={{ headerShown: false }} />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="add" />
+              <Stack.Screen name="boards" />
+              <Stack.Screen name="business" />
+              <Stack.Screen name="creator" />
+              <Stack.Screen name="restaurant/[id]/analytics" />
+              <Stack.Screen name="restaurant/[id]" />
+              <Stack.Screen name="boards/[id]" />
+              <Stack.Screen name="posts/[id]" />
+              <Stack.Screen name="posts/[id]/comments" />
+              <Stack.Screen name="user/[id]" />
+              <Stack.Screen name="find-friends" />
+              <Stack.Screen name="user/[id]/following" />
+              <Stack.Screen name="user/[id]/followers" />
+              <Stack.Screen name="settings/blocked-users" />
+              <Stack.Screen name="settings/content-creator" />
+              <Stack.Screen name="admin/reviews" />
+              <Stack.Screen name="quick-saves" />
+              <Stack.Screen name="invite/[token]" />
               <Stack.Screen name="+not-found" />
             </Stack>
             <StatusBar style="dark" />
@@ -305,7 +305,11 @@ function InnerLayout() {
   );
 }
 
-export default Sentry.wrap(function RootLayout() {
+// NOTE: Sentry.wrap() removed — it injects TouchEventBoundary (View with
+// onTouchStart) and FeedbackWidgetProvider (with PanResponder) that block ALL
+// touches on iOS 26 + Fabric. Sentry.init() above still provides error
+// tracking, crash reporting, and performance monitoring without the wrapper.
+export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     Poppins_400Regular,
@@ -327,4 +331,4 @@ export default Sentry.wrap(function RootLayout() {
       <InnerLayout />
     </AuthProvider>
   );
-});
+}
