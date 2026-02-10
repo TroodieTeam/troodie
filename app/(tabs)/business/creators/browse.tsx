@@ -391,9 +391,9 @@ export default function BrowseCreators() {
                 : creator.engagementRate;
 
           // Build display name fallback: display_name → users.name → username → "Unknown Creator"
-          // The RPC COALESCE already tries display_name, name, username — but if all are null
-          // in the DB, creator.displayName will be "Unknown Creator" from transformCreator()
-          const isDefaultName = creator.displayName === 'Unknown Creator';
+          // The DB stores literal "Creator" as display_name for many profiles, so treat both
+          // "Creator" and "Unknown Creator" as sentinel values that should trigger the fallback chain
+          const isDefaultName = creator.displayName === 'Unknown Creator' || creator.displayName === 'Creator';
           let finalDisplayName = creator.displayName;
           let usernamePromotedToBold = false;
 
