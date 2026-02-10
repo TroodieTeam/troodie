@@ -66,7 +66,7 @@ export default function WelcomeScreen() {
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={handleLogin}>
+            <TouchableOpacity testID="login-link" onPress={handleLogin}>
               <Text style={styles.loginLink}>Log in</Text>
             </TouchableOpacity>
           </View>

@@ -167,6 +167,7 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Enter your email to continue</Text>
           
           <TextInput
+            testID="email-input"
             style={styles.input}
             value={email}
             onChangeText={handleEmailChange}

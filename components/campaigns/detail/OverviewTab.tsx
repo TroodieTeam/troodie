@@ -20,7 +20,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   onStatusChange 
 }) => {
   return (
-    <View>
+    <View testID="overview-tab">
       {/* Quick Actions for Active/Pending */}
       {campaign.status === 'active' && (
         <View style={{ flexDirection: 'row', gap: DS.spacing.md, marginBottom: DS.spacing.lg }}>
@@ -111,7 +111,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         </View>
       </View>
       
-      <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.md }}>Recent Activity</Text>
+      <Text testID="recent-activity-header" style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.md }}>Recent Activity</Text>
       {deliverables.length === 0 && applications.length === 0 ? (
         <View style={{ padding: DS.spacing.xl, alignItems: 'center', backgroundColor: DS.colors.surface, borderRadius: DS.borderRadius.lg }}>
           <ActivityIndicator size="small" color={DS.colors.textGray} style={{ marginBottom: DS.spacing.sm }} />

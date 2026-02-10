@@ -32,6 +32,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, setActi
           return (
             <TouchableOpacity
               key={tab}
+              testID={`campaign-tab-${tab}`}
               onPress={() => setActiveTab(tab as TabType)}
               style={{
                 paddingHorizontal: DS.spacing.lg,
