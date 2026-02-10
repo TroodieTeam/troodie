@@ -365,10 +365,10 @@ export default function BrowseCreators() {
             console.error('[BrowseCreators] Error loading portfolio:', err);
           }
 
-          // Get username from user
+          // Get username and name from user
           const { data: userData } = await supabase
             .from('users')
-            .select('username')
+            .select('username, name')
             .eq('id', creator.userId)
             .single();
 
@@ -390,11 +390,32 @@ export default function BrowseCreators() {
                 ? creator.tiktokEngagementRate
                 : creator.engagementRate;
 
+          // Build display name fallback: display_name → users.name → username → "Unknown Creator"
+          // The DB stores literal "Creator" as display_name for many profiles, so treat both
+          // "Creator" and "Unknown Creator" as sentinel values that should trigger the fallback chain
+          const isDefaultName = creator.displayName === 'Unknown Creator' || creator.displayName === 'Creator';
+          let finalDisplayName = creator.displayName;
+          let usernamePromotedToBold = false;
+
+          if (isDefaultName) {
+            if (userData?.name) {
+              finalDisplayName = userData.name;
+            } else if (userData?.username) {
+              finalDisplayName = userData.username;
+              usernamePromotedToBold = true;
+            }
+          }
+
+          // When username is promoted to bold, hide grey @username to avoid duplication
+          const finalUsername = usernamePromotedToBold
+            ? ''
+            : (userData?.username ? `@${userData.username}` : '');
+
           return {
             id: creator.id,
             userId: creator.userId,
-            displayName: creator.displayName,
-            username: userData?.username ? `@${userData.username}` : '@creator',
+            displayName: finalDisplayName,
+            username: finalUsername,
             avatarUrl: creator.avatarUrl,
             bio: creator.bio,
             location: creator.location,
@@ -545,9 +566,11 @@ export default function BrowseCreators() {
               </View>
             )}
           </View>
-          <Text style={{ fontSize: 14, color: DS.colors.textLight, marginBottom: 4 }}>
-            {creator.username}
-          </Text>
+          {creator.username ? (
+            <Text style={{ fontSize: 14, color: DS.colors.textLight, marginBottom: 4 }}>
+              {creator.username}
+            </Text>
+          ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <MapPin size={12} color={DS.colors.textLight} />
             <Text style={{ fontSize: 12, color: DS.colors.textLight, marginLeft: 4 }}>
