@@ -104,9 +104,10 @@ export function useCampaignActions(
 
         Alert.alert('Success', `Deliverable status updated to ${status}`);
       }
-    } catch (error) {
-      console.error('Failed to update deliverable status:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update deliverable status');
+    } catch (error: unknown) {
+      console.error('[CampaignActions] Failed to update deliverable status:', error);
+      const message = error instanceof Error ? error.message : 'Failed to update deliverable status. Please try again or contact support.';
+      Alert.alert('Error', message);
     }
   };
 
@@ -295,8 +296,10 @@ export function useCampaignActions(
       
       Alert.alert('Success', `Application ${action}`);
       reloadData();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update application');
+    } catch (error: unknown) {
+      console.error('[CampaignActions] Failed to update application:', error);
+      const message = error instanceof Error ? error.message : 'Failed to update application. Please try again or contact support.';
+      Alert.alert('Error', message);
     }
   };
 
