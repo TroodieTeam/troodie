@@ -19,25 +19,25 @@ See `PROGRESS.md` for current task status.
 
 #### Tasks
 
-- [ ] **Task 1.1**: Update `transformCreator()` fallback in `creatorDiscoveryService.ts`
+- [x] **Task 1.1**: Update `transformCreator()` fallback in `creatorDiscoveryService.ts`
   - Description: Change hardcoded "Creator" fallback to "Unknown Creator"
   - Files: `services/creatorDiscoveryService.ts:247`
   - Tests: typecheck, lint
   - Acceptance: `transformCreator` uses "Unknown Creator" as final fallback
 
-- [ ] **Task 1.2**: Update Browse Creators user data fetch and displayName fallback chain
+- [x] **Task 1.2**: Update Browse Creators user data fetch and displayName fallback chain
   - Description: Fetch `name` alongside `username` from users table; build proper fallback chain; when username promoted to bold, hide grey @username to avoid duplication
   - Files: `app/(tabs)/business/creators/browse.tsx:371,393-397`
   - Tests: typecheck, lint
   - Acceptance: Creators with `users.name` show their real name; creators with only username show username in bold with no grey duplicate
 
-- [ ] **Task 1.3**: Update `getCreatorProfile()` fallback
+- [x] **Task 1.3**: Update `getCreatorProfile()` fallback
   - Description: Change final fallback from "Creator" to "Unknown Creator"
   - Files: `services/creatorDiscoveryService.ts:460`
   - Tests: typecheck, lint
   - Acceptance: Creator profile screen shows consistent "Unknown Creator" fallback
 
-- [ ] **Task 1.4**: Validation and testing artifacts
+- [x] **Task 1.4**: Validation and testing artifacts
   - Description: Run full validation suite, generate manual test script and verification SQL
   - Files: `testing/manual/`, `testing/sql/`
   - Tests: typecheck, lint, test

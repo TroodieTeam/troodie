@@ -2,8 +2,8 @@ import { RestaurantCardWithSave } from '@/components/cards/RestaurantCardWithSav
 import { CitySelector } from '@/components/CitySelector';
 import { ErrorState } from '@/components/ErrorState';
 import QuickSavesBoard from '@/components/home/QuickSavesBoard';
+import UpdateBanner from '@/components/home/UpdateBanner';
 import { InfoModal } from '@/components/InfoModal';
-import { InviteCodeModal } from '@/components/InviteCodeModal';
 import { RestaurantCardWithSaveSkeleton } from '@/components/LoadingSkeleton';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { useSmoothDataFetch } from '@/hooks/useSmoothDataFetch';
+import { useUpdateBanner } from '@/hooks/useUpdateBanner';
 import { boardService } from '@/services/boardService';
 import { communityService } from '@/services/communityService';
 import { InviteService } from '@/services/inviteService';
@@ -26,7 +27,6 @@ import { restaurantService } from '@/services/restaurantService';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
 import { getErrorType } from '@/types/errors';
 import { Notification } from '@/types/notifications';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -46,7 +46,6 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -60,17 +59,16 @@ import {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const tabBarHeight = useBottomTabBarHeight();
   const { userState, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, networkProgress, updateNetworkProgress } = useApp();
   const { user } = useAuth();
   const { state: onboardingState } = useOnboarding();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRecommendationsInfo, setShowRecommendationsInfo] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedCity, setSelectedCity] = useState('Charlotte');
   const [cityLoading, setCityLoading] = useState(false);
+  const { showBanner, onUpdate, onDismiss } = useUpdateBanner();
 
   const persona = useMemo(
     () => onboardingState.persona && personas[onboardingState.persona],
@@ -627,19 +625,6 @@ export default function HomeScreen() {
     );
   };
 
-  const renderQuickActions = () => (
-    <View style={[styles.quickActions, { bottom: Platform.OS === 'ios' ? tabBarHeight + 20 : 20 }]}>
-      <TouchableOpacity style={styles.quickActionButton} onPress={() => setShowInviteModal(true)}>
-        <UserPlus size={20} color="#FFFFFF" />
-        <Text style={styles.quickActionText}>Join Team</Text>
-      </TouchableOpacity>
-      {/* <TouchableOpacity style={styles.quickActionButton}>
-        <Plus size={20} color="#FFFFFF" />
-        <Text style={styles.quickActionText}>Add Place</Text>
-      </TouchableOpacity> */}
-    </View>
-  );
-
   if (loading && !error) {
     return (
       <SafeAreaView style={styles.container}>
@@ -681,6 +666,8 @@ export default function HomeScreen() {
       >
         {renderHeader()}
 
+        {showBanner && <UpdateBanner onUpdate={onUpdate} onDismiss={onDismiss} />}
+
         {userState.isNewUser && renderWelcomeBanner()}
 
         {renderNetworkBuilding()}
@@ -694,8 +681,6 @@ export default function HomeScreen() {
         <View style={styles.bottomPadding} />
       </ScrollView>
 
-      {renderQuickActions()}
-
       {showNotificationCenter && (
         <NotificationCenter
           onClose={() => setShowNotificationCenter(false)}
@@ -708,11 +693,6 @@ export default function HomeScreen() {
         onClose={() => setShowRecommendationsInfo(false)}
         title={strings.recommendations.modalTitle}
         content={strings.recommendations.modalDescription}
-      />
-
-      <InviteCodeModal
-        visible={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
       />
     </SafeAreaView>
   );
@@ -1033,27 +1013,6 @@ const styles = StyleSheet.create({
     marginBottom: designTokens.spacing.lg,
   },
 
-  quickActions: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    gap: 12,
-  },
-  quickActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: designTokens.colors.primaryOrange,
-    paddingHorizontal: designTokens.spacing.lg,
-    paddingVertical: designTokens.spacing.md,
-    borderRadius: designTokens.borderRadius.full,
-    gap: designTokens.spacing.sm,
-    ...applyShadow('button'),
-  },
-  quickActionText: {
-    ...designTokens.typography.detailText,
-    fontFamily: 'Inter_600SemiBold',
-    color: designTokens.colors.white,
-  },
   bottomPadding: {
     height: 120,
   },
