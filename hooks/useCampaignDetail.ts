@@ -76,7 +76,17 @@ export function useCampaignDetail(id: string | undefined) {
             display_name,
             avatar_url,
             followers_count,
-            specialties
+            specialties,
+            bio,
+            location,
+            troodie_engagement_rate,
+            instagram_handle,
+            tiktok_handle,
+            users!inner (
+              name,
+              username,
+              avatar_url
+            )
           )
         `)
         .eq('campaign_id', id)

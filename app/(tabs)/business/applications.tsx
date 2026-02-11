@@ -91,7 +91,11 @@ export default function ApplicationsList() {
             display_name,
             username,
             avatar_url,
-            followers_count
+            followers_count,
+            users!inner (
+              name,
+              username
+            )
           )
         `)
         .eq('campaigns.owner_id', user.id)
@@ -99,27 +103,44 @@ export default function ApplicationsList() {
 
       if (error) throw error;
 
-      const mappedApplications: Application[] = data.map((app: any) => ({
-        id: app.id,
-        campaign_id: app.campaign_id,
-        campaign_title: app.campaigns.title || app.campaigns.name,
-        creator: {
-          id: app.creator_profiles.id,
-          name: app.creator_profiles.display_name,
-          username: app.creator_profiles.username || '',
-          avatar_url: app.creator_profiles.avatar_url,
-          rating: 0, // Not in query yet
-          follower_count: app.creator_profiles.followers_count || 0,
-          completed_campaigns: 0, // Not in query yet
-        },
-        status: app.status,
-        applied_at: app.applied_at,
-        proposal: app.cover_letter || '',
-        proposed_rate: app.proposed_rate_cents ? app.proposed_rate_cents / 100 : 0,
-        estimated_reach: 0, // Not available
-        portfolio_samples: [],
-        urgency: 'medium',
-      }));
+      const mappedApplications: Application[] = data.map((app: any) => {
+        const cp = app.creator_profiles;
+        const userData = cp.users;
+
+        // Apply same fallback chain as browse screen:
+        // display_name (if not "Creator") → users.name → users.username → "Unknown Creator"
+        const isDefaultName = !cp.display_name || cp.display_name === 'Creator' || cp.display_name === 'Unknown Creator';
+        let creatorName = cp.display_name;
+
+        if (isDefaultName) {
+          creatorName = userData?.name || userData?.username || cp.username || 'Unknown Creator';
+        }
+
+        // Use users.username for the @handle, prefer it over creator_profiles.username
+        const creatorUsername = userData?.username || cp.username || '';
+
+        return {
+          id: app.id,
+          campaign_id: app.campaign_id,
+          campaign_title: app.campaigns.title || app.campaigns.name,
+          creator: {
+            id: cp.id,
+            name: creatorName,
+            username: creatorUsername,
+            avatar_url: cp.avatar_url,
+            rating: 0, // Not in query yet
+            follower_count: cp.followers_count || 0,
+            completed_campaigns: 0, // Not in query yet
+          },
+          status: app.status,
+          applied_at: app.applied_at,
+          proposal: app.cover_letter || '',
+          proposed_rate: app.proposed_rate_cents ? app.proposed_rate_cents / 100 : 0,
+          estimated_reach: 0, // Not available
+          portfolio_samples: [],
+          urgency: 'medium',
+        };
+      });
 
       setApplications(mappedApplications);
     } catch (error) {
@@ -230,6 +251,11 @@ export default function ApplicationsList() {
           <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
             {application.creator.name}
           </Text>
+          {application.creator.username && application.creator.name !== application.creator.username ? (
+            <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>
+              @{application.creator.username}
+            </Text>
+          ) : null}
           <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>
             {application.creator.follower_count.toLocaleString()} followers
           </Text>

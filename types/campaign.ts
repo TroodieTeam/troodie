@@ -62,6 +62,16 @@ export interface CampaignApplication {
     avatar_url: string;
     followers_count: number;
     specialties: string[];
+    bio?: string | null;
+    location?: string | null;
+    troodie_engagement_rate?: number | null;
+    instagram_handle?: string | null;
+    tiktok_handle?: string | null;
+    users?: {
+      name: string | null;
+      username: string | null;
+      avatar_url: string | null;
+    };
   };
   status: string;
   proposed_rate_cents: number;

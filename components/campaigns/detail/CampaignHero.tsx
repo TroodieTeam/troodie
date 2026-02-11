@@ -1,14 +1,16 @@
 import { DS } from '@/components/design-system/tokens';
 import { CampaignDetail } from '@/types/campaign';
-import { Clock, DollarSign, Target } from 'lucide-react-native';
-import React from 'react';
-import { Text, View } from 'react-native';
+import { ChevronDown, ChevronUp, Clock, DollarSign, Target } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 interface CampaignHeroProps {
   campaign: CampaignDetail;
 }
 
 export const CampaignHero: React.FC<CampaignHeroProps> = ({ campaign }) => {
+  const [collapsed, setCollapsed] = useState(false);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return DS.colors.success;
@@ -52,73 +54,103 @@ export const CampaignHero: React.FC<CampaignHeroProps> = ({ campaign }) => {
     return `${days}d`;
   };
 
+  const compactMetrics = (
+    <View style={{ flexDirection: 'row', gap: DS.spacing.lg, flexWrap: 'wrap', marginTop: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <DollarSign size={14} color={DS.colors.textLight} style={{ marginRight: 4 }} />
+        <Text style={{ ...DS.typography.caption, fontWeight: '600', color: DS.colors.textDark }}>
+          {(campaign.spent_amount_cents / 100).toFixed(0)}/{(campaign.budget_cents / 100).toFixed(0)}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Clock size={14} color={DS.colors.textLight} style={{ marginRight: 4 }} />
+        <Text style={{ ...DS.typography.caption, fontWeight: '600', color: DS.colors.textDark }}>{getTimeLeftText()}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Target size={14} color={DS.colors.textLight} style={{ marginRight: 4 }} />
+        <Text style={{ ...DS.typography.caption, fontWeight: '600', color: DS.colors.textDark }}>
+          {campaign.delivered_content_count}/{campaign.total_deliverables}
+        </Text>
+      </View>
+    </View>
+  );
+
+  const fullMetrics = (
+    <View style={{ flexDirection: 'row', gap: DS.spacing.xl }}>
+      <View>
+        <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Budget</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <DollarSign size={14} color={DS.colors.textDark} style={{ marginRight: 2 }} />
+          <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
+            {(campaign.spent_amount_cents / 100).toFixed(0)} <Text style={{ color: DS.colors.textLight }}>/ {(campaign.budget_cents / 100).toFixed(0)}</Text>
+          </Text>
+        </View>
+      </View>
+      <View>
+        <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Time Left</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Clock size={14} color={DS.colors.textDark} style={{ marginRight: 4 }} />
+          <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>{getTimeLeftText()}</Text>
+        </View>
+      </View>
+      <View>
+        <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Deliverables</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Target size={14} color={DS.colors.textDark} style={{ marginRight: 4 }} />
+          <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
+            {campaign.delivered_content_count} / {campaign.total_deliverables}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <View style={{
       margin: DS.spacing.lg,
-      padding: DS.spacing.lg,
       backgroundColor: DS.colors.surface,
       borderRadius: DS.borderRadius.xl,
+      overflow: 'hidden',
       ...DS.shadows.sm,
       borderWidth: 1,
       borderColor: DS.colors.border,
     }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: DS.spacing.lg }}>
-        <View>
-          <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray, marginBottom: 4 }}>Status</Text>
-          <View style={{
-            backgroundColor: `${getStatusColor(campaign.status)}15`,
-            paddingHorizontal: DS.spacing.sm,
-            paddingVertical: 4,
-            borderRadius: DS.borderRadius.full,
-            alignSelf: 'flex-start',
-          }}>
-            <Text style={{ ...DS.typography.caption, color: getStatusColor(campaign.status), fontWeight: '700', textTransform: 'uppercase' }}>
-              {campaign.status}
-            </Text>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => setCollapsed(c => !c)}
+        style={{ padding: DS.spacing.lg }}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <View style={{
+              backgroundColor: `${getStatusColor(campaign.status)}15`,
+              paddingHorizontal: DS.spacing.sm,
+              paddingVertical: 4,
+              borderRadius: DS.borderRadius.full,
+              alignSelf: 'flex-start',
+            }}>
+              <Text style={{ ...DS.typography.caption, color: getStatusColor(campaign.status), fontWeight: '700', textTransform: 'uppercase' }}>
+                {campaign.status}
+              </Text>
+            </View>
+            {collapsed && compactMetrics}
           </View>
+          {collapsed ? <ChevronDown size={20} color={DS.colors.textLight} /> : <ChevronUp size={20} color={DS.colors.textLight} />}
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
+      </TouchableOpacity>
+
+      {!collapsed && (
+        <View style={{ paddingHorizontal: DS.spacing.lg, paddingBottom: DS.spacing.lg, borderTopWidth: 1, borderColor: DS.colors.borderLight, paddingTop: DS.spacing.lg }}>
           <Text style={{ ...DS.typography.metadata, color: DS.colors.textGray, marginBottom: 4 }}>Duration</Text>
-          <Text style={{ ...DS.typography.caption, fontWeight: '600', color: DS.colors.textDark }}>
-            {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString() : 'N/A'} - {campaign.end_date ? new Date(campaign.end_date).toLocaleDateString() : 'Ongoing'}
+          <Text style={{ ...DS.typography.caption, fontWeight: '600', color: DS.colors.textDark, marginBottom: DS.spacing.lg }}>
+            {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString() : 'N/A'} — {campaign.end_date ? new Date(campaign.end_date).toLocaleDateString() : 'Ongoing'}
           </Text>
+          <Text style={{ ...DS.typography.body, color: DS.colors.textGray, marginBottom: DS.spacing.lg, lineHeight: 20 }}>
+            {campaign.description}
+          </Text>
+          {fullMetrics}
         </View>
-      </View>
-
-      <Text style={{ ...DS.typography.body, color: DS.colors.textGray, marginBottom: DS.spacing.lg, lineHeight: 20 }}>
-        {campaign.description}
-      </Text>
-
-      {/* Metrics */}
-      <View style={{ flexDirection: 'row', gap: DS.spacing.xl, borderTopWidth: 1, borderColor: DS.colors.borderLight, paddingTop: DS.spacing.lg }}>
-        <View>
-          <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Budget</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <DollarSign size={14} color={DS.colors.textDark} style={{ marginRight: 2 }} />
-            <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
-              {(campaign.spent_amount_cents / 100).toFixed(0)} <Text style={{ color: DS.colors.textLight }}>/ {(campaign.budget_cents / 100).toFixed(0)}</Text>
-            </Text>
-          </View>
-        </View>
-        <View>
-          <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Time Left</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Clock size={14} color={DS.colors.textDark} style={{ marginRight: 4 }} />
-            <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
-              {getTimeLeftText()}
-            </Text>
-          </View>
-        </View>
-        <View>
-          <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginBottom: 2 }}>Deliverables</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Target size={14} color={DS.colors.textDark} style={{ marginRight: 4 }} />
-            <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
-              {campaign.delivered_content_count} / {campaign.total_deliverables}
-            </Text>
-          </View>
-        </View>
-      </View>
+      )}
     </View>
   );
 };
