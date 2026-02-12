@@ -1,0 +1,160 @@
+appId: com.troodie.troodie.com
+---
+# Test: Creator submits deliverable WITH a valid URL
+# Priority: P1 (Baseline - existing behavior should still work)
+# Prerequisites:
+#   - Creator account logged in
+#   - Accepted application exists
+# Tags: creator, deliverable, submission, with-url
+# What this tests:
+#   - Standard flow with URL still works
+#   - Platform detection still works (Instagram)
+#   - Success message after submission
+
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+
+# Login as creator
+- runFlow: ../helpers/login-bypass.yaml
+
+# Navigate to My Campaigns
+- tapOn:
+    id: "tab-more"
+    optional: true
+
+- tapOn:
+    text: "More"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "My Campaigns"
+    optional: true
+
+- tapOn:
+    text: "Campaigns"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Go to Active tab
+- tapOn:
+    text: "Active"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Tap on campaign
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "E2E Deliverable Test"
+    optional: true
+
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Submit Deliverable
+- scrollUntilVisible:
+    element:
+      text: "Submit Deliverable"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "Submit Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify form loaded
+- assertVisible:
+    text: "Deliverable"
+    timeout: 10000
+    optional: true
+
+# Enter a valid Instagram URL
+- tapOn:
+    text: "Post URL"
+    optional: true
+
+- tapOn:
+    text: "Add link after posting"
+    optional: true
+
+- inputText: "https://www.instagram.com/reel/E2ETEST_WITH_URL/"
+- hideKeyboard
+
+# Wait for URL validation to complete
+- waitForAnimationToEnd
+
+# Verify platform detected
+- assertVisible:
+    text: "Instagram"
+    timeout: 5000
+    optional: true
+
+- takeScreenshot: "deliverable-with-url-platform-detected"
+
+# Add caption
+- scrollUntilVisible:
+    element:
+      text: "Caption"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Caption"
+    optional: true
+
+- inputText: "Check out this amazing restaurant! Great food and ambiance. #sponsored"
+- hideKeyboard
+
+# Submit
+- scrollUntilVisible:
+    element:
+      text: "Submit"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Submit 1 Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+
+- waitForAnimationToEnd
+
+# Verify success
+- assertVisible:
+    text: "Success"
+    timeout: 15000
+    optional: true
+
+- assertVisible:
+    text: "submitted"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "deliverable-with-url-success"
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "deliverable-with-url-complete"

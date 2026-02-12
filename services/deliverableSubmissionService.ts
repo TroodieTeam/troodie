@@ -212,17 +212,18 @@ export async function submitDeliverable(
   }
 ): Promise<{ data: DeliverableSubmission | null; error: Error | null }> {
   try {
-    // Validate URL
-    const urlValidation = validateSocialMediaUrl(params.post_url);
-    if (!urlValidation.valid) {
-      return {
-        data: null,
-        error: new Error(urlValidation.error || 'Invalid URL')
-      };
+    // Validate URL only if a real URL is provided (not 'pending' placeholder)
+    let platform = params.platform || 'other';
+    if (params.post_url && params.post_url !== 'pending') {
+      const urlValidation = validateSocialMediaUrl(params.post_url);
+      if (!urlValidation.valid) {
+        return {
+          data: null,
+          error: new Error(urlValidation.error || 'Invalid URL')
+        };
+      }
+      platform = params.platform || urlValidation.platform || 'other';
     }
-
-    // Auto-detect platform from URL if not explicitly set
-    const platform = params.platform || urlValidation.platform || 'other';
 
     // Auto-calculate deliverable_index if not provided
     let deliverableIndex = params.deliverable_index;

@@ -1,0 +1,42 @@
+# Deliverable Submission E2E Test Suite
+# ======================================
+# Purpose: Test all deliverable submission changes:
+#   1. URL field is now optional (creators can submit content before posting)
+#   2. Multiple deliverable submission works (URL validation bug fixed)
+#   3. Business application review (follower count removed from cards)
+#
+# Prerequisites:
+#   Run the setup SQL first:
+#     psql $DATABASE_URL -f e2e/scripts/setup-deliverable-submission-test.sql
+#
+# Run:
+#   maestro test e2e/suites/deliverable-submission.yaml
+
+appId: com.troodie.troodie.com
+---
+name: Deliverable Submission E2E
+env:
+  CREATOR_EMAIL: prod-creator1@bypass.com
+  BUSINESS_EMAIL: prod-business1@bypass.com
+  OTP_CODE: "000000"
+
+tags:
+  - deliverable-submission
+  - url-optional
+  - multi-deliverable
+  - application-review
+  - e2e
+
+# Run flows sequentially
+flows:
+  # Step 1: Business reviews applications (verify no follower count, accept pending app)
+  - deliverable-submission/business-reviews-applications.yaml
+
+  # Step 2: Creator submits deliverable WITHOUT URL (new feature)
+  - deliverable-submission/creator-submits-without-url.yaml
+
+  # Step 3: Creator submits deliverable WITH URL (baseline - still works)
+  - deliverable-submission/creator-submits-with-url.yaml
+
+  # Step 4: Creator submits MULTIPLE deliverables (URL validation bug fix)
+  - deliverable-submission/creator-submits-multiple.yaml

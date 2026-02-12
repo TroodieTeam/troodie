@@ -162,16 +162,18 @@ export default function SubmitDeliverable() {
     }
   };
 
-  // Validate URL when it changes
+  // Validate URLs when they change (debounced per-deliverable)
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
     deliverables.forEach((deliverable, index) => {
-      if (deliverable.url.trim().length > 10) {
+      if (deliverable.url.trim().length > 5) {
         const timer = setTimeout(() => {
           validateDeliverableUrl(index);
-        }, 500);
-        return () => clearTimeout(timer);
+        }, 800);
+        timers.push(timer);
       }
     });
+    return () => timers.forEach(t => clearTimeout(t));
   }, [deliverables.map(d => d.url).join(',')]);
 
   const validateDeliverableUrl = (index: number) => {
@@ -226,25 +228,18 @@ export default function SubmitDeliverable() {
       return;
     }
 
-    // Validate all deliverables
+    // Validate all deliverables — URL is optional now
     const validDeliverables = deliverables.filter((d, index) => {
-      if (!d.url.trim()) {
-        Alert.alert('Missing URL', `Please enter a URL for deliverable ${index + 1}`);
-        return false;
-      }
-      if (d.urlError) {
+      // If URL is provided, check for errors
+      if (d.url.trim() && d.urlError) {
         Alert.alert('Invalid URL', `Deliverable ${index + 1}: ${d.urlError}`);
-        return false;
-      }
-      if (!d.platform) {
-        Alert.alert('Invalid URL', `Could not detect platform for deliverable ${index + 1}`);
         return false;
       }
       return true;
     });
 
     if (validDeliverables.length === 0) {
-      Alert.alert('Error', 'Please add at least one valid deliverable');
+      Alert.alert('Error', 'Please add at least one deliverable');
       return;
     }
 
@@ -272,14 +267,14 @@ export default function SubmitDeliverable() {
         throw new Error('Campaign not found');
       }
 
-      // Prepare submissions
+      // Prepare submissions — URL & platform are optional
       const submissions = validDeliverables.map(d => ({
         campaign_application_id: campaignApplicationId,
         campaign_id: campaignId as string,
         creator_id: creatorProfile.id,
         restaurant_id: campaignData.restaurant_id,
-        platform: d.platform!,
-        post_url: d.url.trim(),
+        platform: d.platform || 'other' as DeliverablePlatform,
+        post_url: d.url.trim() || 'pending',
         caption: d.caption,
         notes_to_restaurant: d.notes,
         engagement_metrics: {},
@@ -320,9 +315,9 @@ export default function SubmitDeliverable() {
     }
   };
 
-  // Check if can submit
+  // Check if can submit — URL is optional, just ensure no validation errors
   const canSubmit = deliverables.length > 0 && 
-    deliverables.every(d => d.url.trim() && !d.urlError && d.platform);
+    deliverables.every(d => !d.urlError) && !submitting;
 
   if (loading) {
     return (
@@ -748,7 +743,7 @@ export default function SubmitDeliverable() {
               )}
             </View>
 
-            {/* Post URL */}
+            {/* Post URL - Optional */}
             <View style={{ marginBottom: 16 }}>
               <Text style={{
                 fontSize: 14,
@@ -756,7 +751,7 @@ export default function SubmitDeliverable() {
                 color: '#000000',
                 marginBottom: 8,
               }}>
-                Post URL *
+                Post URL (Optional)
               </Text>
               <View style={{
                 flexDirection: 'row',
@@ -774,7 +769,7 @@ export default function SubmitDeliverable() {
                     paddingLeft: 8,
                     fontSize: 14,
                   }}
-                  placeholder="https://instagram.com/p/your-post-id"
+                  placeholder="Add link after posting (optional)"
                   value={deliverable.url}
                   onChangeText={(text) => updateDeliverable(index, { url: text })}
                   keyboardType="url"
@@ -903,7 +898,7 @@ export default function SubmitDeliverable() {
         ))}
 
         {/* Review Section - Only show if not all submitted */}
-        {!allDeliverablesSubmitted && deliverables.length > 0 && deliverables.some(d => d.url.trim() && d.platform) && (
+        {!allDeliverablesSubmitted && deliverables.length > 0 && (
           <View style={{
             backgroundColor: '#F0F9FF',
             borderRadius: 12,
@@ -918,35 +913,36 @@ export default function SubmitDeliverable() {
               color: '#0C4A6E',
               marginBottom: 12,
             }}>
-              Review Your Deliverables ({deliverables.filter(d => d.url.trim() && d.platform).length})
+              Review Your Deliverables ({deliverables.length})
             </Text>
-            {deliverables.map((deliverable, index) => {
-              if (!deliverable.url.trim() || !deliverable.platform) return null;
-              return (
-                <View key={index} style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                  marginBottom: 8,
-                  paddingBottom: 8,
-                  borderBottomWidth: index < deliverables.length - 1 ? 1 : 0,
-                  borderBottomColor: '#E0F2FE',
+            {deliverables.map((deliverable, index) => (
+              <View key={index} style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                marginBottom: 8,
+                paddingBottom: 8,
+                borderBottomWidth: index < deliverables.length - 1 ? 1 : 0,
+                borderBottomColor: '#E0F2FE',
+              }}>
+                <Text style={{
+                  fontSize: 14,
+                  color: '#0C4A6E',
+                  marginRight: 8,
+                  fontWeight: '600',
                 }}>
+                  {index + 1}.
+                </Text>
+                <View style={{ flex: 1 }}>
                   <Text style={{
                     fontSize: 14,
                     color: '#0C4A6E',
-                    marginRight: 8,
-                    fontWeight: '600',
+                    fontWeight: '500',
                   }}>
-                    {index + 1}.
+                    {deliverable.platform 
+                      ? `${deliverable.platform.charAt(0).toUpperCase() + deliverable.platform.slice(1)} Post`
+                      : 'Content Submission'}
                   </Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{
-                      fontSize: 14,
-                      color: '#0C4A6E',
-                      fontWeight: '500',
-                    }}>
-                      {deliverable.platform.charAt(0).toUpperCase() + deliverable.platform.slice(1)} Post
-                    </Text>
+                  {deliverable.url.trim() ? (
                     <Text style={{
                       fontSize: 12,
                       color: '#64748B',
@@ -954,10 +950,19 @@ export default function SubmitDeliverable() {
                     }} numberOfLines={1}>
                       {deliverable.url}
                     </Text>
-                  </View>
+                  ) : (
+                    <Text style={{
+                      fontSize: 12,
+                      color: '#9CA3AF',
+                      marginTop: 2,
+                      fontStyle: 'italic',
+                    }}>
+                      Link will be added after posting
+                    </Text>
+                  )}
                 </View>
-              );
-            })}
+              </View>
+            ))}
           </View>
         )}
 
@@ -984,7 +989,7 @@ export default function SubmitDeliverable() {
                 fontWeight: '600',
                 color: '#FFFFFF',
               }}>
-                Submit {deliverables.filter(d => d.url.trim() && d.platform).length} Deliverable{deliverables.filter(d => d.url.trim() && d.platform).length !== 1 ? 's' : ''}
+                Submit {deliverables.length} Deliverable{deliverables.length !== 1 ? 's' : ''}
               </Text>
             )}
           </TouchableOpacity>

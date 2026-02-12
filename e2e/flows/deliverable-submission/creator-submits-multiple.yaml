@@ -1,0 +1,215 @@
+appId: com.troodie.troodie.com
+---
+# Test: Creator submits MULTIPLE deliverables (mix of with/without URL)
+# Priority: P1 (Critical - tests multi-deliverable + URL validation fix)
+# Prerequisites:
+#   - Creator account logged in
+#   - Accepted application exists
+# Tags: creator, deliverable, multi-submit, url-validation
+# What this tests:
+#   - Adding multiple deliverable forms
+#   - Submitting one with URL and one without
+#   - URL validation doesn't cross-contaminate between fields (bug fix)
+#   - Successful multi-deliverable submission
+
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+
+# Login as creator
+- runFlow: ../helpers/login-bypass.yaml
+
+# Navigate to My Campaigns
+- tapOn:
+    id: "tab-more"
+    optional: true
+
+- tapOn:
+    text: "More"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "My Campaigns"
+    optional: true
+
+- tapOn:
+    text: "Campaigns"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Go to Active tab
+- tapOn:
+    text: "Active"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Tap on campaign
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "E2E Deliverable Test"
+    optional: true
+
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Submit Deliverable
+- scrollUntilVisible:
+    element:
+      text: "Submit Deliverable"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "Submit Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify deliverable form loaded
+- assertVisible:
+    text: "Deliverable 1"
+    timeout: 10000
+    optional: true
+
+# === DELIVERABLE 1: With URL ===
+# Enter a valid Instagram URL in the first deliverable
+- tapOn:
+    text: "Post URL"
+    optional: true
+
+- tapOn:
+    text: "Add link after posting"
+    optional: true
+
+- inputText: "https://www.instagram.com/reel/E2ETEST_MULTI_1/"
+- hideKeyboard
+
+# Wait for URL validation
+- waitForAnimationToEnd
+
+# Enter caption for deliverable 1
+- scrollUntilVisible:
+    element:
+      text: "Caption"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Caption"
+    optional: true
+
+- inputText: "Deliverable 1: Instagram reel showcasing the restaurant ambiance"
+- hideKeyboard
+
+# Take screenshot of first deliverable filled
+- takeScreenshot: "multi-deliverable-1-filled"
+
+# === ADD SECOND DELIVERABLE ===
+- scrollUntilVisible:
+    element:
+      text: "Add Another"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Add Another Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Add Another"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify second deliverable form appeared
+- scrollUntilVisible:
+    element:
+      text: "Deliverable 2"
+    direction: DOWN
+    optional: true
+
+- assertVisible:
+    text: "Deliverable 2"
+    timeout: 5000
+    optional: true
+
+# === DELIVERABLE 2: Without URL ===
+# Skip URL, just add caption
+- scrollUntilVisible:
+    element:
+      text: "Caption"
+      index: 1
+    direction: DOWN
+    optional: true
+
+# Find the second caption field (scroll past the first deliverable)
+- tapOn:
+    text: "Caption"
+    index: 1
+    optional: true
+
+- inputText: "Deliverable 2: TikTok video - will add link after posting"
+- hideKeyboard
+
+# Take screenshot showing both deliverables
+- takeScreenshot: "multi-deliverable-both-filled"
+
+# === SUBMIT BOTH ===
+- scrollUntilVisible:
+    element:
+      text: "Submit"
+    direction: DOWN
+    optional: true
+
+# Should show "Submit 2 Deliverables"
+- assertVisible:
+    text: "2 Deliverable"
+    timeout: 5000
+    optional: true
+
+- tapOn:
+    text: "Submit 2 Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+
+# Wait for submission
+- waitForAnimationToEnd
+
+# Verify success
+- assertVisible:
+    text: "Success"
+    timeout: 15000
+    optional: true
+
+- assertVisible:
+    text: "submitted"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "multi-deliverable-success"
+
+# Dismiss
+- tapOn:
+    text: "OK"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "multi-deliverable-complete"

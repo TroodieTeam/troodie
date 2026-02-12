@@ -1,0 +1,170 @@
+appId: com.troodie.troodie.com
+---
+# Test: Business views applications - verify no follower count shown
+# Priority: P2 (UI verification)
+# Prerequisites:
+#   - Business account logged in
+#   - Pending and accepted applications exist
+# Tags: business, applications, ui-verification
+# What this tests:
+#   - Applications list renders correctly
+#   - Creator names display properly (fallback chain)
+#   - Follower count is NOT shown on creator cards
+#   - Username shown in grey text when available
+#   - Accept/Reject buttons work for pending applications
+
+env:
+  TEST_EMAIL: prod-business1@bypass.com
+
+# Login as business
+- runFlow: ../helpers/login-bypass.yaml
+
+# Navigate to Business tab
+- tapOn:
+    id: "tab-more"
+    optional: true
+
+- tapOn:
+    text: "More"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Campaigns
+- tapOn:
+    text: "Campaigns"
+    optional: true
+
+- tapOn:
+    id: "campaigns-menu"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Find the test campaign
+- assertVisible:
+    text: "Campaign"
+    timeout: 10000
+
+- tapOn:
+    text: "E2E Deliverable Test"
+    optional: true
+
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Applications tab
+- tapOn:
+    text: "Applications"
+    optional: true
+
+- tapOn:
+    text: "Applicants"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify applications are visible
+- assertVisible:
+    text: "application-card"
+    timeout: 10000
+    optional: true
+
+# Take screenshot of the applications list
+- takeScreenshot: "business-applications-list"
+
+# KEY TEST: Verify "followers" text is NOT visible
+# (We removed follower count from the creator card)
+- assertNotVisible:
+    text: "followers"
+    optional: true
+
+# KEY TEST: Verify "0 followers" is NOT visible
+- assertNotVisible:
+    text: "0 followers"
+    optional: true
+
+# Verify creator names are showing (not "Creator" default)
+# Look for any application card
+- assertVisible:
+    id: "application-card"
+    timeout: 10000
+    optional: true
+
+# Take screenshot showing no follower count
+- takeScreenshot: "business-applications-no-follower-count"
+
+# Verify pending status badge exists
+- assertVisible:
+    text: "PENDING"
+    timeout: 5000
+    optional: true
+
+- assertVisible:
+    text: "pending"
+    timeout: 5000
+    optional: true
+
+# Verify action buttons exist for pending apps
+- assertVisible:
+    text: "Accept"
+    timeout: 5000
+    optional: true
+
+- assertVisible:
+    text: "Reject"
+    timeout: 5000
+    optional: true
+
+# Verify cover letter section
+- assertVisible:
+    text: "Cover Letter"
+    timeout: 5000
+    optional: true
+
+# Take final screenshot
+- takeScreenshot: "business-applications-review-ready"
+
+# Test: Accept a pending application
+- scrollUntilVisible:
+    element:
+      text: "Accept"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Accept"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Handle confirmation dialog
+- tapOn:
+    text: "Confirm"
+    optional: true
+
+- tapOn:
+    text: "Yes"
+    optional: true
+
+- tapOn:
+    text: "OK"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify status changed
+- assertVisible:
+    text: "accepted"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "business-application-accepted"

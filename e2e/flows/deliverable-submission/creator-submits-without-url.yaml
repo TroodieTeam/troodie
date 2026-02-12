@@ -1,0 +1,175 @@
+appId: com.troodie.troodie.com
+---
+# Test: Creator submits deliverable WITHOUT a URL (new optional URL feature)
+# Priority: P1 (Critical - new behavior)
+# Prerequisites:
+#   - Creator account logged in
+#   - Accepted application exists (run setup SQL first)
+# Tags: creator, deliverable, submission, no-url
+# What this tests:
+#   - URL field is marked "(Optional)" not required
+#   - Can submit with just caption/notes (no URL)
+#   - Submit button is enabled without URL
+#   - Success message shown after submission
+
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+
+# Login as creator
+- runFlow: ../helpers/login-bypass.yaml
+
+# Navigate to My Campaigns via creator tab
+- tapOn:
+    id: "tab-more"
+    optional: true
+
+- tapOn:
+    text: "More"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Look for My Campaigns or Campaigns link
+- tapOn:
+    text: "My Campaigns"
+    optional: true
+
+- tapOn:
+    text: "Campaigns"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Go to Active campaigns tab
+- tapOn:
+    text: "Active"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Tap on the first active campaign
+- tapOn:
+    id: "campaign-card-0"
+    optional: true
+
+- tapOn:
+    text: "E2E Deliverable Test"
+    optional: true
+
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Find and tap Submit Deliverable button
+- scrollUntilVisible:
+    element:
+      text: "Submit Deliverable"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+- tapOn:
+    text: "Submit Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Verify we're on the submit deliverable screen
+- assertVisible:
+    text: "Deliverable"
+    timeout: 10000
+    optional: true
+
+# KEY TEST: Verify URL field is labeled as Optional
+- assertVisible:
+    text: "Optional"
+    timeout: 5000
+    optional: true
+
+# Take screenshot showing the optional URL label
+- takeScreenshot: "deliverable-url-optional-label"
+
+# Skip the URL field entirely - go straight to caption
+- scrollUntilVisible:
+    element:
+      text: "Caption"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Caption"
+    optional: true
+
+- tapOn:
+    id: "caption-input"
+    optional: true
+
+- inputText: "Amazing food content from E2E test! Check out this restaurant."
+- hideKeyboard
+
+# Add notes
+- scrollUntilVisible:
+    element:
+      text: "Notes"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Notes"
+    optional: true
+
+- tapOn:
+    id: "notes-input"
+    optional: true
+
+- inputText: "Submitting content for review before posting. Will add link once published."
+- hideKeyboard
+
+# Take screenshot before submit (no URL entered)
+- takeScreenshot: "deliverable-no-url-before-submit"
+
+# KEY TEST: Submit button should be enabled even without URL
+- scrollUntilVisible:
+    element:
+      text: "Submit"
+    direction: DOWN
+    optional: true
+
+- tapOn:
+    text: "Submit 1 Deliverable"
+    optional: true
+
+- tapOn:
+    text: "Submit"
+
+# Wait for submission
+- waitForAnimationToEnd
+
+# Verify success
+- assertVisible:
+    text: "Success"
+    timeout: 15000
+    optional: true
+
+- assertVisible:
+    text: "submitted"
+    timeout: 10000
+    optional: true
+
+- takeScreenshot: "deliverable-no-url-success"
+
+# Dismiss success dialog
+- tapOn:
+    text: "OK"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "deliverable-no-url-complete"

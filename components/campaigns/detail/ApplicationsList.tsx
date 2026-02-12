@@ -101,13 +101,6 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ applications
                 borderTopColor: DS.colors.borderLight,
                 gap: DS.spacing.lg,
               }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Users size={13} color={DS.colors.textLight} />
-                  <Text style={{ ...DS.typography.caption, fontWeight: '600', color: DS.colors.textDark, marginLeft: 4 }}>
-                    {cp.followers_count.toLocaleString()}
-                  </Text>
-                  <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginLeft: 2 }}>followers</Text>
-                </View>
                 {engagementRate !== null && engagementRate > 0 ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TrendingUp size={13} color={DS.colors.textLight} />

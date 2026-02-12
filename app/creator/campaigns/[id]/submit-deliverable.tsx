@@ -102,16 +102,18 @@ export default function SubmitDeliverableScreen() {
     }
   }, [user?.id, campaignId]);
 
-  // Validate URLs when they change
+  // Validate URLs when they change (debounced per-deliverable)
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
     deliverables.forEach((deliverable, index) => {
-      if (deliverable.url.trim().length > 10) {
+      if (deliverable.url.trim().length > 5) {
         const timer = setTimeout(() => {
           validateDeliverableUrl(index);
-        }, 500);
-        return () => clearTimeout(timer);
+        }, 800);
+        timers.push(timer);
       }
     });
+    return () => timers.forEach(t => clearTimeout(t));
   }, [deliverables.map(d => d.url).join(',')]);
 
   // Request permission for image picker
@@ -263,25 +265,18 @@ export default function SubmitDeliverableScreen() {
       return;
     }
 
-    // Validate all deliverables
+    // Validate all deliverables — URL is optional now
     const validDeliverables = deliverables.filter((d, index) => {
-      if (!d.url.trim()) {
-        Alert.alert('Missing URL', `Please enter a URL for deliverable ${index + 1}`);
-        return false;
-      }
-      if (d.urlError) {
+      // If URL is provided, check for errors
+      if (d.url.trim() && d.urlError) {
         Alert.alert('Invalid URL', `Deliverable ${index + 1}: ${d.urlError}`);
-        return false;
-      }
-      if (!d.platform) {
-        Alert.alert('Invalid URL', `Could not detect platform for deliverable ${index + 1}`);
         return false;
       }
       return true;
     });
 
     if (validDeliverables.length === 0) {
-      Alert.alert('Error', 'Please add at least one valid deliverable');
+      Alert.alert('Error', 'Please add at least one deliverable');
       return;
     }
 
@@ -315,8 +310,8 @@ export default function SubmitDeliverableScreen() {
             campaign_application_id: campaignApplicationId!,
             campaign_id: campaignId,
             creator_id: user.id,
-            platform: deliverable.platform!,
-            post_url: deliverable.url.trim(),
+            platform: deliverable.platform || ('other' as DeliverablePlatform),
+            post_url: deliverable.url.trim() || 'pending',
             screenshot_url: screenshotUrl,
             caption: deliverable.caption.trim() || undefined,
             notes_to_restaurant: deliverable.notes.trim() || undefined
@@ -353,9 +348,8 @@ export default function SubmitDeliverableScreen() {
     }
   };
 
-  const canSubmit = deliverables.some(d => 
-    d.url.trim().length > 0 && !d.urlError && d.platform
-  ) && !isSubmitting;
+  const canSubmit = deliverables.length > 0 && 
+    deliverables.every(d => !d.urlError) && !isSubmitting;
 
   // Calculate progress display values
   const submittedCount = progress?.submitted || 0;
@@ -481,13 +475,13 @@ export default function SubmitDeliverableScreen() {
               )}
             </View>
 
-            {/* Post URL Input */}
+            {/* Post URL Input - Optional */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Post URL *</Text>
+              <Text style={styles.sectionTitle}>Post URL (Optional)</Text>
               <View style={styles.urlInputContainer}>
                 <TextInput
                   style={[styles.urlInput, deliverable.urlError && styles.urlInputError]}
-                  placeholder="https://instagram.com/p/..."
+                  placeholder="Add link after posting (optional)"
                   value={deliverable.url}
                   onChangeText={(text) => updateDeliverable(index, { url: text })}
                   autoCapitalize="none"
