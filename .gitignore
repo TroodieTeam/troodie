@@ -80,3 +80,6 @@ data/*.json
 
 # Backup info (contains sensitive project refs)
 .backup-info.json
+
+# ScreenSync artifacts
+screensync-artifacts/

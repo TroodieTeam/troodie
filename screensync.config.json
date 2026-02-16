@@ -1,0 +1,34 @@
+{
+  "projectName": "Troodie",
+  "reactNativeRoot": ".",
+  "maestro": {
+    "flowsDir": "e2e/flows",
+    "platform": "ios",
+    "device": "iPhone 15 Pro"
+  },
+  "artifacts": {
+    "outputDir": "./screensync-artifacts",
+    "screenshotFormat": "png",
+    "screenshotQuality": 90
+  },
+  "ai": {
+    "provider": "claude",
+    "model": "claude-sonnet-4-5-20250929",
+    "maxTokens": 4096
+  },
+  "figma": {
+    "fileKey": "J8zI4CCBC7PAfeUIotuZKe",
+    "pageId": "275:3",
+    "framePadding": 40,
+    "screenshotWidth": 390
+  },
+  "notion": {
+    "parentPageId": "",
+    "databaseId": ""
+  },
+  "git": {
+    "baseBranch": "main",
+    "includeCommitHistory": true,
+    "maxCommits": 50
+  }
+}
