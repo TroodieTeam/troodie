@@ -3,6 +3,7 @@
 > Feature: payment-duplication-fix
 > Spec: `specs/features/payment-duplication-fix/spec.md`
 > Created: 2026-02-17
+> All questions answered, spec approved 2026-02-18
 
 ## Priority Questions (Blocking)
 
@@ -48,16 +49,3 @@ These provide helpful context but won't block implementation.
 ### Q4: What is the typical number of deliverables per campaign?
 - **Context**: This affects how often the "waiting for all approved" state occurs. If most campaigns have 1 deliverable, this fix is mostly a safety net. If most have 3+, it's a major behavior change.
 - **Answer**: 3
-
----
-
-## How to Approve
-
-Once Priority Questions are answered, approve the spec:
-
-```
-/groom --approve payment-duplication-fix Q1: [answer] Q2: [answer] Q3: [answer or "use default"]
-```
-
-Design Tradeoffs default to AI recommendations if not explicitly answered.
-Nice-to-Know questions are optional.

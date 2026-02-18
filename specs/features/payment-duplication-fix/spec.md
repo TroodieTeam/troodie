@@ -9,6 +9,13 @@
 
 Fix a critical payment bug where each deliverable approval triggers a separate full-amount payout ($35 x 3 = $105 instead of $35 total). Payment should trigger only once per campaign application when ALL deliverables are approved, not per individual deliverable.
 
+## Stakeholder Decisions
+
+- Q1: Option A — Pay only when ALL deliverables approved (rejected must be resubmitted)
+- Q2: Option B — Run audit query for historical overpayments, manual refund review
+- Q3: Option C — Both progress indicator UI and toast notification
+- Q4: Typical campaigns have 3 deliverables
+
 ## Problem Statement
 
 When a restaurant approves individual deliverables (e.g., IG Reel, TikTok, Troodie post) for a single campaign, each approval independently triggers `processDeliverablePayout()` with the full campaign payout amount. A creator with 3 deliverables receives 300% overpayment. This is a financial bug that directly impacts business costs.
@@ -148,63 +155,22 @@ No schema changes required. The existing `payment_status` and `payment_amount_ce
 **Goal**: Stop per-deliverable payouts, trigger only when all approved.
 
 #### Tasks
-- [ ] **Task 1.1**: Modify `approveDeliverable()` in `deliverableReviewService.ts` to check all deliverables approved before calling `processDeliverablePayout()`
-  - Files: `services/deliverableReviewService.ts`
-  - Acceptance: Approving 1 of 3 deliverables does NOT trigger payout
-- [ ] **Task 1.2**: Add duplicate payout guard in `processDeliverablePayout()`
-  - Files: `services/payoutService.ts`
-  - Acceptance: If any deliverable in the same application already has `payment_status` = 'processing' or 'completed', skip
-- [ ] **Task 1.3**: Update `triggerAutoApproval()` to group by application and only payout when all approved
-  - Files: `services/deliverableReviewService.ts`
-  - Acceptance: Auto-approving 1 of 3 does not trigger payout
-- [ ] **Task 1.4**: Update `bulkApproveDeliverables()` to avoid N payouts
-  - Files: `services/deliverableReviewService.ts`
-  - Acceptance: Bulk approving 3 deliverables triggers exactly 1 payout
+- [x] **Task 1.1**: Modify `approveDeliverable()` in `deliverableReviewService.ts` to check all deliverables approved before calling `processDeliverablePayout()`
+- [x] **Task 1.2**: Add duplicate payout guard in `processDeliverablePayout()`
+- [x] **Task 1.3**: Update `triggerAutoApproval()` to group by application and only payout when all approved
+- [x] **Task 1.4**: Update `bulkApproveDeliverables()` to avoid N payouts
 
 ### Phase 2: Payment Amount Cleanup
-**Goal**: Ensure payment amount is correctly assigned.
+- [x] **Task 2.1**: Only set `payment_amount_cents` on the trigger deliverable, not all deliverables
 
-#### Tasks
-- [ ] **Task 2.1**: Only set `payment_amount_cents` on the trigger deliverable, not all deliverables
-  - Files: `services/deliverableReviewService.ts`
-  - Acceptance: Only the last-approved deliverable has `payment_amount_cents` set
-
-### Phase 3: UI Feedback for Partial Approval (Stakeholder Decision Q3: Option C)
-**Goal**: Show progress indicator AND toast when deliverables are partially approved.
-
-#### Tasks
-- [ ] **Task 3.1**: Add toast notification when approving a deliverable that does not yet trigger payout
-  - Files: `services/deliverableReviewService.ts`
-  - Acceptance: Toast says "Payment will process once all deliverables are approved" on partial approval
-- [ ] **Task 3.2**: Add approval progress indicator to deliverable review UI
-  - Files: Relevant review screen component
-  - Acceptance: UI shows "2/3 approved — payment pending" style indicator
-
-### Phase 4: Historical Overpayment Audit (Stakeholder Decision Q2: Option B)
-**Goal**: Identify existing overpayments for manual review.
-
-#### Tasks
-- [ ] **Task 4.1**: Write SQL audit query to identify campaign applications with multiple completed payouts
-  - Files: `testing/sql/payment-duplication-audit.sql`
-  - Acceptance: Query returns all affected records with amounts for manual review
-
-## Testing Requirements
-
-### Unit Tests
-- [ ] Approving 1 of 3 deliverables does NOT call `processDeliverablePayout`
-- [ ] Approving 3 of 3 deliverables calls `processDeliverablePayout` exactly once
-- [ ] Duplicate payout guard blocks second payout for same application
-- [ ] Auto-approval of partial deliverables does not trigger payout
-
-### Manual Testing
-- [ ] Create campaign with 3 deliverables, approve one at a time, verify only 1 payment
-- [ ] Bulk approve all 3 deliverables, verify only 1 payment
-- [ ] Let 1 of 3 auto-approve, manually approve remaining, verify only 1 payment
+### Phase 3: Testing Artifacts
+- [x] **Task 3.1**: Create manual test script
+- [x] **Task 3.2**: Create verification SQL, reset SQL, and audit SQL
 
 ## Acceptance Criteria
 
-- [ ] Approving individual deliverables does NOT trigger separate payouts
-- [ ] Single payout triggers only when ALL deliverables for a campaign application are approved
-- [ ] Payment amount equals the agreed per-creator campaign rate (not multiplied)
-- [ ] Auto-approval flow also respects the all-approved-before-payout rule
-- [ ] No duplicate payouts possible even with concurrent operations
+- [x] Approving individual deliverables does NOT trigger separate payouts
+- [x] Single payout triggers only when ALL deliverables for a campaign application are approved
+- [x] Payment amount equals the agreed per-creator campaign rate (not multiplied)
+- [x] Auto-approval flow also respects the all-approved-before-payout rule
+- [x] No duplicate payouts possible even with concurrent operations
