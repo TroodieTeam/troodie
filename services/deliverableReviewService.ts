@@ -445,7 +445,7 @@ export async function triggerAutoApproval(): Promise<{
     deliverable_id: string;
     creator_id: string;
     campaign_id: string;
-    creator_campaign_id: string;
+    campaign_application_id: string;
     approved_at: string;
     creator_email: string;
     campaign_title: string;
@@ -460,16 +460,57 @@ export async function triggerAutoApproval(): Promise<{
       return { data: null, error };
     }
 
-    // Process payouts for auto-approved deliverables
+    // Process payouts for auto-approved deliverables, grouped by campaign_application_id.
+    // Only trigger payout for an application when ALL its deliverables are approved.
     if (data && Array.isArray(data)) {
+      const byApplication = new Map<string, typeof data>();
       for (const approved of data) {
-        try {
-          const payoutResult = await processDeliverablePayout(approved.deliverable_id);
-          if (!payoutResult.success && payoutResult.error !== 'Creator needs to complete Stripe onboarding') {
-            console.error(`Error processing payout for deliverable ${approved.deliverable_id}:`, payoutResult.error);
+        const appId = approved.campaign_application_id;
+        if (!appId) continue;
+        const existing = byApplication.get(appId) ?? [];
+        existing.push(approved);
+        byApplication.set(appId, existing);
+      }
+
+      for (const [applicationId, approvedDeliverables] of byApplication) {
+        const { data: allDeliverables, error: allDelError } = await supabase
+          .from('campaign_deliverables')
+          .select('id, status')
+          .eq('campaign_application_id', applicationId);
+
+        if (allDelError) {
+          console.error('[DeliverableReview] Error checking deliverables for application:', applicationId, allDelError);
+          continue;
+        }
+
+        const allNowApproved = allDeliverables?.every(
+          (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+        ) ?? false;
+
+        if (allNowApproved && allDeliverables && allDeliverables.length > 0) {
+          const triggerDeliverable = approvedDeliverables[0];
+          console.log('[DeliverableReview] All deliverables approved for application — triggering payout', {
+            campaign_application_id: applicationId,
+            trigger_deliverable_id: triggerDeliverable.deliverable_id,
+            total_deliverables: allDeliverables.length,
+          });
+
+          try {
+            const payoutResult = await processDeliverablePayout(triggerDeliverable.deliverable_id);
+            if (!payoutResult.success && payoutResult.error !== 'Creator needs to complete Stripe onboarding') {
+              console.error(`[DeliverableReview] Payout failed for application ${applicationId}:`, payoutResult.error);
+            }
+          } catch (payoutError) {
+            console.error(`[DeliverableReview] Exception triggering payout for application ${applicationId}:`, payoutError);
           }
-        } catch (payoutError) {
-          console.error(`Error triggering payout for deliverable ${approved.deliverable_id}:`, payoutError);
+        } else {
+          console.log('[DeliverableReview] Not all deliverables approved for application — skipping payout', {
+            campaign_application_id: applicationId,
+            approved_count: allDeliverables?.filter(
+              (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+            ).length ?? 0,
+            total: allDeliverables?.length ?? 0,
+          });
         }
       }
     }
