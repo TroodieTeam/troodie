@@ -13,6 +13,7 @@
  */
 
 import { useAuth } from '@/contexts/AuthContext';
+import { getUploadedContentUrl } from '@/services/contentUploadService';
 import {
     approveDeliverable,
     formatDeadline,
@@ -308,38 +309,9 @@ export default function ReviewDeliverablesScreen() {
               {selectedDeliverable && (
                 <View style={styles.deliverablePreviewSection}>
                   <Text style={styles.sectionTitle}>Deliverable Content</Text>
-                  
-                  {/* Post Screenshot */}
-                  {selectedDeliverable.screenshot_url && (
-                    <TouchableOpacity 
-                      style={styles.modalPostPreview} 
-                      onPress={() => openPostUrl(selectedDeliverable.post_url)}
-                      activeOpacity={0.7}
-                    >
-                      <Image 
-                        source={{ uri: selectedDeliverable.screenshot_url }} 
-                        style={styles.modalPostImage} 
-                      />
-                      <View style={styles.modalPostOverlay}>
-                        <Ionicons name="open-outline" size={20} color="#FFFFFF" />
-                        <Text style={styles.modalPostOverlayText}>Tap to view</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
 
-                  {/* Post URL */}
-                  {selectedDeliverable.post_url && (
-                    <TouchableOpacity
-                      style={styles.postUrlContainer}
-                      onPress={() => openPostUrl(selectedDeliverable.post_url)}
-                    >
-                      <Ionicons name="link" size={16} color="#6B7280" />
-                      <Text style={styles.postUrlText} numberOfLines={1}>
-                        {selectedDeliverable.post_url}
-                      </Text>
-                      <Ionicons name="open-outline" size={16} color="#6B7280" />
-                    </TouchableOpacity>
-                  )}
+                  {/* Uploaded Content (new flow) */}
+                  <ModalContentPreview deliverable={selectedDeliverable} onOpenUrl={() => openPostUrl(selectedDeliverable.post_url)} />
 
                   {/* Caption */}
                   {selectedDeliverable.caption && (
@@ -369,7 +341,7 @@ export default function ReviewDeliverablesScreen() {
                     <Ionicons name="checkmark-circle" size={48} color="#10B981" />
                     <Text style={styles.modalMessageTitle}>Approve This Deliverable?</Text>
                     <Text style={styles.modalMessageText}>
-                      The creator will be notified and payment will be processed.
+                      The creator will be notified to post the content and submit proof links. Payment will be processed after proof is submitted.
                     </Text>
                   </>
                 )}
@@ -511,20 +483,8 @@ function DeliverableCard({
         </View>
       </View>
 
-      {/* Post Preview */}
-      <TouchableOpacity style={styles.postPreview} onPress={onOpenUrl} activeOpacity={0.7}>
-        {deliverable.screenshot_url ? (
-          <Image source={{ uri: deliverable.screenshot_url }} style={styles.postImage} />
-        ) : (
-          <View style={styles.postPlaceholder}>
-            <Ionicons name="link" size={32} color="#6B7280" />
-            <Text style={styles.postPlaceholderText}>Tap to view post</Text>
-          </View>
-        )}
-        <View style={styles.postOverlay}>
-          <Ionicons name="open-outline" size={20} color="#FFFFFF" />
-        </View>
-      </TouchableOpacity>
+      {/* Content Preview - show uploaded content if available */}
+      <ContentPreview deliverable={deliverable} onOpenUrl={onOpenUrl} />
 
       {/* Caption (if provided) */}
       {deliverable.caption && (
@@ -561,6 +521,132 @@ function DeliverableCard({
         </TouchableOpacity>
       </View>
     </View>
+  );
+}
+
+// ============================================================================
+// CONTENT PREVIEW
+// ============================================================================
+
+function ContentPreview({
+  deliverable,
+  onOpenUrl
+}: {
+  deliverable: PendingDeliverableSummary;
+  onOpenUrl: () => void;
+}) {
+  const [contentUrl, setContentUrl] = useState<string | null>(null);
+  const del = deliverable as any;
+  const hasUploadedContent = !!del.content_file_url;
+  const isVideoContent = del.content_file_type?.startsWith('video/');
+
+  useEffect(() => {
+    if (hasUploadedContent) {
+      getUploadedContentUrl(del.content_file_url).then(({ data }) => {
+        if (data) setContentUrl(data);
+      });
+    }
+  }, [del.content_file_url]);
+
+  if (hasUploadedContent && contentUrl) {
+    if (isVideoContent) {
+      return (
+        <View style={styles.postPreview}>
+          <View style={styles.videoContentPreview}>
+            <Ionicons name="videocam" size={48} color="#FFAD27" />
+            <Text style={styles.videoContentText}>Video content uploaded</Text>
+            <Text style={styles.videoContentSubtext}>Video preview available in full review</Text>
+          </View>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.postPreview}>
+        <Image source={{ uri: contentUrl }} style={styles.postImage} />
+      </View>
+    );
+  }
+
+  // Fallback to old-style preview (screenshot + URL)
+  return (
+    <TouchableOpacity style={styles.postPreview} onPress={onOpenUrl} activeOpacity={0.7}>
+      {deliverable.screenshot_url ? (
+        <Image source={{ uri: deliverable.screenshot_url }} style={styles.postImage} />
+      ) : (
+        <View style={styles.postPlaceholder}>
+          <Ionicons name="link" size={32} color="#6B7280" />
+          <Text style={styles.postPlaceholderText}>Tap to view post</Text>
+        </View>
+      )}
+      <View style={styles.postOverlay}>
+        <Ionicons name="open-outline" size={20} color="#FFFFFF" />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function ModalContentPreview({
+  deliverable,
+  onOpenUrl
+}: {
+  deliverable: PendingDeliverableSummary;
+  onOpenUrl: () => void;
+}) {
+  const [contentUrl, setContentUrl] = useState<string | null>(null);
+  const del = deliverable as any;
+  const hasUploadedContent = !!del.content_file_url;
+  const isVideoContent = del.content_file_type?.startsWith('video/');
+
+  useEffect(() => {
+    if (hasUploadedContent) {
+      getUploadedContentUrl(del.content_file_url).then(({ data }) => {
+        if (data) setContentUrl(data);
+      });
+    }
+  }, [del.content_file_url]);
+
+  return (
+    <>
+      {hasUploadedContent && contentUrl && (
+        isVideoContent ? (
+          <View style={styles.modalPostPreview}>
+            <View style={[styles.videoContentPreview, { height: '100%' }]}>
+              <Ionicons name="videocam" size={48} color="#FFAD27" />
+              <Text style={styles.videoContentText}>Video content</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.modalPostPreview}>
+            <Image source={{ uri: contentUrl }} style={styles.modalPostImage} />
+          </View>
+        )
+      )}
+
+      {!hasUploadedContent && deliverable.screenshot_url && (
+        <TouchableOpacity
+          style={styles.modalPostPreview}
+          onPress={onOpenUrl}
+          activeOpacity={0.7}
+        >
+          <Image source={{ uri: deliverable.screenshot_url }} style={styles.modalPostImage} />
+          <View style={styles.modalPostOverlay}>
+            <Ionicons name="open-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.modalPostOverlayText}>Tap to view</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {deliverable.post_url && (
+        <TouchableOpacity
+          style={styles.postUrlContainer}
+          onPress={onOpenUrl}
+        >
+          <Ionicons name="link" size={16} color="#6B7280" />
+          <Text style={styles.postUrlText} numberOfLines={1}>{deliverable.post_url}</Text>
+          <Ionicons name="open-outline" size={16} color="#6B7280" />
+        </TouchableOpacity>
+      )}
+    </>
   );
 }
 
@@ -1119,5 +1205,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1F2937',
     lineHeight: 20
+  },
+  videoContentPreview: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1F2937',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12
+  },
+  videoContentText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8
+  },
+  videoContentSubtext: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginTop: 4
   }
 });
