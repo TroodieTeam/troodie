@@ -185,10 +185,19 @@ export type DeliverablePlatform =
 
 export type DeliverableStatus =
   | 'pending'        // Awaiting review
+  | 'pending_review' // Awaiting review (alternate name used in DB)
   | 'approved'       // Approved by restaurant
+  | 'auto_approved'  // Auto-approved after 72h
   | 'rejected'       // Rejected by restaurant
   | 'needs_revision' // Needs changes
   | 'under_review';  // Currently being reviewed
+
+export type WorkflowStage =
+  | 'upload'    // Creator needs to upload content
+  | 'review'    // Content uploaded, awaiting restaurant review
+  | 'approved'  // Content approved, creator should post to platforms
+  | 'posting'   // Creator is posting to platforms
+  | 'proof';    // Proof links submitted, payment processing
 
 /**
  * Engagement metrics (self-reported by creator initially)
@@ -225,6 +234,10 @@ export interface DeliverableSubmission {
   // Engagement
   engagement_metrics?: EngagementMetrics;
 
+  // Content upload (Stage 1)
+  content_file_url?: string;     // URL to uploaded content in Supabase Storage
+  content_file_type?: string;    // MIME type (video/mp4, image/jpeg, etc.)
+
   // Review status
   status?: DeliverableStatus;
   reviewed_by?: string;
@@ -232,6 +245,10 @@ export interface DeliverableSubmission {
   restaurant_feedback?: string;
   auto_approved?: boolean;
   revision_number?: number;
+
+  // Workflow tracking
+  workflow_stage?: WorkflowStage;
+  proof_submitted_at?: string;   // When proof links were submitted (Stage 2)
 
   // Timestamps
   submitted_at?: string;
