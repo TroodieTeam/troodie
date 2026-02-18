@@ -1,37 +1,42 @@
-# Progress: Creator Marketplace Name Fix
+# Progress: Payment Duplication Fix
 
 > Implementation Plan: `IMPLEMENTATION_PLAN.md`
-> Spec: `specs/features/creator-marketplace-name-fix/spec.md`
+> Spec: `specs/features/payment-duplication-fix/spec.md`
 
 ## Current Status
 
-**Phase**: 1 of 1 (Complete)
-**Last Updated**: 2026-02-09
-**Last Task Completed**: Task 1.4 - Validation and testing artifacts
+**Phase**: 1 of 3
+**Last Updated**: 2026-02-18
+**Last Task Completed**: Task 1.1 - Modify approveDeliverable() all-approved check
 
 ## Task List
 
-### Phase 1: Fix Creator Name Display
+### Phase 1: Fix Payment Trigger Logic
 
-- [x] Task 1.1: Update `transformCreator()` fallback
-- [x] Task 1.2: Update Browse Creators fetch and displayName fallback chain
-- [x] Task 1.3: Update `getCreatorProfile()` fallback
-- [x] Task 1.4: Validation and testing artifacts
+- [x] Task 1.1: Modify `approveDeliverable()` to check all deliverables approved before payout
+- [ ] Task 1.2: Add duplicate payout guard in `processDeliverablePayout()`
+- [ ] Task 1.3: Update `triggerAutoApproval()` to group by application and only payout when all approved
+- [ ] Task 1.4: Verify `bulkApproveDeliverables()` works correctly with new logic
+
+### Phase 2: Payment Amount Cleanup
+
+- [ ] Task 2.1: Only set `payment_amount_cents` on the trigger deliverable
+
+### Phase 3: Testing Artifacts
+
+- [ ] Task 3.1: Create manual test script
+- [ ] Task 3.2: Create verification SQL, reset SQL, and audit SQL
 
 ## Completed Tasks
 
 | Task | Completed | Notes |
 |------|-----------|-------|
-| Task 1.1: transformCreator fallback | 2026-02-09 | Changed "Creator" → "Unknown Creator" in line 247 |
-| Task 1.2: Browse Creators fallback chain | 2026-02-09 | Fetch name+username, build fallback chain, hide grey @username when promoted to bold |
-| Task 1.3: getCreatorProfile fallback | 2026-02-09 | Changed "Creator" → "Unknown Creator" in line 460 |
-| Task 1.4: Validation & testing | 2026-02-09 | TypeScript pass, ESLint pass (0 errors), testing artifacts created |
+| Task 1.1: approveDeliverable() all-approved check | 2026-02-18 | Added campaign_application_id to select, replaced unconditional payout with all-approved check |
 
 ## Blockers
 
-None.
+None currently.
 
 ## Notes
 
-- Working in worktree: `/Users/kndri/projects/troodie-creator-name-fix`
-- Branch: `build/1.0.15-b2--creator-marketplace-name-fix`
+- Branch: feature/payment-duplication-fix
