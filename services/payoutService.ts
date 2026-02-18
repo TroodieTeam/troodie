@@ -62,11 +62,35 @@ export async function processDeliverablePayout(
 
     // Check if already paid
     if (deliverableData.payment_status === 'completed') {
-      console.log('[PayoutService] ⏭️ Skipping - already paid');
+      console.log('[PayoutService] Skipping - already paid');
       return {
         success: false,
         error: 'Deliverable already paid',
       };
+    }
+
+    // Duplicate payout guard: check if any deliverable for this campaign application
+    // already has a processing or completed payment (prevents race conditions)
+    if (deliverableData.campaign_application_id) {
+      const { data: existingPayouts } = await supabase
+        .from('campaign_deliverables')
+        .select('id, payment_status')
+        .eq('campaign_application_id', deliverableData.campaign_application_id)
+        .in('payment_status', ['processing', 'completed']);
+
+      if (existingPayouts && existingPayouts.length > 0) {
+        console.log('[PayoutService] Skipping - payout already processing/completed for this application', {
+          campaign_application_id: deliverableData.campaign_application_id,
+          existing_payouts: existingPayouts.map((p: { id: string; payment_status: string }) => ({
+            id: p.id,
+            status: p.payment_status,
+          })),
+        });
+        return {
+          success: false,
+          error: 'Payout already initiated for this campaign application',
+        };
+      }
     }
 
     // Check if deliverable is approved

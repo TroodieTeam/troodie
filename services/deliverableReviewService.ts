@@ -147,17 +147,46 @@ export async function approveDeliverable(
       (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
     ) ?? false;
 
-    // Payment is deferred until proof links are submitted (Q1: Option B).
-    // The creator must post to platforms and submit proof URLs before payment processes.
-    // Payment is triggered in submitProofLinks() in deliverableSubmissionService.ts.
-    const approvedCount = allDeliverables?.filter(
-      (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
-    ).length ?? 0;
-    console.log('[DeliverableReview] Content approved — payment deferred until proof links submitted', {
-      deliverable_id: params.deliverable_id,
-      approved: approvedCount,
-      total: allDeliverables?.length ?? 0,
-    });
+    if (allApproved && allDeliverables && allDeliverables.length > 0) {
+      // ALL deliverables approved — set payment_amount_cents on this trigger deliverable only
+      const finalPaymentAmountCents = paymentAmountCents ?? 0;
+      if (finalPaymentAmountCents > 0) {
+        await supabase
+          .from('campaign_deliverables')
+          .update({ payment_amount_cents: finalPaymentAmountCents })
+          .eq('id', params.deliverable_id);
+      }
+
+      console.log('[DeliverableReview] All deliverables approved — triggering payout', {
+        deliverable_id: params.deliverable_id,
+        payment_amount_cents: finalPaymentAmountCents,
+        total_deliverables: allDeliverables.length,
+      });
+
+      try {
+        const payoutResult = await processDeliverablePayout(params.deliverable_id);
+        if (!payoutResult.success) {
+          if (payoutResult.error === 'Creator needs to complete Stripe onboarding') {
+            console.log('[DeliverableReview] Payout deferred - creator needs onboarding');
+          } else {
+            console.error('[DeliverableReview] Payout failed:', payoutResult.error);
+          }
+        } else {
+          console.log('[DeliverableReview] Payout initiated successfully');
+        }
+      } catch (payoutError) {
+        console.error('[DeliverableReview] Exception triggering payout:', payoutError);
+      }
+    } else {
+      const approvedCount = allDeliverables?.filter(
+        (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+      ).length ?? 0;
+      console.log('[DeliverableReview] Not all deliverables approved yet — skipping payout', {
+        deliverable_id: params.deliverable_id,
+        approved: approvedCount,
+        total: allDeliverables?.length ?? 0,
+      });
+    }
 
     return { data: data as DeliverableSubmission, error: null };
   } catch (error) {
