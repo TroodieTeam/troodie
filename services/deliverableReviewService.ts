@@ -55,7 +55,7 @@ export async function approveDeliverable(
     // First, get the deliverable to find campaign_id
     const { data: deliverable, error: deliverableError } = await supabase
       .from('campaign_deliverables')
-      .select('campaign_id, payment_amount_cents')
+      .select('campaign_id, campaign_application_id, payment_amount_cents')
       .eq('id', params.deliverable_id)
       .single();
 
@@ -109,22 +109,16 @@ export async function approveDeliverable(
       }
     }
 
-    // Update deliverable with approval status and payment amount
-    const updateData: any = {
+    // Update deliverable with approval status only (no payment_amount_cents yet)
+    // payment_amount_cents is only set on the trigger deliverable when ALL are approved
+    const updateData: Record<string, unknown> = {
       status: 'approved',
+      workflow_stage: 'approved', // Content approved — creator should post and submit proof
       reviewer_id: params.reviewer_id,
       reviewed_at: new Date().toISOString(),
       restaurant_feedback: params.feedback,
       updated_at: new Date().toISOString()
     };
-
-    // Always update payment_amount_cents if it wasn't already set or was 0
-    // This ensures we have a value even if it's 0 (which will cause payout to fail with clear error)
-    // Ensure paymentAmountCents is a number (not null/undefined)
-    const finalPaymentAmountCents = paymentAmountCents ?? 0;
-    if (!deliverable.payment_amount_cents || deliverable.payment_amount_cents === 0) {
-      updateData.payment_amount_cents = finalPaymentAmountCents;
-    }
 
     const { data, error } = await supabase
       .from('campaign_deliverables')
@@ -138,28 +132,32 @@ export async function approveDeliverable(
       return { data: null, error };
     }
 
-    // Trigger payment processing
-    console.log('[DeliverableReview] 🚀 Triggering payout after approval', {
-      deliverable_id: params.deliverable_id,
-      payment_amount_cents: updateData.payment_amount_cents,
-    });
-    
-    try {
-      const payoutResult = await processDeliverablePayout(params.deliverable_id);
-      if (!payoutResult.success) {
-        if (payoutResult.error === 'Creator needs to complete Stripe onboarding') {
-          console.log('[DeliverableReview] ⏸️ Payout deferred - creator needs onboarding');
-        } else {
-          console.error('[DeliverableReview] ❌ Payout failed:', payoutResult.error);
-          // Don't fail the approval if payout fails - it will be retried
-        }
-      } else {
-        console.log('[DeliverableReview] ✅ Payout initiated successfully');
-      }
-    } catch (payoutError) {
-      console.error('[DeliverableReview] ❌ Exception triggering payout:', payoutError);
-      // Don't fail the approval if payout fails - it will be retried
+    // Check if ALL deliverables for this application are now approved before triggering payout
+    // This prevents the payment duplication bug where each approval triggered a separate full payout
+    const { data: allDeliverables, error: allDelError } = await supabase
+      .from('campaign_deliverables')
+      .select('id, status')
+      .eq('campaign_application_id', deliverable.campaign_application_id);
+
+    if (allDelError) {
+      console.error('[DeliverableReview] Error checking all deliverables:', allDelError);
     }
+
+    const allApproved = allDeliverables?.every(
+      (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+    ) ?? false;
+
+    // Payment is deferred until proof links are submitted (Q1: Option B).
+    // The creator must post to platforms and submit proof URLs before payment processes.
+    // Payment is triggered in submitProofLinks() in deliverableSubmissionService.ts.
+    const approvedCount = allDeliverables?.filter(
+      (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+    ).length ?? 0;
+    console.log('[DeliverableReview] Content approved — payment deferred until proof links submitted', {
+      deliverable_id: params.deliverable_id,
+      approved: approvedCount,
+      total: allDeliverables?.length ?? 0,
+    });
 
     return { data: data as DeliverableSubmission, error: null };
   } catch (error) {
@@ -440,7 +438,7 @@ export async function triggerAutoApproval(): Promise<{
     deliverable_id: string;
     creator_id: string;
     campaign_id: string;
-    creator_campaign_id: string;
+    campaign_application_id: string;
     approved_at: string;
     creator_email: string;
     campaign_title: string;
@@ -455,16 +453,42 @@ export async function triggerAutoApproval(): Promise<{
       return { data: null, error };
     }
 
-    // Process payouts for auto-approved deliverables
+    // Process payouts grouped by campaign_application_id — only when ALL deliverables are approved
     if (data && Array.isArray(data)) {
+      const byApplication = new Map<string, typeof data>();
       for (const approved of data) {
-        try {
-          const payoutResult = await processDeliverablePayout(approved.deliverable_id);
-          if (!payoutResult.success && payoutResult.error !== 'Creator needs to complete Stripe onboarding') {
-            console.error(`Error processing payout for deliverable ${approved.deliverable_id}:`, payoutResult.error);
+        const appId = approved.campaign_application_id;
+        if (!appId) continue;
+        const existing = byApplication.get(appId) ?? [];
+        existing.push(approved);
+        byApplication.set(appId, existing);
+      }
+
+      for (const [applicationId, approvedDeliverables] of byApplication) {
+        const { data: allDeliverables, error: allDelError } = await supabase
+          .from('campaign_deliverables')
+          .select('id, status')
+          .eq('campaign_application_id', applicationId);
+
+        if (allDelError) {
+          console.error('[DeliverableReview] Error checking deliverables for application:', applicationId, allDelError);
+          continue;
+        }
+
+        const allNowApproved = allDeliverables?.every(
+          (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+        ) ?? false;
+
+        if (allNowApproved && allDeliverables && allDeliverables.length > 0) {
+          const triggerDeliverable = approvedDeliverables[0];
+          try {
+            const payoutResult = await processDeliverablePayout(triggerDeliverable.deliverable_id);
+            if (!payoutResult.success && payoutResult.error !== 'Creator needs to complete Stripe onboarding') {
+              console.error(`[DeliverableReview] Payout failed for application ${applicationId}:`, payoutResult.error);
+            }
+          } catch (payoutError) {
+            console.error(`[DeliverableReview] Exception triggering payout for application ${applicationId}:`, payoutError);
           }
-        } catch (payoutError) {
-          console.error(`Error triggering payout for deliverable ${approved.deliverable_id}:`, payoutError);
         }
       }
     }
