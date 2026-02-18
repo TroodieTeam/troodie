@@ -7,26 +7,15 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Linking,
-  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { 
+import {
   ArrowLeft,
   Star,
-  Users,
   DollarSign,
   Calendar,
   Clock,
-  CheckCircle,
-  XCircle,
-  MessageCircle,
-  ExternalLink,
-  Camera,
-  Video,
-  Instagram,
-  Youtube,
 } from 'lucide-react-native';
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,64 +23,42 @@ import { supabase } from '@/lib/supabase';
 
 interface ApplicationDetail {
   id: string;
+  campaign_id: string;
   campaign: {
     id: string;
     title: string;
+    name: string;
     description: string;
-    budget: number;
-    deadline: string;
+    budget_cents: number;
+    end_date: string;
   };
   creator: {
     id: string;
-    name: string;
-    username: string;
+    display_name: string;
     avatar_url: string;
-    bio: string;
-    rating: number;
-    follower_count: number;
-    completed_campaigns: number;
-    response_rate: number;
-    avg_delivery_time: string;
-    social_links: {
-      instagram?: string;
-      youtube?: string;
-      tiktok?: string;
-    };
+    followers_count: number;
+    specialties: string[];
   };
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
+  status: string;
   applied_at: string;
-  proposal: string;
-  proposed_rate: number;
-  estimated_reach: number;
-  estimated_engagement: number;
-  deliverables: {
-    type: string;
-    description: string;
-    quantity: number;
-  }[];
-  portfolio_samples: {
-    id: string;
-    url: string;
-    type: 'image' | 'video';
-    caption: string;
-    engagement: {
-      likes: number;
-      comments: number;
-    };
-  }[];
-  timeline: string;
-  additional_notes: string;
+  cover_letter: string;
+  proposed_rate_cents: number;
+  proposed_deliverables: string;
+  rating?: number;
+  rating_comment?: string;
+  rated_at?: string;
+  total_deliverables: number;
+  approved_deliverables: number;
+  all_deliverables_approved: boolean;
 }
 
 export default function ApplicationDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
-  
+
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<ApplicationDetail | null>(null);
-  const [messageText, setMessageText] = useState('');
-  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
     loadApplicationDetail();
@@ -99,90 +66,52 @@ export default function ApplicationDetail() {
 
   const loadApplicationDetail = async () => {
     try {
-      // Mock data for detailed application view
-      const mockApplication: ApplicationDetail = {
-        id: id as string,
-        campaign: {
-          id: 'camp-1',
-          title: 'Summer Menu Launch Campaign',
-          description: 'Showcase our new summer menu featuring fresh, seasonal ingredients',
-          budget: 1000,
-          deadline: '2024-02-15T00:00:00Z',
-        },
-        creator: {
-          id: 'creator-1',
-          name: 'Sarah Johnson',
-          username: '@foodie_sarah',
-          avatar_url: 'https://via.placeholder.com/100',
-          bio: 'NYC food enthusiast sharing the best eats around the city. Passionate about discovering hidden gems and seasonal cuisine.',
-          rating: 4.9,
-          follower_count: 12500,
-          completed_campaigns: 15,
-          response_rate: 98,
-          avg_delivery_time: '2 days',
-          social_links: {
-            instagram: 'https://instagram.com/foodie_sarah',
-            youtube: 'https://youtube.com/foodiesarah',
-          },
-        },
-        status: 'pending',
-        applied_at: '2024-01-15T10:30:00Z',
-        proposal: 'I am extremely excited about the opportunity to showcase your summer menu! As a NYC-based food content creator with over 12K engaged followers, I specialize in creating vibrant, mouth-watering content that truly captures the essence of seasonal dining.\n\nWhat sets me apart:\n• Expert in natural light photography that makes food look irresistible\n• Strong engagement rates (4.8% average) with an audience that actively seeks restaurant recommendations\n• Experience with similar seasonal menu launches for 3 other NYC restaurants\n• Comprehensive content strategy including feed posts, stories, and highlight features\n\nI would love to create content that not only showcases your dishes but tells the story behind your seasonal ingredients and culinary vision.',
-        proposed_rate: 350,
-        estimated_reach: 8500,
-        estimated_engagement: 400,
-        deliverables: [
-          {
-            type: 'Instagram Posts',
-            description: 'High-quality photos of 3-4 signature summer dishes',
-            quantity: 4,
-          },
-          {
-            type: 'Instagram Stories',
-            description: 'Behind-the-scenes content and dining experience',
-            quantity: 6,
-          },
-          {
-            type: 'Instagram Reel',
-            description: 'Short-form video highlighting menu favorites',
-            quantity: 1,
-          },
-        ],
-        portfolio_samples: [
-          {
-            id: '1',
-            url: 'https://via.placeholder.com/300x300',
-            type: 'image',
-            caption: 'Summer pasta perfection at @restaurantname - the burst cherry tomatoes and fresh basil made this dish absolutely divine! 🍅✨',
-            engagement: { likes: 420, comments: 32 },
-          },
-          {
-            id: '2',
-            url: 'https://via.placeholder.com/300x300',
-            type: 'video',
-            caption: 'Watch me try the most amazing seasonal tasting menu! Every dish was a work of art 🎨',
-            engagement: { likes: 680, comments: 45 },
-          },
-          {
-            id: '3',
-            url: 'https://via.placeholder.com/300x300',
-            type: 'image',
-            caption: 'This colorful summer salad was the perfect start to an incredible meal! Love restaurants that prioritize fresh, local ingredients 🥗',
-            engagement: { likes: 290, comments: 18 },
-          },
-          {
-            id: '4',
-            url: 'https://via.placeholder.com/300x300',
-            type: 'image',
-            caption: 'Nothing beats a perfectly crafted summer cocktail on the patio! 🍹 The mixology here is truly exceptional.',
-            engagement: { likes: 355, comments: 28 },
-          },
-        ],
-        timeline: 'Content will be created within 3 days of dining experience and posted according to your preferred schedule. Stories will go live same-day for maximum freshness and engagement.',
-        additional_notes: 'I am flexible with posting times and happy to incorporate specific hashtags or mentions as needed. I also provide all high-resolution photos for your restaurant to use on your own social channels.',
-      };
+      if (!id) return;
 
-      setApplication(mockApplication);
+      const { data: appData, error: appError } = await supabase
+        .from('campaign_applications')
+        .select(`
+          *,
+          creator_profiles (
+            id,
+            display_name,
+            avatar_url,
+            followers_count,
+            specialties
+          ),
+          campaigns (
+            id,
+            title,
+            name,
+            description,
+            budget_cents,
+            end_date
+          )
+        `)
+        .eq('id', id as string)
+        .single();
+
+      if (appError) throw appError;
+
+      // Load deliverable counts
+      const { data: deliverables } = await supabase
+        .from('campaign_deliverables')
+        .select('id, status')
+        .eq('campaign_application_id', id as string);
+
+      const total = deliverables?.length ?? 0;
+      const approved = deliverables?.filter(
+        d => d.status === 'approved' || d.status === 'auto_approved'
+      ).length ?? 0;
+
+      setApplication({
+        ...appData,
+        campaign: appData.campaigns,
+        creator: appData.creator_profiles,
+        total_deliverables: total,
+        approved_deliverables: approved,
+        all_deliverables_approved: total > 0 && approved === total,
+      });
     } catch (error) {
       console.error('Failed to load application detail:', error);
       Alert.alert('Error', 'Failed to load application details');
@@ -194,9 +123,10 @@ export default function ApplicationDetail() {
   const handleApplicationAction = async (action: 'accept' | 'reject') => {
     if (!application) return;
 
+    const newStatus = action === 'accept' ? 'accepted' : 'rejected';
     Alert.alert(
       `${action === 'accept' ? 'Accept' : 'Reject'} Application`,
-      `Are you sure you want to ${action} ${application.creator.name}'s application?`,
+      `Are you sure you want to ${action} ${application.creator.display_name}'s application?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -204,17 +134,18 @@ export default function ApplicationDetail() {
           style: action === 'reject' ? 'destructive' : 'default',
           onPress: async () => {
             try {
-              setApplication({
-                ...application,
-                status: action === 'accept' ? 'accepted' : 'rejected',
-              });
-              
+              const { error } = await supabase
+                .from('campaign_applications')
+                .update({ status: newStatus, reviewed_at: new Date().toISOString() })
+                .eq('id', application.id);
+
+              if (error) throw error;
+
+              setApplication({ ...application, status: newStatus });
               Alert.alert(
                 'Success',
                 `Application ${action === 'accept' ? 'accepted' : 'rejected'} successfully`,
-                [
-                  { text: 'OK', onPress: () => router.back() },
-                ]
+                [{ text: 'OK', onPress: () => router.back() }]
               );
             } catch (error) {
               console.error('Failed to update application:', error);
@@ -226,52 +157,22 @@ export default function ApplicationDetail() {
     );
   };
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim()) return;
-
-    setSendingMessage(true);
-    try {
-      // Simulate sending message
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      Alert.alert('Message Sent', 'Your message has been sent to the creator.');
-      setMessageText('');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send message');
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  const openSocialLink = (url: string) => {
-    Linking.openURL(url);
-  };
-
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'pending': return '#F59E0B';
-      case 'accepted': return '#10B981';
-      case 'rejected': return '#EF4444';
-      case 'completed': return '#8B5CF6';
-      default: return DS.colors.textLight;
+      case 'pending': return { color: '#D97706', bg: '#FEF3C7', label: 'Pending' };
+      case 'accepted': return { color: '#16A34A', bg: '#DCFCE7', label: 'Accepted' };
+      case 'rejected': return { color: '#DC2626', bg: '#FEE2E2', label: 'Rejected' };
+      default: return { color: DS.colors.textGray, bg: '#F3F4F6', label: status };
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock size={16} color="#F59E0B" />;
-      case 'accepted': return <CheckCircle size={16} color="#10B981" />;
-      case 'rejected': return <XCircle size={16} color="#EF4444" />;
-      case 'completed': return <Star size={16} color="#8B5CF6" fill="#8B5CF6" />;
-      default: return <Clock size={16} color={DS.colors.textLight} />;
-    }
-  };
+  const statusConfig = application ? getStatusConfig(application.status) : null;
 
   if (loading || !application) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: DS.colors.background }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={DS.colors.primary} />
+          <ActivityIndicator size="large" color={DS.colors.primaryOrange} />
         </View>
       </SafeAreaView>
     );
@@ -285,424 +186,232 @@ export default function ApplicationDetail() {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: DS.spacing.md,
-        backgroundColor: DS.colors.backgroundWhite,
+        backgroundColor: DS.colors.surface,
         borderBottomWidth: 1,
         borderBottomColor: DS.colors.border,
       }}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color={DS.colors.text} />
+          <ArrowLeft size={24} color={DS.colors.textDark} />
         </TouchableOpacity>
-        <Text style={{
-          fontSize: 17,
-          fontWeight: '600',
-          color: DS.colors.text,
-        }}>Application Details</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {getStatusIcon(application.status)}
-        </View>
+        <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>Application Details</Text>
+        {statusConfig && (
+          <View style={{ backgroundColor: statusConfig.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: DS.borderRadius.full }}>
+            <Text style={{ ...DS.typography.caption, fontWeight: '700', color: statusConfig.color, textTransform: 'uppercase' }}>
+              {statusConfig.label}
+            </Text>
+          </View>
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Campaign Info */}
         <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
+          backgroundColor: DS.colors.surface,
           margin: DS.spacing.md,
           padding: DS.spacing.md,
           borderRadius: DS.borderRadius.md,
+          borderWidth: 1,
+          borderColor: DS.colors.border,
         }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: DS.colors.primary,
-            marginBottom: DS.spacing.xs,
-          }}>{application.campaign.title}</Text>
-          
-          <Text style={{
-            fontSize: 14,
-            color: DS.colors.text,
-            lineHeight: 18,
-            marginBottom: DS.spacing.sm,
-          }}>{application.campaign.description}</Text>
-
+          <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.xs }}>
+            {application.campaign.title || application.campaign.name}
+          </Text>
+          <Text style={{ ...DS.typography.body, color: DS.colors.textGray, marginBottom: DS.spacing.sm }}>
+            {application.campaign.description}
+          </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <DollarSign size={14} color={DS.colors.textLight} />
-              <Text style={{ fontSize: 12, color: DS.colors.text, marginLeft: 2 }}>
-                ${application.campaign.budget} budget
+              <DollarSign size={14} color={DS.colors.textGray} />
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginLeft: 2 }}>
+                ${((application.campaign.budget_cents || 0) / 100).toFixed(0)} budget
               </Text>
             </View>
-            
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Calendar size={14} color={DS.colors.textLight} />
-              <Text style={{ fontSize: 12, color: DS.colors.text, marginLeft: 2 }}>
-                Due {new Date(application.campaign.deadline).toLocaleDateString()}
-              </Text>
-            </View>
+            {application.campaign.end_date && (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Calendar size={14} color={DS.colors.textGray} />
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginLeft: 2 }}>
+                  Due {new Date(application.campaign.end_date).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
         {/* Creator Profile */}
         <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
+          backgroundColor: DS.colors.surface,
           marginHorizontal: DS.spacing.md,
           marginBottom: DS.spacing.md,
           padding: DS.spacing.md,
           borderRadius: DS.borderRadius.md,
+          borderWidth: 1,
+          borderColor: DS.colors.border,
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: DS.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.sm }}>
             <Image
               source={{ uri: application.creator.avatar_url }}
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: DS.colors.border,
-              }}
+              style={{ width: 48, height: 48, borderRadius: DS.borderRadius.full, backgroundColor: DS.colors.surfaceLight, marginRight: DS.spacing.md }}
             />
-            
-            <View style={{ flex: 1, marginLeft: DS.spacing.sm }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text }}>
-                {application.creator.name}
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...DS.typography.h3, color: DS.colors.textDark }}>
+                {application.creator.display_name}
               </Text>
-              <Text style={{ fontSize: 14, color: DS.colors.textLight, marginBottom: 4 }}>
-                {application.creator.username}
+              <Text style={{ ...DS.typography.body, color: DS.colors.textGray }}>
+                {application.creator.followers_count?.toLocaleString() ?? 0} followers
               </Text>
-              
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Star size={12} color="#FFB800" fill="#FFB800" />
-                <Text style={{ fontSize: 12, fontWeight: '500', color: DS.colors.text, marginLeft: 2 }}>
-                  {application.creator.rating} rating
-                </Text>
-              </View>
-            </View>
-
-            {/* Social Links */}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {application.creator.social_links.instagram && (
-                <TouchableOpacity
-                  onPress={() => openSocialLink(application.creator.social_links.instagram!)}
-                  style={{
-                    backgroundColor: DS.colors.background,
-                    padding: 6,
-                    borderRadius: 6,
-                  }}
-                >
-                  <Instagram size={16} color="#E4405F" />
-                </TouchableOpacity>
-              )}
-              {application.creator.social_links.youtube && (
-                <TouchableOpacity
-                  onPress={() => openSocialLink(application.creator.social_links.youtube!)}
-                  style={{
-                    backgroundColor: DS.colors.background,
-                    padding: 6,
-                    borderRadius: 6,
-                  }}
-                >
-                  <Youtube size={16} color="#FF0000" />
-                </TouchableOpacity>
-              )}
             </View>
           </View>
 
-          <Text style={{
-            fontSize: 14,
-            color: DS.colors.text,
-            lineHeight: 18,
-            marginBottom: DS.spacing.sm,
-          }}>{application.creator.bio}</Text>
-
-          {/* Creator Stats */}
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-around',
-            paddingTop: DS.spacing.sm,
-            borderTopWidth: 1,
-            borderTopColor: DS.colors.border,
-          }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
-                {application.creator.follower_count.toLocaleString()}
-              </Text>
-              <Text style={{ fontSize: 10, color: DS.colors.textLight }}>Followers</Text>
+          {application.creator.specialties?.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: DS.spacing.xs }}>
+              {application.creator.specialties.map((s: string, i: number) => (
+                <View key={i} style={{ backgroundColor: DS.colors.surfaceLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: DS.borderRadius.full }}>
+                  <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>{s}</Text>
+                </View>
+              ))}
             </View>
-            
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
-                {application.creator.completed_campaigns}
-              </Text>
-              <Text style={{ fontSize: 10, color: DS.colors.textLight }}>Campaigns</Text>
-            </View>
-            
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
-                {application.creator.response_rate}%
-              </Text>
-              <Text style={{ fontSize: 10, color: DS.colors.textLight }}>Response</Text>
-            </View>
-            
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: DS.colors.text }}>
-                {application.creator.avg_delivery_time}
-              </Text>
-              <Text style={{ fontSize: 10, color: DS.colors.textLight }}>Avg Delivery</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Application Details */}
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          marginHorizontal: DS.spacing.md,
-          marginBottom: DS.spacing.md,
-          padding: DS.spacing.md,
-          borderRadius: DS.borderRadius.md,
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: DS.colors.text,
-            marginBottom: DS.spacing.sm,
-          }}>Proposal</Text>
-
-          <Text style={{
-            fontSize: 14,
-            color: DS.colors.text,
-            lineHeight: 20,
-            marginBottom: DS.spacing.md,
-          }}>{application.proposal}</Text>
-
-          {/* Key Metrics */}
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-around',
-            backgroundColor: DS.colors.background,
-            padding: DS.spacing.sm,
-            borderRadius: DS.borderRadius.sm,
-            marginBottom: DS.spacing.md,
-          }}>
-            <View style={{ alignItems: 'center' }}>
-              <DollarSign size={16} color={DS.colors.primary} />
-              <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginTop: 4 }}>
-                ${application.proposed_rate}
-              </Text>
-              <Text style={{ fontSize: 10, color: DS.colors.textLight }}>Proposed Rate</Text>
-            </View>
-            
-            <View style={{ alignItems: 'center' }}>
-              <Users size={16} color={DS.colors.primary} />
-              <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginTop: 4 }}>
-                {application.estimated_reach.toLocaleString()}
-              </Text>
-              <Text style={{ fontSize: 10, color: DS.colors.textLight }}>Est. Reach</Text>
-            </View>
-            
-            <View style={{ alignItems: 'center' }}>
-              <MessageCircle size={16} color={DS.colors.primary} />
-              <Text style={{ fontSize: 16, fontWeight: '600', color: DS.colors.text, marginTop: 4 }}>
-                {application.estimated_engagement}
-              </Text>
-              <Text style={{ fontSize: 10, color: DS.colors.textLight }}>Est. Engagement</Text>
-            </View>
-          </View>
-
-          {/* Deliverables */}
-          <Text style={{
-            fontSize: 14,
-            fontWeight: '500',
-            color: DS.colors.text,
-            marginBottom: DS.spacing.xs,
-          }}>Deliverables</Text>
-
-          {application.deliverables.map((deliverable, index) => (
-            <View key={index} style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: DS.colors.background,
-              padding: DS.spacing.sm,
-              borderRadius: DS.borderRadius.sm,
-              marginBottom: DS.spacing.xs,
-            }}>
-              <View style={{
-                backgroundColor: DS.colors.primary,
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: DS.spacing.sm,
-              }}>
-                <Text style={{ color: 'white', fontSize: 10, fontWeight: '600' }}>
-                  {deliverable.quantity}
-                </Text>
-              </View>
-              
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '500', color: DS.colors.text }}>
-                  {deliverable.type}
-                </Text>
-                <Text style={{ fontSize: 10, color: DS.colors.textLight }}>
-                  {deliverable.description}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-          {/* Timeline */}
-          <Text style={{
-            fontSize: 14,
-            fontWeight: '500',
-            color: DS.colors.text,
-            marginTop: DS.spacing.sm,
-            marginBottom: DS.spacing.xs,
-          }}>Timeline</Text>
-          
-          <Text style={{
-            fontSize: 12,
-            color: DS.colors.text,
-            backgroundColor: DS.colors.background,
-            padding: DS.spacing.sm,
-            borderRadius: DS.borderRadius.sm,
-            marginBottom: DS.spacing.sm,
-          }}>{application.timeline}</Text>
-
-          {/* Additional Notes */}
-          {application.additional_notes && (
-            <>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: DS.colors.text,
-                marginBottom: DS.spacing.xs,
-              }}>Additional Notes</Text>
-              
-              <Text style={{
-                fontSize: 12,
-                color: DS.colors.text,
-                backgroundColor: DS.colors.background,
-                padding: DS.spacing.sm,
-                borderRadius: DS.borderRadius.sm,
-              }}>{application.additional_notes}</Text>
-            </>
           )}
         </View>
 
-        {/* Portfolio Samples */}
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          marginHorizontal: DS.spacing.md,
-          marginBottom: DS.spacing.md,
-          padding: DS.spacing.md,
-          borderRadius: DS.borderRadius.md,
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: DS.colors.text,
-            marginBottom: DS.spacing.sm,
-          }}>Portfolio Samples</Text>
+        {/* Cover Letter */}
+        {application.cover_letter ? (
+          <View style={{
+            backgroundColor: DS.colors.surface,
+            marginHorizontal: DS.spacing.md,
+            marginBottom: DS.spacing.md,
+            padding: DS.spacing.md,
+            borderRadius: DS.borderRadius.md,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+          }}>
+            <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.sm }}>Cover Letter</Text>
+            <Text style={{ ...DS.typography.body, color: DS.colors.textDark, lineHeight: 20 }}>
+              {application.cover_letter}
+            </Text>
+          </View>
+        ) : null}
 
-          {application.portfolio_samples.map((sample) => (
-            <View key={sample.id} style={{ marginBottom: DS.spacing.md }}>
-              <View style={{ position: 'relative' }}>
-                <Image
-                  source={{ uri: sample.url }}
-                  style={{
-                    width: '100%',
-                    height: 200,
-                    borderRadius: DS.borderRadius.sm,
-                    backgroundColor: DS.colors.border,
-                  }}
-                />
-                {sample.type === 'video' && (
-                  <View style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    borderRadius: 16,
-                    padding: 4,
-                  }}>
-                    <Video size={16} color="white" />
-                  </View>
-                )}
-              </View>
-              
-              <Text style={{
-                fontSize: 12,
-                color: DS.colors.text,
-                marginTop: DS.spacing.xs,
-                lineHeight: 16,
-              }}>{sample.caption}</Text>
-              
-              <View style={{
-                flexDirection: 'row',
-                marginTop: DS.spacing.xs,
-                gap: DS.spacing.sm,
-              }}>
-                <Text style={{ fontSize: 10, color: DS.colors.textLight }}>
-                  ❤️ {sample.engagement.likes.toLocaleString()}
-                </Text>
-                <Text style={{ fontSize: 10, color: DS.colors.textLight }}>
-                  💬 {sample.engagement.comments}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Message Creator */}
-        <View style={{
-          backgroundColor: DS.colors.backgroundWhite,
-          marginHorizontal: DS.spacing.md,
-          marginBottom: DS.spacing.md,
-          padding: DS.spacing.md,
-          borderRadius: DS.borderRadius.md,
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: DS.colors.text,
-            marginBottom: DS.spacing.sm,
-          }}>Send Message</Text>
-
-          <TextInput
-            value={messageText}
-            onChangeText={setMessageText}
-            placeholder="Ask a question or provide additional details..."
-            multiline
-            numberOfLines={3}
-            style={{
-              borderWidth: 1,
-              borderColor: DS.colors.border,
-              borderRadius: DS.borderRadius.sm,
-              padding: DS.spacing.sm,
-              fontSize: 14,
-              color: DS.colors.text,
-              textAlignVertical: 'top',
-              minHeight: 80,
-              marginBottom: DS.spacing.sm,
-            }}
-          />
-
-          <TouchableOpacity
-            onPress={handleSendMessage}
-            disabled={!messageText.trim() || sendingMessage}
-            style={{
-              backgroundColor: messageText.trim() ? DS.colors.primary : DS.colors.border,
-              padding: DS.spacing.sm,
-              borderRadius: DS.borderRadius.sm,
-              alignItems: 'center',
-            }}
-          >
-            {sendingMessage ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>
-                Send Message
+        {/* Proposed Rate */}
+        {application.proposed_rate_cents ? (
+          <View style={{
+            backgroundColor: DS.colors.surface,
+            marginHorizontal: DS.spacing.md,
+            marginBottom: DS.spacing.md,
+            padding: DS.spacing.md,
+            borderRadius: DS.borderRadius.md,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <DollarSign size={16} color={DS.colors.primaryOrange} />
+              <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginLeft: 4 }}>
+                ${(application.proposed_rate_cents / 100).toFixed(0)}
               </Text>
+              <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginLeft: 4 }}>
+                proposed rate
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Deliverable Progress (for accepted applications) */}
+        {application.status === 'accepted' && (
+          <View style={{
+            backgroundColor: DS.colors.surface,
+            marginHorizontal: DS.spacing.md,
+            marginBottom: DS.spacing.md,
+            padding: DS.spacing.md,
+            borderRadius: DS.borderRadius.md,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+          }}>
+            <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.sm }}>
+              Deliverable Progress
+            </Text>
+
+            {application.total_deliverables === 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: DS.spacing.sm, backgroundColor: '#F3F4F6', borderRadius: DS.borderRadius.md }}>
+                <Clock size={14} color={DS.colors.textGray} style={{ marginRight: 6 }} />
+                <Text style={{ ...DS.typography.body, color: DS.colors.textGray }}>Awaiting Content</Text>
+              </View>
+            ) : (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: DS.spacing.sm }}>
+                  <View style={{ flex: 1, height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' }}>
+                    <View style={{
+                      width: `${(application.approved_deliverables / application.total_deliverables) * 100}%`,
+                      height: '100%',
+                      backgroundColor: application.all_deliverables_approved ? '#16A34A' : DS.colors.primaryOrange,
+                      borderRadius: 4,
+                    }} />
+                  </View>
+                  <Text style={{ ...DS.typography.caption, color: DS.colors.textGray, marginLeft: DS.spacing.sm }}>
+                    {application.approved_deliverables}/{application.total_deliverables}
+                  </Text>
+                </View>
+
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>
+                  {application.all_deliverables_approved
+                    ? 'All deliverables approved'
+                    : `${application.approved_deliverables} of ${application.total_deliverables} deliverables approved`}
+                </Text>
+              </>
             )}
-          </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Rate Creator (only when all deliverables approved) */}
+        {application.status === 'accepted' && !application.rating && application.all_deliverables_approved && (
+          <View style={{ marginHorizontal: DS.spacing.md, marginBottom: DS.spacing.md }}>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: DS.spacing.md,
+                backgroundColor: '#FFF7ED',
+                borderRadius: DS.borderRadius.md,
+                borderWidth: 1,
+                borderColor: '#FFEDD5',
+              }}
+              onPress={() => router.back()}
+            >
+              <Star size={18} color={DS.colors.primaryOrange} fill={DS.colors.primaryOrange} style={{ marginRight: 8 }} />
+              <Text style={{ ...DS.typography.button, color: DS.colors.primaryOrange }}>Rate Creator</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Rating (if already rated) */}
+        {application.rating ? (
+          <View style={{
+            backgroundColor: DS.colors.surface,
+            marginHorizontal: DS.spacing.md,
+            marginBottom: DS.spacing.md,
+            padding: DS.spacing.md,
+            borderRadius: DS.borderRadius.md,
+            borderWidth: 1,
+            borderColor: DS.colors.border,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Star size={16} color={DS.colors.primaryOrange} fill={DS.colors.primaryOrange} style={{ marginRight: 6 }} />
+              <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
+                Rated {application.rating}/5
+              </Text>
+            </View>
+            {application.rating_comment ? (
+              <Text style={{ ...DS.typography.body, color: DS.colors.textGray, marginTop: DS.spacing.xs }}>
+                {application.rating_comment}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Applied date */}
+        <View style={{ paddingHorizontal: DS.spacing.md, marginBottom: DS.spacing.md }}>
+          <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>
+            Applied {new Date(application.applied_at).toLocaleDateString()}
+          </Text>
         </View>
 
         <View style={{ height: 100 }} />
@@ -715,7 +424,7 @@ export default function ApplicationDetail() {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: DS.colors.backgroundWhite,
+          backgroundColor: DS.colors.surface,
           borderTopWidth: 1,
           borderTopColor: DS.colors.border,
           padding: DS.spacing.md,
@@ -728,24 +437,24 @@ export default function ApplicationDetail() {
               flex: 1,
               backgroundColor: '#FEE2E2',
               padding: DS.spacing.md,
-              borderRadius: DS.borderRadius.sm,
+              borderRadius: DS.borderRadius.md,
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: '#DC2626', fontSize: 14, fontWeight: '600' }}>Reject</Text>
+            <Text style={{ ...DS.typography.button, color: '#DC2626' }}>Reject</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => handleApplicationAction('accept')}
             style={{
               flex: 1,
-              backgroundColor: DS.colors.primary,
+              backgroundColor: DS.colors.success,
               padding: DS.spacing.md,
-              borderRadius: DS.borderRadius.sm,
+              borderRadius: DS.borderRadius.md,
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Accept Application</Text>
+            <Text style={{ ...DS.typography.button, color: 'white' }}>Accept</Text>
           </TouchableOpacity>
         </View>
       )}
