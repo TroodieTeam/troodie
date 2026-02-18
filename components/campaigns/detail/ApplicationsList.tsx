@@ -1,6 +1,6 @@
 import { DS } from '@/components/design-system/tokens';
 import { CampaignApplication } from '@/types/campaign';
-import { Star, Users } from 'lucide-react-native';
+import { Clock, Star, Users } from 'lucide-react-native';
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 
@@ -75,14 +75,25 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ applications
               </View>
             )}
 
-            {app.status === 'accepted' && !app.rating && (
-              <TouchableOpacity 
+            {app.status === 'accepted' && !app.rating && app.all_deliverables_approved && (
+              <TouchableOpacity
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: DS.spacing.sm, backgroundColor: '#FFF7ED', borderRadius: DS.borderRadius.md, borderWidth: 1, borderColor: '#FFEDD5' }}
                 onPress={() => onOpenRating(app.id)}
               >
                 <Star size={16} color={DS.colors.primaryOrange} fill={DS.colors.primaryOrange} style={{ marginRight: 8 }} />
                 <Text style={{ ...DS.typography.button, color: DS.colors.primaryOrange }}>Rate Creator</Text>
               </TouchableOpacity>
+            )}
+
+            {app.status === 'accepted' && !app.rating && !app.all_deliverables_approved && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: DS.spacing.sm, backgroundColor: '#F3F4F6', borderRadius: DS.borderRadius.md }}>
+                <Clock size={14} color={DS.colors.textGray} style={{ marginRight: 6 }} />
+                <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>
+                  {(app.total_deliverables ?? 0) === 0
+                    ? 'Awaiting Content'
+                    : `${app.approved_deliverables ?? 0}/${app.total_deliverables ?? 0} Deliverables Approved`}
+                </Text>
+              </View>
             )}
             
             {app.rating && (
