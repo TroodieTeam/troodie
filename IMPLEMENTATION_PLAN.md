@@ -19,19 +19,19 @@ See `PROGRESS.md` for current task status.
 
 #### Tasks
 
-- [ ] **Task 1.1**: Modify `approveDeliverable()` to check all deliverables approved before payout
-- [ ] **Task 1.2**: Add duplicate payout guard in `processDeliverablePayout()`
-- [ ] **Task 1.3**: Update `triggerAutoApproval()` to group by application and only payout when all approved
-- [ ] **Task 1.4**: Verify `bulkApproveDeliverables()` works correctly with new logic
+- [x] **Task 1.1**: Modify `approveDeliverable()` to check all deliverables approved before payout
+- [x] **Task 1.2**: Add duplicate payout guard in `processDeliverablePayout()`
+- [x] **Task 1.3**: Update `triggerAutoApproval()` to group by application and only payout when all approved
+- [x] **Task 1.4**: Verify `bulkApproveDeliverables()` works correctly with new logic
 
 ### Phase 2: Payment Amount Cleanup
 
-- [ ] **Task 2.1**: Only set `payment_amount_cents` on the trigger deliverable
+- [x] **Task 2.1**: Only set `payment_amount_cents` on the trigger deliverable
 
 ### Phase 3: Testing Artifacts
 
-- [ ] **Task 3.1**: Create manual test script
-- [ ] **Task 3.2**: Create verification SQL, reset SQL, and audit SQL
+- [x] **Task 3.1**: Create manual test script
+- [x] **Task 3.2**: Create verification SQL, reset SQL, and audit SQL
 
 ## Validation Commands
 
