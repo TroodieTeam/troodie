@@ -55,7 +55,7 @@ export async function approveDeliverable(
     // First, get the deliverable to find campaign_id
     const { data: deliverable, error: deliverableError } = await supabase
       .from('campaign_deliverables')
-      .select('campaign_id, payment_amount_cents')
+      .select('campaign_id, campaign_application_id, payment_amount_cents')
       .eq('id', params.deliverable_id)
       .single();
 
@@ -66,7 +66,7 @@ export async function approveDeliverable(
 
     // Get campaign payment amount to set payment_amount_cents if not already set
     let paymentAmountCents = deliverable.payment_amount_cents;
-    
+
     // If payment_amount_cents is not set or is 0, calculate it from campaign payment or budget
     if (!paymentAmountCents || paymentAmountCents === 0) {
       // First, try to get from campaign_payments (preferred source)
@@ -90,7 +90,7 @@ export async function approveDeliverable(
           .select('budget_cents')
           .eq('id', deliverable.campaign_id)
           .single();
-        
+
         if (campaign?.budget_cents && campaign.budget_cents > 0) {
           paymentAmountCents = campaign.budget_cents;
         } else {
@@ -109,22 +109,16 @@ export async function approveDeliverable(
       }
     }
 
-    // Update deliverable with approval status and payment amount
-    const updateData: any = {
+    // Update deliverable with approval status only (no payment_amount_cents yet)
+    // payment_amount_cents is only set on the trigger deliverable when ALL are approved
+    const updateData: Record<string, unknown> = {
       status: 'approved',
+      workflow_stage: 'approved', // Content approved — creator should post and submit proof
       reviewer_id: params.reviewer_id,
       reviewed_at: new Date().toISOString(),
       restaurant_feedback: params.feedback,
       updated_at: new Date().toISOString()
     };
-
-    // Always update payment_amount_cents if it wasn't already set or was 0
-    // This ensures we have a value even if it's 0 (which will cause payout to fail with clear error)
-    // Ensure paymentAmountCents is a number (not null/undefined)
-    const finalPaymentAmountCents = paymentAmountCents ?? 0;
-    if (!deliverable.payment_amount_cents || deliverable.payment_amount_cents === 0) {
-      updateData.payment_amount_cents = finalPaymentAmountCents;
-    }
 
     const { data, error } = await supabase
       .from('campaign_deliverables')
@@ -138,27 +132,60 @@ export async function approveDeliverable(
       return { data: null, error };
     }
 
-    // Trigger payment processing
-    console.log('[DeliverableReview] 🚀 Triggering payout after approval', {
-      deliverable_id: params.deliverable_id,
-      payment_amount_cents: updateData.payment_amount_cents,
-    });
-    
-    try {
-      const payoutResult = await processDeliverablePayout(params.deliverable_id);
-      if (!payoutResult.success) {
-        if (payoutResult.error === 'Creator needs to complete Stripe onboarding') {
-          console.log('[DeliverableReview] ⏸️ Payout deferred - creator needs onboarding');
-        } else {
-          console.error('[DeliverableReview] ❌ Payout failed:', payoutResult.error);
-          // Don't fail the approval if payout fails - it will be retried
-        }
-      } else {
-        console.log('[DeliverableReview] ✅ Payout initiated successfully');
+    // Check if ALL deliverables for this application are now approved before triggering payout
+    // This prevents the payment duplication bug where each approval triggered a separate full payout
+    const { data: allDeliverables, error: allDelError } = await supabase
+      .from('campaign_deliverables')
+      .select('id, status')
+      .eq('campaign_application_id', deliverable.campaign_application_id);
+
+    if (allDelError) {
+      console.error('[DeliverableReview] Error checking all deliverables:', allDelError);
+    }
+
+    const allApproved = allDeliverables?.every(
+      (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+    ) ?? false;
+
+    if (allApproved && allDeliverables && allDeliverables.length > 0) {
+      // ALL deliverables approved — set payment_amount_cents on this trigger deliverable only
+      const finalPaymentAmountCents = paymentAmountCents ?? 0;
+      if (finalPaymentAmountCents > 0) {
+        await supabase
+          .from('campaign_deliverables')
+          .update({ payment_amount_cents: finalPaymentAmountCents })
+          .eq('id', params.deliverable_id);
       }
-    } catch (payoutError) {
-      console.error('[DeliverableReview] ❌ Exception triggering payout:', payoutError);
-      // Don't fail the approval if payout fails - it will be retried
+
+      console.log('[DeliverableReview] All deliverables approved — triggering payout', {
+        deliverable_id: params.deliverable_id,
+        payment_amount_cents: finalPaymentAmountCents,
+        total_deliverables: allDeliverables.length,
+      });
+
+      try {
+        const payoutResult = await processDeliverablePayout(params.deliverable_id);
+        if (!payoutResult.success) {
+          if (payoutResult.error === 'Creator needs to complete Stripe onboarding') {
+            console.log('[DeliverableReview] Payout deferred - creator needs onboarding');
+          } else {
+            console.error('[DeliverableReview] Payout failed:', payoutResult.error);
+          }
+        } else {
+          console.log('[DeliverableReview] Payout initiated successfully');
+        }
+      } catch (payoutError) {
+        console.error('[DeliverableReview] Exception triggering payout:', payoutError);
+      }
+    } else {
+      const approvedCount = allDeliverables?.filter(
+        (d: { id: string; status: string }) => ['approved', 'auto_approved'].includes(d.status)
+      ).length ?? 0;
+      console.log('[DeliverableReview] Not all deliverables approved yet — skipping payout', {
+        deliverable_id: params.deliverable_id,
+        approved: approvedCount,
+        total: allDeliverables?.length ?? 0,
+      });
     }
 
     return { data: data as DeliverableSubmission, error: null };
