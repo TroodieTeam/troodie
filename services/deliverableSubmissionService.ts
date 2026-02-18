@@ -26,7 +26,8 @@ import type {
     DeliverablePlatform,
     DeliverableStatus,
     DeliverableSubmission,
-    EngagementMetrics
+    EngagementMetrics,
+    WorkflowStage
 } from '@/types/deliverableRequirements';
 
 // ============================================================================
@@ -1001,6 +1002,106 @@ export async function getSubmissionProgress(
     };
   } catch (error) {
     console.error('Error in getSubmissionProgress:', error);
+    return { data: null, error: error as Error };
+  }
+}
+
+// ============================================================================
+// PROOF LINK SUBMISSION (Stage 2)
+// ============================================================================
+
+export interface SubmitProofLinksParams {
+  deliverable_id: string;
+  platform_urls: {
+    platform: DeliverablePlatform;
+    url: string;
+  }[];
+}
+
+/**
+ * Submit proof links after content is approved (Stage 2).
+ * Creator submits URLs proving content was posted to platforms.
+ *
+ * Prerequisites:
+ * - Deliverable must have status 'approved' or 'auto_approved'
+ * - Deliverable workflow_stage must be 'approved' or 'posting'
+ * - At least one proof URL must be provided
+ *
+ * After submission:
+ * - Updates platform_post_url with the first proof URL
+ * - Sets workflow_stage to 'proof'
+ * - Sets proof_submitted_at timestamp
+ */
+export async function submitProofLinks(
+  params: SubmitProofLinksParams
+): Promise<{ data: DeliverableSubmission | null; error: Error | null }> {
+  try {
+    if (!params.platform_urls || params.platform_urls.length === 0) {
+      return { data: null, error: new Error('At least one proof link is required') };
+    }
+
+    // Validate all URLs
+    for (const entry of params.platform_urls) {
+      const validation = validateSocialMediaUrl(entry.url);
+      if (!validation.valid) {
+        return {
+          data: null,
+          error: new Error(`Invalid URL for ${entry.platform}: ${validation.error}`),
+        };
+      }
+    }
+
+    // Check deliverable status - must be approved
+    const { data: deliverable, error: fetchError } = await supabase
+      .from('campaign_deliverables')
+      .select('status, workflow_stage')
+      .eq('id', params.deliverable_id)
+      .single();
+
+    if (fetchError || !deliverable) {
+      return { data: null, error: fetchError || new Error('Deliverable not found') };
+    }
+
+    const allowedStatuses = ['approved', 'auto_approved'];
+    if (!allowedStatuses.includes(deliverable.status)) {
+      return {
+        data: null,
+        error: new Error('Your content must be approved before submitting post links.'),
+      };
+    }
+
+    const allowedStages: WorkflowStage[] = ['approved', 'posting'];
+    if (deliverable.workflow_stage && !allowedStages.includes(deliverable.workflow_stage as WorkflowStage)) {
+      return {
+        data: null,
+        error: new Error('Your content must be approved before submitting post links.'),
+      };
+    }
+
+    // Use the first proof URL as the primary platform_post_url
+    const primaryUrl = params.platform_urls[0];
+
+    const { data, error } = await supabase
+      .from('campaign_deliverables')
+      .update({
+        platform_post_url: primaryUrl.url,
+        social_platform: primaryUrl.platform,
+        workflow_stage: 'proof' as WorkflowStage,
+        proof_submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.deliverable_id)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('[ProofSubmission] Error submitting proof links:', error);
+      return { data: null, error };
+    }
+
+    return { data: data as DeliverableSubmission, error: null };
+  } catch (error) {
+    console.error('[ProofSubmission] Error in submitProofLinks:', error);
     return { data: null, error: error as Error };
   }
 }
