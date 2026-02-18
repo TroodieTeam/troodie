@@ -73,6 +73,9 @@ export interface CampaignApplication {
   rating?: number;
   rating_comment?: string;
   rated_at?: string;
+  total_deliverables?: number;
+  approved_deliverables?: number;
+  all_deliverables_approved?: boolean;
 }
 
 export interface PortfolioContent {
