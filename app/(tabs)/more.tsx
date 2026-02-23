@@ -11,6 +11,7 @@ import { useAccountType } from '@/hooks/useAccountType';
 import { useCreatorProfileId } from '@/hooks/useCreatorProfileId';
 import { profileService } from '@/services/profileService';
 import { pushNotificationService } from '@/services/pushNotificationService';
+import { restaurantClaimService } from '@/services/restaurantClaimService';
 import { PersonaType } from '@/types/onboarding';
 import { getAvatarUrlWithFallback } from '@/utils/avatarUtils';
 import Constants from 'expo-constants';
@@ -113,6 +114,7 @@ export default function MoreScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
   const [checkingNotifications, setCheckingNotifications] = React.useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [pendingClaim, setPendingClaim] = useState<{ hasPending: boolean; restaurantName?: string }>({ hasPending: false });
 
   // Fetch user profile from users table
   const fetchProfile = useCallback(async () => {
@@ -129,11 +131,12 @@ export default function MoreScreen() {
     fetchProfile();
   }, [fetchProfile]);
 
-  // Refresh profile when screen comes into focus
+  // Refresh profile and pending claim status when screen comes into focus
   // This ensures the latest data is shown after editing the creator profile
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
+      restaurantClaimService.hasPendingClaim().then(setPendingClaim).catch(() => {});
     }, [fetchProfile])
   );
 
@@ -420,7 +423,7 @@ export default function MoreScreen() {
   const growthItems: MenuItem[] = useMemo(() => {
     const items: MenuItem[] = [];
 
-    if (!isCreator) {
+    if (!isCreator && !pendingClaim.hasPending) {
       items.push({
         id: 'become-creator',
         title: 'Become a Creator',
@@ -432,18 +435,31 @@ export default function MoreScreen() {
     }
 
     if (!isBusiness) {
-      items.push({
-        id: 'claim-restaurant',
-        title: 'Claim Your Restaurant',
-        subtitle: 'Access business tools and analytics',
-        icon: Building,
-        iconColor: '#DC2626',
-        action: () => router.push('/business/claim'),
-      });
+      if (pendingClaim.hasPending) {
+        items.push({
+          id: 'claim-status',
+          title: 'Claim Status',
+          subtitle: pendingClaim.restaurantName
+            ? `${pendingClaim.restaurantName} — under review`
+            : 'Your claim is under review',
+          icon: Building,
+          iconColor: '#DC2626',
+          action: () => router.push('/business/claim?status=pending'),
+        });
+      } else {
+        items.push({
+          id: 'claim-restaurant',
+          title: 'Claim Your Restaurant',
+          subtitle: 'Access business tools and analytics',
+          icon: Building,
+          iconColor: '#DC2626',
+          action: () => router.push('/business/claim'),
+        });
+      }
     }
 
     return items;
-  }, [isCreator, isBusiness, router]);
+  }, [isCreator, isBusiness, pendingClaim, router]);
 
   // Discover & Social Section
   const discoverItems: MenuItem[] = [

@@ -5,6 +5,7 @@ import { restaurantTeamService } from '@/services/restaurantTeamService'
 import { userService } from '@/services/userService'
 import { Session, User } from '@supabase/supabase-js'
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { AppState, AppStateStatus } from 'react-native'
 
 type AuthContextType = {
   user: User | null
@@ -151,6 +152,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Refresh account info when app comes to foreground
+  useEffect(() => {
+    let lastRefresh = Date.now()
+    const REFRESH_THROTTLE_MS = 30_000 // 30 seconds
+
+    const handleAppStateChange = async (nextState: AppStateStatus) => {
+      if (nextState === 'active' && user?.id) {
+        const now = Date.now()
+        if (now - lastRefresh > REFRESH_THROTTLE_MS) {
+          lastRefresh = now
+          console.log('[AuthContext] App foregrounded, refreshing account info')
+          await loadAccountInfo(user.id)
+        }
+      }
+    }
+
+    const sub = AppState.addEventListener('change', handleAppStateChange)
+    return () => sub.remove()
+  }, [user?.id])
+
+  // Real-time subscription for account type changes
+  useEffect(() => {
+    if (!user?.id) return
+
+    const channel = supabase
+      .channel(`user-account-${user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'users',
+        filter: `id=eq.${user.id}`,
+      }, async (payload) => {
+        console.log('[AuthContext] User record updated via realtime:', payload.new)
+        const newAccountType = (payload.new as any)?.account_type
+        if (newAccountType && newAccountType !== accountInfo?.account_type) {
+          console.log('[AuthContext] Account type changed, refreshing account info')
+          await loadAccountInfo(user.id)
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id])
 
   const signUpWithEmail = async (email: string) => {
     setError(null)

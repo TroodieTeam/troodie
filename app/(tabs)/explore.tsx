@@ -7,6 +7,7 @@ import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAccountType } from '@/hooks/useAccountType';
 import { Community, communityService } from '@/services/communityService';
 import { postService } from '@/services/postService';
 import { restaurantService } from '@/services/restaurantService';
@@ -126,6 +127,7 @@ export default function ExploreScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user, profile } = useAuth();
+  const { isBusiness } = useAccountType();
   const { updateNetworkProgress } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('posts');
@@ -138,10 +140,10 @@ export default function ExploreScreen() {
 
   // Handle tab parameter from URL (e.g., when redirected after post creation)
   useEffect(() => {
-    if (params.tab && (params.tab === 'restaurants' || params.tab === 'posts' || params.tab === 'communities')) {
+    if (params.tab && (params.tab === 'restaurants' || params.tab === 'posts' || (params.tab === 'communities' && !isBusiness))) {
       setActiveTab(params.tab as TabType);
     }
-  }, [params.tab]);
+  }, [params.tab, isBusiness]);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -282,7 +284,7 @@ export default function ExploreScreen() {
       restaurants.load().then(() => setHasInitiallyLoaded(true));
     } else if (activeTab === 'posts' && posts.data.length === 0) {
       posts.load();
-    } else if (activeTab === 'communities' && communities.data.length === 0) {
+    } else if (activeTab === 'communities' && !isBusiness && communities.data.length === 0) {
       communities.load();
     }
     // Clear re-randomizing state when switching tabs
@@ -352,7 +354,7 @@ export default function ExploreScreen() {
       await restaurants.load(debouncedSearch);
     } else if (activeTab === 'posts') {
       await posts.load();
-    } else {
+    } else if (!isBusiness) {
       await communities.load();
     }
 
@@ -406,11 +408,11 @@ export default function ExploreScreen() {
 
       {/* Minimal Tab Switcher */}
       <View style={styles.tabBar}>
-        {(['restaurants', 'posts', 'communities'] as const).map(tab => (
+        {(['restaurants', 'posts', ...(!isBusiness ? ['communities'] : [])] as const).map(tab => (
           <Pressable
             key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => setActiveTab(tab as TabType)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -419,7 +421,7 @@ export default function ExploreScreen() {
         ))}
       </View>
     </View>
-  ), [searchQuery, activeTab, router, searchFocused]);
+  ), [searchQuery, activeTab, router, searchFocused, isBusiness]);
 
 
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {

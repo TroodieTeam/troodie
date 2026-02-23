@@ -7,6 +7,7 @@ import { CampaignStepIndicator } from '@/components/campaigns/CampaignStepIndica
 import { DS } from '@/components/design-system/tokens';
 import { TOTAL_STEPS } from '@/constants/campaign';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/contexts/RestaurantContext';
 import { useCampaignForm } from '@/hooks/useCampaignForm';
 import { useCampaignSubmission } from '@/hooks/useCampaignSubmission';
 import { useRestaurantData } from '@/hooks/useRestaurantData';
@@ -22,6 +23,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function CreateCampaign() {
   const router = useRouter();
   const { user } = useAuth();
+  // TRO-170: Get current restaurant for multi-restaurant support
+  const { currentRestaurant } = useRestaurant();
   const [currentStep, setCurrentStep] = useState(1);
   // TRO-136: Saved payment method from onboarding
   const [savedPaymentMethod, setSavedPaymentMethod] = useState<SavedPaymentMethod | null>(null);
@@ -44,16 +47,18 @@ export default function CreateCampaign() {
   const { submitCampaign, loading: submissionLoading } = useCampaignSubmission();
 
   // TRO-136: Fetch saved payment method from business profile (including customer ID for off-session charging)
+  // TRO-170: Filter by restaurant_id for multi-restaurant support
   useEffect(() => {
     const fetchSavedPaymentMethod = async () => {
-      if (!user?.id) return;
-      
+      if (!user?.id || !currentRestaurant?.restaurant_id) return;
+
       try {
         const { data: businessProfile } = await supabase
           .from('business_profiles')
           .select('stripe_customer_id, default_payment_method_id, payment_method_last4, payment_method_brand')
           .eq('user_id', user.id)
-          .single();
+          .eq('restaurant_id', currentRestaurant.restaurant_id)
+          .maybeSingle();
 
         if (businessProfile?.default_payment_method_id && businessProfile?.stripe_customer_id) {
           console.log('[CreateCampaign] Found saved payment method:', {
@@ -76,7 +81,7 @@ export default function CreateCampaign() {
     };
 
     fetchSavedPaymentMethod();
-  }, [user?.id]);
+  }, [user?.id, currentRestaurant?.restaurant_id]);
 
   const handleChangePaymentMethod = () => {
     // Navigate to payment settings or show payment method change UI

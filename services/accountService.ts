@@ -176,19 +176,28 @@ export const accountService = {
 
   /**
    * Update business profile
+   * TRO-170: Added optional restaurantId param to target a specific profile
+   * When omitted, updates all profiles for the user (backward compatible)
    */
   async updateBusinessProfile(
     userId: string,
-    updates: Partial<Database['public']['Tables']['business_profiles']['Update']>
+    updates: Partial<Database['public']['Tables']['business_profiles']['Update']>,
+    restaurantId?: string
   ): Promise<boolean> {
     try {
-      const { error } = await supabase
+      let query = supabase
         .from('business_profiles')
         .update({
           ...updates,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId)
+
+      if (restaurantId) {
+        query = query.eq('restaurant_id', restaurantId)
+      }
+
+      const { error } = await query
 
       if (error) {
         console.error('Error updating business profile:', error)
@@ -229,6 +238,8 @@ export const accountService = {
 
   /**
    * Get business profile by user ID
+   * TRO-170: Returns the first verified profile (or first profile if none verified)
+   * for backward compatibility with single-profile callers
    */
   async getBusinessProfile(userId: string): Promise<(Database['public']['Tables']['business_profiles']['Row'] & {
     restaurant_name?: string
@@ -245,7 +256,9 @@ export const accountService = {
           )
         `)
         .eq('user_id', userId)
-        .single()
+        .order('verification_status', { ascending: true }) // 'verified' sorts before 'pending'
+        .limit(1)
+        .maybeSingle()
 
       if (error) {
         if (error.code !== 'PGRST116') { // Not found error
@@ -253,6 +266,8 @@ export const accountService = {
         }
         return null
       }
+
+      if (!data) return null
 
       // Flatten the restaurant data
       const restaurant = data.restaurants as any
@@ -264,6 +279,46 @@ export const accountService = {
     } catch (error) {
       console.error('Error fetching business profile:', error)
       return null
+    }
+  },
+
+  /**
+   * Get all business profiles for a user
+   * TRO-170: Returns all profiles for multi-restaurant owners
+   */
+  async getAllBusinessProfiles(userId: string): Promise<(Database['public']['Tables']['business_profiles']['Row'] & {
+    restaurant_name?: string
+    restaurant_address?: string
+  })[]> {
+    try {
+      const { data, error } = await supabase
+        .from('business_profiles')
+        .select(`
+          *,
+          restaurants:restaurant_id (
+            name,
+            address
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching business profiles:', error)
+        return []
+      }
+
+      return (data || []).map(profile => {
+        const restaurant = (profile as any).restaurants
+        return {
+          ...profile,
+          restaurant_name: restaurant?.name,
+          restaurant_address: restaurant?.address
+        }
+      })
+    } catch (error) {
+      console.error('Error fetching business profiles:', error)
+      return []
     }
   },
 

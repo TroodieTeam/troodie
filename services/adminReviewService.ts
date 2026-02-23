@@ -253,16 +253,19 @@ class AdminReviewService {
         throw updateUserError;
       }
 
-      // 4. Create business profile if doesn't exist
-      console.log('[AdminReviewService] Checking business profile:', {
+      // 4. Create or update business profile for THIS restaurant
+      // TRO-170: Query by both user_id AND restaurant_id to support multi-restaurant owners
+      console.log('[AdminReviewService] Checking business profile for restaurant:', {
         userId: claim.user_id,
+        restaurantId: claim.restaurant_id,
       });
 
       const { data: existingProfile, error: profileCheckError } = await supabase
         .from('business_profiles')
         .select('id, verification_status')
         .eq('user_id', claim.user_id)
-        .single();
+        .eq('restaurant_id', claim.restaurant_id)
+        .maybeSingle();
 
       console.log('[AdminReviewService] Business profile check:', {
         existingProfile,
@@ -270,7 +273,7 @@ class AdminReviewService {
       });
 
       if (existingProfile) {
-        // Profile exists (created during onboarding), just update to verified
+        // Profile exists for this restaurant (created during claim submission), update to verified
         console.log('[AdminReviewService] Updating existing business profile to verified:', {
           profileId: existingProfile.id,
           previousStatus: existingProfile.verification_status,
@@ -280,7 +283,6 @@ class AdminReviewService {
           .from('business_profiles')
           .update({
             verification_status: 'verified',
-            restaurant_id: claim.restaurant_id, // Ensure restaurant is linked
             business_email: claim.email,
           })
           .eq('id', existingProfile.id);
@@ -291,7 +293,8 @@ class AdminReviewService {
           console.log('[AdminReviewService] Business profile updated to verified');
         }
       } else {
-        // No profile exists, create one (fallback for older claims)
+        // No profile exists for this restaurant, create one
+        // TRO-170: This handles both first-time claims and additional restaurant claims
         console.log('[AdminReviewService] Creating business profile:', {
           userId: claim.user_id,
           restaurantId: claim.restaurant_id,
