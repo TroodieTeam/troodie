@@ -73,11 +73,28 @@ npm run typecheck      # Run TypeScript type checking (no emitting)
 npm run db:migrate     # Push Supabase migrations to remote
 ```
 
+### Production SQL Execution
+```bash
+node scripts/run-prod-sql.js <sql-file-path>   # Run SQL via Management API
+node scripts/run-prod-sql.js data/test-data/prod/10-setup-robust-test-scenario.sql
+```
+- Uses Supabase Management API with keychain token from `npx supabase login`
+- Runs as postgres owner (bypasses RLS)
+- Known limitation: SELECT results and RAISE NOTICE output may not display
+
 ### E2E Test Data
 ```bash
 npm run test:data:seed    # Seed test data
 npm run test:data:cleanup # Clean up test data
 npm run test:data:reset   # Reset test data
+```
+
+### Production E2E
+```bash
+EAS_BUILD_PROFILE=production npm start   # Start Expo against production Supabase
+maestro test e2e/flows/production/        # Run all production E2E tests
+node scripts/run-prod-sql.js data/test-data/prod/10-setup-robust-test-scenario.sql  # Seed production test data
+node scripts/run-prod-sql.js data/test-data/prod/11-reset-robust-test-data.sql      # Reset production test data
 ```
 
 ## Architecture
@@ -87,6 +104,8 @@ npm run test:data:reset   # Reset test data
 - **Onboarding flow** managed by `contexts/OnboardingContext.tsx`
 - Three account types: `consumer`, `creator`, `business` (stored in `users.account_type`)
 - Account upgrades flow: Consumer → Creator (via application) → Business (via restaurant claim)
+- **Production auth user creation**: MUST use the GoTrue Admin API (`POST /auth/v1/admin/users`), never direct SQL INSERT into `auth.users`. Direct SQL INSERT creates rows that GoTrue cannot authenticate against because `auth.identities` and internal metadata are not populated. See `LEARNINGS.md` for the full debugging saga.
+- **Auth debugging**: When GoTrue returns 500 errors ("Database error checking email" or "Database error loading user"), check `auth.identities` FIRST for orphaned entries referencing non-existent users.
 
 ### Navigation Structure
 - **File-based routing** using Expo Router (app directory)
@@ -162,6 +181,7 @@ Core tables (see migrations in `supabase/migrations/`):
 ### Environment Configuration
 - `.env.development` and `.env.production` files
 - Loaded in `app.config.js` based on `EAS_BUILD_PROFILE`
+- **Important**: `.env.development` loads as the base for ALL profiles. `.env.production` only OVERRIDES variables it explicitly defines. Any variable in `.env.development` not present in `.env.production` persists with its dev value (e.g., `EXPO_PUBLIC_TEST_AUTH_PASSWORD=000000`).
 - Access via `Constants.expoConfig.extra.*`
 - Required vars: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GOOGLE_MAPS_API_KEY`
 
@@ -178,6 +198,10 @@ Core tables (see migrations in `supabase/migrations/`):
 - Test utilities in `e2e/helpers/`
 - Mock data in `e2e/fixtures/`
 - Use `test:e2e:smoke` for quick validation
+- **Production E2E tests**: Flows in `e2e/flows/production/` run against production Supabase. Start Expo with `EAS_BUILD_PROFILE=production npm start`.
+- **Toast handling**: Always call `runFlow: ../../helpers/dismiss-toast.yaml` before tab bar interactions in Maestro tests. The iOS 26 simulator shows a persistent location error toast that overlaps the tab bar.
+- **Selector strategy**: Prefer `testID` (id:) selectors. When using `visible:` or `assertVisible:`, target standalone Text elements (section headers), not TouchableOpacity items whose accessibilityText concatenates child labels.
+- **Test data setup pattern**: Create auth users via Admin API, then create `public.users` and all other application data via SQL using `scripts/run-prod-sql.js`.
 
 ### Real-time Subscriptions
 Pattern for real-time features:
@@ -239,3 +263,9 @@ When reading code or making changes:
 - `lib/supabase.ts` - Supabase client and database types
 - `app.config.js` - App configuration and environment loading
 - `supabase/migrations/` - Database schema and migrations
+- `scripts/run-prod-sql.js` - Production SQL runner via Management API
+- `data/test-data/prod/10-setup-robust-test-scenario.sql` - Production test data setup (20 accounts)
+- `data/test-data/prod/11-reset-robust-test-data.sql` - Production test data teardown
+- `e2e/helpers/dismiss-toast.yaml` - Toast dismiss helper for Maestro tests
+- `e2e/helpers/login-bypass.yaml` - Reusable login flow for E2E tests
+- `e2e/MAESTRO_BEST_PRACTICES.md` - Comprehensive Maestro testing guide

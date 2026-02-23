@@ -1,0 +1,66 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-consumer7@bypass.com
+---
+# Production E2E: Restaurant discovery and save
+# Account: prod-consumer7@bypass.com (OTP: 000000)
+# Tests: Restaurant search, detail view, save to board
+# Prerequisites: Robust test data seeded (8 test restaurants exist)
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+# Verify home screen loaded
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 15000
+
+# Go to Search tab (3rd tab, center)
+- tapOn:
+    point: "50%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-restaurant-search-screen"
+
+# Search for test restaurant
+- tapOn:
+    id: "search-input"
+    optional: true
+
+- tapOn:
+    text: "Search"
+    optional: true
+
+- inputText: "Bella Vista"
+- hideKeyboard
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-restaurant-search-results"
+
+# Tap on restaurant result
+- tapOn:
+    text: "Bella Vista"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-restaurant-detail"
+
+# Scroll to see restaurant details
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-restaurant-detail-scrolled"
+
+# Check for Save button
+- assertVisible:
+    text: "Save"
+    optional: true
+
+- takeScreenshot: "prod-restaurant-save-check"

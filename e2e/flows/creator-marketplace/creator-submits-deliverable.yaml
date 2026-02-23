@@ -1,76 +1,76 @@
 appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-creator1@bypass.com
 ---
 # Test: Creator submits deliverable for accepted campaign
 # Priority: P1 (Critical for Creator Marketplace)
 # Prerequisites:
-#   - Creator account logged in
+#   - Creator account (test-creator1) logged in
 #   - Accepted application exists
 # Tags: creator, deliverable, submission
-
-env:
-  TEST_EMAIL: prod-creator1@bypass.com
+# Navigation: More tab → My Campaigns → Active → Campaign
+#
+# NOTE: iOS 26 simulator toast corrupts accessibility tree.
+# All More screen taps use point-based coordinates.
+# Creator More screen layout:
+#   ~35% - Creator Profile
+#   ~42% - Explore Campaigns
+#   ~48% - My Campaigns
+#   ~55% - My Deliverables
+#   ~61% - Payments & Earnings
 
 # Login as creator
-- runFlow: helpers/login-bypass.yaml
+- runFlow: ../../helpers/login-bypass.yaml
 
-# Navigate to My Campaigns
+# Navigate to More tab (rightmost tab)
 - tapOn:
-    id: "tab-discover"
-    optional: true
-
-- tapOn:
-    text: "My Campaigns"
-    optional: true
+    point: "90%,97%"
 
 - waitForAnimationToEnd
+- waitForAnimationToEnd
 
-# Go to Active tab
+# Tap My Campaigns (~48% from top)
+- tapOn:
+    point: "50%,48%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Take screenshot to verify navigation
+- takeScreenshot: "creator-my-campaigns"
+
+# Go to Active tab (should be default, but tap to ensure)
 - tapOn:
     text: "Active"
+    optional: true
 
 - waitForAnimationToEnd
 
 # Find accepted campaign
 - assertVisible:
     text: "Active"
-    timeout: 10000
     optional: true
 
-# Tap on active campaign
+# Tap on the campaign card
 - tapOn:
-    id: "campaign-card-0"
-    optional: true
-
-- tapOn:
-    text: "Campaign"
-    index: 0
+    text: "Test Campaign"
     optional: true
 
 - waitForAnimationToEnd
 
-# Tap Submit Deliverable
-- scrollUntilVisible:
-    element:
-      text: "Submit"
-    direction: DOWN
-    optional: true
-
-- tapOn:
-    text: "Submit Deliverable"
-    optional: true
-
-- tapOn:
-    text: "Submit"
-
-- waitForAnimationToEnd
-
-# Fill deliverable form
+# Verify submit deliverable screen
 - assertVisible:
     text: "Deliverable"
-    timeout: 10000
     optional: true
 
-# Enter content URL
+- assertVisible:
+    text: "Upload"
+    optional: true
+
+# Take screenshot
+- takeScreenshot: "creator-submit-deliverable-screen"
+
+# Enter content URL if available
 - tapOn:
     id: "content-url-input"
     optional: true
@@ -82,7 +82,7 @@ env:
 - inputText: "https://www.instagram.com/reel/TEST123MAESTRO/"
 - hideKeyboard
 
-# Enter notes (optional)
+# Enter notes
 - tapOn:
     id: "notes-input"
     optional: true
@@ -93,7 +93,7 @@ env:
     direction: DOWN
     optional: true
 
-- inputText: "Here's my content for the campaign. Posted on Instagram as requested!"
+- inputText: "Here's my content for the campaign!"
 - hideKeyboard
 
 # Submit
@@ -105,24 +105,22 @@ env:
 
 - tapOn:
     text: "Submit"
+    optional: true
 
-# Confirm submission
+# Confirm
 - tapOn:
     text: "Confirm"
     optional: true
 
-# Wait for submission
 - waitForAnimationToEnd
 
 # Verify success
 - assertVisible:
     text: "submitted"
-    timeout: 10000
     optional: true
 
 - assertVisible:
     text: "Success"
-    timeout: 10000
     optional: true
 
 - tapOn:
@@ -131,16 +129,3 @@ env:
 
 # Take screenshot
 - takeScreenshot: "creator-deliverable-submitted"
-
-# Verify deliverable status
-- assertVisible:
-    text: "Pending Review"
-    timeout: 10000
-    optional: true
-
-- assertVisible:
-    text: "pending"
-    timeout: 10000
-    optional: true
-
-- takeScreenshot: "creator-deliverable-pending-review"

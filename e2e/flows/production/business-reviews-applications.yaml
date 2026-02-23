@@ -1,0 +1,81 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-business2@bypass.com
+---
+# Production E2E: Business reviews campaign applications
+# Account: prod-business2@bypass.com (Medium activity) (OTP: 000000)
+# Tests: Application review, accept/reject flow
+# Prerequisites: Robust test data seeded (applications exist)
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+# Verify home screen loaded
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 15000
+
+# Dismiss any toast that might block the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Tap Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business-campaigns-list"
+
+# Tap on a campaign that has applications
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Applications tab
+- tapOn:
+    text: "Applications"
+    optional: true
+
+- tapOn:
+    text: "Applicants"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business-applications"
+
+# Verify applications are visible
+- assertVisible:
+    text: "pending"
+    optional: true
+
+- assertVisible:
+    text: "accepted"
+    optional: true
+
+# Tap on first application
+- tapOn:
+    id: "application-card-0"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business-application-detail"
+
+# Check for Accept button (don't actually accept in read-only flow)
+- assertVisible:
+    text: "Accept"
+    optional: true
+
+- takeScreenshot: "prod-business-review-complete"

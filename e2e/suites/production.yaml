@@ -1,0 +1,56 @@
+# Production E2E Test Suite
+# Purpose: Verify production environment with robust test data
+# Run: npm run test:e2e:production
+#      OR: maestro test e2e/suites/production.yaml
+#
+# Prerequisites:
+#   1. Run `npm run start:production` (Expo dev server with production env)
+#   2. Robust test data seeded via 10-setup-robust-test-scenario.sql
+#   3. iOS Simulator or Android Emulator running with dev build
+#
+# Test accounts used:
+#   - prod-consumer1@bypass.com  (general browsing)
+#   - prod-consumer4@bypass.com  (social features)
+#   - prod-consumer7@bypass.com  (restaurant discovery)
+#   - prod-creator1@bypass.com   (campaign application)
+#   - prod-creator3@bypass.com   (earnings verification)
+#   - prod-business2@bypass.com  (application review)
+#   - prod-business3@bypass.com  (deliverable review)
+#
+# All accounts use OTP: 000000
+
+appId: com.troodie.troodie.com
+---
+name: Production E2E Suite
+tags:
+  - production
+  - e2e
+  - v1.0.16.b1
+
+flows:
+  # 1. Consumer login and feed
+  - production/login-consumer.yaml
+
+  # 2. Creator login and marketplace
+  - production/login-creator.yaml
+
+  # 3. Business login and dashboard
+  - production/login-business.yaml
+
+  # 4. Creator applies to campaign
+  - production/creator-applies-to-campaign.yaml
+
+  # 5. Business reviews applications
+  - production/business-reviews-applications.yaml
+
+  # 6. Business reviews deliverables (CSF testing)
+  - production/business-reviews-deliverables.yaml
+
+  # 7. Creator checks earnings (PDF testing)
+  - production/creator-earnings-check.yaml
+
+  # 8. Social follow and feed
+  - production/social-follow-and-feed.yaml
+
+  # 9. Restaurant discovery
+  - production/restaurant-discovery.yaml

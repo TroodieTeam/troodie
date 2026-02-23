@@ -52,7 +52,11 @@
     "staging:setup": "npm run supabase:link-staging && npm run supabase:migrate && npm run supabase:types",
     "staging:reset": "npm run supabase:reset && npm run supabase:migrate && npm run supabase:types",
     "prod:migrate:cm": "node scripts/apply-creator-marketplace-migrations.js",
-    "prod:setup:test-users": "node scripts/setup-production-test-users.js"
+    "prod:setup:test-users": "node scripts/setup-production-test-users.js",
+    "test:e2e:production": "node e2e/scripts/run-production-e2e.js",
+    "test:e2e:production:consumer": "maestro test e2e/flows/production/login-consumer.yaml",
+    "test:e2e:production:creator": "maestro test e2e/flows/production/login-creator.yaml",
+    "test:e2e:production:business": "maestro test e2e/flows/production/login-business.yaml"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -129,7 +133,7 @@
     "jest": "~29.7.0",
     "jest-expo": "^54.0.17",
     "jest-extended": "^7.0.0",
-    "react-test-renderer": "^19.2.4",
+    "react-test-renderer": "19.1.0",
     "typescript": "~5.9.3"
   },
   "private": true

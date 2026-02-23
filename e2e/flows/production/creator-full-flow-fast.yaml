@@ -1,0 +1,141 @@
+appId: com.troodie.troodie.com
+---
+# FAST CONSOLIDATED: Creator Full Flow (Session Injection)
+# Uses pre-injected session — no login UI, saves ~30s
+# Account: prod-creator2@bypass.com (has campaign data)
+#
+# Run with:
+#   ./e2e/helpers/inject-session.sh prod-creator2@bypass.com
+#   maestro test e2e/flows/production/creator-full-flow-fast.yaml
+# Or:
+#   ./e2e/helpers/run-all-fast.sh
+
+# ============================================================
+# PHASE 1: Authenticated Launch (no login UI)
+# ============================================================
+
+- runFlow: ../../helpers/authenticated-launch.yaml
+
+- takeScreenshot: "fast-creator-home"
+
+# ============================================================
+# PHASE 2: Creator Tools Verification
+# ============================================================
+
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab (rightmost tab)
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-creator-more-screen"
+
+# Verify creator-specific section header is visible
+- extendedWaitUntil:
+    visible: "Creator Tools"
+    timeout: 10000
+
+# ============================================================
+# PHASE 3: Campaign Marketplace
+# ============================================================
+
+# Tap Explore Campaigns
+- tapOn:
+    text: "Explore Campaigns.*"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-creator-explore-campaigns"
+
+# Verify campaigns screen loaded
+- assertVisible:
+    text: "Explore"
+    optional: true
+
+# Scroll to see campaign cards
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-creator-campaigns-scrolled"
+
+# Scroll to find a campaign with $ indicator (paid)
+- scrollUntilVisible:
+    element:
+      text: "$"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+
+# Tap on first visible campaign card
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-creator-campaign-detail"
+
+# Look for Apply button (read-only check)
+- scrollUntilVisible:
+    element:
+      text: "Apply"
+    direction: DOWN
+    optional: true
+
+- assertVisible:
+    text: "Apply"
+    optional: true
+
+- takeScreenshot: "fast-creator-campaign-apply-check"
+
+# ============================================================
+# PHASE 4: Earnings / Payout Area
+# ============================================================
+
+# Go back to More tab
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-creator-more-screen-2"
+
+# Tap Payments & Earnings (~61% from top)
+- tapOn:
+    point: "50%,61%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-creator-earnings"
+
+# Verify earnings screen loaded
+- assertVisible:
+    text: "Earnings"
+    optional: true
+
+# Check for payment entries
+- assertVisible:
+    text: "$"
+    optional: true
+
+# Scroll to see history
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-creator-earnings-scrolled"

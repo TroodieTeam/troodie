@@ -1,0 +1,72 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-business2@bypass.com
+---
+# Production E2E: Business login and dashboard access
+# Account: prod-business2@bypass.com (Medium activity, 3 campaigns) (OTP: 000000)
+# Verifies: Business login, dashboard loads, campaigns visible
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+- takeScreenshot: "prod-business-home"
+
+# Dismiss any toast that might block the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab (rightmost tab)
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business-more-screen"
+
+# Wait for Business Tools section to load
+- extendedWaitUntil:
+    visible: "Business Tools"
+    timeout: 10000
+
+# Tap Business Dashboard (combined accessibilityText includes subtitle)
+- tapOn:
+    text: "Business Dashboard.*"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business-dashboard"
+
+# Go back
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to More tab again
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+
+# Tap Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business-manage-campaigns"
+
+# Verify campaigns list shows test campaigns
+- assertVisible:
+    text: "Campaign"
+    optional: true
+
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business-campaigns-scrolled"

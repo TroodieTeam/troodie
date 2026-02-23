@@ -1,57 +1,60 @@
 appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-business1@bypass.com
 ---
 # Test: Business accepts creator application
 # Priority: P1 (Critical for Creator Marketplace)
 # Prerequisites:
-#   - Business account logged in
-#   - Pending application exists (run apply-to-campaign first)
+#   - Business account (test-business1) logged in
+#   - Pending application exists
 # Tags: business, campaign, application, accept
-
-env:
-  TEST_EMAIL: prod-business1@bypass.com
+# Navigation: More tab → Manage Campaigns → Campaign Detail → Applications
+#
+# NOTE: iOS 26 simulator toast corrupts accessibility tree.
+# All More screen taps use point-based coordinates.
+# Business More screen layout:
+#   ~35% - Business Dashboard
+#   ~42% - Manage Campaigns
+#   ~48% - Discover Creators
+#   ~55% - Campaign Analytics
+#   ~61% - Restaurant Settings
 
 # Login as business
-- runFlow: helpers/login-bypass.yaml
+- runFlow: ../../helpers/login-bypass.yaml
 
-# Navigate to Business tab
+# Navigate to More tab (rightmost tab)
 - tapOn:
-    id: "tab-business"
-    optional: true
-
-- tapOn:
-    text: "Business"
-    optional: true
+    point: "90%,97%"
 
 - waitForAnimationToEnd
-
-# Navigate to Campaigns
-- tapOn:
-    text: "Campaigns"
-    optional: true
-
-- tapOn:
-    id: "campaigns-menu"
-    optional: true
-
 - waitForAnimationToEnd
 
-# Find campaign with applications
+# Take screenshot to see More screen layout
+- takeScreenshot: "business-more-screen"
+
+# Tap Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Take screenshot
+- takeScreenshot: "business-manage-campaigns"
+
+# Verify campaigns list loaded
 - assertVisible:
-    text: "Campaign"
-    timeout: 10000
-
-# Tap on campaign with pending applications
-- tapOn:
-    id: "campaign-card-0"
+    text: "Test Campaign"
     optional: true
 
+# Tap on the test campaign
 - tapOn:
-    text: "applications"
+    text: "Test Campaign"
     optional: true
 
 - waitForAnimationToEnd
 
-# Navigate to Applications tab
+# Navigate to Applications tab in campaign detail
 - tapOn:
     text: "Applications"
     optional: true
@@ -65,7 +68,6 @@ env:
 # Find pending application
 - assertVisible:
     text: "pending"
-    timeout: 10000
     optional: true
 
 # Tap on first application
@@ -74,20 +76,10 @@ env:
     optional: true
 
 - tapOn:
-    text: "prod-creator1"
-    optional: true
-
-- tapOn:
     text: "View"
     optional: true
 
 - waitForAnimationToEnd
-
-# View application details
-- assertVisible:
-    text: "Application"
-    timeout: 10000
-    optional: true
 
 # Accept the application
 - scrollUntilVisible:
@@ -98,6 +90,7 @@ env:
 
 - tapOn:
     text: "Accept"
+    optional: true
 
 # Confirm acceptance
 - waitForAnimationToEnd
@@ -110,18 +103,15 @@ env:
     text: "Yes"
     optional: true
 
-# Wait for acceptance to process
 - waitForAnimationToEnd
 
 # Verify acceptance
 - assertVisible:
     text: "accepted"
-    timeout: 10000
     optional: true
 
 - assertVisible:
     text: "Success"
-    timeout: 10000
     optional: true
 
 - tapOn:

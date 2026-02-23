@@ -1,6 +1,7 @@
 import { DEFAULT_IMAGES, getRestaurantPlaceholder } from '@/constants/images'
 import { TROODIE_RESTAURANT } from '@/constants/systemAccounts'
 import { Database, supabase } from '@/lib/supabase'
+import { authService } from '@/services/authService'
 import { RestaurantInfo } from '@/types/core'
 import { NetworkError, NotFoundError, ServerError, TimeoutError, isNetworkError } from '@/types/errors'
 import { deduplicateCities, getCityFilter, isValidCity, normalizeCity } from '@/utils/cityNormalization'
@@ -425,7 +426,7 @@ export const restaurantService = {
     try {
       // Check if current user is a test user
       const { data: { user } } = await supabase.auth.getUser();
-      const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      const isCurrentUserTest = authService.canSeeTestData(user?.email);
       
       // Simple query: Get 10 highest rated restaurants
       let query = supabase
@@ -558,7 +559,7 @@ export const restaurantService = {
       return await withRetry(async () => {
         // Check if current user is a test user
         const { data: { user } } = await supabase.auth.getUser();
-        const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+        const isCurrentUserTest = authService.canSeeTestData(user?.email);
         
         let query = supabase
           .from('restaurants')
@@ -610,7 +611,7 @@ export const restaurantService = {
       return await withRetry(async () => {
         // Check if current user is a test user
         const { data: { user } } = await supabase.auth.getUser();
-        const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+        const isCurrentUserTest = authService.canSeeTestData(user?.email);
         
         let request = supabase
           .from('restaurants')

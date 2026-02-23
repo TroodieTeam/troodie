@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { authService } from '@/services/authService';
 
 // Type definitions based on backend schema
 export interface Community {
@@ -59,7 +60,7 @@ class CommunityService {
     try {
       // Check if current user is a test user or admin
       const { data: { user } } = await supabase.auth.getUser();
-      const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      const isCurrentUserTest = authService.canSeeTestData(user?.email);
       
       // Admin user IDs (same as in more.tsx)
       const ADMIN_USER_IDS = [

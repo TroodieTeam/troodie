@@ -185,10 +185,9 @@ export default function CampaignDetail() {
           )}
 
           {activeTab === 'deliverables' && (
-            <DeliverablesList 
+            <DeliverablesList
               deliverables={deliverables}
               onStatusChange={handleDeliverableStatusChange}
-              onRateCreator={handleOpenRatingModal}
             />
           )}
 

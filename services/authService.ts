@@ -29,6 +29,10 @@ export const authService = {
   _getBypassPassword(): string {
     return process.env.EXPO_PUBLIC_TEST_AUTH_PASSWORD || 'BypassPassword123'
   },
+  canSeeTestData(email: string | undefined | null): boolean {
+    if (!email) return false
+    return this._isBypassEmail(email)
+  },
   /**
    * Sign up a new user with email OTP
    * According to Supabase docs, signInWithOtp will create user if doesn't exist

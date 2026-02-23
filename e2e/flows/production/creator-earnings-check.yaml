@@ -1,0 +1,55 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-creator3@bypass.com
+---
+# Production E2E: Creator checks earnings (v1.0.16.b1 Payment Duplication Fix)
+# Account: prod-creator3@bypass.com (Lifestyle & Bites) (OTP: 000000)
+# Tests: Earnings screen loads, payment history visible
+# Prerequisites: Robust test data seeded
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+# Verify home screen loaded
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 15000
+
+# Dismiss any toast that might block the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-creator3-more-screen"
+
+# Tap Payments & Earnings (~61% from top)
+- tapOn:
+    point: "50%,61%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-creator3-earnings"
+
+# Verify earnings screen loaded
+- assertVisible:
+    text: "Earnings"
+    optional: true
+
+# Check for payment entries
+- assertVisible:
+    text: "$"
+    optional: true
+
+# Scroll to see history
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-creator3-earnings-scrolled"

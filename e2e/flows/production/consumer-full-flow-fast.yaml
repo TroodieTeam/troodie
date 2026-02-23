@@ -1,0 +1,148 @@
+appId: com.troodie.troodie.com
+---
+# FAST CONSOLIDATED: Consumer Full Flow (Session Injection)
+# Uses pre-injected session — no login UI, saves ~30s
+# Account: prod-consumer1@bypass.com
+#
+# Run with:
+#   ./e2e/helpers/inject-session.sh prod-consumer1@bypass.com
+#   maestro test e2e/flows/production/consumer-full-flow-fast.yaml
+# Or:
+#   ./e2e/helpers/run-all-fast.sh
+
+# ============================================================
+# PHASE 1: Authenticated Launch (no login UI)
+# ============================================================
+
+- runFlow: ../../helpers/authenticated-launch.yaml
+
+- takeScreenshot: "fast-consumer-home"
+
+# ============================================================
+# PHASE 2: Feed Browsing
+# ============================================================
+
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Tap Feed tab (2nd tab)
+- tapOn:
+    point: "30%,97%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-feed"
+
+# Scroll feed to verify posts load
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-feed-scrolled"
+
+# ============================================================
+# PHASE 3: Social Search
+# ============================================================
+
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Go to Search tab (3rd tab, center)
+- tapOn:
+    point: "50%,97%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-search"
+
+# Search for a test creator
+- tapOn:
+    id: "search-input"
+    optional: true
+
+- tapOn:
+    text: "Search"
+    optional: true
+
+- inputText: "Foodie Lens"
+- hideKeyboard
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-search-results"
+
+# Tap on a user result if found
+- tapOn:
+    text: "Foodie Lens"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-user-profile"
+
+# Check for Follow button
+- assertVisible:
+    text: "Follow"
+    optional: true
+
+- takeScreenshot: "fast-consumer-follow-check"
+
+# ============================================================
+# PHASE 4: Restaurant Discovery
+# ============================================================
+
+# Go back
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Go to Search tab
+- tapOn:
+    point: "50%,97%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-explore-screen"
+
+# Search for test restaurant
+- tapOn:
+    id: "search-input"
+    optional: true
+
+- tapOn:
+    text: "Search"
+    optional: true
+
+- inputText: "Bella Vista"
+- hideKeyboard
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-restaurant-results"
+
+# Tap on restaurant result
+- tapOn:
+    text: "Bella Vista"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-restaurant-detail"
+
+# Scroll to see restaurant details
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-consumer-restaurant-detail-scrolled"
+
+# Check for Save button
+- assertVisible:
+    text: "Save"
+    optional: true
+
+- takeScreenshot: "fast-consumer-restaurant-save-check"

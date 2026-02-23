@@ -125,6 +125,71 @@ All scripts use `ON CONFLICT` so they're safe to run multiple times.
 
 ---
 
+## Robust Test Scenario (v1.0.16.b1+)
+
+For comprehensive testing with rich, interconnected data mirroring the dev environment.
+
+### Step A: Setup Robust Test Scenario (One Script)
+**File:** `10-setup-robust-test-scenario.sql`
+
+Creates **everything in one script** — no need to run Steps 1-8 above:
+
+- **20 test users** (10 consumers, 7 creators, 3 businesses) — all `@bypass.com`, OTP `000000`
+- **20 default boards** (one "Quick Saves" per user)
+- **7 creator profiles** with portfolio items, specialties, engagement metrics
+- **8 restaurants** (3 claimed by businesses, 5 unclaimed) — all `is_test_restaurant = true`
+- **3 business profiles** linked to claimed restaurants
+- **50+ posts** with realistic engagement (likes, comments, saves)
+- **45+ restaurant saves** via boards
+- **Social graph** (3-8 follows per user)
+- **13 campaigns** (0 for business1, 3 for business2, 10 for business3) — all `is_test_campaign = true`
+- **25+ campaign applications** (mix of pending/accepted/rejected)
+- **20+ deliverables** with `workflow_stage` and `content_file_url` fields (mix of statuses)
+
+**v1.0.16.b1 feature data included:**
+- Content Submission Flow: Deliverables at various `workflow_stage` values (upload/review/approved/proof)
+- Payment Duplication Fix: Applications with 1-3 deliverables for payout testing
+- Rate Creator Timing: Applications with partial/full approval counts
+
+**Business Activity Levels:**
+| Account | Campaigns | Applications | Deliverables | Purpose |
+|---------|-----------|-------------|-------------|---------|
+| prod-business1 (New) | 0 | 0 | 0 | Baseline dashboard |
+| prod-business2 (Medium) | 3 | ~8 | ~5 | Rate Creator, review testing |
+| prod-business3 (High) | 10 | ~25 | ~15 | Payment, bulk operations |
+
+### Step B: Reset Robust Test Data
+**File:** `11-reset-robust-test-data.sql`
+
+Comprehensive cleanup of ALL data created by `10-setup-robust-test-scenario.sql`:
+- Respects foreign key order
+- Resets user account types
+- Safe to run multiple times
+
+### Robust Test Users
+
+See `e2e/fixtures/prod-test-users-robust.json` for all 20 user credentials and UUIDs.
+
+**Quick Reference:**
+| Role | Email Pattern | Count | UUIDs |
+|------|--------------|-------|-------|
+| Consumers | `prod-consumer{1-10}@bypass.com` | 10 | `aa111111...` through `aa000000...` |
+| Creators | `prod-creator{1-7}@bypass.com` | 7 | `bb111111...` through `bb777777...` |
+| Businesses | `prod-business{1-3}@bypass.com` | 3 | `cc111111...` through `cc333333...` |
+
+### Comprehensive Test Cases
+
+See `docs/PRODUCTION_TEST_CASES.md` for 112+ test cases covering:
+- Isolation verification
+- All account type flows
+- Campaign lifecycle
+- **v1.0.16.b1: Content Submission Flow** (CSF-1 to CSF-9)
+- **v1.0.16.b1: Payment Duplication Fix** (PDF-1 to PDF-5)
+- **v1.0.16.b1: Rate Creator Timing** (RCT-1 to RCT-8)
+- Edge cases and cross-account tests
+
+---
+
 ## Complete Reset & Testing
 
 ### Step 9: Reset All Test Data (Before Fresh Testing)

@@ -8,10 +8,9 @@ import { DeliverableCard } from './DeliverableCard';
 interface DeliverablesListProps {
   deliverables: CampaignDeliverable[];
   onStatusChange: (deliverableId: string, status: string, feedback?: string) => void;
-  onRateCreator: (applicationId: string) => void;
 }
 
-export const DeliverablesList: React.FC<DeliverablesListProps> = ({ deliverables, onStatusChange, onRateCreator }) => {
+export const DeliverablesList: React.FC<DeliverablesListProps> = ({ deliverables, onStatusChange }) => {
   return (
     <View style={{ gap: DS.spacing.md }}>
       {deliverables.length === 0 ? (
@@ -21,11 +20,10 @@ export const DeliverablesList: React.FC<DeliverablesListProps> = ({ deliverables
         </View>
       ) : (
         deliverables.map((deliverable) => (
-          <DeliverableCard 
-            key={deliverable.id} 
-            deliverable={deliverable} 
+          <DeliverableCard
+            key={deliverable.id}
+            deliverable={deliverable}
             onStatusChange={(status, feedback) => onStatusChange(deliverable.id, status, feedback)}
-            onRateCreator={onRateCreator}
           />
         ))
       )}

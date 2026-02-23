@@ -1,24 +1,21 @@
 import { DS } from '@/components/design-system/tokens';
 import { CampaignDeliverable } from '@/types/campaign';
 import * as Linking from 'expo-linking';
-import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Edit, ExternalLink, Star, X } from 'lucide-react-native';
+import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Edit, ExternalLink, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 
 interface DeliverableCardProps {
   deliverable: CampaignDeliverable;
   onStatusChange: (status: string, feedback?: string) => void;
-  onRateCreator?: (applicationId: string) => void;
 }
 
-export const DeliverableCard: React.FC<DeliverableCardProps> = ({ 
-  deliverable, 
+export const DeliverableCard: React.FC<DeliverableCardProps> = ({
+  deliverable,
   onStatusChange,
-  onRateCreator
 }) => {
   const [expanded, setExpanded] = useState(false);
   const isPending = deliverable.status === 'pending_review';
-  const isApproved = deliverable.status === 'approved' || deliverable.status === 'auto_approved';
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -247,17 +244,6 @@ export const DeliverableCard: React.FC<DeliverableCardProps> = ({
         </View>
       )}
 
-      {isApproved && !deliverable.campaign_applications?.rating && (
-        <View style={{ borderTopWidth: 1, borderColor: DS.colors.borderLight, padding: DS.spacing.md }}>
-          <TouchableOpacity 
-            style={{ backgroundColor: DS.colors.primaryOrange, padding: DS.spacing.sm, borderRadius: DS.borderRadius.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
-            onPress={() => onRateCreator?.(deliverable.campaign_application_id)}
-          >
-            <Star size={16} color="white" fill="white" style={{ marginRight: 8 }} />
-            <Text style={{ ...DS.typography.button, color: 'white' }}>Rate Creator</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };

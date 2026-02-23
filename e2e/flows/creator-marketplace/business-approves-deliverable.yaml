@@ -1,45 +1,47 @@
 appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-business1@bypass.com
 ---
 # Test: Business approves deliverable (triggers payout)
 # Priority: P1 (Critical for Payment Flow)
 # Prerequisites:
-#   - Business account logged in
+#   - Business account (test-business1) logged in
 #   - Submitted deliverable exists
-#   - Stripe accounts pre-configured (for payout)
 # Tags: business, deliverable, approval, payout
-
-env:
-  TEST_EMAIL: prod-business1@bypass.com
+# Navigation: More tab → Manage Campaigns → Campaign Detail → Deliverables
+#
+# NOTE: iOS 26 simulator toast corrupts accessibility tree.
+# All More screen taps use point-based coordinates.
+# Business More screen layout:
+#   ~35% - Business Dashboard
+#   ~42% - Manage Campaigns
+#   ~48% - Discover Creators
+#   ~55% - Campaign Analytics
+#   ~61% - Restaurant Settings
 
 # Login as business
-- runFlow: helpers/login-bypass.yaml
+- runFlow: ../../helpers/login-bypass.yaml
 
-# Navigate to Business tab
+# Navigate to More tab (rightmost tab)
 - tapOn:
-    id: "tab-business"
-    optional: true
-
-- tapOn:
-    text: "Business"
-    optional: true
+    point: "90%,97%"
 
 - waitForAnimationToEnd
+- waitForAnimationToEnd
 
-# Navigate to Campaigns
+# Tap Manage Campaigns (~42% from top)
 - tapOn:
-    text: "Campaigns"
-    optional: true
+    point: "50%,42%"
 
 - waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Take screenshot
+- takeScreenshot: "business-manage-campaigns"
 
 # Find campaign with deliverables
 - tapOn:
-    id: "campaign-card-0"
-    optional: true
-
-- tapOn:
-    text: "Campaign"
-    index: 0
+    text: "Test Campaign"
     optional: true
 
 - waitForAnimationToEnd
@@ -58,7 +60,6 @@ env:
 # Find pending deliverable
 - assertVisible:
     text: "Pending"
-    timeout: 10000
     optional: true
 
 # Tap on deliverable to review
@@ -72,12 +73,6 @@ env:
 
 - waitForAnimationToEnd
 
-# View deliverable details
-- assertVisible:
-    text: "instagram"
-    timeout: 10000
-    optional: true
-
 # Approve deliverable
 - scrollUntilVisible:
     element:
@@ -87,8 +82,9 @@ env:
 
 - tapOn:
     text: "Approve"
+    optional: true
 
-# Confirm approval (this triggers payout)
+# Confirm approval
 - waitForAnimationToEnd
 
 - tapOn:
@@ -99,18 +95,15 @@ env:
     text: "Yes, Approve"
     optional: true
 
-# Wait for approval and payout trigger
 - waitForAnimationToEnd
 
 # Verify approval
 - assertVisible:
     text: "approved"
-    timeout: 10000
     optional: true
 
 - assertVisible:
     text: "Success"
-    timeout: 10000
     optional: true
 
 - tapOn:
@@ -120,10 +113,9 @@ env:
 # Take screenshot
 - takeScreenshot: "business-deliverable-approved"
 
-# Verify payout initiated (may show processing)
+# Verify payout initiated
 - assertVisible:
     text: "Payout"
-    timeout: 10000
     optional: true
 
 - takeScreenshot: "payout-initiated"

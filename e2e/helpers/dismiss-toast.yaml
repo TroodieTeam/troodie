@@ -1,0 +1,16 @@
+appId: com.troodie.troodie.com
+---
+# Dismiss the persistent "Error getting current location" toast
+# that appears on iOS 26 simulators and blocks text selectors.
+# Call this before any critical text-based tap on screens with the toast.
+
+# Small delay to let accessibility tree stabilize (iOS 26 workaround)
+- waitForAnimationToEnd
+
+# Tap the toast close button area (right side of toast bar)
+- tapOn:
+    point: "93%,95%"
+    optional: true
+
+# Wait for toast to fully dismiss
+- waitForAnimationToEnd

@@ -82,18 +82,49 @@ export function useCampaignDetail(id: string | undefined) {
         .eq('campaign_id', id)
         .order('applied_at', { ascending: false });
       
-      // Include rating fields (CM-16)
-      const applicationsWithRatings = applicationsData?.map(app => ({
-        ...app,
-        rating: app.rating || undefined,
-        rating_comment: app.rating_comment || undefined,
-        rated_at: app.rated_at || undefined,
-      })) || [];
-
       if (appsError) {
         throw appsError;
       }
-      
+
+      // Load deliverable status for each application to determine if "Rate Creator" should show
+      const appIds = (applicationsData || [])
+        .filter(a => a.status === 'accepted')
+        .map(a => a.id);
+
+      let deliverablesByApp: Record<string, { total: number; approved: number }> = {};
+      if (appIds.length > 0) {
+        const { data: appDeliverables } = await supabase
+          .from('campaign_deliverables')
+          .select('id, status, campaign_application_id')
+          .in('campaign_application_id', appIds);
+
+        if (appDeliverables) {
+          for (const d of appDeliverables) {
+            if (!deliverablesByApp[d.campaign_application_id]) {
+              deliverablesByApp[d.campaign_application_id] = { total: 0, approved: 0 };
+            }
+            deliverablesByApp[d.campaign_application_id].total++;
+            if (d.status === 'approved' || d.status === 'auto_approved') {
+              deliverablesByApp[d.campaign_application_id].approved++;
+            }
+          }
+        }
+      }
+
+      // Include rating fields (CM-16) and deliverable status
+      const applicationsWithRatings = (applicationsData || []).map(app => {
+        const counts = deliverablesByApp[app.id];
+        return {
+          ...app,
+          rating: app.rating || undefined,
+          rating_comment: app.rating_comment || undefined,
+          rated_at: app.rated_at || undefined,
+          total_deliverables: counts?.total ?? 0,
+          approved_deliverables: counts?.approved ?? 0,
+          all_deliverables_approved: counts ? counts.total > 0 && counts.approved === counts.total : false,
+        };
+      });
+
       setApplications(applicationsWithRatings);
 
       // Load content

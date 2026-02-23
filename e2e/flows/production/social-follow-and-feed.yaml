@@ -1,0 +1,75 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-consumer4@bypass.com
+---
+# Production E2E: Social features - follow users, check feed
+# Account: prod-consumer4@bypass.com (OTP: 000000)
+# Tests: Follow/unfollow, feed content from followed users
+# Prerequisites: Robust test data seeded (social graph exists)
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+# Verify home screen loaded
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 15000
+
+# Go to Feed tab (2nd tab)
+- tapOn:
+    point: "30%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-social-feed"
+
+# Verify feed has posts
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-social-feed-scrolled"
+
+# Go to Search tab (3rd tab)
+- tapOn:
+    point: "50%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-social-search"
+
+# Search for a test creator
+- tapOn:
+    id: "search-input"
+    optional: true
+
+- tapOn:
+    text: "Search"
+    optional: true
+
+- inputText: "Foodie Lens"
+- hideKeyboard
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-social-search-results"
+
+# Tap on a user result if found
+- tapOn:
+    text: "Foodie Lens"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-social-user-profile"
+
+# Check for Follow button
+- assertVisible:
+    text: "Follow"
+    optional: true
+
+- takeScreenshot: "prod-social-follow-check"

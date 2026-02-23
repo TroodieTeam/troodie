@@ -1,0 +1,201 @@
+appId: com.troodie.troodie.com
+---
+# FAST CONSOLIDATED: Business Full Flow (Session Injection)
+# Uses pre-injected session — no login UI, saves ~30s
+# Account: prod-business2@bypass.com (3 campaigns)
+#
+# Run with:
+#   ./e2e/helpers/inject-session.sh prod-business2@bypass.com
+#   maestro test e2e/flows/production/business-full-flow-fast.yaml
+# Or:
+#   ./e2e/helpers/run-all-fast.sh
+
+# ============================================================
+# PHASE 1: Authenticated Launch (no login UI)
+# ============================================================
+
+- runFlow: ../../helpers/authenticated-launch.yaml
+
+- takeScreenshot: "fast-business-home"
+
+# ============================================================
+# PHASE 2: Business Tools and Dashboard
+# ============================================================
+
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab (rightmost tab)
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-more-screen"
+
+# Wait for Business Tools section to load
+- extendedWaitUntil:
+    visible: "Business Tools"
+    timeout: 10000
+
+# Tap Business Dashboard
+- tapOn:
+    text: "Business Dashboard.*"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-dashboard"
+
+# Go back
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+
+# ============================================================
+# PHASE 3: Manage Campaigns
+# ============================================================
+
+# Navigate to More tab again
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+
+# Tap Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-manage-campaigns"
+
+# Verify campaigns list shows test campaigns
+- assertVisible:
+    text: "Campaign"
+    optional: true
+
+# Scroll to see campaigns
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-campaigns-scrolled"
+
+# ============================================================
+# PHASE 4: Application Review
+# ============================================================
+
+# Scroll back up to tap on a campaign
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+# Tap on a campaign that has applications
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Navigate to Applications tab
+- tapOn:
+    text: "Applications"
+    optional: true
+
+- tapOn:
+    text: "Applicants"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-applications"
+
+# Verify applications are visible
+- assertVisible:
+    text: "pending"
+    optional: true
+
+- assertVisible:
+    text: "accepted"
+    optional: true
+
+# Tap on first application
+- tapOn:
+    id: "application-card-0"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-application-detail"
+
+# Check for Accept button (read-only)
+- assertVisible:
+    text: "Accept"
+    optional: true
+
+- takeScreenshot: "fast-business-review-applications-complete"
+
+# ============================================================
+# PHASE 5: Deliverable Review
+# ============================================================
+
+# Go back to campaign detail
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Look for Deliverables tab
+- tapOn:
+    text: "Deliverables"
+    optional: true
+
+- tapOn:
+    text: "Review"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-deliverables"
+
+# Check for deliverable cards with workflow status indicators
+- assertVisible:
+    text: "Pending"
+    optional: true
+
+- assertVisible:
+    text: "Approved"
+    optional: true
+
+# Scroll to see more deliverables
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-deliverables-scrolled"
+
+# Tap on a deliverable to see review screen
+- tapOn:
+    id: "deliverable-card-0"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "fast-business-deliverable-detail"
+
+# Check for content preview (v1.0.16.b1 CSF feature)
+- assertVisible:
+    text: "Content"
+    optional: true
+
+- assertVisible:
+    text: "Approve"
+    optional: true
+
+- takeScreenshot: "fast-business-content-review"
