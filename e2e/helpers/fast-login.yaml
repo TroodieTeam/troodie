@@ -1,0 +1,48 @@
+appId: com.troodie.troodie.com
+---
+# Fast login using pre-injected session token
+# Prerequisites: Run inject-session.sh <email> BEFORE this flow
+#
+# Usage (from wrapper script):
+#   ./e2e/helpers/inject-session.sh prod-creator1@bypass.com
+#   maestro test e2e/flows/production/creator-full-flow.yaml
+#
+# This replaces login-bypass.yaml — saves ~30s by skipping the
+# OTP login flow entirely. The session is already in AsyncStorage.
+
+- launchApp
+  # No clearState — preserves the injected session in AsyncStorage
+
+# Handle Expo Dev Client launcher if shown
+- tapOn:
+    text: "http://localhost:8081"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Go home"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Close"
+    optional: true
+
+- waitForAnimationToEnd
+
+# App reads session from AsyncStorage and auto-authenticates
+# Wait for home screen
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 15000
+
+# Dismiss "Error getting current location" toast
+- tapOn:
+    point: "93%,95%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd

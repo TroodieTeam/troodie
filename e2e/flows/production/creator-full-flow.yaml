@@ -1,0 +1,133 @@
+appId: com.troodie.troodie.com
+---
+# CONSOLIDATED: Creator Full Flow
+# Combines: login-creator + creator-applies-to-campaign + creator-earnings-check
+# Purpose: Single login, then verify creator tools, campaign marketplace, and earnings
+# Account: prod-creator2@bypass.com (has campaign data) (OTP: 000000)
+# Prerequisites:
+#   1. Robust test data seeded (campaigns, earnings data exist)
+#   2. Run: ./e2e/helpers/inject-session.sh prod-creator2@bypass.com
+#
+# NOTE: Uses only point-based taps and swipes to avoid kAXErrorInvalidUIElement
+# crashes on iOS 26. Text-based taps and scrollUntilVisible are crash-prone.
+
+# ============================================================
+# PHASE 1: Login and Home Screen
+# ============================================================
+
+# Fast login — session pre-injected into AsyncStorage
+- runFlow: ../../helpers/fast-login.yaml
+
+- takeScreenshot: "consolidated-creator-home"
+
+# ============================================================
+# PHASE 2: Creator Tools Verification (from login-creator)
+# ============================================================
+
+# Dismiss any toast that might block the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab (rightmost tab)
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-more-screen"
+
+# Verify creator-specific section header is visible
+- extendedWaitUntil:
+    visible: "Creator Tools"
+    timeout: 10000
+
+# ============================================================
+# PHASE 3: Campaign Marketplace (from creator-applies-to-campaign)
+# ============================================================
+
+# Tap Explore Campaigns (combined accessibilityText)
+- tapOn:
+    text: "Explore Campaigns.*"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-explore-campaigns"
+
+# Scroll to see campaign cards
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-campaigns-scrolled"
+
+# Scroll more to see additional campaigns
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-campaigns-scrolled-2"
+
+# Tap on first visible campaign card (approximate center of first card ~30% from top)
+- tapOn:
+    point: "50%,30%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-campaign-detail"
+
+# Scroll down to see campaign details and Apply button area
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-campaign-apply-area"
+
+# ============================================================
+# PHASE 4: Earnings / Payout Area (from creator-earnings-check)
+# ============================================================
+
+# Go back to More tab
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Dismiss toast before tab bar tap
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab — extra delays for iOS 26 accessibility stabilization
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-more-screen-2"
+
+# Tap Payments & Earnings (~61% from top)
+- tapOn:
+    point: "50%,61%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-earnings"
+
+# Scroll to see history
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-creator-earnings-scrolled"
+
+- takeScreenshot: "consolidated-creator-complete"

@@ -1,0 +1,96 @@
+appId: com.troodie.troodie.com
+---
+# CONSOLIDATED: Consumer Full Flow
+# Combines: login-consumer + social-follow-and-feed + restaurant-discovery
+# Purpose: Single login, then verify home/boards, feed, social search, and restaurant discovery
+# Account: prod-consumer1@bypass.com (OTP: 000000)
+# Prerequisites:
+#   1. Robust test data seeded (social graph, restaurants exist)
+#   2. Run: ./e2e/helpers/inject-session.sh prod-consumer1@bypass.com
+#
+# NOTE: Uses point-based taps and screenshots for verification.
+# Avoids text-based taps on search results due to iOS 26 kAXErrorInvalidUIElement.
+
+# ============================================================
+# PHASE 1: Login and Home Screen
+# ============================================================
+
+# Fast login — session pre-injected into AsyncStorage
+- runFlow: ../../helpers/fast-login.yaml
+
+- takeScreenshot: "consolidated-consumer-home"
+
+# ============================================================
+# PHASE 2: Feed Browsing
+# ============================================================
+
+# Dismiss toast before tab bar tap
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Tap Feed tab (2nd tab)
+- tapOn:
+    point: "30%,97%"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-consumer-feed"
+
+# Scroll feed to verify posts load
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-consumer-feed-scrolled"
+
+# ============================================================
+# PHASE 3: Search Verification
+# ============================================================
+
+# Dismiss toast before tab bar tap
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Go to Search tab (3rd tab, center)
+- tapOn:
+    point: "50%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-consumer-search"
+
+# Search for a test creator
+- tapOn:
+    point: "50%,12%"
+
+- waitForAnimationToEnd
+
+- inputText: "Foodie Lens"
+- hideKeyboard
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Screenshot verifies search results loaded (visual verification)
+- takeScreenshot: "consolidated-consumer-search-results-users"
+
+# Clear search and search for restaurant
+- tapOn:
+    point: "50%,12%"
+
+- waitForAnimationToEnd
+
+- eraseText: 20
+
+- waitForAnimationToEnd
+
+- inputText: "Bella Vista"
+- hideKeyboard
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Screenshot verifies restaurant search results (visual verification)
+- takeScreenshot: "consolidated-consumer-search-results-restaurants"
+
+- takeScreenshot: "consolidated-consumer-complete"

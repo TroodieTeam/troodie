@@ -1,0 +1,52 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-creator1@bypass.com
+---
+# Production E2E: Creator login and marketplace access
+# Account: prod-creator1@bypass.com (Foodie Lens) (OTP: 000000)
+# Verifies: Creator login, More tab items, campaign marketplace
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+- takeScreenshot: "prod-creator-home"
+
+# Dismiss any toast that might block the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab (rightmost tab)
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-creator-more-screen"
+
+# Verify creator-specific menu items are visible
+# Wait for the section header (standalone text element, not combined accessibility label)
+- extendedWaitUntil:
+    visible: "Creator Tools"
+    timeout: 10000
+
+# Tap Explore Campaigns (combined accessibilityText: "Explore Campaigns, Discover new brand collaborations")
+- tapOn:
+    text: "Explore Campaigns.*"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-creator-explore-campaigns"
+
+# Verify campaigns are visible (test campaigns from robust data)
+- assertVisible:
+    text: "Explore"
+    optional: true
+
+# Scroll to see campaign cards
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-creator-campaigns-scrolled"

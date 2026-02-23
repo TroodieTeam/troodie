@@ -1,0 +1,126 @@
+appId: com.troodie.troodie.com
+---
+# CONSOLIDATED: Business Full Flow
+# Combines: login-business + business-reviews-applications + business-reviews-deliverables
+# Purpose: Single login, then verify business tools, dashboard, campaign management,
+#          application review, and deliverable review
+# Account: prod-business2@bypass.com (Medium activity, 3 campaigns) (OTP: 000000)
+# Prerequisites:
+#   1. Robust test data seeded (campaigns, applications, deliverables exist)
+#   2. Run: ./e2e/helpers/inject-session.sh prod-business2@bypass.com
+#
+# NOTE: Uses only point-based taps and swipes to avoid kAXErrorInvalidUIElement
+# crashes on iOS 26. Screenshots serve as visual verification.
+
+# ============================================================
+# PHASE 1: Login and Home Screen
+# ============================================================
+
+# Fast login — session pre-injected into AsyncStorage
+- runFlow: ../../helpers/fast-login.yaml
+
+- takeScreenshot: "consolidated-business-home"
+
+# ============================================================
+# PHASE 2: Business Tools and Dashboard (from login-business)
+# ============================================================
+
+# Dismiss any toast that might block the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab (rightmost tab)
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-business-more-screen"
+
+# Wait for Business Tools section to load
+- extendedWaitUntil:
+    visible: "Business Tools"
+    timeout: 10000
+
+# Tap Business Dashboard (combined accessibilityText includes subtitle)
+- tapOn:
+    text: "Business Dashboard.*"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-business-dashboard"
+
+# Go back
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# ============================================================
+# PHASE 3: Manage Campaigns (from login-business)
+# ============================================================
+
+# Navigate to More tab again
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Tap Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-business-manage-campaigns"
+
+# Scroll to see campaigns
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-business-campaigns-scrolled"
+
+# ============================================================
+# PHASE 4: Campaign Detail (application + deliverable review)
+# ============================================================
+
+# Scroll back up to see campaign list
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+# Tap on first campaign card (~30% from top)
+- tapOn:
+    point: "50%,30%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-business-campaign-detail"
+
+# Scroll down to see more campaign detail
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-business-campaign-detail-scrolled"
+
+# Go back
+- tapOn:
+    point: "5%,6%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "consolidated-business-complete"

@@ -1,0 +1,35 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-consumer1@bypass.com
+---
+# Production E2E: Consumer login and feed browsing
+# Account: prod-consumer1@bypass.com (OTP: 000000)
+# Verifies: Login flow, feed loads, test data visible
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+# Verify home screen loaded (boards/feed)
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 15000
+
+- takeScreenshot: "prod-consumer-home"
+
+# Tap Feed tab (2nd tab)
+- tapOn:
+    point: "30%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Verify feed has content (test posts should be visible)
+- takeScreenshot: "prod-consumer-feed"
+
+# Scroll feed to verify posts load
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-consumer-feed-scrolled"

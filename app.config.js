@@ -1,5 +1,5 @@
-const fs = require('fs');
-const dotenv = require('dotenv');
+const fs = require("fs");
+const dotenv = require("dotenv");
 
 // Helper to load an env file with logging
 const loadEnvFile = (envFile) => {
@@ -11,7 +11,7 @@ const loadEnvFile = (envFile) => {
         process.env[key] = value;
       });
       console.log(
-        `[app.config] Loaded ${Object.keys(parsed).length} variables from ${envFile}`
+        `[app.config] Loaded ${Object.keys(parsed).length} variables from ${envFile}`,
       );
       return true;
     } catch (error) {
@@ -30,27 +30,33 @@ const loadEnvFile = (envFile) => {
 const getBuildProfile = () => {
   // EAS_BUILD_PROFILE is set automatically by EAS during builds or via npm scripts
   const profile = process.env.EAS_BUILD_PROFILE;
-  const resolvedProfile = profile || 'development';
+  const resolvedProfile = profile || "development";
 
   console.log(`[app.config] Detected build profile: ${resolvedProfile}`);
 
-  if (resolvedProfile === 'production') {
-    const loaded = loadEnvFile('.env.production');
+  if (resolvedProfile === "production") {
+    const loaded = loadEnvFile(".env.production");
     if (!loaded) {
-      console.warn('[app.config] Falling back to default .env file for production');
-      loadEnvFile('.env');
+      console.warn(
+        "[app.config] Falling back to default .env file for production",
+      );
+      loadEnvFile(".env");
     }
-  } else if (resolvedProfile === 'staging') {
-    const loaded = loadEnvFile('.env.staging');
+  } else if (resolvedProfile === "staging") {
+    const loaded = loadEnvFile(".env.staging");
     if (!loaded) {
-      console.warn('[app.config] Falling back to default .env file for staging');
-      loadEnvFile('.env');
+      console.warn(
+        "[app.config] Falling back to default .env file for staging",
+      );
+      loadEnvFile(".env");
     }
   } else {
-    const loaded = loadEnvFile('.env.development');
+    const loaded = loadEnvFile(".env.development");
     if (!loaded) {
-      console.warn('[app.config] Falling back to default .env file for development');
-      loadEnvFile('.env');
+      console.warn(
+        "[app.config] Falling back to default .env file for development",
+      );
+      loadEnvFile(".env");
     }
   }
 
@@ -64,7 +70,7 @@ export default {
   expo: {
     name: "Troodie",
     slug: "troodie",
-    version: "1.0.15",
+    version: "1.0.16",
     orientation: "portrait",
     icon: "./assets/images/troodie_icon_logo.jpg",
     scheme: "troodie",
@@ -75,23 +81,26 @@ export default {
       bundleIdentifier: "com.troodie.troodie.com",
       buildNumber: "1",
       infoPlist: {
-        NSLocationWhenInUseUsageDescription: "Troodie uses your location to show nearby restaurants and recommendations.",
-        NSCameraUsageDescription: "Troodie uses your camera to take photos of restaurants and food.",
-        NSPhotoLibraryUsageDescription: "Troodie uses your photo library to select images for posts."
-      }
+        NSLocationWhenInUseUsageDescription:
+          "Troodie uses your location to show nearby restaurants and recommendations.",
+        NSCameraUsageDescription:
+          "Troodie uses your camera to take photos of restaurants and food.",
+        NSPhotoLibraryUsageDescription:
+          "Troodie uses your photo library to select images for posts.",
+      },
     },
     android: {
       package: "com.troodie.troodie.com",
       adaptiveIcon: {
         foregroundImage: "./assets/images/troodie_icon_logo.jpg",
-        backgroundColor: "#ffffff"
+        backgroundColor: "#ffffff",
       },
-      edgeToEdgeEnabled: true
+      edgeToEdgeEnabled: true,
     },
     web: {
       bundler: "metro",
       output: "static",
-      favicon: "./assets/images/favicon.png"
+      favicon: "./assets/images/favicon.png",
     },
     plugins: [
       "expo-router",
@@ -101,19 +110,19 @@ export default {
           image: "./assets/images/troodie_icon_logo.jpg",
           imageWidth: 200,
           resizeMode: "contain",
-          backgroundColor: "#ffffff"
-        }
+          backgroundColor: "#ffffff",
+        },
       ],
       "expo-font",
       [
         "@stripe/stripe-react-native",
         {
-          "enableGooglePay": true
-        }
-      ]
+          enableGooglePay: true,
+        },
+      ],
     ],
     experiments: {
-      typedRoutes: true
+      typedRoutes: true,
     },
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,
@@ -126,8 +135,8 @@ export default {
       stripeSecretKey: process.env.STRIPE_SECRET_KEY,
       buildProfile: currentProfile,
       eas: {
-        projectId: "68397d45-255f-4b4c-ba93-d51a044ddfb2"
-      }
-    }
-  }
+        projectId: "68397d45-255f-4b4c-ba93-d51a044ddfb2",
+      },
+    },
+  },
 };

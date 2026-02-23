@@ -62,7 +62,7 @@ export class UserSearchService {
       
       // Check if current user is a test user
       const { data: { user } } = await supabase.auth.getUser();
-      const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+      const isCurrentUserTest = authService.canSeeTestData(user?.email);
       
       // Get all users from the platform
       let query = supabase

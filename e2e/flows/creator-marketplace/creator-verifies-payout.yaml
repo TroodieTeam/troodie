@@ -1,72 +1,63 @@
 appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-creator1@bypass.com
 ---
 # Test: Creator verifies payout received
 # Priority: P1 (Critical for Payment Flow)
 # Prerequisites:
-#   - Creator account logged in
+#   - Creator account (test-creator1) logged in
 #   - Deliverable approved (payout triggered)
 # Tags: creator, payout, earnings, verification
-
-env:
-  TEST_EMAIL: prod-creator1@bypass.com
+# Navigation: More tab → Payments & Earnings
+#
+# NOTE: iOS 26 simulator has persistent location error toast that
+# corrupts the accessibility tree. ALL taps on More screen use
+# point-based coordinates to avoid text selector failures.
+#
+# More screen layout (Creator account - measured from screenshots):
+#   ~35% - Creator Profile
+#   ~42% - Explore Campaigns
+#   ~48% - My Campaigns
+#   ~55% - My Deliverables
+#   ~61% - Payments & Earnings
 
 # Login as creator
-- runFlow: helpers/login-bypass.yaml
+- runFlow: ../../helpers/login-bypass.yaml
 
-# Navigate to Profile or Payments
+# Navigate to More tab (rightmost tab, 5th of 5)
 - tapOn:
-    id: "tab-profile"
-    optional: true
-
-- tapOn:
-    text: "Profile"
-    optional: true
+    point: "90%,97%"
 
 - waitForAnimationToEnd
-
-# Navigate to Payments/Earnings
-- tapOn:
-    text: "Payments"
-    optional: true
-
-- tapOn:
-    text: "Earnings"
-    optional: true
-
-- scrollUntilVisible:
-    element:
-      text: "Earnings"
-    direction: DOWN
-    optional: true
-
-- tapOn:
-    text: "Earnings"
-    optional: true
-
 - waitForAnimationToEnd
 
-# Verify earnings screen
+# Tap Payments & Earnings (~61% from top)
+- tapOn:
+    point: "50%,61%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Take screenshot to verify what screen we're on
+- takeScreenshot: "creator-after-payments-tap"
+
+# Verify earnings screen (optional - may fail due to toast)
 - assertVisible:
     text: "Earnings"
-    timeout: 10000
     optional: true
 
 # Look for payout entry
 - assertVisible:
     text: "$"
-    timeout: 10000
     optional: true
 
-# Check payout status (completed or processing)
+# Check payout status
 - assertVisible:
     text: "completed"
-    timeout: 10000
     optional: true
 
-# Or processing if webhook hasn't arrived yet
 - assertVisible:
     text: "processing"
-    timeout: 5000
     optional: true
 
 # Take screenshot
@@ -79,10 +70,8 @@ env:
 
 - waitForAnimationToEnd
 
-# Verify payout details
 - assertVisible:
     text: "Campaign"
-    timeout: 10000
     optional: true
 
 - takeScreenshot: "creator-payout-details"

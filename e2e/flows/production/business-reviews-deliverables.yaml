@@ -1,0 +1,93 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-business3@bypass.com
+---
+# Production E2E: Business reviews deliverables (v1.0.16.b1 Content Submission Flow)
+# Account: prod-business3@bypass.com (High activity, 10 campaigns) (OTP: 000000)
+# Tests: Deliverable review screen, content preview, workflow stages
+# Prerequisites: Robust test data seeded (deliverables at various workflow_stage values)
+
+# Login
+- runFlow: ../../helpers/login-bypass.yaml
+
+# Verify home screen loaded
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 15000
+
+# Dismiss any toast that might block the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# Navigate to More tab
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Tap Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business3-campaigns"
+
+# Tap on first campaign
+- tapOn:
+    text: "Campaign"
+    index: 0
+    optional: true
+
+- waitForAnimationToEnd
+
+# Look for Deliverables tab
+- tapOn:
+    text: "Deliverables"
+    optional: true
+
+- tapOn:
+    text: "Review"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business3-deliverables"
+
+# Check for deliverable cards with workflow status indicators
+- assertVisible:
+    text: "Pending"
+    optional: true
+
+- assertVisible:
+    text: "Approved"
+    optional: true
+
+# Scroll to see more deliverables
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business3-deliverables-scrolled"
+
+# Tap on a deliverable to see review screen
+- tapOn:
+    id: "deliverable-card-0"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "prod-business3-deliverable-detail"
+
+# Check for content preview (v1.0.16.b1 CSF feature)
+- assertVisible:
+    text: "Content"
+    optional: true
+
+- assertVisible:
+    text: "Approve"
+    optional: true
+
+- takeScreenshot: "prod-business3-content-review"

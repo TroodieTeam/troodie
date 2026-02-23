@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { authService } from '@/services/authService'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 
@@ -39,7 +40,7 @@ export function useRealtimeFeed(userId: string | null, friendIds: string[] = [])
         
         // Check if current user is a test user
         const { data: { user } } = await supabase.auth.getUser();
-        const isCurrentUserTest = user?.email?.endsWith('@bypass.com') || user?.email?.endsWith('@troodie.test');
+        const isCurrentUserTest = authService.canSeeTestData(user?.email);
         
         // Fetch initial feed items
         let query = supabase

@@ -1,0 +1,228 @@
+{
+  "description": "Robust production test users - 20 accounts for comprehensive testing",
+  "domain": "@bypass.com",
+  "otp": "000000",
+  "betaPasscode": "TROODIE2025",
+  "consumers": {
+    "consumer1": {
+      "email": "prod-consumer1@bypass.com",
+      "userId": "aa111111-1111-4111-a111-111111111111",
+      "name": "Prod Consumer 1",
+      "accountType": "consumer",
+      "purpose": "General browsing, feed, search testing"
+    },
+    "consumer2": {
+      "email": "prod-consumer2@bypass.com",
+      "userId": "aa222222-2222-4222-a222-222222222222",
+      "name": "Prod Consumer 2",
+      "accountType": "consumer",
+      "purpose": "Account upgrade testing (consumer -> creator)"
+    },
+    "consumer3": {
+      "email": "prod-consumer3@bypass.com",
+      "userId": "aa333333-3333-4333-a333-333333333333",
+      "name": "Prod Consumer 3",
+      "accountType": "consumer",
+      "purpose": "Board and save testing"
+    },
+    "consumer4": {
+      "email": "prod-consumer4@bypass.com",
+      "userId": "aa444444-4444-4444-a444-444444444444",
+      "name": "Prod Consumer 4",
+      "accountType": "consumer",
+      "purpose": "Social features (follow, like, comment)"
+    },
+    "consumer5": {
+      "email": "prod-consumer5@bypass.com",
+      "userId": "aa555555-5555-4555-a555-555555555555",
+      "name": "Prod Consumer 5",
+      "accountType": "consumer",
+      "purpose": "Post creation testing"
+    },
+    "consumer6": {
+      "email": "prod-consumer6@bypass.com",
+      "userId": "aa666666-6666-4666-a666-666666666666",
+      "name": "Prod Consumer 6",
+      "accountType": "consumer",
+      "purpose": "Notification testing"
+    },
+    "consumer7": {
+      "email": "prod-consumer7@bypass.com",
+      "userId": "aa777777-7777-4777-a777-777777777777",
+      "name": "Prod Consumer 7",
+      "accountType": "consumer",
+      "purpose": "Restaurant exploration"
+    },
+    "consumer8": {
+      "email": "prod-consumer8@bypass.com",
+      "userId": "aa888888-8888-4888-a888-888888888888",
+      "name": "Prod Consumer 8",
+      "accountType": "consumer",
+      "purpose": "Deep linking testing"
+    },
+    "consumer9": {
+      "email": "prod-consumer9@bypass.com",
+      "userId": "aa999999-9999-4999-a999-999999999999",
+      "name": "Prod Consumer 9",
+      "accountType": "consumer",
+      "purpose": "Edge case testing"
+    },
+    "consumer10": {
+      "email": "prod-consumer10@bypass.com",
+      "userId": "aa000000-0000-4000-a000-000000000000",
+      "name": "Prod Consumer 10",
+      "accountType": "consumer",
+      "purpose": "Multi-device / concurrent testing"
+    }
+  },
+  "creators": {
+    "creator1": {
+      "email": "prod-creator1@bypass.com",
+      "userId": "bb111111-1111-4111-b111-111111111111",
+      "name": "Foodie Lens",
+      "accountType": "creator",
+      "purpose": "Apply to campaigns, submit deliverables, content upload (CSF testing)",
+      "creatorProfileId": "ee111111-1111-4111-e111-111111111111",
+      "specialties": ["Food Photography", "Restaurant Reviews"]
+    },
+    "creator2": {
+      "email": "prod-creator2@bypass.com",
+      "userId": "bb222222-2222-4222-b222-222222222222",
+      "name": "Wanderlust Eats",
+      "accountType": "creator",
+      "purpose": "Multi-application testing, proof submission (CSF testing)",
+      "creatorProfileId": "ee222222-2222-4222-e222-222222222222",
+      "specialties": ["Travel", "Restaurant Reviews", "Food Blogging"]
+    },
+    "creator3": {
+      "email": "prod-creator3@bypass.com",
+      "userId": "bb333333-3333-4333-b333-333333333333",
+      "name": "Lifestyle & Bites",
+      "accountType": "creator",
+      "purpose": "Payout verification, payment duplication fix testing (PDF testing)",
+      "creatorProfileId": "ee333333-3333-4333-e333-333333333333",
+      "specialties": ["Lifestyle", "Food Content"]
+    },
+    "creator4": {
+      "email": "prod-creator4@bypass.com",
+      "userId": "bb444444-4444-4444-b444-444444444444",
+      "name": "The Critic",
+      "accountType": "creator",
+      "purpose": "Rejection and resubmission testing",
+      "creatorProfileId": "ee444444-4444-4444-e444-444444444444",
+      "specialties": ["Restaurant Reviews", "Food Criticism"]
+    },
+    "creator5": {
+      "email": "prod-creator5@bypass.com",
+      "userId": "bb555555-5555-4555-b555-555555555555",
+      "name": "Food Reels Pro",
+      "accountType": "creator",
+      "purpose": "Video content testing, Stripe onboarding",
+      "creatorProfileId": "ee555555-5555-4555-e555-555555555555",
+      "specialties": ["Video Content", "Social Media"]
+    },
+    "creator6": {
+      "email": "prod-creator6@bypass.com",
+      "userId": "bb666666-6666-4666-b666-666666666666",
+      "name": "Local Foodie",
+      "accountType": "creator",
+      "purpose": "Micro-influencer testing, analytics",
+      "creatorProfileId": "ee666666-6666-4666-e666-666666666666",
+      "specialties": ["Local Food", "Hidden Gems"]
+    },
+    "creator7": {
+      "email": "prod-creator7@bypass.com",
+      "userId": "bb777777-7777-4777-b777-777777777777",
+      "name": "Styled Plates",
+      "accountType": "creator",
+      "purpose": "Portfolio testing, earnings history",
+      "creatorProfileId": "ee777777-7777-4777-e777-777777777777",
+      "specialties": ["Food Styling", "Photography"]
+    }
+  },
+  "businesses": {
+    "business1": {
+      "email": "prod-business1@bypass.com",
+      "userId": "cc111111-1111-4111-c111-111111111111",
+      "name": "Test Business 1 (New)",
+      "accountType": "business",
+      "purpose": "New business testing - 0 campaigns, baseline dashboard",
+      "businessProfileId": "ff111111-1111-4111-f111-111111111111",
+      "restaurantId": "dd111111-1111-4111-d111-111111111111",
+      "restaurantName": "Bella Vista Italian Kitchen",
+      "activityLevel": "new"
+    },
+    "business2": {
+      "email": "prod-business2@bypass.com",
+      "userId": "cc222222-2222-4222-c222-222222222222",
+      "name": "Test Business 2 (Medium)",
+      "accountType": "business",
+      "purpose": "Medium activity - 3 campaigns, deliverable review, rate creator (RCT testing)",
+      "businessProfileId": "ff222222-2222-4222-f222-222222222222",
+      "restaurantId": "dd222222-2222-4222-d222-222222222222",
+      "restaurantName": "The Rustic Table",
+      "activityLevel": "medium",
+      "campaignCount": 3
+    },
+    "business3": {
+      "email": "prod-business3@bypass.com",
+      "userId": "cc333333-3333-4333-c333-333333333333",
+      "name": "Test Business 3 (High)",
+      "accountType": "business",
+      "purpose": "High activity - 10 campaigns, payment testing (PDF testing), bulk operations",
+      "businessProfileId": "ff333333-3333-4333-f333-333333333333",
+      "restaurantId": "dd333333-3333-4333-d333-333333333333",
+      "restaurantName": "Sakura Sushi Bar",
+      "activityLevel": "high",
+      "campaignCount": 10
+    }
+  },
+  "restaurants": {
+    "claimed": [
+      {
+        "id": "dd111111-1111-4111-d111-111111111111",
+        "name": "Bella Vista Italian Kitchen",
+        "claimedBy": "prod-business1@bypass.com"
+      },
+      {
+        "id": "dd222222-2222-4222-d222-222222222222",
+        "name": "The Rustic Table",
+        "claimedBy": "prod-business2@bypass.com"
+      },
+      {
+        "id": "dd333333-3333-4333-d333-333333333333",
+        "name": "Sakura Sushi Bar",
+        "claimedBy": "prod-business3@bypass.com"
+      }
+    ],
+    "unclaimed": [
+      { "id": "dd444444-4444-4444-d444-444444444444", "name": "Unclaimed Restaurant 1" },
+      { "id": "dd555555-5555-4555-d555-555555555555", "name": "Unclaimed Restaurant 2" },
+      { "id": "dd666666-6666-4666-d666-666666666666", "name": "Unclaimed Restaurant 3" },
+      { "id": "dd777777-7777-4777-d777-777777777777", "name": "Unclaimed Restaurant 4" },
+      { "id": "dd888888-8888-4888-d888-888888888888", "name": "Unclaimed Restaurant 5" }
+    ]
+  },
+  "v1016b1TestScenarios": {
+    "contentSubmissionFlow": {
+      "description": "Two-step workflow: upload content -> review -> submit proof links",
+      "testCreator": "prod-creator1@bypass.com",
+      "testBusiness": "prod-business2@bypass.com"
+    },
+    "paymentDuplicationFix": {
+      "description": "Prevents creators from receiving multiple payouts per application",
+      "testCreator": "prod-creator3@bypass.com",
+      "testBusiness": "prod-business3@bypass.com"
+    },
+    "rateCreatorTiming": {
+      "description": "Rate Creator button only appears after ALL deliverables are approved",
+      "testBusiness": "prod-business2@bypass.com"
+    }
+  },
+  "stripeTestCards": {
+    "success": "4242424242424242",
+    "declined": "4000000000000002",
+    "insufficientFunds": "4000000000009995",
+    "requires3DS": "4000002500003155"
+  }
+}

@@ -93,5 +93,17 @@ appId: com.troodie.troodie.com
 
 # Wait for login to complete - look for content that appears after login
 - extendedWaitUntil:
-    visible: "Your Saves"
+    visible: "Your Boards"
     timeout: 15000
+
+# Dismiss "Error getting current location" toast that covers the tab bar
+# iOS 26 simulator shows persistent location error toast at bottom
+# Use point-based tap on the toast close button area (right side of toast)
+- tapOn:
+    point: "93%,95%"
+    optional: true
+
+# Extra waits to let toast settle (per MAESTRO_BEST_PRACTICES.md)
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd

@@ -1,0 +1,59 @@
+appId: com.troodie.troodie.com
+---
+# Reusable: Launch app with pre-injected session (no login UI)
+# Prerequisites: Run inject-session.sh BEFORE this flow
+# The session must already be in AsyncStorage
+#
+# Usage:
+#   ./e2e/helpers/inject-session.sh prod-creator1@bypass.com
+#   maestro test <flow-that-uses-this-helper>
+
+# Launch WITHOUT clearState — preserves the injected session in AsyncStorage
+- launchApp
+
+# Handle Expo Dev Client launcher if shown (same as login-bypass)
+- tapOn:
+    text: "http://localhost:8081"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Go home"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Close"
+    optional: true
+
+- waitForAnimationToEnd
+
+# App should find the session in AsyncStorage and auto-authenticate
+# Wait for authenticated home screen (skips onboarding + login entirely)
+- extendedWaitUntil:
+    visible: "Your Boards"
+    timeout: 20000
+
+# Dismiss "Error getting current location" toast — tap close area
+- tapOn:
+    point: "93%,95%"
+    optional: true
+
+# Extended stabilization — give the app time to finish loading
+# APIs, subscriptions, and background tasks.
+# This prevents kAXErrorInvalidUIElement on subsequent screens.
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Dismiss toast again if it reappeared
+- tapOn:
+    point: "93%,95%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
