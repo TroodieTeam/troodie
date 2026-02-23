@@ -1,0 +1,119 @@
+appId: com.troodie.troodie.com
+---
+# v1.0.16.b1 FEATURE: Rate Creator Timing (Business View)
+# Shows campaign management, application review, deliverable progress.
+#
+# Account: prod-business3@bypass.com (10 campaigns — more data)
+# Time: ~1-2 minutes with session injection
+#
+# Run:
+#   ./e2e/helpers/inject-session.sh prod-business3@bypass.com
+#   maestro test e2e/flows/production/v1016-rate-creator.yaml
+
+# ============================================================
+# Launch (pre-authenticated)
+# ============================================================
+- runFlow: ../../helpers/authenticated-launch.yaml
+
+- takeScreenshot: "v1016-rate-home"
+
+# ============================================================
+# Navigate to More tab → Manage Campaigns
+# ============================================================
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# More tab
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-more-screen"
+
+# Business More: Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-campaigns-list"
+
+# ============================================================
+# Scroll through campaigns
+# ============================================================
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-campaigns-scrolled"
+
+# Scroll back
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Tap first campaign card
+# ============================================================
+- tapOn:
+    point: "50%,30%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-campaign-detail"
+
+# ============================================================
+# Check Applications tab
+# ============================================================
+- tapOn:
+    text: "Applications"
+    optional: true
+
+- tapOn:
+    text: "Applicants"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-applications"
+
+# Scroll to see all applications
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-applications-scrolled"
+
+# ============================================================
+# Check Deliverables tab
+# ============================================================
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Deliverables"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-deliverables"
+
+# Scroll deliverables
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-rate-deliverables-scrolled"
+
+- takeScreenshot: "v1016-rate-complete"

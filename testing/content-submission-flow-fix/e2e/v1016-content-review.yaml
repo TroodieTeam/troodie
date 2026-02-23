@@ -1,0 +1,119 @@
+appId: com.troodie.troodie.com
+---
+# v1.0.16.b1 FEATURE: Content Review + Payment Guard (Business View)
+# Shows campaign management, deliverable review, and application review.
+#
+# Account: prod-business2@bypass.com (3 campaigns)
+# Time: ~1-2 minutes with session injection
+#
+# Run:
+#   ./e2e/helpers/inject-session.sh prod-business2@bypass.com
+#   maestro test e2e/flows/production/v1016-content-review.yaml
+
+# ============================================================
+# Launch (pre-authenticated)
+# ============================================================
+- runFlow: ../../helpers/authenticated-launch.yaml
+
+- takeScreenshot: "v1016-review-home"
+
+# ============================================================
+# Navigate to More tab → Manage Campaigns
+# ============================================================
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+# More tab
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-more-screen"
+
+# Business More: Manage Campaigns (~42% from top)
+- tapOn:
+    point: "50%,42%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-campaigns-list"
+
+# ============================================================
+# Scroll through campaigns
+# ============================================================
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-campaigns-scrolled"
+
+# Scroll back
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Tap first campaign card (~30% from top)
+# ============================================================
+- tapOn:
+    point: "50%,30%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-campaign-detail"
+
+# ============================================================
+# Check Deliverables tab
+# ============================================================
+- tapOn:
+    text: "Deliverables"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-deliverables"
+
+# Scroll deliverables
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-deliverables-scrolled"
+
+# ============================================================
+# Check Applications tab
+# ============================================================
+- swipe:
+    direction: DOWN
+
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Applications"
+    optional: true
+
+- tapOn:
+    text: "Applicants"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-applications"
+
+# Scroll applications
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "v1016-review-applications-scrolled"
+
+- takeScreenshot: "v1016-review-complete"
