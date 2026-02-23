@@ -61,6 +61,9 @@ tags:
 - takeScreenshot: "tro163-claim-no-beta-gate"
 
 # Step 6: Go back using the back arrow (adjusted for Dynamic Island)
+# Extra wait to let the view hierarchy settle (iOS 26 XCTest flakiness)
+- waitForAnimationToEnd
+
 - tapOn:
     point: "10%,10%"
 
