@@ -32,8 +32,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Feature Lifecycle:**
 - `specs/ideas/` - DRAFT idea specs from `/explore`
 - `specs/features/[name]/` - Feature specs from `/groom` (spec.md, questions.md, status.md)
-- `testing/manual/` - Manual test scripts from `/execute`
-- `testing/sql/` - Verification and reset SQL from `/execute`
+- `testing/[version]/[ticket]/` - Testing artifacts from `/execute`, organized by build version
+
+**Testing Artifacts** (organized by build → ticket):
+- `testing/v1.0.15/` - TRO-148-149, TRO-152, TRO-153, TRO-154, creator-marketplace-name-fix, ios26-navbar-fix
+- `testing/v1.0.16/` - content-submission-flow-fix, payment-duplication-fix, rate-creator-timing-fix
+- `testing/v1.0.17/` - TRO-160-161-163-169, TRO-162, TRO-168, TRO-170
+
+Each ticket directory contains: `INDEX.md`, `manual-test.md`, `verify.sql`, `reset.sql` (where applicable), and `e2e/` flows.
 
 ---
 
@@ -73,14 +79,17 @@ npm run typecheck      # Run TypeScript type checking (no emitting)
 npm run db:migrate     # Push Supabase migrations to remote
 ```
 
-### Production SQL Execution
+### SQL Execution (Multi-Environment)
 ```bash
-node scripts/run-prod-sql.js <sql-file-path>   # Run SQL via Management API
-node scripts/run-prod-sql.js data/test-data/prod/10-setup-robust-test-scenario.sql
+node scripts/run-sql.js --dev <sql-file>       # Run SQL against development
+node scripts/run-sql.js --prod <sql-file>      # Run SQL against production
+node scripts/run-sql.js --staging <sql-file>   # Run SQL against staging
+node scripts/run-sql.js --ref <ref> <sql-file> # Run SQL against custom project ref
 ```
 - Uses Supabase Management API with keychain token from `npx supabase login`
 - Runs as postgres owner (bypasses RLS)
-- Known limitation: SELECT results and RAISE NOTICE output may not display
+- Displays SELECT query results in the output
+- Legacy: `scripts/run-prod-sql.js` (production-only, superseded by `run-sql.js --prod`)
 
 ### E2E Test Data
 ```bash
@@ -93,8 +102,8 @@ npm run test:data:reset   # Reset test data
 ```bash
 EAS_BUILD_PROFILE=production npm start   # Start Expo against production Supabase
 maestro test e2e/flows/production/        # Run all production E2E tests
-node scripts/run-prod-sql.js data/test-data/prod/10-setup-robust-test-scenario.sql  # Seed production test data
-node scripts/run-prod-sql.js data/test-data/prod/11-reset-robust-test-data.sql      # Reset production test data
+node scripts/run-sql.js --prod data/test-data/prod/10-setup-robust-test-scenario.sql  # Seed production test data
+node scripts/run-sql.js --prod data/test-data/prod/11-reset-robust-test-data.sql      # Reset production test data
 ```
 
 ## Architecture
@@ -201,7 +210,8 @@ Core tables (see migrations in `supabase/migrations/`):
 - **Production E2E tests**: Flows in `e2e/flows/production/` run against production Supabase. Start Expo with `EAS_BUILD_PROFILE=production npm start`.
 - **Toast handling**: Always call `runFlow: ../../helpers/dismiss-toast.yaml` before tab bar interactions in Maestro tests. The iOS 26 simulator shows a persistent location error toast that overlaps the tab bar.
 - **Selector strategy**: Prefer `testID` (id:) selectors. When using `visible:` or `assertVisible:`, target standalone Text elements (section headers), not TouchableOpacity items whose accessibilityText concatenates child labels.
-- **Test data setup pattern**: Create auth users via Admin API, then create `public.users` and all other application data via SQL using `scripts/run-prod-sql.js`.
+- **Testing artifacts**: Organized under `testing/[version]/[ticket]/` with manual-test.md, verify.sql, reset.sql, and e2e/ flows per feature. Each directory has an INDEX.md with run instructions.
+- **Test data setup pattern**: Create auth users via Admin API, then create `public.users` and all other application data via SQL using `scripts/run-sql.js --prod`.
 
 ### Real-time Subscriptions
 Pattern for real-time features:
@@ -263,7 +273,7 @@ When reading code or making changes:
 - `lib/supabase.ts` - Supabase client and database types
 - `app.config.js` - App configuration and environment loading
 - `supabase/migrations/` - Database schema and migrations
-- `scripts/run-prod-sql.js` - Production SQL runner via Management API
+- `scripts/run-sql.js` - Multi-environment SQL runner via Management API (--dev, --prod, --staging)
 - `data/test-data/prod/10-setup-robust-test-scenario.sql` - Production test data setup (20 accounts)
 - `data/test-data/prod/11-reset-robust-test-data.sql` - Production test data teardown
 - `e2e/helpers/dismiss-toast.yaml` - Toast dismiss helper for Maestro tests
