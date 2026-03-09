@@ -12,7 +12,7 @@ tags:
 # Account: prod-consumer1@bypass.com (consumer)
 
 # Step 1: Login as consumer user
-- runFlow: ../../helpers/login-bypass.yaml
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
 
 - waitForAnimationToEnd
 
@@ -24,7 +24,7 @@ tags:
 - waitForAnimationToEnd
 
 # Step 2: Navigate to Explore tab (~30% horizontal, 95% vertical)
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 # Dismiss error overlay again if toast tap triggered it
 - tapOn:
@@ -50,7 +50,7 @@ tags:
 - takeScreenshot: "tro168-explore-consumer-has-communities"
 
 # Step 4: Navigate to Add tab (~50% horizontal, 95% vertical)
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 - tapOn:
     text: "Dismiss"

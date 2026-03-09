@@ -1,19 +1,21 @@
 # v1.0.17 Stakeholder Test Guide
 
 > Build: v1.0.17.b1 (TestFlight)
-> Date: 2026-02-23
+> Date: 2026-03-04 (updated)
 > Features: Restaurant Onboarding UX Fixes, Claim Approval Refresh, Hide Communities for Business, Multi-Restaurant Claims
 
 ---
 
 ## Test Accounts
 
-| Account | Email | OTP | Type | Use For |
-|---------|-------|-----|------|---------|
-| Consumer 1 | `prod-consumer1@bypass.com` | `000000` | Consumer | Claim flow, creator onboarding, community visibility |
-| Consumer 2 | `prod-consumer2@bypass.com` | `000000` | Consumer | Account upgrade testing |
-| Business 1 | `prod-business1@bypass.com` | `000000` | Business | Business Tools, hidden communities, dashboard |
-| Business 2 | `prod-business2@bypass.com` | `000000` | Business | Dashboard, multi-restaurant claims |
+| Account | Email | OTP | Type | Restaurant | Use For |
+|---------|-------|-----|------|------------|---------|
+| Consumer 1 | `prod-consumer1@bypass.com` | `000000` | Consumer | — | Claim flow (no beta gate), creator onboarding (no beta gate), community visibility counter-test |
+| Consumer 2 | `prod-consumer2@bypass.com` | `000000` | Consumer | — | Claim approval refresh (TRO-162): submit claim, get approved, verify realtime update |
+| Business 1 | `prod-business1@bypass.com` | `000000` | Business | 1 verified restaurant | Business Tools on More tab, hidden communities (Home/Add/Explore), Dashboard + Claim Location |
+| Business 2 | `prod-business2@bypass.com` | `000000` | Business | 1 verified restaurant | Dashboard access (no beta gate), multi-restaurant claims (TRO-170) |
+
+> **Note**: Consumer accounts have **0 restaurant claims** in the baseline state. For Scenarios 1.4–1.5 (pending claim UI), you must first submit a claim as Consumer 1 using Scenario 1.1.
 
 **Login steps**: Open app > "Already have an account?" > Enter email > Enter OTP `000000`
 
@@ -84,7 +86,6 @@ Feature: Business More Tab Shows Business Tools
     And I should see "Restaurant Settings"
     And I should NOT see "Claim Your Restaurant"
     And I should NOT see "Grow with Troodie"
-    And I should NOT see "Become a Creator"
 ```
 
 ### Scenario 1.4: Consumer with pending claim sees "Claim Status"
@@ -95,7 +96,8 @@ Feature: Pending Claim Shows Status Instead of Restart
   I should see my claim status instead of being prompted to claim again
 
   Background:
-    Given I am logged in as a consumer with a pending restaurant claim
+    Given I am logged in as "prod-consumer1@bypass.com"
+    And I have previously submitted a claim via Scenario 1.1 (currently pending)
 
   Scenario: More tab shows claim status
     When I navigate to the More tab
@@ -107,11 +109,29 @@ Feature: Pending Claim Shows Status Instead of Restart
     Then I should see the claim submitted confirmation screen
 ```
 
+### Scenario 1.5: Consumer with pending claim — "Become a Creator" hidden
+
+```gherkin
+Feature: Creator Flow Hidden During Pending Claim
+  As a consumer with a pending claim
+  I should not see "Become a Creator" to avoid conflicting flows
+
+  Background:
+    Given I am logged in as "prod-consumer1@bypass.com"
+    And I have a pending restaurant claim from Scenario 1.1
+
+  Scenario: Become a Creator is hidden
+    When I navigate to the More tab
+    Then I should NOT see "Become a Creator"
+```
+
 ---
 
 ## Feature 2: Claim Approval Refresh (TRO-162)
 
 **What changed**: When a restaurant claim is approved on the admin side, the app now reflects the updated account type in real time via Supabase realtime subscription — or on the next app foreground event. Previously, owners had to log out and log back in to see their approval reflected.
+
+> **Testing note**: These scenarios require two devices/sessions — one for the user and one for admin approval via Supabase dashboard. Cannot be tested via automated E2E.
 
 ### Scenario 2.1: Real-time approval reflects without logout
 
@@ -122,12 +142,13 @@ Feature: Realtime Claim Approval
   So that the approval experience is seamless
 
   Background:
-    Given I am logged in as a consumer with a pending claim on Device A
-    And an admin is ready to approve the claim on Device B or the admin panel
+    Given I am logged in as "prod-consumer2@bypass.com" on Device A
+    And "prod-consumer2@bypass.com" has a pending restaurant claim
+    And I have Supabase dashboard access on Device B
 
   Scenario: Approval updates app in real time
-    When the admin approves my restaurant claim
-    Then within a few seconds my app should update
+    When I approve the claim via Supabase dashboard (set status = 'verified', account_type = 'business')
+    Then within a few seconds the app on Device A should update
     And the More tab should now show "Business Tools" instead of "Claim Status"
     And I should NOT need to log out and log back in
 ```
@@ -141,7 +162,8 @@ Feature: AppState Foreground Refresh
   So that I don't miss updates even if realtime is delayed
 
   Background:
-    Given I am logged in as a consumer with a pending claim
+    Given I am logged in as "prod-consumer2@bypass.com"
+    And "prod-consumer2@bypass.com" has a pending restaurant claim
 
   Scenario: Background and foreground triggers account refresh
     When I send the app to the background (press Home)
@@ -160,7 +182,7 @@ Feature: Refresh Throttle
   To avoid unnecessary API calls
 
   Background:
-    Given I am logged in as any account
+    Given I am logged in as "prod-consumer1@bypass.com" (or any test account)
 
   Scenario: Quick background/foreground does not trigger refresh
     When I send the app to background and return within 30 seconds
@@ -259,7 +281,7 @@ Feature: Claim Location Quick Action
   So that I can manage multiple restaurants from one account
 
   Background:
-    Given I am logged in as "prod-business1@bypass.com"
+    Given I am logged in as "prod-business2@bypass.com"
 
   Scenario: Dashboard shows Claim Location action
     When I navigate to the More tab
@@ -277,7 +299,7 @@ Feature: Claim Additional Restaurant
   I want to claim a second restaurant location
 
   Background:
-    Given I am logged in as "prod-business1@bypass.com"
+    Given I am logged in as "prod-business2@bypass.com"
     And I am on the Business Dashboard
 
   Scenario: Claim Location opens the claim flow without beta gate
@@ -299,7 +321,8 @@ Feature: Restaurant Switcher
   So that I can manage each restaurant independently
 
   Background:
-    Given I am logged in as a business owner with 2+ verified restaurants
+    Given I am logged in as "prod-business2@bypass.com"
+    And I have 2+ verified restaurant claims (requires admin approval of a second claim)
 
   Scenario: Switcher appears and works
     When I open the Business Dashboard
@@ -319,11 +342,13 @@ Feature: Duplicate Claim Prevention
   I should not be able to claim the same restaurant twice
 
   Background:
-    Given I am logged in as a business owner
-    And I have already claimed "Restaurant A"
+    Given I am logged in as "prod-business2@bypass.com"
+    And I have already claimed my current restaurant
 
   Scenario: Attempting to claim the same restaurant again
-    When I try to submit a claim for "Restaurant A" again
+    When I go to Dashboard > "Claim Location"
+    And I search for and select my already-claimed restaurant
+    And I submit the claim
     Then I should see an error indicating the restaurant is already claimed
     And no duplicate business profile should be created
 ```
@@ -336,10 +361,12 @@ Feature: Claim Limit
   I should not be able to claim more than 10 restaurants
   To prevent abuse of the system
 
+  Background:
+    Given a business owner has 10 existing claims (verified via database)
+
   Scenario: 11th claim is rejected
-    Given I am a business owner with 10 existing claims
-    When I try to submit an 11th claim
-    Then I should see an error "Maximum of 10 restaurant claims per user reached"
+    When the user tries to submit an 11th claim
+    Then the database trigger should reject it with "Maximum of 10 restaurant claims per user reached"
 ```
 
 ### Scenario 4.6: Dashboard accessible without beta gate
@@ -376,16 +403,55 @@ For a fast pass through all four features:
 | 6 | Add tab (+) | `prod-business1@bypass.com` | No "Create a Community" option | |
 | 7 | Explore tab | `prod-consumer1@bypass.com` | "communities" tab IS visible | |
 | 8 | Add tab (+) | `prod-consumer1@bypass.com` | "Create a Community" IS visible | |
-| 9 | More tab > "Business Dashboard" | `prod-business2@bypass.com` | Dashboard loads, no beta gate blocking | |
+| 9 | More tab > "Business Dashboard" | `prod-business2@bypass.com` | Dashboard loads, "Claim Location" in Quick Actions, no beta gate | |
+
+---
+
+## Test Data Summary
+
+### Account → Scenario Mapping
+
+| Account | Email | Scenarios |
+|---------|-------|-----------|
+| Consumer 1 | `prod-consumer1@bypass.com` | 1.1, 1.2, 1.4, 1.5, 2.3, 3.4 |
+| Consumer 2 | `prod-consumer2@bypass.com` | 2.1, 2.2 |
+| Business 1 | `prod-business1@bypass.com` | 1.3, 3.1, 3.2, 3.3 |
+| Business 2 | `prod-business2@bypass.com` | 4.1, 4.2, 4.3, 4.4, 4.6 |
+
+### Baseline Data State
+
+| Account | account_type | Restaurant Claims | Business Profiles |
+|---------|-------------|-------------------|-------------------|
+| Consumer 1 | consumer | 0 | 0 |
+| Consumer 2 | consumer | 0 | 0 |
+| Business 1 | business | 1 (verified) | 1 |
+| Business 2 | business | 1 (verified) | 1 |
+
+---
+
+## Resetting Test Data
+
+If test data gets into a bad state (e.g., consumer got upgraded to business during TRO-162 testing, extra claims created during TRO-170 testing), run the reset script:
+
+```bash
+node scripts/run-sql.js --prod testing/v1.0.17/reset-v1017-test-cases.sql
+```
+
+This resets:
+- Auth passwords back to `000000` for all test accounts
+- Consumer accounts back to `consumer` type (reverts TRO-162 approval testing)
+- Deletes any business_profiles and claims created for consumers during testing
+- Deletes extra claims/profiles for business users (reverts TRO-170 multi-claim testing)
+- Ensures baseline business claims remain `verified`
 
 ---
 
 ## Known Limitations
 
 - **TRO-162 (Realtime refresh)**: Cannot be tested via automated E2E — requires two devices or sessions (one for the user, one for admin approval). Test manually with the Supabase dashboard.
-- **TRO-170 (Dashboard Quick Actions)**: "Claim Location" and "Quick Actions" only appear when the business account has restaurant data loaded. Test accounts `prod-business1` and `prod-business2` may show an empty dashboard state ("Welcome to Dashboard") if they don't have linked restaurant data.
-- **Restaurant Switcher**: Only visible when a business owner has 2+ verified restaurants. Most test accounts have 0-1, so this requires manual setup or admin-side claim approval.
-- **Max 10 claims**: Hard to test end-to-end without creating 10 claims first. Verified via database trigger — the constraint is enforced at the database level.
+- **TRO-170 (Restaurant Switcher)**: Only visible when a business owner has 2+ verified restaurants. Requires admin-side claim approval of a second restaurant to test. Most test accounts start with exactly 1.
+- **TRO-170 (Max 10 claims)**: Hard to test end-to-end without creating 10 claims. Verified via database trigger — the constraint is enforced at the database level.
+- **Scenarios 1.4–1.5 (Pending claim UI)**: Baseline has no consumer claims. You must first submit a claim as Consumer 1 (Scenario 1.1) to create a pending claim, then verify Scenarios 1.4–1.5.
 
 ## Reporting Issues
 

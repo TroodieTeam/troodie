@@ -249,27 +249,46 @@ END $$;
 -- 4. CREATE RESTAURANTS (3 claimed, 5 unclaimed)
 -- ================================================================
 
-INSERT INTO public.restaurants (id, google_place_id, name, address, city, state, zip_code, cuisine_types, price_range, is_test_restaurant, created_at, updated_at)
+-- Claimed restaurants: set owner_id and is_claimed so get_my_restaurants() RPC works
+INSERT INTO public.restaurants (id, google_place_id, name, address, city, state, zip_code, cuisine_types, price_range, is_test_restaurant, is_claimed, owner_id, created_at, updated_at)
 VALUES
-  ('dd111111-1111-4111-d111-111111111111'::uuid, 'ChIJProdBusiness1Rest', 'Bella Vista Italian Kitchen', '789 Italian Way', 'Charlotte', 'NC', '28204', ARRAY['Italian', 'Fine Dining'], '$$$', true, NOW(), NOW()),
-  ('dd222222-2222-4222-d222-222222222222'::uuid, 'ChIJProdBusiness2Rest', 'The Rustic Table', '123 Main Street', 'Charlotte', 'NC', '28202', ARRAY['American', 'Farm-to-Table'], '$$', true, NOW(), NOW()),
-  ('dd333333-3333-4333-d333-333333333333'::uuid, 'ChIJProdBusiness3Rest', 'Sakura Sushi Bar', '456 Foodie Avenue', 'Charlotte', 'NC', '28203', ARRAY['Japanese', 'Sushi'], '$$$', true, NOW(), NOW()),
-  ('dd444444-4444-4444-d444-444444444444'::uuid, 'ChIJProdUnclaimed1', 'Unclaimed Restaurant 1', '101 Test Street', 'Charlotte', 'NC', '28205', ARRAY['American', 'Casual'], '$$', true, NOW(), NOW()),
-  ('dd555555-5555-4555-d555-555555555555'::uuid, 'ChIJProdUnclaimed2', 'Unclaimed Restaurant 2', '102 Test Street', 'Charlotte', 'NC', '28206', ARRAY['Mexican', 'Casual'], '$$', true, NOW(), NOW()),
-  ('dd666666-6666-4666-d666-666666666666'::uuid, 'ChIJProdUnclaimed3', 'Unclaimed Restaurant 3', '103 Test Street', 'Charlotte', 'NC', '28207', ARRAY['Thai', 'Asian'], '$$', true, NOW(), NOW()),
-  ('dd777777-7777-4777-d777-777777777777'::uuid, 'ChIJProdUnclaimed4', 'Unclaimed Restaurant 4', '104 Test Street', 'Charlotte', 'NC', '28208', ARRAY['Indian', 'Curry'], '$$$', true, NOW(), NOW()),
-  ('dd888888-8888-4888-d888-888888888888'::uuid, 'ChIJProdUnclaimed5', 'Unclaimed Restaurant 5', '105 Test Street', 'Charlotte', 'NC', '28209', ARRAY['French', 'Fine Dining'], '$$$$', true, NOW(), NOW())
+  ('dd111111-1111-4111-d111-111111111111'::uuid, 'ChIJProdBusiness1Rest', 'Bella Vista Italian Kitchen', '789 Italian Way', 'Charlotte', 'NC', '28204', ARRAY['Italian', 'Fine Dining'], '$$$', true, true, 'cc111111-1111-4111-c111-111111111111'::uuid, NOW(), NOW()),
+  ('dd222222-2222-4222-d222-222222222222'::uuid, 'ChIJProdBusiness2Rest', 'The Rustic Table', '123 Main Street', 'Charlotte', 'NC', '28202', ARRAY['American', 'Farm-to-Table'], '$$', true, true, 'cc222222-2222-4222-c222-222222222222'::uuid, NOW(), NOW()),
+  ('dd333333-3333-4333-d333-333333333333'::uuid, 'ChIJProdBusiness3Rest', 'Sakura Sushi Bar', '456 Foodie Avenue', 'Charlotte', 'NC', '28203', ARRAY['Japanese', 'Sushi'], '$$$', true, true, 'cc333333-3333-4333-c333-333333333333'::uuid, NOW(), NOW())
+ON CONFLICT (id) DO UPDATE SET
+  owner_id = EXCLUDED.owner_id,
+  is_claimed = EXCLUDED.is_claimed,
+  updated_at = NOW();
+
+-- Unclaimed restaurants
+INSERT INTO public.restaurants (id, google_place_id, name, address, city, state, zip_code, cuisine_types, price_range, is_test_restaurant, is_claimed, created_at, updated_at)
+VALUES
+  ('dd444444-4444-4444-d444-444444444444'::uuid, 'ChIJProdUnclaimed1', 'Unclaimed Restaurant 1', '101 Test Street', 'Charlotte', 'NC', '28205', ARRAY['American', 'Casual'], '$$', true, false, NOW(), NOW()),
+  ('dd555555-5555-4555-d555-555555555555'::uuid, 'ChIJProdUnclaimed2', 'Unclaimed Restaurant 2', '102 Test Street', 'Charlotte', 'NC', '28206', ARRAY['Mexican', 'Casual'], '$$', true, false, NOW(), NOW()),
+  ('dd666666-6666-4666-d666-666666666666'::uuid, 'ChIJProdUnclaimed3', 'Unclaimed Restaurant 3', '103 Test Street', 'Charlotte', 'NC', '28207', ARRAY['Thai', 'Asian'], '$$', true, false, NOW(), NOW()),
+  ('dd777777-7777-4777-d777-777777777777'::uuid, 'ChIJProdUnclaimed4', 'Unclaimed Restaurant 4', '104 Test Street', 'Charlotte', 'NC', '28208', ARRAY['Indian', 'Curry'], '$$$', true, false, NOW(), NOW()),
+  ('dd888888-8888-4888-d888-888888888888'::uuid, 'ChIJProdUnclaimed5', 'Unclaimed Restaurant 5', '105 Test Street', 'Charlotte', 'NC', '28209', ARRAY['French', 'Fine Dining'], '$$$$', true, false, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
--- Business profiles and claims
+-- Business profiles
 INSERT INTO public.business_profiles (id, user_id, restaurant_id, created_at, updated_at)
 VALUES
   ('ff111111-1111-4111-f111-111111111111'::uuid, 'cc111111-1111-4111-c111-111111111111'::uuid, 'dd111111-1111-4111-d111-111111111111'::uuid, NOW(), NOW()),
   ('ff222222-2222-4222-f222-222222222222'::uuid, 'cc222222-2222-4222-c222-222222222222'::uuid, 'dd222222-2222-4222-d222-222222222222'::uuid, NOW(), NOW()),
   ('ff333333-3333-4333-f333-333333333333'::uuid, 'cc333333-3333-4333-c333-333333333333'::uuid, 'dd333333-3333-4333-d333-333333333333'::uuid, NOW(), NOW())
-ON CONFLICT (user_id) DO UPDATE SET
-  restaurant_id = EXCLUDED.restaurant_id,
-  updated_at = NOW();
+ON CONFLICT (user_id, restaurant_id) DO NOTHING;
+
+-- Restaurant claims (disable review_logs trigger to avoid actor_id constraint)
+ALTER TABLE restaurant_claims DISABLE TRIGGER USER;
+
+INSERT INTO public.restaurant_claims (id, user_id, restaurant_id, email, status, verified_at, created_at, updated_at)
+VALUES
+  (gen_random_uuid(), 'cc111111-1111-4111-c111-111111111111'::uuid, 'dd111111-1111-4111-d111-111111111111'::uuid, 'prod-business1@bypass.com', 'verified', NOW(), NOW(), NOW()),
+  (gen_random_uuid(), 'cc222222-2222-4222-c222-222222222222'::uuid, 'dd222222-2222-4222-d222-222222222222'::uuid, 'prod-business2@bypass.com', 'verified', NOW(), NOW(), NOW()),
+  (gen_random_uuid(), 'cc333333-3333-4333-c333-333333333333'::uuid, 'dd333333-3333-4333-d333-333333333333'::uuid, 'prod-business3@bypass.com', 'verified', NOW(), NOW(), NOW())
+ON CONFLICT DO NOTHING;
+
+ALTER TABLE restaurant_claims ENABLE TRIGGER USER;
 
 -- ================================================================
 -- 5. CREATE POSTS WITH ENGAGEMENT

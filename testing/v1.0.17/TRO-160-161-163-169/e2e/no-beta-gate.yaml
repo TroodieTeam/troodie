@@ -14,12 +14,12 @@ tags:
 # Account: prod-consumer1@bypass.com (consumer)
 
 # Step 1: Login as consumer
-- runFlow: ../../helpers/login-bypass.yaml
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
 
 - waitForAnimationToEnd
 
 # Step 2: Navigate to More tab (~90% horizontal, 95% vertical)
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 - tapOn:
     point: "90%,95%"
@@ -71,7 +71,7 @@ tags:
 - waitForAnimationToEnd
 
 # Step 7: Navigate to More tab again
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 - tapOn:
     point: "90%,95%"

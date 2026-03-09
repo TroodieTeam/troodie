@@ -14,12 +14,12 @@ tags:
 # Fallback: If dashboard shows empty state, verifies empty state works.
 
 # Step 1: Login as business user
-- runFlow: ../../helpers/login-bypass.yaml
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
 
 - waitForAnimationToEnd
 
 # Step 2: Navigate to More tab (~90% horizontal, 95% vertical)
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 - tapOn:
     point: "90%,95%"

@@ -12,7 +12,7 @@ tags:
 # Account: prod-business1@bypass.com (business)
 
 # Step 1: Login as business user
-- runFlow: ../../helpers/login-bypass.yaml
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
 
 - waitForAnimationToEnd
 
@@ -27,7 +27,7 @@ tags:
 
 # Step 3: Navigate to Explore tab first (easier, less toast interference)
 # Dismiss toast, then tap Explore (~30% horizontal, 95% vertical - above toast)
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 - tapOn:
     text: "Explore"
@@ -53,7 +53,7 @@ tags:
 
 # Step 5: Navigate to Add tab
 # Tap the orange floating + button in the center of the tab bar
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 - tapOn:
     point: "50%,95%"

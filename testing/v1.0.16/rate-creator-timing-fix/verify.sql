@@ -44,7 +44,7 @@ SELECT
   cp.display_name AS creator_name,
   cd.id AS deliverable_id,
   cd.status,
-  cd.platform,
+  cd.social_platform,
   cd.submitted_at
 FROM campaign_deliverables cd
 JOIN campaign_applications ca ON ca.id = cd.campaign_application_id

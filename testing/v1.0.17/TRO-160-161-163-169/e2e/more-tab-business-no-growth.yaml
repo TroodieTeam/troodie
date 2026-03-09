@@ -14,12 +14,12 @@ tags:
 # Account: prod-business1@bypass.com (business)
 
 # Step 1: Login as business user
-- runFlow: ../../helpers/login-bypass.yaml
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
 
 - waitForAnimationToEnd
 
 # Step 2: Navigate to More tab (rightmost, ~90% horizontal)
-- runFlow: ../../helpers/dismiss-toast.yaml
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
 
 - tapOn:
     point: "90%,97%"
