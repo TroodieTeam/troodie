@@ -151,9 +151,19 @@ export default function BusinessDashboard() {
     try {
       if (!user?.id) return;
 
+      // Reset subscription info on each load so stale data from a previous restaurant doesn't linger
+      setSubscriptionInfo(null);
+
+      // If no current restaurant selected, nothing to load
+      if (!currentRestaurantId) {
+        setDashboardData(null);
+        setLoading(false);
+        return;
+      }
+
       // Get restaurant data for the currently selected restaurant
       // TRO-170: Filter by restaurant_id to support multi-restaurant owners
-      const { data: businessProfile, error: profileError } = await supabase
+      const { data: businessProfile } = await supabase
         .from('business_profiles')
         .select(`
           restaurant_id,
@@ -164,16 +174,31 @@ export default function BusinessDashboard() {
           )
         `)
         .eq('user_id', user.id)
-        .eq('restaurant_id', currentRestaurantId || '')
+        .eq('restaurant_id', currentRestaurantId)
         .maybeSingle();
 
-      if (profileError || !businessProfile?.restaurants) {
-        setDashboardData(null);
-        return;
-      }
+      // Determine restaurant info — owners have a business_profiles row,
+      // team members / admins access the restaurant via restaurant_team_members
+      // and their access is already validated by the RestaurantContext.
+      let restaurantInfo: { id: string; name: string; cover_photo_url: string | null } | null = null;
 
-      // If no current restaurant, we can't load dashboard data
-      if (!currentRestaurantId) {
+      if (businessProfile?.restaurants) {
+        restaurantInfo = businessProfile.restaurants as { id: string; name: string; cover_photo_url: string | null };
+      } else if (currentRestaurant) {
+        // Team member or admin — fetch restaurant info directly since access is validated by context
+        const { data: restaurant } = await supabase
+          .from('restaurants')
+          .select('id, name, cover_photo_url')
+          .eq('id', currentRestaurantId)
+          .single();
+
+        if (!restaurant) {
+          setDashboardData(null);
+          setLoading(false);
+          return;
+        }
+        restaurantInfo = restaurant;
+      } else {
         setDashboardData(null);
         setLoading(false);
         return;
@@ -236,9 +261,9 @@ export default function BusinessDashboard() {
 
       setDashboardData({
         restaurant: {
-          id: currentRestaurant?.restaurant_id || businessProfile?.restaurants.id,
-          name: currentRestaurant?.restaurant_name || businessProfile?.restaurants.name,
-          image_url: businessProfile?.restaurants.cover_photo_url || 'https://via.placeholder.com/150', // Fallback to profile fetch
+          id: currentRestaurant?.restaurant_id || restaurantInfo.id,
+          name: currentRestaurant?.restaurant_name || restaurantInfo.name,
+          image_url: restaurantInfo.cover_photo_url || 'https://via.placeholder.com/150',
           is_verified: true,
           claimed_at: new Date().toISOString(),
         },
