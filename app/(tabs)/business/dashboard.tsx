@@ -3,6 +3,7 @@ import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant } from '@/contexts/RestaurantContext';
 import { supabase } from '@/lib/supabase';
+import { restaurantClaimService } from '@/services/restaurantClaimService';
 import { getSubscriptionStatus, SubscriptionInfo } from '@/services/subscriptionService';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
@@ -10,7 +11,9 @@ import {
   BarChart,
   Bell,
   CheckCircle,
+  Clock,
   CreditCard,
+  MapPin,
   Plus,
   Search,
   Settings,
@@ -77,6 +80,8 @@ export default function BusinessDashboard() {
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // TRO-170: Pending claims for multi-restaurant support
+  const [pendingClaims, setPendingClaims] = useState<{ id: string; restaurant_name: string; submitted_at: string }[]>([]);
 
   // Multi-restaurant support using Context
   // This replaces local state with global context state
@@ -91,8 +96,7 @@ export default function BusinessDashboard() {
     }
   }, [currentRestaurantId, contextLoading]); // Reload when restaurant changes
 
-  // Refresh subscription status when screen comes into focus
-  // This ensures banner shows correctly after creating first campaign and starting trial
+  // Refresh subscription status and pending claims when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (!contextLoading && currentRestaurantId && user?.id) {
@@ -115,6 +119,24 @@ export default function BusinessDashboard() {
           }
         };
         refreshSubscriptionStatus();
+
+        // TRO-170: Refresh pending claims for multi-restaurant
+        const refreshPendingClaims = async () => {
+          try {
+            const { claims } = await restaurantClaimService.getMyRestaurantClaims();
+            const pending = claims
+              .filter((c: any) => c.status === 'pending')
+              .map((c: any) => ({
+                id: c.id,
+                restaurant_name: c.restaurant?.name || 'Unknown Restaurant',
+                submitted_at: c.submitted_at,
+              }));
+            setPendingClaims(pending);
+          } catch (error) {
+            console.error('[Dashboard] Error fetching pending claims:', error);
+          }
+        };
+        refreshPendingClaims();
       }
     }, [currentRestaurantId, contextLoading, user?.id])
   );
@@ -129,7 +151,8 @@ export default function BusinessDashboard() {
     try {
       if (!user?.id) return;
 
-      // Get restaurant data
+      // Get restaurant data for the currently selected restaurant
+      // TRO-170: Filter by restaurant_id to support multi-restaurant owners
       const { data: businessProfile, error: profileError } = await supabase
         .from('business_profiles')
         .select(`
@@ -141,7 +164,8 @@ export default function BusinessDashboard() {
           )
         `)
         .eq('user_id', user.id)
-        .single();
+        .eq('restaurant_id', currentRestaurantId || '')
+        .maybeSingle();
 
       if (profileError || !businessProfile?.restaurants) {
         setDashboardData(null);
@@ -499,8 +523,60 @@ export default function BusinessDashboard() {
               color="#10B981"
               onPress={() => router.push('/business/analytics')}
             />
+            {/* TRO-170: Claim Another Location - only show for verified business users */}
+            <QuickActionCard
+              icon={MapPin}
+              title="Claim Location"
+              subtitle="Add restaurant"
+              color="#8B5CF6"
+              onPress={() => router.push('/business/claim')}
+            />
           </ScrollView>
         </View>
+
+        {/* TRO-170: Pending Claims Cards */}
+        {pendingClaims.length > 0 && (
+          <View style={{ paddingHorizontal: DS.spacing.lg, marginBottom: DS.spacing.xl }}>
+            <Text style={{ ...DS.typography.h3, color: DS.colors.textDark, marginBottom: DS.spacing.md }}>
+              Pending Claims
+            </Text>
+            {pendingClaims.map(claim => (
+              <View
+                key={claim.id}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#FFFBEB',
+                  padding: DS.spacing.md,
+                  borderRadius: DS.borderRadius.lg,
+                  marginBottom: DS.spacing.sm,
+                  borderWidth: 1,
+                  borderColor: '#FDE68A',
+                }}
+              >
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: DS.borderRadius.md,
+                  backgroundColor: '#FEF3C7',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: DS.spacing.md,
+                }}>
+                  <Clock size={20} color="#F59E0B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ ...DS.typography.body, fontWeight: '600', color: DS.colors.textDark }}>
+                    {claim.restaurant_name}
+                  </Text>
+                  <Text style={{ ...DS.typography.caption, color: DS.colors.textGray }}>
+                    Claim pending review
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Active Campaigns */}
         {dashboardData.campaigns.length > 0 && (

@@ -1,0 +1,45 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-business1@bypass.com
+tags:
+  - regression
+  - tro-161
+  - v1.0.17
+---
+# TRO-161: Verify business users do NOT see "Claim Your Restaurant" on More tab
+# After claiming a restaurant and being approved, business users should see
+# "Business Tools" section and NOT see "Claim Your Restaurant".
+# Note: "Become a Creator" CAN still appear for business users who are not creators.
+#
+# Account: prod-business1@bypass.com (business)
+
+# Step 1: Login as business user
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# Step 2: Navigate to More tab (rightmost, ~90% horizontal)
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
+
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+
+# Step 3: Verify Business Tools section is visible (standalone section header text)
+- extendedWaitUntil:
+    visible: "Business Tools"
+    timeout: 10000
+
+# Verify dashboard option exists (regex for concatenated accessibility label)
+- assertVisible:
+    text: "Business Dashboard.*"
+
+- takeScreenshot: "tro161-more-tab-business-tools"
+
+# Step 4: Verify "Claim Your Restaurant" is NOT visible for business users
+# Business users have already claimed, so this option should be hidden
+- assertNotVisible:
+    text: "Claim Your Restaurant.*"
+
+- takeScreenshot: "tro161-more-tab-no-claim-restaurant"

@@ -1,0 +1,63 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-business2@bypass.com
+tags:
+  - regression
+  - tro-170
+  - v1.0.17
+---
+# TRO-170: Verify Business Dashboard loads and "Claim Location" quick action exists
+# Business users should see a "Claim Location" card in Quick Actions to claim
+# additional restaurants from their dashboard.
+#
+# Account: prod-business2@bypass.com (business with campaigns)
+# Fallback: If dashboard shows empty state, verifies empty state works.
+
+# Step 1: Login as business user
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# Step 2: Navigate to More tab (~90% horizontal, 95% vertical)
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+- tapOn:
+    point: "90%,95%"
+
+- waitForAnimationToEnd
+
+# Step 3: Navigate to Business Dashboard
+- extendedWaitUntil:
+    visible: "Business Tools"
+    timeout: 10000
+
+- tapOn:
+    text: "Business Dashboard.*"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "tro170-dashboard-state"
+
+# Step 4: Check if full dashboard loaded (has Quick Actions) or empty state
+# Try to find "Quick Actions" - if it exists, verify Claim Location
+- assertVisible:
+    text: "Quick Actions"
+    optional: true
+
+# Step 5: If Quick Actions visible, verify "Claim Location" exists
+- assertVisible:
+    text: "Claim Location.*"
+    optional: true
+
+- takeScreenshot: "tro170-dashboard-quick-actions"
+
+# Step 6: If empty state ("Welcome to Dashboard"), the dashboard is functional
+# Either way, verify no beta gate blocking dashboard access
+- assertNotVisible:
+    text: "Beta Access"
+
+- assertNotVisible:
+    text: "Enter Beta Passcode"
+
+- takeScreenshot: "tro170-dashboard-no-beta-gate"

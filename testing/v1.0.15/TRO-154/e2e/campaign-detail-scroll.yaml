@@ -1,0 +1,120 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-business1@bypass.com
+tags:
+  - regression
+  - tro-154
+---
+# TRO-154: Campaign Detail Scroll Fix
+# Verifies that applicant cards and overview content are fully visible
+# and not clipped behind the tab bar.
+#
+# Prerequisites: business1 account must have at least one campaign with applications.
+# Account: test-business1@bypass.com (business)
+#
+# NOTE: The simulator shows a persistent "Error getting current location" toast
+# that interferes with Maestro's accessibility tree. We use point-based taps
+# for navigation where text selectors are unreliable.
+
+# Step 1: Login as business user
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Step 2: Navigate to More tab (rightmost tab at bottom ~90%,97%)
+# Dismiss toast first by tapping its X button
+- tapOn:
+    point: "93%,95%"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Tap More tab
+- tapOn:
+    point: "90%,97%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Dismiss toast again if it reappeared
+- tapOn:
+    point: "93%,95%"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Step 3: Verify we're on the More screen and tap Manage Campaigns
+- extendedWaitUntil:
+    visible: "BUSINESS TOOLS"
+    timeout: 10000
+
+# Manage Campaigns is the 2nd item under BUSINESS TOOLS (~50%,40%)
+- tapOn:
+    point: "50%,40%"
+
+- waitForAnimationToEnd
+
+# Step 4: We should now be on the Campaigns list
+- takeScreenshot: "tro154-campaigns-list"
+
+# Wait for campaigns to load
+- waitForAnimationToEnd
+
+# Tap on the first campaign card - try text first, then point fallback
+- tapOn:
+    text: "Test Campaign"
+    optional: true
+
+# Point fallback - campaign card is in upper half of list (~35% from top)
+- tapOn:
+    point: "50%,35%"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Wait for campaign detail to load
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 10000
+
+- takeScreenshot: "tro154-campaign-detail-loaded"
+
+# Step 5: Test Overview tab scroll
+# Scroll down to see content below fold
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "tro154-overview-scrolled"
+
+# Step 6: Switch to Applications tab
+- tapOn:
+    id: "campaign-tab-applications"
+    optional: true
+
+- tapOn:
+    text: "Applications"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "tro154-applications-tab"
+
+# Step 7: Scroll down to verify bottom cards are visible
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "tro154-applications-bottom-visible"
+
+# Step 8: Final scroll verification
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "tro154-scroll-complete"

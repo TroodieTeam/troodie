@@ -1,0 +1,73 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-business1@bypass.com
+tags:
+  - regression
+  - tro-168
+  - v1.0.17
+---
+# TRO-168: Verify communities are hidden for business accounts
+# Business users should NOT see community sections on Home, Add, or Explore screens.
+#
+# Account: prod-business1@bypass.com (business)
+
+# Step 1: Login as business user
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# Step 2: Verify Home screen does not show "Join Community" network suggestion
+- assertNotVisible:
+    text: "Join Community.*"
+
+- assertNotVisible:
+    text: "Find Communities.*"
+
+- takeScreenshot: "tro168-home-no-communities"
+
+# Step 3: Navigate to Explore tab first (easier, less toast interference)
+# Dismiss toast, then tap Explore (~30% horizontal, 95% vertical - above toast)
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+- tapOn:
+    text: "Explore"
+    optional: true
+
+- tapOn:
+    point: "30%,95%"
+    optional: true
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Wait for Explore screen to load
+- extendedWaitUntil:
+    visible: "restaurants"
+    timeout: 10000
+
+# Step 4: Verify Explore screen does not show Communities tab
+- assertNotVisible:
+    text: "communities"
+
+- takeScreenshot: "tro168-explore-no-communities-tab"
+
+# Step 5: Navigate to Add tab
+# Tap the orange floating + button in the center of the tab bar
+- runFlow: ../../helpers/dismiss-toast.yaml
+
+- tapOn:
+    point: "50%,95%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Wait for Add screen to load
+- extendedWaitUntil:
+    visible: "Create Content"
+    timeout: 10000
+
+# Step 6: Verify Add screen does not show community option
+- assertNotVisible:
+    text: "Create a Community.*"
+
+- takeScreenshot: "tro168-add-no-communities"

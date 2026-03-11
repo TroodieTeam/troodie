@@ -1,0 +1,75 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-consumer1@bypass.com
+tags:
+  - regression
+  - tro-168
+  - v1.0.17
+---
+# TRO-168 (counter-test): Verify consumers STILL see communities
+# This ensures the hiding is only for business accounts, not all accounts.
+#
+# Account: prod-consumer1@bypass.com (consumer)
+
+# Step 1: Login as consumer user
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# Dismiss any Expo error overlays (location error on iOS 26 simulator)
+- tapOn:
+    text: "Dismiss"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Step 2: Navigate to Explore tab (~30% horizontal, 95% vertical)
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
+
+# Dismiss error overlay again if toast tap triggered it
+- tapOn:
+    text: "Dismiss"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    point: "30%,95%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Step 3: Verify Explore screen DOES show Communities tab for consumers
+- extendedWaitUntil:
+    visible: "restaurants"
+    timeout: 10000
+
+- assertVisible:
+    text: "communities"
+
+- takeScreenshot: "tro168-explore-consumer-has-communities"
+
+# Step 4: Navigate to Add tab (~50% horizontal, 95% vertical)
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
+
+- tapOn:
+    text: "Dismiss"
+    optional: true
+
+- waitForAnimationToEnd
+
+- tapOn:
+    point: "50%,95%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Create Content"
+    timeout: 10000
+
+# Step 5: Verify Add screen DOES show "Create Community" for consumers
+- assertVisible:
+    text: "Create a Community.*"
+
+- takeScreenshot: "tro168-add-consumer-has-communities"

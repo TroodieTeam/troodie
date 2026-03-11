@@ -1,8 +1,7 @@
-import { BetaAccessGate } from '@/components/BetaAccessGate';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { restaurantClaimService } from '@/services/restaurantClaimService';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
   Building,
@@ -10,7 +9,7 @@ import {
   Mail,
   Phone,
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,8 +35,7 @@ interface Restaurant {
 export default function ClaimRestaurantSimple() {
   const router = useRouter();
   const { user } = useAuth();
-  const [showBetaGate, setShowBetaGate] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
+  const { status } = useLocalSearchParams<{ status?: string }>();
   const [currentStep, setCurrentStep] = useState<ClaimStep>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,14 +47,12 @@ export default function ClaimRestaurantSimple() {
     phone: '',
   });
 
-  const handleBetaAccessGranted = () => {
-    setHasAccess(true);
-    setShowBetaGate(false);
-  };
-
-  const handleBetaAccessClose = () => {
-    router.push('/(tabs)/more');
-  };
+  // If navigated with status=pending, skip directly to pending step
+  useEffect(() => {
+    if (status === 'pending') {
+      setCurrentStep('pending');
+    }
+  }, [status]);
 
   const handleBack = () => {
     if (currentStep === 'search') {
@@ -259,19 +255,6 @@ export default function ClaimRestaurantSimple() {
     };
     return stepNumbers[currentStep];
   };
-
-  if (!hasAccess) {
-    return (
-      <BetaAccessGate
-        visible={showBetaGate}
-        onClose={handleBetaAccessClose}
-        onSuccess={handleBetaAccessGranted}
-        title="Claim Your Restaurant"
-        description="Take ownership of your restaurant and access powerful business tools"
-        message="This feature is currently in beta. Please reach out to team@troodieapp.com to be onboarded."
-      />
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>

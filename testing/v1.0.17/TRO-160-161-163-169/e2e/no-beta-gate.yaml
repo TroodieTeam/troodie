@@ -1,0 +1,100 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: prod-consumer1@bypass.com
+tags:
+  - regression
+  - tro-163
+  - tro-169
+  - v1.0.17
+---
+# TRO-163/TRO-169: Verify Beta Access Gate removed from claim and creator flows
+# The claim flow should start directly at the search step (no passcode prompt).
+# The creator onboarding should start directly (no passcode prompt).
+#
+# Account: prod-consumer1@bypass.com (consumer)
+
+# Step 1: Login as consumer
+- runFlow: ../../../../e2e/helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# Step 2: Navigate to More tab (~90% horizontal, 95% vertical)
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
+
+- tapOn:
+    point: "90%,95%"
+
+- waitForAnimationToEnd
+
+# Step 3: Verify "Grow with Troodie" section has expected items for consumer
+- extendedWaitUntil:
+    visible: "Grow with Troodie"
+    timeout: 10000
+
+# Consumer should see "Claim Your Restaurant" option (regex for concatenated text)
+- assertVisible:
+    text: "Claim Your Restaurant.*"
+
+- takeScreenshot: "tro163-more-tab-consumer-growth-items"
+
+# Step 4: Tap "Claim Your Restaurant" to enter claim flow
+- tapOn:
+    text: "Claim Your Restaurant.*"
+
+- waitForAnimationToEnd
+
+# Step 5: Verify we are on the search step directly (no beta gate)
+- extendedWaitUntil:
+    visible: "Find Your Restaurant"
+    timeout: 10000
+
+# Verify no beta gate elements are shown
+- assertNotVisible:
+    text: "Beta Access"
+
+- assertNotVisible:
+    text: "Enter Beta Passcode"
+
+- assertNotVisible:
+    text: "TROODIE2025"
+
+- takeScreenshot: "tro163-claim-no-beta-gate"
+
+# Step 6: Go back using the back arrow (adjusted for Dynamic Island)
+# Extra wait to let the view hierarchy settle (iOS 26 XCTest flakiness)
+- waitForAnimationToEnd
+
+- tapOn:
+    point: "10%,10%"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Step 7: Navigate to More tab again
+- runFlow: ../../../../e2e/helpers/dismiss-toast.yaml
+
+- tapOn:
+    point: "90%,95%"
+
+- waitForAnimationToEnd
+
+# Step 8: Scroll down and tap "Become a Creator"
+- scrollUntilVisible:
+    element:
+      text: "Become a Creator.*"
+    direction: DOWN
+    timeout: 10000
+
+- tapOn:
+    text: "Become a Creator.*"
+
+- waitForAnimationToEnd
+
+# Step 9: Verify creator onboarding starts directly (no beta gate)
+- assertNotVisible:
+    text: "Beta Access"
+
+- assertNotVisible:
+    text: "Enter Beta Passcode"
+
+- takeScreenshot: "tro163-creator-no-beta-gate"

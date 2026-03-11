@@ -174,12 +174,14 @@ class RestaurantClaimService {
         error: userAfterError,
       });
 
-      // Check if business profile exists, create if not (TRO-136: needed for payment setup during onboarding)
+      // Check if business profile exists for THIS restaurant, create if not (TRO-136: needed for payment setup during onboarding)
+      // TRO-170: Use restaurant_id filter + maybeSingle() to support multi-restaurant owners
       const { data: existingProfile, error: profileCheckError } = await supabase
         .from('business_profiles')
         .select('id, restaurant_id, verification_status')
         .eq('user_id', user.id)
-        .single();
+        .eq('restaurant_id', request.restaurant_id)
+        .maybeSingle();
 
       console.log('[RestaurantClaimService] Business profile check:', {
         existingProfile,
@@ -197,7 +199,7 @@ class RestaurantClaimService {
             user_id: user.id,
             restaurant_id: request.restaurant_id,
             verification_status: 'pending',
-            business_email: request.email || userProfile?.email || user.email,
+            business_email: request.business_email || userProfile?.email || user.email,
           })
           .select()
           .single();
@@ -214,12 +216,14 @@ class RestaurantClaimService {
         }
       }
 
-      // Re-fetch business profile for logging
+      // Re-fetch business profile for this restaurant for logging
+      // TRO-170: Filter by restaurant_id + maybeSingle() for multi-restaurant support
       const { data: businessProfile, error: bpError } = await supabase
         .from('business_profiles')
         .select('id, restaurant_id, verification_status')
         .eq('user_id', user.id)
-        .single();
+        .eq('restaurant_id', request.restaurant_id)
+        .maybeSingle();
 
       console.log('[RestaurantClaimService] Final business profile state:', {
         businessProfile,
@@ -369,6 +373,33 @@ class RestaurantClaimService {
   }
 
   /**
+   * Get the count of active claims (pending + verified) for the current user
+   * Used to enforce the 10-restaurant limit before submission
+   */
+  async getClaimCount(): Promise<number> {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) return 0;
+
+      const { count, error } = await supabase
+        .from('restaurant_claims')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'verified']);
+
+      if (error) {
+        console.error('[RestaurantClaimService] getClaimCount error:', error);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (error) {
+      console.error('[RestaurantClaimService] getClaimCount error:', error);
+      return 0;
+    }
+  }
+
+  /**
    * Upload ownership proof document
    */
   async uploadOwnershipProof(file: any): Promise<string> {
@@ -393,6 +424,36 @@ class RestaurantClaimService {
     } catch (error) {
       console.error('RestaurantClaimService.uploadOwnershipProof error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Check if current user has any pending restaurant claims
+   */
+  async hasPendingClaim(): Promise<{ hasPending: boolean; claimId?: string; restaurantName?: string }> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { hasPending: false };
+
+      const { data: claim } = await supabase
+        .from('restaurant_claims')
+        .select('id, restaurant:restaurants(name)')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .limit(1)
+        .single();
+
+      if (claim) {
+        return {
+          hasPending: true,
+          claimId: claim.id,
+          restaurantName: (claim.restaurant as any)?.name,
+        };
+      }
+      return { hasPending: false };
+    } catch (error) {
+      console.error('[RestaurantClaimService] hasPendingClaim error:', error);
+      return { hasPending: false };
     }
   }
 

@@ -2,6 +2,7 @@ import { AddRestaurantModal } from '@/components/AddRestaurantModal';
 import { designTokens } from '@/constants/designTokens';
 import { strings } from '@/constants/strings';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAccountType } from '@/hooks/useAccountType';
 import { AuthGate } from '@/components/AuthGate';
 import { AddOption, ProgressCard } from '@/types/add-flow';
 import { useRouter } from 'expo-router';
@@ -25,6 +26,7 @@ import {
 export default function AddScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { isBusiness } = useAccountType();
   const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
 
   // Core discovery actions - shown prominently
@@ -67,14 +69,14 @@ export default function AddScreen() {
       color: '#7C3AED',
       navigateTo: '/add/create-board'
     },
-    {
+    ...(!isBusiness ? [{
       id: 'community',
       title: strings.createContent.createCommunity.title,
       description: strings.createContent.createCommunity.description,
       icon: Users2,
       color: '#EC4899',
-      navigateTo: '/add/create-community' // Changed from /add/communities
-    }
+      navigateTo: '/add/create-community'
+    }] : [])
   ];
 
   const progressCard: ProgressCard = {

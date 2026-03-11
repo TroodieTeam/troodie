@@ -1,0 +1,130 @@
+appId: com.troodie.troodie.com
+---
+# Creator Marketplace Name Fix - Browse Creators Name Display
+# Tests: Creator names show real names instead of "Creator" fallback
+# Login as business user, navigate to Browse Creators, verify no "Creator" as bold name
+
+# Launch app fresh
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+# Handle Expo Dev Client launcher if shown
+- tapOn:
+    text: "http://localhost:8081"
+    optional: true
+- waitForAnimationToEnd
+
+# Dismiss Expo developer menu if shown
+- tapOn:
+    text: "Close"
+    optional: true
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Continue"
+    optional: true
+- waitForAnimationToEnd
+
+# Wait for welcome screen
+- extendedWaitUntil:
+    visible: "GET STARTED"
+    timeout: 15000
+
+# Tap Log in
+- tapOn:
+    text: "Log in"
+    optional: true
+
+- tapOn:
+    text: "Get Started"
+    optional: true
+
+- tapOn:
+    text: "Sign In"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Enter business email
+- tapOn:
+    text: "user@example.com"
+    optional: true
+
+- tapOn:
+    id: "email-input"
+    optional: true
+
+- inputText: "prod-business1@bypass.com"
+- hideKeyboard
+
+# Submit email
+- tapOn:
+    text: "Send Code"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    text: "Next"
+    optional: true
+- waitForAnimationToEnd
+
+# Wait for OTP screen
+- extendedWaitUntil:
+    visible: "Enter the code sent"
+    timeout: 10000
+
+# Enter OTP: 000000
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+- inputText: "0"
+
+- tapOn:
+    text: "Verify"
+    optional: true
+- tapOn:
+    text: "OK"
+    optional: true
+- waitForAnimationToEnd
+
+# Wait for home screen to fully load
+- extendedWaitUntil:
+    visible: "Your Saves"
+    timeout: 20000
+
+# Dismiss any toast/error overlay
+- tapOn:
+    text: "×"
+    optional: true
+
+- takeScreenshot: "01-logged-in-home"
+
+# Deep link directly to Browse Creators screen
+- openLink: "exp+troodie://business/creators/browse"
+- waitForAnimationToEnd
+
+# Wait for Browse Creators screen to load with results
+- extendedWaitUntil:
+    visible: "Browse Creators"
+    timeout: 10000
+
+- extendedWaitUntil:
+    visible: "creators found"
+    timeout: 30000
+
+- takeScreenshot: "03-browse-creators-loaded"
+
+# Scroll down to see more creators
+- swipe:
+    direction: UP
+    duration: 400
+
+- takeScreenshot: "04-browse-creators-scrolled"
+
+# Verify "Unknown Creator" does NOT appear (our fallback should resolve to username)
+- assertNotVisible:
+    text: "Unknown Creator"

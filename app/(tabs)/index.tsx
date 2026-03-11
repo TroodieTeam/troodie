@@ -13,6 +13,7 @@ import { strings } from '@/constants/strings';
 import { theme } from '@/constants/theme';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAccountType } from '@/hooks/useAccountType';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { personas } from '@/data/personas';
 import { useSmoothDataFetch } from '@/hooks/useSmoothDataFetch';
@@ -61,6 +62,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { userState, hasCreatedBoard, hasCreatedPost, hasJoinedCommunity, networkProgress, updateNetworkProgress } = useApp();
   const { user } = useAuth();
+  const { isBusiness } = useAccountType();
   const { state: onboardingState } = useOnboarding();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
@@ -134,7 +136,9 @@ export default function HomeScreen() {
       const [boards, posts, communitiesData] = await Promise.all([
         boardService.getUserBoards(user.id),
         postService.getUserPosts(user.id),
-        communityService.getUserCommunities(user.id)
+        isBusiness
+          ? Promise.resolve({ joined: [], created: [] })
+          : communityService.getUserCommunities(user.id)
       ]);
 
       // getUserCommunities returns { joined: [], created: [] }
@@ -332,7 +336,7 @@ export default function HomeScreen() {
       condition: () => !hasCreatedPost,
       completed: hasCreatedPost
     },
-    {
+    ...(!isBusiness ? [{
       action: 'Join Community',
       description: 'Connect with people who share your dining interests',
       icon: Users,
@@ -341,7 +345,7 @@ export default function HomeScreen() {
       onClick: () => router.push('/add/communities'),
       condition: () => !hasJoinedCommunity,
       completed: hasJoinedCommunity
-    }
+    }] : [])
   ];
 
   // Filter suggestions based on conditions
@@ -403,9 +407,14 @@ export default function HomeScreen() {
 
   const renderNetworkBuilding = () => {
     // Don't show if user has completed all network building actions
-    if (hasCreatedBoard && hasCreatedPost && hasJoinedCommunity) {
+    const allCompleted = isBusiness
+      ? hasCreatedBoard && hasCreatedPost
+      : hasCreatedBoard && hasCreatedPost && hasJoinedCommunity;
+    if (allCompleted) {
       return null;
     }
+
+    const totalSteps = isBusiness ? 2 : 3;
 
     return (
       <View style={styles.section}>
@@ -416,7 +425,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.networkProgress}>
             <Text style={styles.progressText}>
-              {networkProgress} of 3 completed
+              {Math.min(networkProgress, totalSteps)} of {totalSteps} completed
             </Text>
           </View>
         </View>

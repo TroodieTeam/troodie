@@ -1,5 +1,6 @@
 import { DS } from '@/components/design-system/tokens';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/contexts/RestaurantContext';
 import { supabase } from '@/lib/supabase';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -45,6 +46,8 @@ export default function ManageCampaigns() {
   const router = useRouter();
   const { filter } = useLocalSearchParams();
   const { user } = useAuth();
+  // TRO-170: Use restaurant context to filter campaigns by current restaurant
+  const { currentRestaurant } = useRestaurant();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [filteredCampaigns, setFilteredCampaigns] = useState<Campaign[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<string>(
@@ -88,7 +91,13 @@ export default function ManageCampaigns() {
         `);
 
       if (!isAdmin) {
-        query = query.eq('owner_id', user.id);
+        // TRO-170: Filter by restaurant_id for multi-restaurant support
+        // Falls back to owner_id if no restaurant is selected (shouldn't happen in normal flow)
+        if (currentRestaurant?.restaurant_id) {
+          query = query.eq('restaurant_id', currentRestaurant.restaurant_id);
+        } else {
+          query = query.eq('owner_id', user.id);
+        }
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
