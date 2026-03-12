@@ -28,10 +28,7 @@ export default function NotificationsScreen() {
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('[Notifications] Loading notifications for user:', user!.id);
       const userNotifications = await notificationService.getUserNotifications(user!.id, 50);
-      console.log('[Notifications] Received notifications:', userNotifications?.length || 0);
-      console.log('[Notifications] Notifications data:', JSON.stringify(userNotifications, null, 2));
       setNotifications(userNotifications);
     } catch (error) {
       console.error('[Notifications] Error loading notifications:', error);
@@ -53,20 +50,9 @@ export default function NotificationsScreen() {
   };
 
   const handleNotificationPress = async (notification: Notification) => {
-    console.log('[Notifications] handleNotificationPress START');
     try {
-      console.log('[Notifications] Notification pressed:', {
-        id: notification.id,
-        type: notification.type,
-        related_id: notification.related_id,
-        related_type: notification.related_type,
-        data: notification.data
-      });
-
       // Mark as read
-      console.log('[Notifications] Marking notification as read');
       await notificationService.markAsRead(notification.id);
-      console.log('[Notifications] Notification marked as read');
 
       // Update local state
       setNotifications(prev =>
@@ -76,71 +62,86 @@ export default function NotificationsScreen() {
       );
 
       // Navigate based on notification type
+      const data = notification.data && typeof notification.data === 'object'
+        ? (notification.data as Record<string, unknown>)
+        : null;
+
       switch (notification.type) {
         case 'like':
         case 'comment':
-          if (notification.data && typeof notification.data === 'object' && 'postId' in notification.data) {
-            // Navigate to explore for now since posts don't exist yet
-            console.log('[Notifications] Navigating to explore');
-            router.push('/explore');
+        case 'post_mention':
+          if (data && 'postId' in data) {
+            router.push(`/posts/${data.postId}`);
           }
           break;
         case 'follow':
-          if (notification.data && typeof notification.data === 'object' && 'followerId' in notification.data) {
-            // Navigate to profile for now
-            console.log('[Notifications] Navigating to profile');
-            router.push('/profile');
+          if (data && 'followerId' in data) {
+            router.push(`/user/${data.followerId}`);
           }
           break;
         case 'achievement':
-          console.log('[Notifications] Navigating to profile achievements');
+        case 'milestone':
           router.push('/profile?tab=achievements');
           break;
         case 'restaurant_recommendation':
-          if (notification.data && typeof notification.data === 'object' && 'restaurantId' in notification.data) {
-            console.log('[Notifications] Navigating to restaurant:', notification.data.restaurantId);
-            router.push(`/restaurant/${notification.data.restaurantId}`);
+          if (data && 'restaurantId' in data) {
+            router.push(`/restaurant/${data.restaurantId}`);
           }
           break;
-        case 'board_invite':
-          // Board ID is in related_id field
-          console.log('[Notifications] Board invite notification:', {
-            related_id: notification.related_id,
-            data: notification.data
-          });
-
-          if (notification.related_id) {
-            // Extract invitation_id from notification data
-            const invitationId = notification.data && typeof notification.data === 'object' && 'invitation_id' in notification.data
-              ? (notification.data as any).invitation_id
-              : null;
-
-            console.log('[Notifications] Navigating to board via related_id:', notification.related_id, 'with invitation_id:', invitationId);
-
-            if (invitationId) {
-              router.push(`/boards/${notification.related_id}?invitation_id=${invitationId}`);
-            } else {
-              router.push(`/boards/${notification.related_id}`);
-            }
-          } else if (notification.data && typeof notification.data === 'object' && ('board_id' in notification.data || 'boardId' in notification.data)) {
-            // Fallback to data field for backwards compatibility
-            const boardId = (notification.data as any).board_id || (notification.data as any).boardId;
-            const invitationId = (notification.data as any).invitation_id;
-
-            console.log('[Notifications] Navigating to board via data field:', boardId, 'with invitation_id:', invitationId);
-
+        case 'board_invite': {
+          const boardId = notification.related_id
+            || (data && ('board_id' in data ? data.board_id : data && 'boardId' in data ? data.boardId : null));
+          const invitationId = data && 'invitation_id' in data ? data.invitation_id : null;
+          if (boardId) {
             if (invitationId) {
               router.push(`/boards/${boardId}?invitation_id=${invitationId}`);
             } else {
               router.push(`/boards/${boardId}`);
             }
-          } else {
-            console.log('[Notifications] WARNING: No board_id found in notification');
           }
           break;
+        }
+        case 'campaign_opportunity':
+          router.push('/creator/explore-campaigns');
+          break;
+        case 'campaign_application':
+          if (data && 'campaignId' in data) {
+            router.push(`/(tabs)/business/campaigns/${data.campaignId}` as any);
+          } else {
+            router.push('/(tabs)/business/applications' as any);
+          }
+          break;
+        case 'application_approved':
+        case 'campaign_deadline':
+          if (data && 'campaignId' in data) {
+            router.push(`/creator/campaigns` as any);
+          }
+          break;
+        case 'deliverable_submitted':
+          if (data && 'campaignId' in data) {
+            router.push(`/business/campaigns/${data.campaignId}/review-deliverables` as any);
+          }
+          break;
+        case 'payment_sent':
+          router.push('/creator/earnings' as any);
+          break;
+        case 'campaign_invite':
+          if (data && 'campaignId' in data) {
+            router.push(`/creator/apply/${data.campaignId}` as any);
+          } else {
+            router.push('/creator/explore-campaigns' as any);
+          }
+          break;
+        case 'friend_post':
+          if (data && 'postId' in data) {
+            router.push(`/posts/${data.postId}`);
+          }
+          break;
+        case 'weekly_recap':
+          // Navigate to feed
+          router.push('/(tabs)');
+          break;
         default:
-          console.log('[Notifications] Unknown notification type, staying on notifications screen');
-          // Stay on notifications screen for other types
           break;
       }
     } catch (error) {

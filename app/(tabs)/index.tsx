@@ -231,44 +231,85 @@ export default function HomeScreen() {
   };
 
   const handleNotificationPress = (notification: Notification) => {
-    console.log('[Feed] Notification pressed:', notification.type, notification.related_id);
     setShowNotificationCenter(false);
 
-    // Navigate based on notification type
+    const data = notification.data && typeof notification.data === 'object'
+      ? (notification.data as Record<string, unknown>)
+      : null;
+
     switch (notification.type) {
-      case 'board_invite':
-        if (notification.related_id) {
-          // Extract invitation_id from notification data
-          const invitationId = notification.data && typeof notification.data === 'object' && 'invitation_id' in notification.data
-            ? (notification.data as any).invitation_id
-            : undefined;
-
-
-          // Navigate with invitation_id as a query parameter
-          router.push({
-            pathname: `/boards/${notification.related_id}` as any,
-            params: invitationId ? { invitation_id: invitationId } : {}
-          });
-        } else if (notification.data && typeof notification.data === 'object' && ('board_id' in notification.data || 'boardId' in notification.data)) {
-          const boardId = (notification.data as any).board_id || (notification.data as any).boardId;
-          const invitationId = (notification.data as any).invitation_id;
-
-
-          router.push({
-            pathname: `/boards/${boardId}` as any,
-            params: invitationId ? { invitation_id: invitationId } : {}
-          });
+      case 'like':
+      case 'comment':
+      case 'post_mention':
+        if (data && 'postId' in data) {
+          router.push(`/posts/${data.postId}`);
         }
         break;
-      case 'restaurant_recommendation':
-        if (notification.data && typeof notification.data === 'object' && 'restaurantId' in notification.data) {
-          router.push(`/restaurant/${notification.data.restaurantId}`);
+      case 'follow':
+        if (data && 'followerId' in data) {
+          router.push(`/user/${data.followerId}`);
         }
         break;
       case 'achievement':
+      case 'milestone':
         router.push('/profile?tab=achievements');
         break;
-      // Add other notification types as needed
+      case 'restaurant_recommendation':
+        if (data && 'restaurantId' in data) {
+          router.push(`/restaurant/${data.restaurantId}`);
+        }
+        break;
+      case 'board_invite': {
+        const boardId = notification.related_id
+          || (data && ('board_id' in data ? data.board_id : data && 'boardId' in data ? data.boardId : null));
+        const invitationId = data && 'invitation_id' in data ? data.invitation_id : null;
+        if (boardId) {
+          router.push({
+            pathname: `/boards/${boardId}` as any,
+            params: invitationId ? { invitation_id: String(invitationId) } : {}
+          });
+        }
+        break;
+      }
+      case 'campaign_opportunity':
+        router.push('/creator/explore-campaigns');
+        break;
+      case 'campaign_application':
+        if (data && 'campaignId' in data) {
+          router.push(`/(tabs)/business/campaigns/${data.campaignId}` as any);
+        } else {
+          router.push('/(tabs)/business/applications' as any);
+        }
+        break;
+      case 'application_approved':
+      case 'campaign_deadline':
+        if (data && 'campaignId' in data) {
+          router.push(`/creator/campaigns` as any);
+        }
+        break;
+      case 'deliverable_submitted':
+        if (data && 'campaignId' in data) {
+          router.push(`/business/campaigns/${data.campaignId}/review-deliverables` as any);
+        }
+        break;
+      case 'payment_sent':
+        router.push('/creator/earnings' as any);
+        break;
+      case 'campaign_invite':
+        if (data && 'campaignId' in data) {
+          router.push(`/creator/apply/${data.campaignId}` as any);
+        } else {
+          router.push('/creator/explore-campaigns' as any);
+        }
+        break;
+      case 'friend_post':
+        if (data && 'postId' in data) {
+          router.push(`/posts/${data.postId}`);
+        }
+        break;
+      case 'weekly_recap':
+        // Already on feed, no navigation needed
+        break;
       default:
         break;
     }
