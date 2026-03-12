@@ -8,7 +8,7 @@
 
 **Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 3.6
+**Last Task Completed**: Task 3.7
 
 ## Task List
 
@@ -31,11 +31,11 @@
 - [x] Task 3.4: Campaign deadline reminder cron (pg_cron daily, 2-day warning)
 - [x] Task 3.5: Deliverable submitted trigger (creator_campaigns deliverables_status change)
 - [x] Task 3.6: Payment sent trigger (creator_earnings status → available/paid)
-- [ ] Task 3.7: Campaign invitation trigger (campaign invitation INSERT) <-- NEXT
+- [x] Task 3.7: Campaign invitation trigger (campaign invitation INSERT)
 
 ### Phase 4: Engagement Notification Triggers
 
-- [ ] Task 4.1: Friend posted trigger (posts INSERT → notify followers, rate-limited)
+- [ ] Task 4.1: Friend posted trigger (posts INSERT → notify followers, rate-limited) <-- NEXT
 - [ ] Task 4.2: Weekly recap cron job (Sunday 6 PM UTC)
 
 ### Phase 5: Frontend — Display & Navigation
@@ -66,6 +66,7 @@
 | Task 3.4 | 2026-03-12 | Created pg_cron job: runs daily at 9 AM UTC, finds active campaigns ending in 2 days, notifies hired creators (from campaign_applications + creator_campaigns), deduplicates by checking existing notifications for same campaign+creator+date |
 | Task 3.5 | 2026-03-12 | Created deliverable submitted trigger: fires on creator_campaigns UPDATE when deliverables_status JSONB changes, looks up campaign business_id and creator name, checks campaigns_in_app_enabled preference, notifies business owner |
 | Task 3.6 | 2026-03-12 | Created payment sent trigger: fires on creator_earnings INSERT/UPDATE when status becomes 'available' or 'paid', notifies creator with amount and campaign title, priority 3 (financial), checks campaigns_in_app_enabled preference |
+| Task 3.7 | 2026-03-12 | Created campaign invite trigger: fires on campaign_invitations INSERT, resolves creator user_id from creator_profiles, looks up campaign title and restaurant name, checks campaigns_in_app_enabled preference, notifies creator |
 
 ## Blockers
 
