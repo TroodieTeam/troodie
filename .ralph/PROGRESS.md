@@ -8,7 +8,7 @@
 
 **Phase**: 1 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 1.2
+**Last Task Completed**: Task 1.3
 
 ## Task List
 
@@ -16,11 +16,11 @@
 
 - [x] Task 1.1: Update `types/notifications.ts` — add new NotificationType values and data interfaces
 - [x] Task 1.2: Update `lib/supabase.ts` — add new notification types and preference columns to database types
-- [ ] Task 1.3: Create consolidated notification type constraint migration SQL <-- NEXT
+- [x] Task 1.3: Create consolidated notification type constraint migration SQL
 
 ### Phase 2: Edge Function & Push Delivery
 
-- [ ] Task 2.1: Create Edge Function `push-notifications` with Expo Push API + dead token cleanup
+- [ ] Task 2.1: Create Edge Function `push-notifications` with Expo Push API + dead token cleanup <-- NEXT
 - [ ] Task 2.2: Create deployment script and webhook setup documentation
 
 ### Phase 3: Campaign Notification Triggers
@@ -57,6 +57,7 @@
 |------|-----------|-------|
 | Task 1.1 | 2026-03-12 | Added 9 new NotificationType values, 9 data interfaces, 2 new NotificationCategory values, updated NotificationData union and UserNotificationPreferences |
 | Task 1.2 | 2026-03-12 | Added 9 new notification types to notifications Row/Insert/Update type union, added campaigns_push/in_app_enabled and engagement_push/in_app_enabled columns to notification_preferences |
+| Task 1.3 | 2026-03-12 | Created consolidated migration: drops/recreates notifications_type_check with all 18 types, adds 4 preference columns, updates default prefs trigger for campaigns/engagement, backfills existing users |
 
 ## Blockers
 
