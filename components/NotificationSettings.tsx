@@ -7,9 +7,11 @@ import {
 } from '@/types/notifications';
 import {
     Bell,
+    Briefcase,
     ChevronRight,
     Heart,
     MapPin,
+    Newspaper,
     Settings,
     Trophy,
     Users
@@ -68,6 +70,20 @@ const categoryConfigs: CategoryConfig[] = [
     description: 'App updates, maintenance, and announcements',
     icon: Settings,
     color: '#6B7280'
+  },
+  {
+    key: 'campaigns',
+    title: 'Campaigns',
+    description: 'Campaign opportunities, applications, and payments',
+    icon: Briefcase,
+    color: '#3B82F6'
+  },
+  {
+    key: 'engagement',
+    title: 'Engagement',
+    description: 'Friend posts, weekly recaps, and activity',
+    icon: Newspaper,
+    color: '#EC4899'
   }
 ];
 

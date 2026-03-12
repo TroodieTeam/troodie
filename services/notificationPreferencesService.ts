@@ -58,6 +58,18 @@ export class NotificationPreferencesService implements NotificationPreferencesSe
         in_app_enabled: preferencesMap.get('system')?.in_app_enabled ?? true,
         email_enabled: preferencesMap.get('system')?.email_enabled ?? false,
         frequency: (preferencesMap.get('system')?.frequency as NotificationFrequency) ?? 'immediate'
+      },
+      campaigns: {
+        push_enabled: preferencesMap.get('campaigns')?.push_enabled ?? true,
+        in_app_enabled: preferencesMap.get('campaigns')?.in_app_enabled ?? true,
+        email_enabled: preferencesMap.get('campaigns')?.email_enabled ?? false,
+        frequency: (preferencesMap.get('campaigns')?.frequency as NotificationFrequency) ?? 'immediate'
+      },
+      engagement: {
+        push_enabled: preferencesMap.get('engagement')?.push_enabled ?? true,
+        in_app_enabled: preferencesMap.get('engagement')?.in_app_enabled ?? true,
+        email_enabled: preferencesMap.get('engagement')?.email_enabled ?? false,
+        frequency: (preferencesMap.get('engagement')?.frequency as NotificationFrequency) ?? 'immediate'
       }
     };
   }
@@ -237,6 +249,22 @@ export class NotificationPreferencesService implements NotificationPreferencesSe
       {
         user_id: userId,
         category: 'system',
+        push_enabled: true,
+        in_app_enabled: true,
+        email_enabled: false,
+        frequency: 'immediate'
+      },
+      {
+        user_id: userId,
+        category: 'campaigns',
+        push_enabled: true,
+        in_app_enabled: true,
+        email_enabled: false,
+        frequency: 'immediate'
+      },
+      {
+        user_id: userId,
+        category: 'engagement',
         push_enabled: true,
         in_app_enabled: true,
         email_enabled: false,
