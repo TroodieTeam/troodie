@@ -8,7 +8,7 @@
 
 **Phase**: 6 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 6.1
+**Last Task Completed**: Task 6.2
 
 ## Task List
 
@@ -48,8 +48,8 @@
 ### Phase 6: Integration & Validation
 
 - [x] Task 6.1: Run typecheck and lint, fix all errors
-- [ ] Task 6.2: Create test SQL scripts for manual verification <-- NEXT
-- [ ] Task 6.3: Update notification documentation
+- [x] Task 6.2: Create test SQL scripts for manual verification
+- [ ] Task 6.3: Update notification documentation <-- NEXT
 
 ## Completed Tasks
 
@@ -74,6 +74,7 @@
 | Task 5.3 | 2026-03-12 | Added Campaigns (Briefcase icon, blue) and Engagement (Newspaper icon, pink) categories to NotificationSettings.tsx. Updated notificationPreferencesService.ts getUserPreferences() and createDefaultPreferences() to include campaigns and engagement categories. |
 | Task 5.4 | 2026-03-12 | Removed sendBulkPushNotifications TODO stub (Edge Function handles push delivery). Removed sendCampaignPushNotifications private method. Updated campaign methods to use proper types (campaign_opportunity, campaign_application) instead of 'system'. Cleaned up verbose debug logging in getUserNotifications. |
 | Task 6.1 | 2026-03-12 | Verified zero new typecheck/lint errors introduced by push notification changes. All 1775 lint errors and typecheck errors in trigger-payout-for-deliverable.ts are pre-existing. |
+| Task 6.2 | 2026-03-12 | Created verify-triggers.sql (exercises all 7 triggers with deterministic UUIDs, prints notification counts) and cleanup.sql (deletes all test data in dependency order). Located in testing/push-notifications/. |
 
 ## Blockers
 
