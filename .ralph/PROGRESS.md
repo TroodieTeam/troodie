@@ -8,7 +8,7 @@
 
 **Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 3.3
+**Last Task Completed**: Task 3.4
 
 ## Task List
 
@@ -28,8 +28,8 @@
 - [x] Task 3.1: Campaign opportunity trigger (campaigns status → active)
 - [x] Task 3.2: Campaign application trigger (campaign_applications INSERT)
 - [x] Task 3.3: Application approved trigger (campaign_applications status → accepted)
-- [ ] Task 3.4: Campaign deadline reminder cron (pg_cron daily, 2-day warning) <-- NEXT
-- [ ] Task 3.5: Deliverable submitted trigger (creator_campaigns deliverables_status change)
+- [x] Task 3.4: Campaign deadline reminder cron (pg_cron daily, 2-day warning)
+- [ ] Task 3.5: Deliverable submitted trigger (creator_campaigns deliverables_status change) <-- NEXT
 - [ ] Task 3.6: Payment sent trigger (creator_earnings status → available/paid)
 - [ ] Task 3.7: Campaign invitation trigger (campaign invitation INSERT)
 
@@ -63,6 +63,7 @@
 | Task 3.1 | 2026-03-12 | Created campaign opportunity trigger: fires on campaigns UPDATE to 'active', finds local creators by matching city/location, checks campaigns notification preferences, uses create_notification() helper |
 | Task 3.2 | 2026-03-12 | Created campaign application trigger: fires on campaign_applications INSERT, looks up campaign business_id, fetches creator name/avatar, checks campaigns_in_app_enabled preference, notifies business owner |
 | Task 3.3 | 2026-03-12 | Created application approved trigger: fires on campaign_applications UPDATE to 'accepted', looks up campaign title and restaurant name, checks creator's campaigns_in_app_enabled preference, notifies creator |
+| Task 3.4 | 2026-03-12 | Created pg_cron job: runs daily at 9 AM UTC, finds active campaigns ending in 2 days, notifies hired creators (from campaign_applications + creator_campaigns), deduplicates by checking existing notifications for same campaign+creator+date |
 
 ## Blockers
 
