@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: 1 of 6
+**Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 1.3
+**Last Task Completed**: Task 2.1
 
 ## Task List
 
@@ -20,8 +20,8 @@
 
 ### Phase 2: Edge Function & Push Delivery
 
-- [ ] Task 2.1: Create Edge Function `push-notifications` with Expo Push API + dead token cleanup <-- NEXT
-- [ ] Task 2.2: Create deployment script and webhook setup documentation
+- [x] Task 2.1: Create Edge Function `push-notifications` with Expo Push API + dead token cleanup
+- [ ] Task 2.2: Create deployment script and webhook setup documentation <-- NEXT
 
 ### Phase 3: Campaign Notification Triggers
 
@@ -58,6 +58,7 @@
 | Task 1.1 | 2026-03-12 | Added 9 new NotificationType values, 9 data interfaces, 2 new NotificationCategory values, updated NotificationData union and UserNotificationPreferences |
 | Task 1.2 | 2026-03-12 | Added 9 new notification types to notifications Row/Insert/Update type union, added campaigns_push/in_app_enabled and engagement_push/in_app_enabled columns to notification_preferences |
 | Task 1.3 | 2026-03-12 | Created consolidated migration: drops/recreates notifications_type_check with all 18 types, adds 4 preference columns, updates default prefs trigger for campaigns/engagement, backfills existing users |
+| Task 2.1 | 2026-03-12 | Created Edge Function: webhook handler for notifications INSERT, fetches push_tokens, validates Expo tokens, sends in batches of 100, processes receipts, deactivates DeviceNotRegistered tokens, maps priority and channelId |
 
 ## Blockers
 
