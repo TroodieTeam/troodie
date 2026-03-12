@@ -8,7 +8,7 @@
 
 **Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 5.3
+**Last Task Completed**: Task 5.4
 
 ## Task List
 
@@ -43,11 +43,11 @@
 - [x] Task 5.1: Update NotificationItem.tsx — icon/color mapping for new types
 - [x] Task 5.2: Implement deep link navigation on notification tap
 - [x] Task 5.3: Update NotificationSettings.tsx — add campaign & engagement toggles
-- [ ] Task 5.4: Clean up notificationService.ts — remove TODO stubs <-- NEXT
+- [x] Task 5.4: Clean up notificationService.ts — remove TODO stubs
 
 ### Phase 6: Integration & Validation
 
-- [ ] Task 6.1: Run typecheck and lint, fix all errors
+- [ ] Task 6.1: Run typecheck and lint, fix all errors <-- NEXT
 - [ ] Task 6.2: Create test SQL scripts for manual verification
 - [ ] Task 6.3: Update notification documentation
 
@@ -72,6 +72,7 @@
 | Task 5.1 | 2026-03-12 | Added icon/color mapping for 9 new notification types in NotificationItem: campaign types use Briefcase/ClipboardCheck/CheckCircle/Calendar/Send/CreditCard/Star icons with blue/green tints, engagement types use Newspaper (pink) and Trophy (orange) |
 | Task 5.2 | 2026-03-12 | Added deep link navigation for all 18 notification types in both app/notifications/index.tsx and app/(tabs)/index.tsx. Campaign types route to creator/business screens, friend_post to /posts/[id], follow to /user/[id], weekly_recap to feed. Cleaned up verbose debug logging. |
 | Task 5.3 | 2026-03-12 | Added Campaigns (Briefcase icon, blue) and Engagement (Newspaper icon, pink) categories to NotificationSettings.tsx. Updated notificationPreferencesService.ts getUserPreferences() and createDefaultPreferences() to include campaigns and engagement categories. |
+| Task 5.4 | 2026-03-12 | Removed sendBulkPushNotifications TODO stub (Edge Function handles push delivery). Removed sendCampaignPushNotifications private method. Updated campaign methods to use proper types (campaign_opportunity, campaign_application) instead of 'system'. Cleaned up verbose debug logging in getUserNotifications. |
 
 ## Blockers
 
