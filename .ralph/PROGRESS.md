@@ -8,7 +8,7 @@
 
 **Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 3.1
+**Last Task Completed**: Task 3.2
 
 ## Task List
 
@@ -26,8 +26,8 @@
 ### Phase 3: Campaign Notification Triggers
 
 - [x] Task 3.1: Campaign opportunity trigger (campaigns status → active)
-- [ ] Task 3.2: Campaign application trigger (campaign_applications INSERT) <-- NEXT
-- [ ] Task 3.3: Application approved trigger (campaign_applications status → accepted)
+- [x] Task 3.2: Campaign application trigger (campaign_applications INSERT)
+- [ ] Task 3.3: Application approved trigger (campaign_applications status → accepted) <-- NEXT
 - [ ] Task 3.4: Campaign deadline reminder cron (pg_cron daily, 2-day warning)
 - [ ] Task 3.5: Deliverable submitted trigger (creator_campaigns deliverables_status change)
 - [ ] Task 3.6: Payment sent trigger (creator_earnings status → available/paid)
@@ -61,6 +61,7 @@
 | Task 2.1 | 2026-03-12 | Created Edge Function: webhook handler for notifications INSERT, fetches push_tokens, validates Expo tokens, sends in batches of 100, processes receipts, deactivates DeviceNotRegistered tokens, maps priority and channelId |
 | Task 2.2 | 2026-03-12 | Added `functions:deploy:push` and `functions:logs:push` npm scripts; created deployment.md with webhook setup (Dashboard + SQL), verification steps, env vars, and troubleshooting |
 | Task 3.1 | 2026-03-12 | Created campaign opportunity trigger: fires on campaigns UPDATE to 'active', finds local creators by matching city/location, checks campaigns notification preferences, uses create_notification() helper |
+| Task 3.2 | 2026-03-12 | Created campaign application trigger: fires on campaign_applications INSERT, looks up campaign business_id, fetches creator name/avatar, checks campaigns_in_app_enabled preference, notifies business owner |
 
 ## Blockers
 
