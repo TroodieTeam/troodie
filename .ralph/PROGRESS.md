@@ -8,7 +8,7 @@
 
 **Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 3.7
+**Last Task Completed**: Task 4.1
 
 ## Task List
 
@@ -35,8 +35,8 @@
 
 ### Phase 4: Engagement Notification Triggers
 
-- [ ] Task 4.1: Friend posted trigger (posts INSERT → notify followers, rate-limited) <-- NEXT
-- [ ] Task 4.2: Weekly recap cron job (Sunday 6 PM UTC)
+- [x] Task 4.1: Friend posted trigger (posts INSERT → notify followers, rate-limited)
+- [ ] Task 4.2: Weekly recap cron job (Sunday 6 PM UTC) <-- NEXT
 
 ### Phase 5: Frontend — Display & Navigation
 
@@ -67,6 +67,7 @@
 | Task 3.5 | 2026-03-12 | Created deliverable submitted trigger: fires on creator_campaigns UPDATE when deliverables_status JSONB changes, looks up campaign business_id and creator name, checks campaigns_in_app_enabled preference, notifies business owner |
 | Task 3.6 | 2026-03-12 | Created payment sent trigger: fires on creator_earnings INSERT/UPDATE when status becomes 'available' or 'paid', notifies creator with amount and campaign title, priority 3 (financial), checks campaigns_in_app_enabled preference |
 | Task 3.7 | 2026-03-12 | Created campaign invite trigger: fires on campaign_invitations INSERT, resolves creator user_id from creator_profiles, looks up campaign title and restaurant name, checks campaigns_in_app_enabled preference, notifies creator |
+| Task 4.1 | 2026-03-12 | Created friend post trigger: fires on posts INSERT, notifies followers via user_relationships, checks engagement_in_app_enabled preference, rate-limited to 1 notification per author per follower per hour, includes post/author/restaurant data |
 
 ## Blockers
 
