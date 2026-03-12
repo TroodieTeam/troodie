@@ -8,7 +8,7 @@
 
 **Phase**: 6 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 6.2
+**Last Task Completed**: Task 6.3
 
 ## Task List
 
@@ -49,7 +49,7 @@
 
 - [x] Task 6.1: Run typecheck and lint, fix all errors
 - [x] Task 6.2: Create test SQL scripts for manual verification
-- [ ] Task 6.3: Update notification documentation <-- NEXT
+- [x] Task 6.3: Update notification documentation
 
 ## Completed Tasks
 
@@ -75,6 +75,7 @@
 | Task 5.4 | 2026-03-12 | Removed sendBulkPushNotifications TODO stub (Edge Function handles push delivery). Removed sendCampaignPushNotifications private method. Updated campaign methods to use proper types (campaign_opportunity, campaign_application) instead of 'system'. Cleaned up verbose debug logging in getUserNotifications. |
 | Task 6.1 | 2026-03-12 | Verified zero new typecheck/lint errors introduced by push notification changes. All 1775 lint errors and typecheck errors in trigger-payout-for-deliverable.ts are pre-existing. |
 | Task 6.2 | 2026-03-12 | Created verify-triggers.sql (exercises all 7 triggers with deterministic UUIDs, prints notification counts) and cleanup.sql (deletes all test data in dependency order). Located in testing/push-notifications/. |
+| Task 6.3 | 2026-03-12 | Updated services/notifications/CLAUDE.md: added all 18 notification types, 7 preference categories, campaign/engagement data structures, Edge Function architecture with trigger table, deployment commands, and updated related files list. |
 
 ## Blockers
 

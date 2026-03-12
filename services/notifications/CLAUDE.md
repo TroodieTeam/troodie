@@ -27,6 +27,8 @@ Core notification creation and retrieval.
 - `createPostMentionNotification()` - User mentioned in post
 - `createMilestoneNotification()` - User reaches milestone
 - `createSystemNotification()` - App announcements
+- `createCampaignOpportunityNotification()` - New campaign matches creator
+- `createCampaignApplicationNotification()` - Creator applied to campaign
 
 **Database Table:**
 ```sql
@@ -55,10 +57,14 @@ User notification settings and preferences.
 - `updatePreferences()` - Update notification settings
 - `shouldSendNotification()` - Check if user wants this notification type
 
-**Preference Types:**
-- Push notifications on/off
-- Email notifications on/off
-- Per-type preferences (likes, comments, follows, etc.)
+**Preference Categories** (each has push/in_app/email toggles):
+- `social` - likes, comments, follows, mentions
+- `achievements` - achievements, milestones
+- `restaurants` - restaurant recommendations
+- `boards` - board invites
+- `system` - app announcements
+- `campaigns` - all campaign lifecycle notifications
+- `engagement` - friend posts, weekly recaps
 
 ### pushNotificationService.ts
 Push notification delivery via Expo.
@@ -88,19 +94,50 @@ Status update notifications (less common).
 
 ## Notification Types
 
-### Standard Types
+### All Types (18 total)
 ```typescript
 type NotificationType =
-  | 'like'           // Post liked
-  | 'comment'        // Post commented
-  | 'follow'         // User followed
-  | 'achievement'    // Achievement unlocked
-  | 'restaurant_recommendation'  // New restaurant nearby
-  | 'board_invite'   // Board invitation
-  | 'post_mention'   // Mentioned in post
-  | 'milestone'      // Milestone reached
-  | 'system';        // App announcement
+  // Social (standard)
+  | 'like'                        // Post liked
+  | 'comment'                     // Post commented
+  | 'follow'                      // User followed
+  | 'post_mention'                // Mentioned in post
+  // Achievements & Milestones
+  | 'achievement'                 // Achievement unlocked
+  | 'milestone'                   // Milestone reached
+  // Restaurants
+  | 'restaurant_recommendation'   // New restaurant nearby
+  // Boards
+  | 'board_invite'                // Board invitation
+  // System
+  | 'system'                      // App announcement
+  // Campaign lifecycle (new)
+  | 'campaign_opportunity'        // New campaign matches creator's location
+  | 'campaign_application'        // Creator applied to business's campaign
+  | 'application_approved'        // Creator's application accepted
+  | 'campaign_deadline'           // Campaign ending in 2 days
+  | 'deliverable_submitted'       // Creator submitted deliverables
+  | 'payment_sent'                // Payment available/paid to creator
+  | 'campaign_invite'             // Business invited creator to campaign
+  // Engagement (new)
+  | 'friend_post'                 // Followed user published a post
+  | 'weekly_recap';               // Weekly activity summary
 ```
+
+### Notification Categories & Preferences
+```typescript
+type NotificationCategory =
+  | 'social'        // like, comment, follow, post_mention
+  | 'achievements'  // achievement, milestone
+  | 'restaurants'   // restaurant_recommendation
+  | 'boards'        // board_invite
+  | 'system'        // system
+  | 'campaigns'     // campaign_opportunity, campaign_application, application_approved,
+                    //   campaign_deadline, deliverable_submitted, payment_sent, campaign_invite
+  | 'engagement';   // friend_post, weekly_recap
+```
+
+Each category has `push_enabled`, `in_app_enabled`, `email_enabled` columns in `notification_preferences`.
 
 ### Notification Data Structure
 
@@ -141,6 +178,96 @@ Each notification has type-specific data in the `data` JSONB field:
 }
 ```
 
+**campaign_opportunity:**
+```json
+{
+  "campaign_id": "uuid",
+  "restaurant_id": "uuid",
+  "restaurant_name": "Restaurant Name",
+  "budget": 500,
+  "title": "Campaign Title"
+}
+```
+
+**campaign_application:**
+```json
+{
+  "campaign_id": "uuid",
+  "campaign_title": "Campaign Title",
+  "creator_id": "uuid",
+  "creator_name": "Creator Name",
+  "creator_avatar": "url"
+}
+```
+
+**application_approved:**
+```json
+{
+  "campaign_id": "uuid",
+  "campaign_title": "Campaign Title",
+  "restaurant_name": "Restaurant Name"
+}
+```
+
+**campaign_deadline:**
+```json
+{
+  "campaign_id": "uuid",
+  "campaign_title": "Campaign Title",
+  "end_date": "2026-03-14T00:00:00Z",
+  "days_remaining": 2
+}
+```
+
+**deliverable_submitted:**
+```json
+{
+  "campaign_id": "uuid",
+  "campaign_title": "Campaign Title",
+  "creator_id": "uuid",
+  "creator_name": "Creator Name"
+}
+```
+
+**payment_sent:**
+```json
+{
+  "campaign_id": "uuid",
+  "campaign_title": "Campaign Title",
+  "amount": 250.00,
+  "currency": "usd"
+}
+```
+
+**campaign_invite:**
+```json
+{
+  "campaign_id": "uuid",
+  "campaign_title": "Campaign Title",
+  "restaurant_name": "Restaurant Name",
+  "restaurant_id": "uuid"
+}
+```
+
+**friend_post:**
+```json
+{
+  "post_id": "uuid",
+  "post_type": "review",
+  "author_id": "uuid",
+  "author_name": "Author Name",
+  "author_avatar": "url",
+  "restaurant_name": "Restaurant Name"
+}
+```
+
+**weekly_recap:**
+```json
+{
+  "week": "2026-03-09"
+}
+```
+
 ## Navigation Pattern
 
 Notifications use `related_id` and `related_type` for navigation:
@@ -155,6 +282,7 @@ switch (notification.type) {
 
   case 'like':
   case 'comment':
+  case 'post_mention':
     router.push(`/posts/${notification.related_id}`);
     break;
 
@@ -164,6 +292,26 @@ switch (notification.type) {
 
   case 'restaurant_recommendation':
     router.push(`/restaurant/${notification.related_id}`);
+    break;
+
+  // Campaign types → creator/business screens
+  case 'campaign_opportunity':
+  case 'campaign_application':
+  case 'application_approved':
+  case 'campaign_deadline':
+  case 'deliverable_submitted':
+  case 'payment_sent':
+  case 'campaign_invite':
+    // Routes to campaign detail or creator/business dashboard
+    break;
+
+  // Engagement types
+  case 'friend_post':
+    router.push(`/posts/${notification.related_id}`);
+    break;
+
+  case 'weekly_recap':
+    router.push('/(tabs)');  // Navigate to feed
     break;
 }
 ```
@@ -296,9 +444,39 @@ RETURNS INTEGER AS $$
 $$ LANGUAGE SQL STABLE;
 ```
 
-## Push Notification Setup
+## Push Notification Architecture
 
-### 1. Register Device Token
+### Flow: Database → Edge Function → Expo Push API
+
+1. **Triggers** insert rows into the `notifications` table
+2. **Database webhook** fires on `notifications` INSERT → calls Edge Function
+3. **Edge Function** (`supabase/functions/push-notifications/index.ts`):
+   - Looks up user's `push_tokens` (active tokens only)
+   - Validates Expo push token format (`ExponentPushToken[...]`)
+   - Sends via Expo Push API in batches of 100
+   - Processes receipts and deactivates `DeviceNotRegistered` tokens
+   - Maps notification `priority` to Expo priority levels
+   - Sets `channelId` based on notification type
+
+### Database Triggers (auto-create notifications)
+
+| Trigger | Table | Event | Who gets notified |
+|---------|-------|-------|-------------------|
+| campaign_opportunity | campaigns | UPDATE → 'active' | Local creators (matching city) |
+| campaign_application | campaign_applications | INSERT | Business owner |
+| application_approved | campaign_applications | UPDATE → 'accepted' | Creator |
+| campaign_deadline | pg_cron (daily 9 AM UTC) | Active campaigns ending in 2 days | Hired creators |
+| deliverable_submitted | creator_campaigns | UPDATE (deliverables_status change) | Business owner |
+| payment_sent | creator_earnings | INSERT/UPDATE → 'available'/'paid' | Creator |
+| campaign_invite | campaign_invitations | INSERT | Creator |
+| friend_post | posts | INSERT | Followers (rate-limited: 1/author/follower/hour) |
+| weekly_recap | pg_cron (Sunday 6 PM UTC) | Active users (signed in within 30 days) | User |
+
+All triggers check `notification_preferences` before inserting.
+
+### Client-Side Setup
+
+#### 1. Register Device Token
 ```typescript
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
@@ -307,7 +485,7 @@ function App() {
 }
 ```
 
-### 2. Handle Incoming Notifications
+#### 2. Handle Incoming Notifications
 ```typescript
 // In app/_layout.tsx
 Notifications.addNotificationResponseReceivedListener(response => {
@@ -320,17 +498,13 @@ Notifications.addNotificationResponseReceivedListener(response => {
 });
 ```
 
-### 3. Send Push Notification
-```typescript
-await pushNotificationService.sendPushToDevice(
-  expoPushToken,
-  {
-    title: 'New Invitation',
-    body: 'You have a new board invitation',
-    data: { type: 'board_invite', boardId, invitationId }
-  }
-);
+### Deployment
+```bash
+npm run functions:deploy:push   # Deploy Edge Function
+npm run functions:logs:push     # View Edge Function logs
 ```
+
+See `specs/features/push-notifications/deployment.md` for webhook setup and configuration.
 
 ## Troubleshooting
 
@@ -353,8 +527,16 @@ await pushNotificationService.sendPushToDevice(
 4. Test navigation manually
 
 ## Related Files
-- `app/notifications/index.tsx` - Notifications screen
-- `components/NotificationItem.tsx` - Single notification display
+- `app/notifications/index.tsx` - Notifications screen with deep link navigation
+- `components/NotificationItem.tsx` - Single notification display (icon/color mapping for all 18 types)
+- `components/NotificationSettings.tsx` - Notification preferences UI (7 categories)
 - `hooks/useRealtimeNotifications.ts` - Real-time subscription
 - `hooks/usePushNotifications.ts` - Push notification setup
-- `types/notifications.ts` - TypeScript types
+- `types/notifications.ts` - TypeScript types (all 18 notification types + data interfaces)
+- `services/notificationService.ts` - Core notification service
+- `services/notificationPreferencesService.ts` - Preference management (7 categories)
+- `services/pushNotificationService.ts` - Client-side push token management
+- `supabase/functions/push-notifications/index.ts` - Edge Function for push delivery
+- `specs/features/push-notifications/spec.md` - Full feature specification
+- `specs/features/push-notifications/deployment.md` - Edge Function deployment guide
+- `testing/push-notifications/` - SQL verification and cleanup scripts
