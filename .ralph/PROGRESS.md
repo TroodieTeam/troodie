@@ -8,15 +8,15 @@
 
 **Phase**: 1 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 1.1
+**Last Task Completed**: Task 1.2
 
 ## Task List
 
 ### Phase 1: Foundation — Types & Schema Alignment
 
 - [x] Task 1.1: Update `types/notifications.ts` — add new NotificationType values and data interfaces
-- [ ] Task 1.2: Update `lib/supabase.ts` — add new notification types and preference columns to database types <-- NEXT
-- [ ] Task 1.3: Create consolidated notification type constraint migration SQL
+- [x] Task 1.2: Update `lib/supabase.ts` — add new notification types and preference columns to database types
+- [ ] Task 1.3: Create consolidated notification type constraint migration SQL <-- NEXT
 
 ### Phase 2: Edge Function & Push Delivery
 
@@ -56,6 +56,7 @@
 | Task | Completed | Notes |
 |------|-----------|-------|
 | Task 1.1 | 2026-03-12 | Added 9 new NotificationType values, 9 data interfaces, 2 new NotificationCategory values, updated NotificationData union and UserNotificationPreferences |
+| Task 1.2 | 2026-03-12 | Added 9 new notification types to notifications Row/Insert/Update type union, added campaigns_push/in_app_enabled and engagement_push/in_app_enabled columns to notification_preferences |
 
 ## Blockers
 

@@ -692,7 +692,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          type: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system'
+          type: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system' | 'campaign_opportunity' | 'campaign_application' | 'application_approved' | 'campaign_deadline' | 'deliverable_submitted' | 'payment_sent' | 'campaign_invite' | 'friend_post' | 'weekly_recap'
           title: string
           message: string
           data: unknown | null
@@ -707,7 +707,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          type: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system'
+          type: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system' | 'campaign_opportunity' | 'campaign_application' | 'application_approved' | 'campaign_deadline' | 'deliverable_submitted' | 'payment_sent' | 'campaign_invite' | 'friend_post' | 'weekly_recap'
           title: string
           message: string
           data?: unknown | null
@@ -722,7 +722,7 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string
-          type?: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system'
+          type?: 'like' | 'comment' | 'follow' | 'achievement' | 'restaurant_recommendation' | 'board_invite' | 'post_mention' | 'milestone' | 'system' | 'campaign_opportunity' | 'campaign_application' | 'application_approved' | 'campaign_deadline' | 'deliverable_submitted' | 'payment_sent' | 'campaign_invite' | 'friend_post' | 'weekly_recap'
           title?: string
           message?: string
           data?: unknown | null
@@ -744,6 +744,10 @@ export type Database = {
           in_app_enabled: boolean
           email_enabled: boolean
           frequency: 'immediate' | 'daily' | 'weekly'
+          campaigns_push_enabled: boolean
+          campaigns_in_app_enabled: boolean
+          engagement_push_enabled: boolean
+          engagement_in_app_enabled: boolean
           created_at: string
           updated_at: string
         }
@@ -755,6 +759,10 @@ export type Database = {
           in_app_enabled?: boolean
           email_enabled?: boolean
           frequency?: 'immediate' | 'daily' | 'weekly'
+          campaigns_push_enabled?: boolean
+          campaigns_in_app_enabled?: boolean
+          engagement_push_enabled?: boolean
+          engagement_in_app_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -766,6 +774,10 @@ export type Database = {
           in_app_enabled?: boolean
           email_enabled?: boolean
           frequency?: 'immediate' | 'daily' | 'weekly'
+          campaigns_push_enabled?: boolean
+          campaigns_in_app_enabled?: boolean
+          engagement_push_enabled?: boolean
+          engagement_in_app_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
