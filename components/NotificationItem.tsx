@@ -3,10 +3,18 @@ import { NotificationItemProps } from '@/types/notifications';
 import {
     AtSign,
     Bell,
+    Briefcase,
+    Calendar,
+    CheckCircle,
+    ClipboardCheck,
+    CreditCard,
     Heart,
     MapPin,
     MessageCircle,
+    Newspaper,
+    Send,
     Settings,
+    Star,
     Target,
     Trophy,
     UserPlus,
@@ -52,6 +60,15 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'post_mention': return AtSign;
       case 'milestone': return Target;
       case 'system': return Settings;
+      case 'campaign_opportunity': return Briefcase;
+      case 'campaign_application': return ClipboardCheck;
+      case 'application_approved': return CheckCircle;
+      case 'campaign_deadline': return Calendar;
+      case 'deliverable_submitted': return Send;
+      case 'payment_sent': return CreditCard;
+      case 'campaign_invite': return Star;
+      case 'friend_post': return Newspaper;
+      case 'weekly_recap': return Trophy;
       default: return Bell;
     }
   };
@@ -67,6 +84,15 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'post_mention': return '#EC4899';
       case 'milestone': return '#84CC16';
       case 'system': return '#6B7280';
+      case 'campaign_opportunity': return '#3B82F6';
+      case 'campaign_application': return '#2563EB';
+      case 'application_approved': return '#10B981';
+      case 'campaign_deadline': return '#F59E0B';
+      case 'deliverable_submitted': return '#6366F1';
+      case 'payment_sent': return '#059669';
+      case 'campaign_invite': return '#8B5CF6';
+      case 'friend_post': return '#EC4899';
+      case 'weekly_recap': return '#F97316';
       default: return designTokens.colors.primaryOrange;
     }
   };

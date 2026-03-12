@@ -8,7 +8,7 @@
 
 **Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 4.2
+**Last Task Completed**: Task 5.1
 
 ## Task List
 
@@ -40,8 +40,8 @@
 
 ### Phase 5: Frontend — Display & Navigation
 
-- [ ] Task 5.1: Update NotificationItem.tsx — icon/color mapping for new types <-- NEXT
-- [ ] Task 5.2: Implement deep link navigation on notification tap
+- [x] Task 5.1: Update NotificationItem.tsx — icon/color mapping for new types
+- [ ] Task 5.2: Implement deep link navigation on notification tap <-- NEXT
 - [ ] Task 5.3: Update NotificationSettings.tsx — add campaign & engagement toggles
 - [ ] Task 5.4: Clean up notificationService.ts — remove TODO stubs
 
@@ -69,6 +69,7 @@
 | Task 3.7 | 2026-03-12 | Created campaign invite trigger: fires on campaign_invitations INSERT, resolves creator user_id from creator_profiles, looks up campaign title and restaurant name, checks campaigns_in_app_enabled preference, notifies creator |
 | Task 4.1 | 2026-03-12 | Created friend post trigger: fires on posts INSERT, notifies followers via user_relationships, checks engagement_in_app_enabled preference, rate-limited to 1 notification per author per follower per hour, includes post/author/restaurant data |
 | Task 4.2 | 2026-03-12 | Created weekly recap cron job: runs Sundays at 6 PM UTC, targets users who signed in within 30 days (via auth.users.last_sign_in_at), checks engagement_in_app_enabled preference, deduplicates by week start date, uses create_notification() helper |
+| Task 5.1 | 2026-03-12 | Added icon/color mapping for 9 new notification types in NotificationItem: campaign types use Briefcase/ClipboardCheck/CheckCircle/Calendar/Send/CreditCard/Star icons with blue/green tints, engagement types use Newspaper (pink) and Trophy (orange) |
 
 ## Blockers
 
