@@ -14,24 +14,35 @@ export type PushTokenInsert = Database['public']['Tables']['push_tokens']['Inser
 export type PushTokenUpdate = Database['public']['Tables']['push_tokens']['Update'];
 
 // Notification type enum
-export type NotificationType = 
-  | 'like' 
-  | 'comment' 
-  | 'follow' 
-  | 'achievement' 
+export type NotificationType =
+  | 'like'
+  | 'comment'
+  | 'follow'
+  | 'achievement'
   | 'restaurant_recommendation'
-  | 'board_invite' 
-  | 'post_mention' 
-  | 'milestone' 
-  | 'system';
+  | 'board_invite'
+  | 'post_mention'
+  | 'milestone'
+  | 'system'
+  | 'campaign_opportunity'
+  | 'campaign_application'
+  | 'application_approved'
+  | 'campaign_deadline'
+  | 'deliverable_submitted'
+  | 'payment_sent'
+  | 'campaign_invite'
+  | 'friend_post'
+  | 'weekly_recap';
 
 // Notification category enum
-export type NotificationCategory = 
+export type NotificationCategory =
   | 'social'
   | 'achievements'
   | 'restaurants'
   | 'boards'
-  | 'system';
+  | 'system'
+  | 'campaigns'
+  | 'engagement';
 
 // Notification frequency enum
 export type NotificationFrequency = 'immediate' | 'daily' | 'weekly';
@@ -107,11 +118,76 @@ export interface MilestoneData {
 export interface SystemNotificationData {
   action?: string;
   url?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
+}
+
+// Campaign notification data types
+export interface CampaignOpportunityData {
+  campaignId: string;
+  restaurantId: string;
+  restaurantName: string;
+  budget: number;
+  title: string;
+}
+
+export interface CampaignApplicationData {
+  campaignId: string;
+  campaignTitle: string;
+  creatorId: string;
+  creatorName: string;
+  creatorAvatar?: string;
+}
+
+export interface ApplicationApprovedData {
+  campaignId: string;
+  campaignTitle: string;
+  restaurantName: string;
+}
+
+export interface CampaignDeadlineData {
+  campaignId: string;
+  campaignTitle: string;
+  endDate: string;
+  daysRemaining: number;
+}
+
+export interface DeliverableSubmittedData {
+  campaignId: string;
+  campaignTitle: string;
+  creatorId: string;
+  creatorName: string;
+}
+
+export interface PaymentSentData {
+  campaignId: string;
+  campaignTitle: string;
+  amount: number;
+  currency: string;
+}
+
+export interface CampaignInviteData {
+  campaignId: string;
+  campaignTitle: string;
+  restaurantName: string;
+  restaurantId: string;
+}
+
+// Engagement notification data types
+export interface FriendPostData {
+  postId: string;
+  postType: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  restaurantName?: string;
+}
+
+export interface WeeklyRecapData {
+  week: string;
 }
 
 // Union type for all notification data
-export type NotificationData = 
+export type NotificationData =
   | LikeNotificationData
   | CommentNotificationData
   | FollowNotificationData
@@ -120,7 +196,16 @@ export type NotificationData =
   | BoardInviteData
   | PostMentionData
   | MilestoneData
-  | SystemNotificationData;
+  | SystemNotificationData
+  | CampaignOpportunityData
+  | CampaignApplicationData
+  | ApplicationApprovedData
+  | CampaignDeadlineData
+  | DeliverableSubmittedData
+  | PaymentSentData
+  | CampaignInviteData
+  | FriendPostData
+  | WeeklyRecapData;
 
 // Notification creation interface
 export interface CreateNotificationParams {
@@ -172,6 +257,18 @@ export interface UserNotificationPreferences {
     frequency: NotificationFrequency;
   };
   system: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  campaigns: {
+    push_enabled: boolean;
+    in_app_enabled: boolean;
+    email_enabled: boolean;
+    frequency: NotificationFrequency;
+  };
+  engagement: {
     push_enabled: boolean;
     in_app_enabled: boolean;
     email_enabled: boolean;
