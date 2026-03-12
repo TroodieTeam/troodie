@@ -56,7 +56,9 @@
     "test:e2e:production": "node e2e/scripts/run-production-e2e.js",
     "test:e2e:production:consumer": "maestro test e2e/flows/production/login-consumer.yaml",
     "test:e2e:production:creator": "maestro test e2e/flows/production/login-creator.yaml",
-    "test:e2e:production:business": "maestro test e2e/flows/production/login-business.yaml"
+    "test:e2e:production:business": "maestro test e2e/flows/production/login-business.yaml",
+    "functions:deploy:push": "supabase functions deploy push-notifications",
+    "functions:logs:push": "supabase functions logs push-notifications"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

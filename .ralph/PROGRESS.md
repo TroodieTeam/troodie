@@ -8,7 +8,7 @@
 
 **Phase**: 2 of 6
 **Last Updated**: 2026-03-12
-**Last Task Completed**: Task 2.1
+**Last Task Completed**: Task 2.2
 
 ## Task List
 
@@ -21,11 +21,11 @@
 ### Phase 2: Edge Function & Push Delivery
 
 - [x] Task 2.1: Create Edge Function `push-notifications` with Expo Push API + dead token cleanup
-- [ ] Task 2.2: Create deployment script and webhook setup documentation <-- NEXT
+- [x] Task 2.2: Create deployment script and webhook setup documentation
 
 ### Phase 3: Campaign Notification Triggers
 
-- [ ] Task 3.1: Campaign opportunity trigger (campaigns status → active)
+- [ ] Task 3.1: Campaign opportunity trigger (campaigns status → active) <-- NEXT
 - [ ] Task 3.2: Campaign application trigger (campaign_applications INSERT)
 - [ ] Task 3.3: Application approved trigger (campaign_applications status → accepted)
 - [ ] Task 3.4: Campaign deadline reminder cron (pg_cron daily, 2-day warning)
@@ -59,6 +59,7 @@
 | Task 1.2 | 2026-03-12 | Added 9 new notification types to notifications Row/Insert/Update type union, added campaigns_push/in_app_enabled and engagement_push/in_app_enabled columns to notification_preferences |
 | Task 1.3 | 2026-03-12 | Created consolidated migration: drops/recreates notifications_type_check with all 18 types, adds 4 preference columns, updates default prefs trigger for campaigns/engagement, backfills existing users |
 | Task 2.1 | 2026-03-12 | Created Edge Function: webhook handler for notifications INSERT, fetches push_tokens, validates Expo tokens, sends in batches of 100, processes receipts, deactivates DeviceNotRegistered tokens, maps priority and channelId |
+| Task 2.2 | 2026-03-12 | Added `functions:deploy:push` and `functions:logs:push` npm scripts; created deployment.md with webhook setup (Dashboard + SQL), verification steps, env vars, and troubleshooting |
 
 ## Blockers
 
