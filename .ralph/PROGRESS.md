@@ -7,7 +7,7 @@
 
 **Phase**: 1 of 3
 **Last Updated**: 2026-03-13
-**Last Task Completed**: Task 3.3
+**Last Task Completed**: Task 3.4
 
 ## Task List
 
@@ -30,8 +30,8 @@
 - [x] Task 3.1: Wrap NotificationItem in React.memo
 - [x] Task 3.2: Add unit tests for notificationService
 - [x] Task 3.3: Add unit tests for NotificationItem component
-- [ ] Task 3.4: Expand E2E seed to cover all 31 notification types  <-- NEXT
-- [ ] Task 3.5: Add E2E test for swipe-to-delete
+- [x] Task 3.4: Expand E2E seed to cover all 18 DB notification types
+- [ ] Task 3.5: Add E2E test for swipe-to-delete  <-- NEXT
 
 ## Completed Tasks
 
@@ -48,6 +48,7 @@
 | Task 3.1 | 2026-03-13 | Wrapped NotificationItem in React.memo. Extracted handlePress/handleDelete into useCallback hooks inside component. Wrapped parent callbacks (handleNotificationPress, handleDeleteNotification) in useCallback. |
 | Task 3.2 | 2026-03-13 | Added 13 unit tests for NotificationService: getUserNotifications (pagination, default/custom offset, null data, errors), markAsRead (success, error), markAllAsRead (success, error), deleteNotification (success, error), getUnreadCount (rpc, null fallback, error). Fixed jest.setup.js extend-expect → matchers import. |
 | Task 3.3 | 2026-03-13 | Added 66 unit tests for NotificationItem component: icon mapping for all 32 types (31 + unknown fallback), color mapping for 22 representative types, unread dot rendering (read/unread), content rendering (title, message, testID), formatRelativeTime (just now, minutes, hours, days, dates), interaction callbacks (onPress, onSwipeDelete). |
+| Task 3.4 | 2026-03-13 | Created seed (18 DB-valid types with [E2E-ALL] prefix), cleanup, and Maestro test. Covers all 18 notification types in DB constraint: social (4), achievements (2), restaurants (1), boards (1), system (1), campaigns (7), engagement (2). Test uses scrollUntilVisible for items below fold. |
 
 ## Blockers
 

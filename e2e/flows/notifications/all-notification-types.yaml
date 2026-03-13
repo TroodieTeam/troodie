@@ -1,0 +1,165 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - notifications
+  - regression
+---
+# All Notification Types - Render Verification
+# Priority: P1 (High)
+#
+# Verifies all 18 DB notification types render with correct testIDs.
+# Types are grouped: social (4), achievements (2), restaurants (1),
+# boards (1), system (1), campaigns (7), engagement (2).
+#
+# Prerequisites:
+#   - Seed data: node scripts/run-sql.js --dev data/test-data/dev/seed-all-notification-types-e2e.sql
+# Cleanup:
+#   - node scripts/run-sql.js --dev data/test-data/dev/cleanup-all-notification-types-e2e.sql
+#
+# Run:
+#   maestro test e2e/flows/notifications/all-notification-types.yaml
+
+# ============================================================
+# Step 1: Login
+# ============================================================
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 2: Navigate to Notifications
+# ============================================================
+- openLink: troodie://notifications
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+# ============================================================
+# Step 3: Verify social notification types
+# ============================================================
+- assertVisible:
+    id: "notification-item-like"
+
+- assertVisible:
+    id: "notification-item-comment"
+
+- assertVisible:
+    id: "notification-item-follow"
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-post_mention"
+    direction: DOWN
+    timeout: 5000
+
+# ============================================================
+# Step 4: Verify achievement types
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-achievement"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-milestone"
+    direction: DOWN
+    timeout: 5000
+
+# ============================================================
+# Step 5: Verify restaurant types
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-restaurant_recommendation"
+    direction: DOWN
+    timeout: 5000
+
+# ============================================================
+# Step 6: Verify board types
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-board_invite"
+    direction: DOWN
+    timeout: 5000
+
+# ============================================================
+# Step 7: Verify system types
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-system"
+    direction: DOWN
+    timeout: 5000
+
+# ============================================================
+# Step 8: Verify campaign types
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-campaign_opportunity"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-campaign_application"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-application_approved"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-campaign_deadline"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-deliverable_submitted"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-payment_sent"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-campaign_invite"
+    direction: DOWN
+    timeout: 5000
+
+# ============================================================
+# Step 9: Verify engagement types
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-friend_post"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-weekly_recap"
+    direction: DOWN
+    timeout: 5000
+
+- takeScreenshot: "all-notification-types-verified"
