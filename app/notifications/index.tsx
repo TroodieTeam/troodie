@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { notificationService } from '@/services/notificationService';
 import { Notification } from '@/types/notifications';
 import { useRouter } from 'expo-router';
-import { Bell, Check } from 'lucide-react-native';
+import { Bell, Check, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -68,13 +68,18 @@ export default function NotificationsScreen() {
 
       switch (notification.type) {
         case 'like':
+        case 'post_liked':
         case 'comment':
+        case 'post_commented':
         case 'post_mention':
+        case 'mentioned_in_post':
+        case 'mentioned_in_comment':
           if (data && 'postId' in data) {
             router.push(`/posts/${data.postId}`);
           }
           break;
         case 'follow':
+        case 'new_follower':
           if (data && 'followerId' in data) {
             router.push(`/user/${data.followerId}`);
           }
@@ -84,6 +89,7 @@ export default function NotificationsScreen() {
           router.push('/profile?tab=achievements');
           break;
         case 'restaurant_recommendation':
+        case 'restaurant_mention':
           if (data && 'restaurantId' in data) {
             router.push(`/restaurant/${data.restaurantId}`);
           }
@@ -102,9 +108,11 @@ export default function NotificationsScreen() {
           break;
         }
         case 'campaign_opportunity':
+        case 'new_campaign_posted':
           router.push('/creator/explore-campaigns');
           break;
         case 'campaign_application':
+        case 'campaign_application_submitted':
           if (data && 'campaignId' in data) {
             router.push(`/(tabs)/business/campaigns/${data.campaignId}` as any);
           } else {
@@ -112,17 +120,26 @@ export default function NotificationsScreen() {
           }
           break;
         case 'application_approved':
+        case 'application_rejected':
         case 'campaign_deadline':
+        case 'campaign_deadline_approaching':
+          if (data && 'campaignId' in data) {
+            router.push(`/creator/campaigns` as any);
+          }
+          break;
+        case 'revision_requested':
           if (data && 'campaignId' in data) {
             router.push(`/creator/campaigns` as any);
           }
           break;
         case 'deliverable_submitted':
+        case 'deliverables_submitted':
           if (data && 'campaignId' in data) {
             router.push(`/business/campaigns/${data.campaignId}/review-deliverables` as any);
           }
           break;
         case 'payment_sent':
+        case 'payment_received':
           router.push('/creator/earnings' as any);
           break;
         case 'campaign_invite':
@@ -133,6 +150,7 @@ export default function NotificationsScreen() {
           }
           break;
         case 'friend_post':
+        case 'friend_post_restaurant':
           if (data && 'postId' in data) {
             router.push(`/posts/${data.postId}`);
           }
@@ -181,27 +199,46 @@ export default function NotificationsScreen() {
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <Text style={styles.title}>Notifications</Text>
-      {notifications.some(n => !n.is_read) && (
-        <TouchableOpacity 
-          style={styles.markAllReadButton}
-          onPress={handleMarkAllAsRead}
-          disabled={markingAllRead}
+    <View style={styles.header} testID="notifications-header">
+      <View style={styles.headerLeft}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={() => router.back()}
+          testID="notifications-close-button"
         >
-          {markingAllRead ? (
-            <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
-          ) : (
-            <Check size={16} color={designTokens.colors.primaryOrange} />
-          )}
-          <Text style={styles.markAllReadText}>Mark all as read</Text>
+          <X size={24} color={designTokens.colors.textDark} />
         </TouchableOpacity>
-      )}
+        <Text style={styles.title}>Notifications</Text>
+      </View>
+      <View style={styles.headerRight}>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => router.push('/notifications/settings')}
+          testID="notifications-settings-button"
+        >
+          <Settings size={22} color={designTokens.colors.textDark} />
+        </TouchableOpacity>
+        {notifications.some(n => !n.is_read) && (
+          <TouchableOpacity
+            style={styles.markAllReadButton}
+            onPress={handleMarkAllAsRead}
+            disabled={markingAllRead}
+            testID="mark-all-read-button"
+          >
+            {markingAllRead ? (
+              <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+            ) : (
+              <Check size={16} color={designTokens.colors.primaryOrange} />
+            )}
+            <Text style={styles.markAllReadText}>Mark all as read</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={styles.emptyState} testID="notifications-empty-state">
       <Bell size={48} color={designTokens.colors.textLight} />
       <Text style={styles.emptyTitle}>No notifications yet</Text>
       <Text style={styles.emptySubtitle}>
@@ -235,12 +272,13 @@ export default function NotificationsScreen() {
       {renderHeader()}
       
       <FlatList
+        testID="notifications-list"
         data={notifications}
         renderItem={renderNotificationItem}
         keyExtractor={(item) => item.id}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[designTokens.colors.primaryOrange]}
           />
@@ -267,9 +305,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: designTokens.colors.borderLight
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  closeButton: {
+    marginRight: designTokens.spacing.sm,
+    padding: designTokens.spacing.xs
+  },
   title: {
     ...designTokens.typography.sectionTitle,
     color: designTokens.colors.textDark
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  settingsButton: {
+    padding: designTokens.spacing.sm
   },
   markAllReadButton: {
     flexDirection: 'row',
