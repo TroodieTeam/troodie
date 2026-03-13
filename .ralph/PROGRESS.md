@@ -7,7 +7,7 @@
 
 **Phase**: 1 of 3
 **Last Updated**: 2026-03-13
-**Last Task Completed**: Task 2.3
+**Last Task Completed**: Task 2.4
 
 ## Task List
 
@@ -23,11 +23,11 @@
 - [x] Task 2.1: Add pagination with infinite scroll
 - [x] Task 2.2: Add date section headers (Today, Yesterday, This Week, Older)
 - [x] Task 2.3: Enforce user preferences in push edge function
-- [ ] Task 2.4: Backfill campaigns and engagement preference rows  <-- NEXT
+- [x] Task 2.4: Backfill campaigns and engagement preference rows
 
 ### Phase 3: Quality & Testing (Fast-Follow)
 
-- [ ] Task 3.1: Wrap NotificationItem in React.memo
+- [ ] Task 3.1: Wrap NotificationItem in React.memo  <-- NEXT
 - [ ] Task 3.2: Add unit tests for notificationService
 - [ ] Task 3.3: Add unit tests for NotificationItem component
 - [ ] Task 3.4: Expand E2E seed to cover all 31 notification types
@@ -44,6 +44,7 @@
 | Task 2.1 | 2026-03-13 | Added offset param to getUserNotifications service (range-based). Notifications screen uses PAGE_SIZE=20, onEndReached for infinite scroll, hasMore tracking, loading footer spinner. Pull-to-refresh resets to page 0. |
 | Task 2.2 | 2026-03-13 | Added date section headers (Today, Yesterday, This Week, Older) to notifications FlatList. Helper groupNotificationsByDate injects header items. Empty sections auto-hidden. Gray uppercase labels with testIDs. |
 | Task 2.3 | 2026-03-13 | Added getPreferenceCategory() mapping all 31 notification types to 6 categories. Added isPushEnabledForUser() query. Edge function now checks notification_preferences.push_enabled before sending push. Defaults to enabled if no preference row exists. Refactored getChannelId to use getPreferenceCategory. |
+| Task 2.4 | 2026-03-13 | Created migration to backfill campaigns and engagement rows for existing users via NOT IN subquery. Updated insert_default_notification_preferences() trigger to include all 7 categories with ON CONFLICT DO NOTHING. |
 
 ## Blockers
 
