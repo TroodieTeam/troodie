@@ -7,7 +7,7 @@
 
 **Phase**: 1 of 3
 **Last Updated**: 2026-03-13
-**Last Task Completed**: Task 2.1
+**Last Task Completed**: Task 2.2
 
 ## Task List
 
@@ -21,8 +21,8 @@
 ### Phase 2: Data & Reliability (Before Release)
 
 - [x] Task 2.1: Add pagination with infinite scroll
-- [ ] Task 2.2: Add date section headers (Today, Yesterday, This Week, Older)  <-- NEXT
-- [ ] Task 2.3: Enforce user preferences in push edge function
+- [x] Task 2.2: Add date section headers (Today, Yesterday, This Week, Older)
+- [ ] Task 2.3: Enforce user preferences in push edge function  <-- NEXT
 - [ ] Task 2.4: Backfill campaigns and engagement preference rows
 
 ### Phase 3: Quality & Testing (Fast-Follow)
@@ -42,6 +42,7 @@
 | Task 1.3 | 2026-03-13 | Wrapped NotificationItem in Swipeable from react-native-gesture-handler. Left-swipe reveals red delete button with Trash2 icon and scale animation. Delete button calls onSwipeDelete prop. Swipeable only renders right actions when onSwipeDelete is provided. Added testID notification-delete-{type}. |
 | Task 1.4 | 2026-03-13 | Added Settings gear icon from lucide-react-native to notifications header. Positioned in headerRight container before mark-all-read button. Navigates to /notifications/settings. testID: notifications-settings-button. |
 | Task 2.1 | 2026-03-13 | Added offset param to getUserNotifications service (range-based). Notifications screen uses PAGE_SIZE=20, onEndReached for infinite scroll, hasMore tracking, loading footer spinner. Pull-to-refresh resets to page 0. |
+| Task 2.2 | 2026-03-13 | Added date section headers (Today, Yesterday, This Week, Older) to notifications FlatList. Helper groupNotificationsByDate injects header items. Empty sections auto-hidden. Gray uppercase labels with testIDs. |
 
 ## Blockers
 

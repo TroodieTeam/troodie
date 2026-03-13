@@ -5,7 +5,7 @@ import { notificationService } from '@/services/notificationService';
 import { Notification } from '@/types/notifications';
 import { useRouter } from 'expo-router';
 import { Bell, Check, Settings, X } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -18,6 +18,47 @@ import {
 } from 'react-native';
 
 const PAGE_SIZE = 20;
+
+type DateLabel = 'Today' | 'Yesterday' | 'This Week' | 'Older';
+type DateHeader = { type: 'header'; label: DateLabel };
+type ListItem = Notification | DateHeader;
+
+function isDateHeader(item: ListItem): item is DateHeader {
+  return 'type' in item && item.type === 'header';
+}
+
+function getDateLabel(dateStr: string): DateLabel {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 6);
+
+  if (date >= today) return 'Today';
+  if (date >= yesterday) return 'Yesterday';
+  if (date >= weekAgo) return 'This Week';
+  return 'Older';
+}
+
+function groupNotificationsByDate(notifications: Notification[]): ListItem[] {
+  if (notifications.length === 0) return [];
+
+  const items: ListItem[] = [];
+  let currentLabel: DateLabel | null = null;
+
+  for (const notification of notifications) {
+    const label = getDateLabel(notification.created_at);
+    if (label !== currentLabel) {
+      currentLabel = label;
+      items.push({ type: 'header', label });
+    }
+    items.push(notification);
+  }
+
+  return items;
+}
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -273,13 +314,27 @@ export default function NotificationsScreen() {
     </View>
   );
 
-  const renderNotificationItem = ({ item }: { item: Notification }) => (
-    <NotificationItem
-      notification={item}
-      onPress={handleNotificationPress}
-      onSwipeDelete={handleDeleteNotification}
-    />
+  const groupedItems = useMemo(
+    () => groupNotificationsByDate(notifications),
+    [notifications]
   );
+
+  const renderListItem = ({ item }: { item: ListItem }) => {
+    if (isDateHeader(item)) {
+      return (
+        <View style={styles.sectionHeader} testID={`section-header-${item.label.toLowerCase().replace(/\s/g, '-')}`}>
+          <Text style={styles.sectionHeaderText}>{item.label.toUpperCase()}</Text>
+        </View>
+      );
+    }
+    return (
+      <NotificationItem
+        notification={item}
+        onPress={handleNotificationPress}
+        onSwipeDelete={handleDeleteNotification}
+      />
+    );
+  };
 
   const renderFooter = () => {
     if (!loadingMore) return null;
@@ -308,9 +363,9 @@ export default function NotificationsScreen() {
       
       <FlatList
         testID="notifications-list"
-        data={notifications}
-        renderItem={renderNotificationItem}
-        keyExtractor={(item) => item.id}
+        data={groupedItems}
+        renderItem={renderListItem}
+        keyExtractor={(item) => isDateHeader(item) ? `header-${item.label}` : item.id}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -407,5 +462,17 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: designTokens.spacing.lg,
     alignItems: 'center'
+  },
+  sectionHeader: {
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingTop: designTokens.spacing.md,
+    paddingBottom: designTokens.spacing.xs,
+    backgroundColor: designTokens.colors.backgroundLight
+  },
+  sectionHeaderText: {
+    ...designTokens.typography.smallText,
+    color: designTokens.colors.textLight,
+    fontWeight: '600',
+    letterSpacing: 0.5
   }
 }); 
