@@ -7,7 +7,7 @@
 
 **Phase**: 1 of 3
 **Last Updated**: 2026-03-13
-**Last Task Completed**: Task 3.2
+**Last Task Completed**: Task 3.3
 
 ## Task List
 
@@ -29,8 +29,8 @@
 
 - [x] Task 3.1: Wrap NotificationItem in React.memo
 - [x] Task 3.2: Add unit tests for notificationService
-- [ ] Task 3.3: Add unit tests for NotificationItem component  <-- NEXT
-- [ ] Task 3.4: Expand E2E seed to cover all 31 notification types
+- [x] Task 3.3: Add unit tests for NotificationItem component
+- [ ] Task 3.4: Expand E2E seed to cover all 31 notification types  <-- NEXT
 - [ ] Task 3.5: Add E2E test for swipe-to-delete
 
 ## Completed Tasks
@@ -47,6 +47,7 @@
 | Task 2.4 | 2026-03-13 | Created migration to backfill campaigns and engagement rows for existing users via NOT IN subquery. Updated insert_default_notification_preferences() trigger to include all 7 categories with ON CONFLICT DO NOTHING. |
 | Task 3.1 | 2026-03-13 | Wrapped NotificationItem in React.memo. Extracted handlePress/handleDelete into useCallback hooks inside component. Wrapped parent callbacks (handleNotificationPress, handleDeleteNotification) in useCallback. |
 | Task 3.2 | 2026-03-13 | Added 13 unit tests for NotificationService: getUserNotifications (pagination, default/custom offset, null data, errors), markAsRead (success, error), markAllAsRead (success, error), deleteNotification (success, error), getUnreadCount (rpc, null fallback, error). Fixed jest.setup.js extend-expect → matchers import. |
+| Task 3.3 | 2026-03-13 | Added 66 unit tests for NotificationItem component: icon mapping for all 32 types (31 + unknown fallback), color mapping for 22 representative types, unread dot rendering (read/unread), content rendering (title, message, testID), formatRelativeTime (just now, minutes, hours, days, dates), interaction callbacks (onPress, onSwipeDelete). |
 
 ## Blockers
 
