@@ -78,19 +78,65 @@ function mapPriority(priority: number): 'default' | 'normal' | 'high' {
 }
 
 /**
+ * Map notification type to preference category.
+ * Used for both Android channel IDs and user preference lookups.
+ */
+function getPreferenceCategory(type: string): string {
+    const campaignTypes = [
+        'campaign_opportunity', 'campaign_application', 'application_approved',
+        'campaign_deadline', 'deliverable_submitted', 'payment_sent',
+        'campaign_invite', 'application_rejected', 'revision_requested',
+    ]
+    if (campaignTypes.includes(type)) return 'campaigns'
+
+    const engagementTypes = ['friend_post', 'weekly_recap']
+    if (engagementTypes.includes(type)) return 'engagement'
+
+    const socialTypes = ['post_liked', 'post_commented', 'new_follower', 'mentioned_in_post', 'mentioned_in_comment']
+    if (socialTypes.includes(type)) return 'social'
+
+    if (type === 'board_invite') return 'boards'
+    if (type === 'restaurant_mention') return 'restaurants'
+    if (type === 'system') return 'system'
+
+    return 'system'
+}
+
+/**
  * Map notification type to Android channel ID for notification grouping.
  */
 function getChannelId(type: string): string {
-    if (type.startsWith('campaign_') || type === 'application_approved' || type === 'deliverable_submitted' || type === 'payment_sent') {
-        return 'campaigns'
-    }
-    if (type === 'friend_post' || type === 'weekly_recap') {
-        return 'engagement'
-    }
-    if (type === 'like' || type === 'comment' || type === 'follow' || type === 'post_mention') {
-        return 'social'
+    const category = getPreferenceCategory(type)
+    if (category === 'campaigns' || category === 'engagement' || category === 'social') {
+        return category
     }
     return 'default'
+}
+
+/**
+ * Check if push notifications are enabled for a user's notification category.
+ * Returns true if no preference row exists (default to enabled).
+ */
+async function isPushEnabledForUser(
+    userId: string,
+    notificationType: string,
+    supabase: ReturnType<typeof createClient>
+): Promise<boolean> {
+    const category = getPreferenceCategory(notificationType)
+
+    const { data, error } = await supabase
+        .from('notification_preferences')
+        .select('push_enabled')
+        .eq('user_id', userId)
+        .eq('category', category)
+        .single()
+
+    if (error || !data) {
+        // No preference row found — default to push enabled
+        return true
+    }
+
+    return data.push_enabled
 }
 
 /**
@@ -233,6 +279,17 @@ Deno.serve(async (req) => {
             type: notification.type,
             userId: notification.user_id,
         })
+
+        // Check user preference for this notification category
+        const pushEnabled = await isPushEnabledForUser(notification.user_id, notification.type, supabase)
+        if (!pushEnabled) {
+            const category = getPreferenceCategory(notification.type)
+            console.log(`[PushNotifications] Push disabled for user ${notification.user_id}, category: ${category}`)
+            return new Response(
+                JSON.stringify({ success: true, message: `Push disabled for category: ${category}` }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
 
         // Fetch active push tokens for the user
         const { data: tokens, error: tokenError } = await supabase
