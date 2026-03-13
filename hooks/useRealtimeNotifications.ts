@@ -1,7 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Notification } from '@/types/notifications';
-import { useEffect, useRef } from 'react';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface UseRealtimeNotificationsProps {
   onNotificationReceived?: (notification: Notification) => void;
@@ -17,7 +18,20 @@ export const useRealtimeNotifications = ({
   onUnreadCountChanged
 }: UseRealtimeNotificationsProps = {}) => {
   const { user } = useAuth();
-  const subscriptionRef = useRef<any>(null);
+  const subscriptionRef = useRef<RealtimeChannel | null>(null);
+
+  // Store callbacks in refs to prevent subscription churn
+  const onReceivedRef = useRef(onNotificationReceived);
+  onReceivedRef.current = onNotificationReceived;
+
+  const onUpdatedRef = useRef(onNotificationUpdated);
+  onUpdatedRef.current = onNotificationUpdated;
+
+  const onDeletedRef = useRef(onNotificationDeleted);
+  onDeletedRef.current = onNotificationDeleted;
+
+  const onUnreadCountRef = useRef(onUnreadCountChanged);
+  onUnreadCountRef.current = onUnreadCountChanged;
 
   useEffect(() => {
     if (!user?.id) return;
@@ -34,39 +48,39 @@ export const useRealtimeNotifications = ({
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-
           switch (payload.eventType) {
-            case 'INSERT':
+            case 'INSERT': {
               const newNotification = payload.new as Notification;
-              onNotificationReceived?.(newNotification);
+              onReceivedRef.current?.(newNotification);
               break;
-            
-            case 'UPDATE':
+            }
+            case 'UPDATE': {
               const updatedNotification = payload.new as Notification;
-              onNotificationUpdated?.(updatedNotification);
+              onUpdatedRef.current?.(updatedNotification);
               break;
-            
-            case 'DELETE':
+            }
+            case 'DELETE': {
               const deletedNotificationId = payload.old?.id;
               if (deletedNotificationId) {
-                onNotificationDeleted?.(deletedNotificationId);
+                onDeletedRef.current?.(deletedNotificationId);
               }
               break;
+            }
           }
         }
       )
-      .subscribe((status) => {
-      });
+      .subscribe();
 
     return () => {
       if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
         supabase.removeChannel(subscriptionRef.current);
       }
     };
-  }, [user?.id, onNotificationReceived, onNotificationUpdated, onNotificationDeleted]);
+  }, [user?.id]);
 
   // Function to manually trigger unread count update
-  const updateUnreadCount = async () => {
+  const updateUnreadCount = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -78,11 +92,11 @@ export const useRealtimeNotifications = ({
         return;
       }
 
-      onUnreadCountChanged?.(data || 0);
+      onUnreadCountRef.current?.(data || 0);
     } catch (error) {
       console.error('Error updating unread count:', error);
     }
-  };
+  }, [user?.id]);
 
   return {
     updateUnreadCount

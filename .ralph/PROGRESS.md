@@ -7,15 +7,15 @@
 
 **Phase**: 1 of 3
 **Last Updated**: 2026-03-13
-**Last Task Completed**: Task 1.1
+**Last Task Completed**: Task 1.2
 
 ## Task List
 
 ### Phase 1: Core UX (Must-Have)
 
 - [x] Task 1.1: Add notification bell with unread badge to tab bar
-- [ ] Task 1.2: Fix realtime subscription churn in useRealtimeNotifications  <-- NEXT
-- [ ] Task 1.3: Implement swipe-to-delete gesture on NotificationItem
+- [x] Task 1.2: Fix realtime subscription churn in useRealtimeNotifications
+- [ ] Task 1.3: Implement swipe-to-delete gesture on NotificationItem  <-- NEXT
 - [ ] Task 1.4: Add settings gear icon to notifications header
 
 ### Phase 2: Data & Reliability (Before Release)
@@ -38,6 +38,7 @@
 | Task | Completed | Notes |
 |------|-----------|-------|
 | Task 1.1 | 2026-03-13 | Replaced Heart/Activity tab with Bell/Notifications tab. Added NotificationBadge with unread count via useRealtimeNotifications. Replaced activity.tsx with full notifications screen (list, mark-all-read, realtime updates, navigation). |
+| Task 1.2 | 2026-03-13 | Stored all callback props in useRef to prevent subscription re-establishment on parent re-renders. Dependency array now only includes user?.id. Added .unsubscribe() before .removeChannel() in cleanup. Typed subscriptionRef as RealtimeChannel. Wrapped updateUnreadCount in useCallback. |
 
 ## Blockers
 
