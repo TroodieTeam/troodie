@@ -1,81 +1,43 @@
-# Progress: Push Notifications (TRO-18)
+# Progress: Notification Production Readiness
 
-> Implementation Plan: `specs/features/push-notifications/implementation-plan.md`
-> Spec: `specs/features/push-notifications/spec.md`
-> Branch: `feat/push-notifications-v2`
+> Implementation Plan: `specs/features/notification-production-readiness/implementation-plan.md`
+> Spec: `specs/features/notification-production-readiness/spec.md`
 
 ## Current Status
 
-**Phase**: 6 of 6
-**Last Updated**: 2026-03-12
-**Last Task Completed**: Task 6.3
+**Phase**: 1 of 3
+**Last Updated**: 2026-03-13
+**Last Task Completed**: Task 1.1
 
 ## Task List
 
-### Phase 1: Foundation — Types & Schema Alignment
+### Phase 1: Core UX (Must-Have)
 
-- [x] Task 1.1: Update `types/notifications.ts` — add new NotificationType values and data interfaces
-- [x] Task 1.2: Update `lib/supabase.ts` — add new notification types and preference columns to database types
-- [x] Task 1.3: Create consolidated notification type constraint migration SQL
+- [x] Task 1.1: Add notification bell with unread badge to tab bar
+- [ ] Task 1.2: Fix realtime subscription churn in useRealtimeNotifications  <-- NEXT
+- [ ] Task 1.3: Implement swipe-to-delete gesture on NotificationItem
+- [ ] Task 1.4: Add settings gear icon to notifications header
 
-### Phase 2: Edge Function & Push Delivery
+### Phase 2: Data & Reliability (Before Release)
 
-- [x] Task 2.1: Create Edge Function `push-notifications` with Expo Push API + dead token cleanup
-- [x] Task 2.2: Create deployment script and webhook setup documentation
+- [ ] Task 2.1: Add pagination with infinite scroll
+- [ ] Task 2.2: Add date section headers (Today, Yesterday, This Week, Older)
+- [ ] Task 2.3: Enforce user preferences in push edge function
+- [ ] Task 2.4: Backfill campaigns and engagement preference rows
 
-### Phase 3: Campaign Notification Triggers
+### Phase 3: Quality & Testing (Fast-Follow)
 
-- [x] Task 3.1: Campaign opportunity trigger (campaigns status → active)
-- [x] Task 3.2: Campaign application trigger (campaign_applications INSERT)
-- [x] Task 3.3: Application approved trigger (campaign_applications status → accepted)
-- [x] Task 3.4: Campaign deadline reminder cron (pg_cron daily, 2-day warning)
-- [x] Task 3.5: Deliverable submitted trigger (creator_campaigns deliverables_status change)
-- [x] Task 3.6: Payment sent trigger (creator_earnings status → available/paid)
-- [x] Task 3.7: Campaign invitation trigger (campaign invitation INSERT)
-
-### Phase 4: Engagement Notification Triggers
-
-- [x] Task 4.1: Friend posted trigger (posts INSERT → notify followers, rate-limited)
-- [x] Task 4.2: Weekly recap cron job (Sunday 6 PM UTC)
-
-### Phase 5: Frontend — Display & Navigation
-
-- [x] Task 5.1: Update NotificationItem.tsx — icon/color mapping for new types
-- [x] Task 5.2: Implement deep link navigation on notification tap
-- [x] Task 5.3: Update NotificationSettings.tsx — add campaign & engagement toggles
-- [x] Task 5.4: Clean up notificationService.ts — remove TODO stubs
-
-### Phase 6: Integration & Validation
-
-- [x] Task 6.1: Run typecheck and lint, fix all errors
-- [x] Task 6.2: Create test SQL scripts for manual verification
-- [x] Task 6.3: Update notification documentation
+- [ ] Task 3.1: Wrap NotificationItem in React.memo
+- [ ] Task 3.2: Add unit tests for notificationService
+- [ ] Task 3.3: Add unit tests for NotificationItem component
+- [ ] Task 3.4: Expand E2E seed to cover all 31 notification types
+- [ ] Task 3.5: Add E2E test for swipe-to-delete
 
 ## Completed Tasks
 
 | Task | Completed | Notes |
 |------|-----------|-------|
-| Task 1.1 | 2026-03-12 | Added 9 new NotificationType values, 9 data interfaces, 2 new NotificationCategory values, updated NotificationData union and UserNotificationPreferences |
-| Task 1.2 | 2026-03-12 | Added 9 new notification types to notifications Row/Insert/Update type union, added campaigns_push/in_app_enabled and engagement_push/in_app_enabled columns to notification_preferences |
-| Task 1.3 | 2026-03-12 | Created consolidated migration: drops/recreates notifications_type_check with all 18 types, adds 4 preference columns, updates default prefs trigger for campaigns/engagement, backfills existing users |
-| Task 2.1 | 2026-03-12 | Created Edge Function: webhook handler for notifications INSERT, fetches push_tokens, validates Expo tokens, sends in batches of 100, processes receipts, deactivates DeviceNotRegistered tokens, maps priority and channelId |
-| Task 2.2 | 2026-03-12 | Added `functions:deploy:push` and `functions:logs:push` npm scripts; created deployment.md with webhook setup (Dashboard + SQL), verification steps, env vars, and troubleshooting |
-| Task 3.1 | 2026-03-12 | Created campaign opportunity trigger: fires on campaigns UPDATE to 'active', finds local creators by matching city/location, checks campaigns notification preferences, uses create_notification() helper |
-| Task 3.2 | 2026-03-12 | Created campaign application trigger: fires on campaign_applications INSERT, looks up campaign business_id, fetches creator name/avatar, checks campaigns_in_app_enabled preference, notifies business owner |
-| Task 3.3 | 2026-03-12 | Created application approved trigger: fires on campaign_applications UPDATE to 'accepted', looks up campaign title and restaurant name, checks creator's campaigns_in_app_enabled preference, notifies creator |
-| Task 3.4 | 2026-03-12 | Created pg_cron job: runs daily at 9 AM UTC, finds active campaigns ending in 2 days, notifies hired creators (from campaign_applications + creator_campaigns), deduplicates by checking existing notifications for same campaign+creator+date |
-| Task 3.5 | 2026-03-12 | Created deliverable submitted trigger: fires on creator_campaigns UPDATE when deliverables_status JSONB changes, looks up campaign business_id and creator name, checks campaigns_in_app_enabled preference, notifies business owner |
-| Task 3.6 | 2026-03-12 | Created payment sent trigger: fires on creator_earnings INSERT/UPDATE when status becomes 'available' or 'paid', notifies creator with amount and campaign title, priority 3 (financial), checks campaigns_in_app_enabled preference |
-| Task 3.7 | 2026-03-12 | Created campaign invite trigger: fires on campaign_invitations INSERT, resolves creator user_id from creator_profiles, looks up campaign title and restaurant name, checks campaigns_in_app_enabled preference, notifies creator |
-| Task 4.1 | 2026-03-12 | Created friend post trigger: fires on posts INSERT, notifies followers via user_relationships, checks engagement_in_app_enabled preference, rate-limited to 1 notification per author per follower per hour, includes post/author/restaurant data |
-| Task 4.2 | 2026-03-12 | Created weekly recap cron job: runs Sundays at 6 PM UTC, targets users who signed in within 30 days (via auth.users.last_sign_in_at), checks engagement_in_app_enabled preference, deduplicates by week start date, uses create_notification() helper |
-| Task 5.1 | 2026-03-12 | Added icon/color mapping for 9 new notification types in NotificationItem: campaign types use Briefcase/ClipboardCheck/CheckCircle/Calendar/Send/CreditCard/Star icons with blue/green tints, engagement types use Newspaper (pink) and Trophy (orange) |
-| Task 5.2 | 2026-03-12 | Added deep link navigation for all 18 notification types in both app/notifications/index.tsx and app/(tabs)/index.tsx. Campaign types route to creator/business screens, friend_post to /posts/[id], follow to /user/[id], weekly_recap to feed. Cleaned up verbose debug logging. |
-| Task 5.3 | 2026-03-12 | Added Campaigns (Briefcase icon, blue) and Engagement (Newspaper icon, pink) categories to NotificationSettings.tsx. Updated notificationPreferencesService.ts getUserPreferences() and createDefaultPreferences() to include campaigns and engagement categories. |
-| Task 5.4 | 2026-03-12 | Removed sendBulkPushNotifications TODO stub (Edge Function handles push delivery). Removed sendCampaignPushNotifications private method. Updated campaign methods to use proper types (campaign_opportunity, campaign_application) instead of 'system'. Cleaned up verbose debug logging in getUserNotifications. |
-| Task 6.1 | 2026-03-12 | Verified zero new typecheck/lint errors introduced by push notification changes. All 1775 lint errors and typecheck errors in trigger-payout-for-deliverable.ts are pre-existing. |
-| Task 6.2 | 2026-03-12 | Created verify-triggers.sql (exercises all 7 triggers with deterministic UUIDs, prints notification counts) and cleanup.sql (deletes all test data in dependency order). Located in testing/push-notifications/. |
-| Task 6.3 | 2026-03-12 | Updated services/notifications/CLAUDE.md: added all 18 notification types, 7 preference categories, campaign/engagement data structures, Edge Function architecture with trigger table, deployment commands, and updated related files list. |
+| Task 1.1 | 2026-03-13 | Replaced Heart/Activity tab with Bell/Notifications tab. Added NotificationBadge with unread count via useRealtimeNotifications. Replaced activity.tsx with full notifications screen (list, mark-all-read, realtime updates, navigation). |
 
 ## Blockers
 
@@ -83,8 +45,8 @@ None currently.
 
 ## Notes
 
-- Starting fresh on main, not building on PR #52 branch (too many issues identified in audit)
-- Existing infrastructure: NotificationItem, NotificationCenter, NotificationSettings, NotificationBadge components all exist
-- Existing services: notificationService.ts, notificationPreferencesService.ts, pushNotificationService.ts all exist
-- Edge Function approach: database webhook on notifications INSERT → Edge Function → Expo Push API
-- campaign_deliverables table may not exist — use creator_campaigns.deliverables_status instead
+- TRO-18 Push Notifications (backend) is complete — this builds on that foundation
+- `application_rejected` and `revision_requested` triggers already fixed (creator_id → user_id)
+- NotificationBadge component already exists at `components/NotificationBadge.tsx`
+- Gesture libraries (react-native-gesture-handler, react-native-reanimated) already in package.json
+- Bell icon already used in home header — match that pattern for tab bar
