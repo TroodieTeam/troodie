@@ -23,7 +23,7 @@ import {
     Users,
     XCircle
 } from 'lucide-react-native';
-import React, { useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
@@ -48,12 +48,17 @@ const formatRelativeTime = (dateString: string): string => {
   }
 };
 
-export const NotificationItem: React.FC<NotificationItemProps> = ({
+const NotificationItemInner: React.FC<NotificationItemProps> = ({
   notification,
   onPress,
   onSwipeDelete
 }) => {
   const swipeableRef = useRef<Swipeable>(null);
+
+  const handleDelete = useCallback(() => {
+    swipeableRef.current?.close();
+    onSwipeDelete?.(notification.id);
+  }, [onSwipeDelete, notification.id]);
 
   const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const scale = dragX.interpolate({
@@ -66,10 +71,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       <TouchableOpacity
         testID={`notification-delete-${notification.type}`}
         style={styles.deleteAction}
-        onPress={() => {
-          swipeableRef.current?.close();
-          onSwipeDelete?.(notification.id);
-        }}
+        onPress={handleDelete}
         activeOpacity={0.7}
       >
         <Animated.View style={{ transform: [{ scale }] }}>
@@ -157,6 +159,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   const Icon = getNotificationIcon(notification.type);
   const iconColor = getNotificationColor(notification.type);
 
+  const handlePress = useCallback(() => {
+    onPress(notification);
+  }, [onPress, notification]);
+
   return (
     <Swipeable
       ref={swipeableRef}
@@ -170,7 +176,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
           styles.notificationItem,
           !notification.is_read && styles.unreadNotification
         ]}
-        onPress={() => onPress(notification)}
+        onPress={handlePress}
         activeOpacity={0.7}
       >
         <View style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}>
@@ -194,6 +200,8 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
     </Swipeable>
   );
 };
+
+export const NotificationItem = React.memo(NotificationItemInner);
 
 const styles = StyleSheet.create({
   notificationItem: {

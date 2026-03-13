@@ -116,7 +116,7 @@ export default function NotificationsScreen() {
     }
   }, [loadingMore, hasMore, user?.id, notifications.length]);
 
-  const handleNotificationPress = async (notification: Notification) => {
+  const handleNotificationPress = useCallback(async (notification: Notification) => {
     try {
       // Mark as read
       await notificationService.markAsRead(notification.id);
@@ -232,9 +232,9 @@ export default function NotificationsScreen() {
     } catch (error) {
       console.error('[Notifications] Error handling notification:', error);
     }
-  };
+  }, [router]);
 
-  const handleDeleteNotification = async (notificationId: string) => {
+  const handleDeleteNotification = useCallback(async (notificationId: string) => {
     try {
       await notificationService.deleteNotification(notificationId);
       
@@ -245,7 +245,7 @@ export default function NotificationsScreen() {
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
-  };
+  }, []);
 
   const handleMarkAllAsRead = async () => {
     if (!user?.id) return;

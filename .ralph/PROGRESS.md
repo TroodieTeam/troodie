@@ -7,7 +7,7 @@
 
 **Phase**: 1 of 3
 **Last Updated**: 2026-03-13
-**Last Task Completed**: Task 2.4
+**Last Task Completed**: Task 3.1
 
 ## Task List
 
@@ -27,8 +27,8 @@
 
 ### Phase 3: Quality & Testing (Fast-Follow)
 
-- [ ] Task 3.1: Wrap NotificationItem in React.memo  <-- NEXT
-- [ ] Task 3.2: Add unit tests for notificationService
+- [x] Task 3.1: Wrap NotificationItem in React.memo
+- [ ] Task 3.2: Add unit tests for notificationService  <-- NEXT
 - [ ] Task 3.3: Add unit tests for NotificationItem component
 - [ ] Task 3.4: Expand E2E seed to cover all 31 notification types
 - [ ] Task 3.5: Add E2E test for swipe-to-delete
@@ -45,6 +45,7 @@
 | Task 2.2 | 2026-03-13 | Added date section headers (Today, Yesterday, This Week, Older) to notifications FlatList. Helper groupNotificationsByDate injects header items. Empty sections auto-hidden. Gray uppercase labels with testIDs. |
 | Task 2.3 | 2026-03-13 | Added getPreferenceCategory() mapping all 31 notification types to 6 categories. Added isPushEnabledForUser() query. Edge function now checks notification_preferences.push_enabled before sending push. Defaults to enabled if no preference row exists. Refactored getChannelId to use getPreferenceCategory. |
 | Task 2.4 | 2026-03-13 | Created migration to backfill campaigns and engagement rows for existing users via NOT IN subquery. Updated insert_default_notification_preferences() trigger to include all 7 categories with ON CONFLICT DO NOTHING. |
+| Task 3.1 | 2026-03-13 | Wrapped NotificationItem in React.memo. Extracted handlePress/handleDelete into useCallback hooks inside component. Wrapped parent callbacks (handleNotificationPress, handleDeleteNotification) in useCallback. |
 
 ## Blockers
 
