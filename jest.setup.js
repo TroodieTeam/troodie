@@ -1,5 +1,5 @@
 // Extend expect with testing library matchers
-import '@testing-library/react-native/extend-expect'
+import '@testing-library/react-native/matchers'
 
 // Import custom matchers
 import './__tests__/helpers/customMatchers'
