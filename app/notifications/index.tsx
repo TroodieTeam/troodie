@@ -17,19 +17,24 @@ import {
     View
 } from 'react-native';
 
+const PAGE_SIZE = 20;
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
-      const userNotifications = await notificationService.getUserNotifications(user!.id, 50);
+      const userNotifications = await notificationService.getUserNotifications(user!.id, PAGE_SIZE, 0);
       setNotifications(userNotifications);
+      setHasMore(userNotifications.length >= PAGE_SIZE);
     } catch (error) {
       console.error('[Notifications] Error loading notifications:', error);
     } finally {
@@ -45,9 +50,30 @@ export default function NotificationsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadNotifications();
+    const userNotifications = await notificationService.getUserNotifications(user!.id, PAGE_SIZE, 0);
+    setNotifications(userNotifications);
+    setHasMore(userNotifications.length >= PAGE_SIZE);
     setRefreshing(false);
   };
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || !user?.id) return;
+
+    try {
+      setLoadingMore(true);
+      const moreNotifications = await notificationService.getUserNotifications(
+        user.id,
+        PAGE_SIZE,
+        notifications.length
+      );
+      setNotifications(prev => [...prev, ...moreNotifications]);
+      setHasMore(moreNotifications.length >= PAGE_SIZE);
+    } catch (error) {
+      console.error('[Notifications] Error loading more notifications:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, user?.id, notifications.length]);
 
   const handleNotificationPress = async (notification: Notification) => {
     try {
@@ -255,6 +281,15 @@ export default function NotificationsScreen() {
     />
   );
 
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader} testID="notifications-loading-more">
+        <ActivityIndicator size="small" color={designTokens.colors.primaryOrange} />
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -284,6 +319,9 @@ export default function NotificationsScreen() {
           />
         }
         ListEmptyComponent={renderEmptyState}
+        ListFooterComponent={renderFooter}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       />
@@ -365,5 +403,9 @@ const styles = StyleSheet.create({
     color: designTokens.colors.textMedium,
     textAlign: 'center',
     lineHeight: 20
+  },
+  footerLoader: {
+    paddingVertical: designTokens.spacing.lg,
+    alignItems: 'center'
   }
 }); 

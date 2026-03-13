@@ -7,7 +7,7 @@
 
 **Phase**: 1 of 3
 **Last Updated**: 2026-03-13
-**Last Task Completed**: Task 1.4
+**Last Task Completed**: Task 2.1
 
 ## Task List
 
@@ -20,8 +20,8 @@
 
 ### Phase 2: Data & Reliability (Before Release)
 
-- [ ] Task 2.1: Add pagination with infinite scroll  <-- NEXT
-- [ ] Task 2.2: Add date section headers (Today, Yesterday, This Week, Older)
+- [x] Task 2.1: Add pagination with infinite scroll
+- [ ] Task 2.2: Add date section headers (Today, Yesterday, This Week, Older)  <-- NEXT
 - [ ] Task 2.3: Enforce user preferences in push edge function
 - [ ] Task 2.4: Backfill campaigns and engagement preference rows
 
@@ -41,6 +41,7 @@
 | Task 1.2 | 2026-03-13 | Stored all callback props in useRef to prevent subscription re-establishment on parent re-renders. Dependency array now only includes user?.id. Added .unsubscribe() before .removeChannel() in cleanup. Typed subscriptionRef as RealtimeChannel. Wrapped updateUnreadCount in useCallback. |
 | Task 1.3 | 2026-03-13 | Wrapped NotificationItem in Swipeable from react-native-gesture-handler. Left-swipe reveals red delete button with Trash2 icon and scale animation. Delete button calls onSwipeDelete prop. Swipeable only renders right actions when onSwipeDelete is provided. Added testID notification-delete-{type}. |
 | Task 1.4 | 2026-03-13 | Added Settings gear icon from lucide-react-native to notifications header. Positioned in headerRight container before mark-all-read button. Navigates to /notifications/settings. testID: notifications-settings-button. |
+| Task 2.1 | 2026-03-13 | Added offset param to getUserNotifications service (range-based). Notifications screen uses PAGE_SIZE=20, onEndReached for infinite scroll, hasMore tracking, loading footer spinner. Pull-to-refresh resets to page 0. |
 
 ## Blockers
 

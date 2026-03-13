@@ -72,13 +72,13 @@ export class NotificationService implements NotificationServiceInterface {
   /**
    * Get user notifications with pagination
    */
-  async getUserNotifications(userId: string, limit: number = 50): Promise<Notification[]> {
+  async getUserNotifications(userId: string, limit: number = 50, offset: number = 0): Promise<Notification[]> {
     const { data: notifications, error } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.error('[NotificationService] Error fetching notifications:', error);
