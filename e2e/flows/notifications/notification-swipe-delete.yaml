@@ -1,0 +1,81 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - notifications
+  - gestures
+  - regression
+---
+# Notification Swipe-to-Delete E2E Test
+# Priority: P1
+#
+# Tests:
+#   1. Navigate to notifications screen
+#   2. Verify [E2E-SWIPE] system notification is visible
+#   3. Swipe left to reveal delete button
+#   4. Tap delete button
+#   5. Verify notification is removed
+#
+# Prerequisites:
+#   - Seed: node scripts/run-sql.js --dev data/test-data/dev/seed-swipe-delete-e2e.sql
+#
+# Run:
+#   maestro test e2e/flows/notifications/notification-swipe-delete.yaml
+
+# ============================================================
+# Step 1: Login
+# ============================================================
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 2: Navigate to Notifications
+# ============================================================
+- openLink: troodie://notifications
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+# ============================================================
+# Step 3: Verify the seeded notification is visible
+# ============================================================
+- assertVisible:
+    id: "notification-item-system"
+
+- takeScreenshot: "swipe-delete-before"
+
+# ============================================================
+# Step 4: Swipe left on the notification to reveal delete
+# ============================================================
+- swipe:
+    id: "notification-item-system"
+    direction: LEFT
+    duration: 500
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "swipe-delete-revealed"
+
+# ============================================================
+# Step 5: Tap the delete button
+# ============================================================
+- tapOn:
+    id: "notification-delete-system"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "swipe-delete-after"
+
+# ============================================================
+# Step 6: Verify notification is removed
+# ============================================================
+- assertNotVisible:
+    id: "notification-item-system"
