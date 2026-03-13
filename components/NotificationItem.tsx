@@ -12,16 +12,20 @@ import {
     MapPin,
     MessageCircle,
     Newspaper,
+    RefreshCw,
     Send,
     Settings,
     Star,
     Target,
+    Trash2,
     Trophy,
     UserPlus,
-    Users
+    Users,
+    XCircle
 } from 'lucide-react-native';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useRef } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 const formatRelativeTime = (dateString: string): string => {
   const now = new Date();
@@ -44,30 +48,69 @@ const formatRelativeTime = (dateString: string): string => {
   }
 };
 
-export const NotificationItem: React.FC<NotificationItemProps> = ({ 
-  notification, 
-  onPress, 
-  onSwipeDelete 
+export const NotificationItem: React.FC<NotificationItemProps> = ({
+  notification,
+  onPress,
+  onSwipeDelete
 }) => {
+  const swipeableRef = useRef<Swipeable>(null);
+
+  const renderRightActions = (_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const scale = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0.5],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <TouchableOpacity
+        testID={`notification-delete-${notification.type}`}
+        style={styles.deleteAction}
+        onPress={() => {
+          swipeableRef.current?.close();
+          onSwipeDelete?.(notification.id);
+        }}
+        activeOpacity={0.7}
+      >
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Trash2 size={20} color="#FFFFFF" />
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'like': return Heart;
-      case 'comment': return MessageCircle;
-      case 'follow': return UserPlus;
+      case 'like':
+      case 'post_liked': return Heart;
+      case 'comment':
+      case 'post_commented': return MessageCircle;
+      case 'follow':
+      case 'new_follower': return UserPlus;
       case 'achievement': return Trophy;
-      case 'restaurant_recommendation': return MapPin;
+      case 'restaurant_recommendation':
+      case 'restaurant_mention': return MapPin;
       case 'board_invite': return Users;
-      case 'post_mention': return AtSign;
+      case 'post_mention':
+      case 'mentioned_in_post':
+      case 'mentioned_in_comment': return AtSign;
       case 'milestone': return Target;
       case 'system': return Settings;
-      case 'campaign_opportunity': return Briefcase;
-      case 'campaign_application': return ClipboardCheck;
+      case 'campaign_opportunity':
+      case 'new_campaign_posted': return Briefcase;
+      case 'campaign_application':
+      case 'campaign_application_submitted': return ClipboardCheck;
       case 'application_approved': return CheckCircle;
-      case 'campaign_deadline': return Calendar;
-      case 'deliverable_submitted': return Send;
-      case 'payment_sent': return CreditCard;
+      case 'application_rejected': return XCircle;
+      case 'revision_requested': return RefreshCw;
+      case 'campaign_deadline':
+      case 'campaign_deadline_approaching': return Calendar;
+      case 'deliverable_submitted':
+      case 'deliverables_submitted': return Send;
+      case 'payment_sent':
+      case 'payment_received': return CreditCard;
       case 'campaign_invite': return Star;
-      case 'friend_post': return Newspaper;
+      case 'friend_post':
+      case 'friend_post_restaurant': return Newspaper;
       case 'weekly_recap': return Trophy;
       default: return Bell;
     }
@@ -75,23 +118,37 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
 
   const getNotificationColor = (type: string) => {
     switch (type) {
-      case 'like': return '#FF4444';
-      case 'comment': return '#3B82F6';
-      case 'follow': return '#10B981';
+      case 'like':
+      case 'post_liked': return '#FF4444';
+      case 'comment':
+      case 'post_commented': return '#3B82F6';
+      case 'follow':
+      case 'new_follower': return '#10B981';
       case 'achievement': return '#F59E0B';
-      case 'restaurant_recommendation': return '#8B5CF6';
+      case 'restaurant_recommendation':
+      case 'restaurant_mention': return '#8B5CF6';
       case 'board_invite': return '#06B6D4';
-      case 'post_mention': return '#EC4899';
+      case 'post_mention':
+      case 'mentioned_in_post':
+      case 'mentioned_in_comment': return '#EC4899';
       case 'milestone': return '#84CC16';
       case 'system': return '#6B7280';
-      case 'campaign_opportunity': return '#3B82F6';
-      case 'campaign_application': return '#2563EB';
+      case 'campaign_opportunity':
+      case 'new_campaign_posted': return '#3B82F6';
+      case 'campaign_application':
+      case 'campaign_application_submitted': return '#2563EB';
       case 'application_approved': return '#10B981';
-      case 'campaign_deadline': return '#F59E0B';
-      case 'deliverable_submitted': return '#6366F1';
-      case 'payment_sent': return '#059669';
+      case 'application_rejected': return '#EF4444';
+      case 'revision_requested': return '#F59E0B';
+      case 'campaign_deadline':
+      case 'campaign_deadline_approaching': return '#F59E0B';
+      case 'deliverable_submitted':
+      case 'deliverables_submitted': return '#6366F1';
+      case 'payment_sent':
+      case 'payment_received': return '#059669';
       case 'campaign_invite': return '#8B5CF6';
-      case 'friend_post': return '#EC4899';
+      case 'friend_post':
+      case 'friend_post_restaurant': return '#EC4899';
       case 'weekly_recap': return '#F97316';
       default: return designTokens.colors.primaryOrange;
     }
@@ -101,42 +158,40 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   const iconColor = getNotificationColor(notification.type);
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.notificationItem,
-        !notification.is_read && styles.unreadNotification
-      ]}
-      onPress={() => {
-        console.log('[NotificationItem] Notification pressed, calling onPress handler');
-        console.log('[NotificationItem] onPress function:', typeof onPress);
-        console.log('[NotificationItem] Notification data:', JSON.stringify(notification, null, 2));
-        try {
-          onPress(notification);
-          console.log('[NotificationItem] onPress handler called successfully');
-        } catch (error) {
-          console.error('[NotificationItem] Error calling onPress:', error);
-        }
-      }}
-      activeOpacity={0.7}
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={onSwipeDelete ? renderRightActions : undefined}
+      overshootRight={false}
+      rightThreshold={40}
     >
-      <View style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}>
-        <Icon size={20} color={iconColor} />
-      </View>
-      
-      <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={1}>
-          {notification.title}
-        </Text>
-        <Text style={styles.message} numberOfLines={2}>
-          {notification.message}
-        </Text>
-        <Text style={styles.time}>
-          {formatRelativeTime(notification.created_at)}
-        </Text>
-      </View>
-      
-      {!notification.is_read && <View style={styles.unreadDot} />}
-    </TouchableOpacity>
+      <TouchableOpacity
+        testID={`notification-item-${notification.type}`}
+        style={[
+          styles.notificationItem,
+          !notification.is_read && styles.unreadNotification
+        ]}
+        onPress={() => onPress(notification)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconContainer, { backgroundColor: `${iconColor}20` }]}>
+          <Icon size={20} color={iconColor} />
+        </View>
+
+        <View style={styles.content}>
+          <Text style={styles.title} numberOfLines={1}>
+            {notification.title}
+          </Text>
+          <Text style={styles.message} numberOfLines={2}>
+            {notification.message}
+          </Text>
+          <Text style={styles.time}>
+            {formatRelativeTime(notification.created_at)}
+          </Text>
+        </View>
+
+        {!notification.is_read && <View testID={`notification-unread-dot-${notification.type}`} style={styles.unreadDot} />}
+      </TouchableOpacity>
+    </Swipeable>
   );
 };
 
@@ -188,5 +243,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: designTokens.spacing.lg + 6,
     right: designTokens.spacing.lg
+  },
+  deleteAction: {
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
   }
 }); 
