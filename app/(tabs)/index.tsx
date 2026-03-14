@@ -28,6 +28,7 @@ import { restaurantService } from '@/services/restaurantService';
 import { NetworkSuggestion, TrendingContent } from '@/types/core';
 import { getErrorType } from '@/types/errors';
 import { Notification } from '@/types/notifications';
+import { navigateForNotification } from '@/utils/notificationNavigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -232,87 +233,7 @@ export default function HomeScreen() {
 
   const handleNotificationPress = (notification: Notification) => {
     setShowNotificationCenter(false);
-
-    const data = notification.data && typeof notification.data === 'object'
-      ? (notification.data as Record<string, unknown>)
-      : null;
-
-    switch (notification.type) {
-      case 'like':
-      case 'comment':
-      case 'post_mention':
-        if (data && 'postId' in data) {
-          router.push(`/posts/${data.postId}`);
-        }
-        break;
-      case 'follow':
-        if (data && 'followerId' in data) {
-          router.push(`/user/${data.followerId}`);
-        }
-        break;
-      case 'achievement':
-      case 'milestone':
-        router.push('/profile?tab=achievements');
-        break;
-      case 'restaurant_recommendation':
-        if (data && 'restaurantId' in data) {
-          router.push(`/restaurant/${data.restaurantId}`);
-        }
-        break;
-      case 'board_invite': {
-        const boardId = notification.related_id
-          || (data && ('board_id' in data ? data.board_id : data && 'boardId' in data ? data.boardId : null));
-        const invitationId = data && 'invitation_id' in data ? data.invitation_id : null;
-        if (boardId) {
-          router.push({
-            pathname: `/boards/${boardId}` as any,
-            params: invitationId ? { invitation_id: String(invitationId) } : {}
-          });
-        }
-        break;
-      }
-      case 'campaign_opportunity':
-        router.push('/creator/explore-campaigns');
-        break;
-      case 'campaign_application':
-        if (data && 'campaignId' in data) {
-          router.push(`/(tabs)/business/campaigns/${data.campaignId}` as any);
-        } else {
-          router.push('/(tabs)/business/applications' as any);
-        }
-        break;
-      case 'application_approved':
-      case 'campaign_deadline':
-        if (data && 'campaignId' in data) {
-          router.push(`/creator/campaigns` as any);
-        }
-        break;
-      case 'deliverable_submitted':
-        if (data && 'campaignId' in data) {
-          router.push(`/business/campaigns/${data.campaignId}/review-deliverables` as any);
-        }
-        break;
-      case 'payment_sent':
-        router.push('/creator/earnings' as any);
-        break;
-      case 'campaign_invite':
-        if (data && 'campaignId' in data) {
-          router.push(`/creator/apply/${data.campaignId}` as any);
-        } else {
-          router.push('/creator/explore-campaigns' as any);
-        }
-        break;
-      case 'friend_post':
-        if (data && 'postId' in data) {
-          router.push(`/posts/${data.postId}`);
-        }
-        break;
-      case 'weekly_recap':
-        // Already on feed, no navigation needed
-        break;
-      default:
-        break;
-    }
+    navigateForNotification(router, notification);
   };
 
   const transformToTopRatedContent = useCallback((restaurants: any[]): TrendingContent[] => {

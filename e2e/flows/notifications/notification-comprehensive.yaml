@@ -1,0 +1,172 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - notifications
+  - smoke
+  - regression
+---
+# Comprehensive Notification E2E Test
+# Priority: P0 (Critical)
+#
+# Single login session covering:
+#   1. Notifications screen loads via deep link
+#   2. Campaign notification types render (application_rejected, revision_requested)
+#   3. Notification tap navigates to correct screen
+#   4. Mark all as read
+#   5. Pull-to-refresh
+#   6. Settings screen — back button, category toggles, auto-save
+#
+# Prerequisites:
+#   - Seed: node scripts/run-sql.js --dev data/test-data/dev/seed-campaign-notification-e2e.sql
+#
+# Run:
+#   maestro test e2e/flows/notifications/notification-comprehensive.yaml
+
+# ============================================================
+# Login
+# ============================================================
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Part 1: Navigate to Notifications
+# ============================================================
+- openLink: troodie://notifications
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+- assertVisible:
+    id: "notifications-header"
+
+- takeScreenshot: "01-notifications-loaded"
+
+# ============================================================
+# Part 2: Campaign notifications visible
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-application_rejected"
+    direction: DOWN
+    timeout: 10000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-revision_requested"
+    direction: DOWN
+    timeout: 10000
+
+- takeScreenshot: "02-campaign-notifs-visible"
+
+# ============================================================
+# Part 3: Tap notification -> navigates
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-application_rejected"
+    direction: UP
+    timeout: 10000
+
+- tapOn:
+    id: "notification-item-application_rejected"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "03-notif-tap-navigated"
+
+# Return to notifications
+- openLink: troodie://notifications
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+# ============================================================
+# Part 4: Mark all as read
+# ============================================================
+- tapOn:
+    id: "mark-all-read-button"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "04-marked-all-read"
+
+# ============================================================
+# Part 5: Pull-to-refresh
+# ============================================================
+- swipe:
+    direction: DOWN
+    duration: 1000
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "05-after-refresh"
+
+# ============================================================
+# Part 6: Navigate to Settings
+# ============================================================
+- tapOn:
+    id: "notifications-settings-button"
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+# Verify categories render
+- assertVisible:
+    id: "settings-category-social"
+
+- assertVisible:
+    id: "settings-category-campaigns"
+
+- assertVisible:
+    id: "settings-category-boards"
+
+- takeScreenshot: "06-settings-loaded"
+
+# Toggle social push off then on
+- tapOn:
+    id: "settings-social-push-toggle"
+
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "settings-social-push-toggle"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "07-settings-toggled"
+
+# Back button returns to notifications
+- tapOn:
+    id: "settings-back-button"
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+- assertVisible:
+    id: "notifications-header"
+
+- takeScreenshot: "08-back-to-notifications"

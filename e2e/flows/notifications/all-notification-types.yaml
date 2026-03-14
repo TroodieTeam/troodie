@@ -8,9 +8,8 @@ tags:
 # All Notification Types - Render Verification
 # Priority: P1 (High)
 #
-# Verifies all 18 DB notification types render with correct testIDs.
-# Types are grouped: social (4), achievements (2), restaurants (1),
-# boards (1), system (1), campaigns (7), engagement (2).
+# Verifies all 21 DB notification types render with correct testIDs.
+# Types match the notifications_type_check constraint exactly.
 #
 # Prerequisites:
 #   - Seed data: node scripts/run-sql.js --dev data/test-data/dev/seed-all-notification-types-e2e.sql
@@ -43,49 +42,46 @@ tags:
     timeout: 10000
 
 # ============================================================
-# Step 3: Verify social notification types
+# Step 3: Verify social notification types (6)
 # ============================================================
 - assertVisible:
-    id: "notification-item-like"
+    id: "notification-item-post_liked"
 
 - assertVisible:
-    id: "notification-item-comment"
+    id: "notification-item-post_commented"
 
 - assertVisible:
     id: "notification-item-follow"
 
 - scrollUntilVisible:
     element:
-      id: "notification-item-post_mention"
-    direction: DOWN
-    timeout: 5000
-
-# ============================================================
-# Step 4: Verify achievement types
-# ============================================================
-- scrollUntilVisible:
-    element:
-      id: "notification-item-achievement"
+      id: "notification-item-new_follower"
     direction: DOWN
     timeout: 5000
 
 - scrollUntilVisible:
     element:
-      id: "notification-item-milestone"
+      id: "notification-item-mentioned_in_post"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-mentioned_in_comment"
     direction: DOWN
     timeout: 5000
 
 # ============================================================
-# Step 5: Verify restaurant types
+# Step 4: Verify restaurant types (1)
 # ============================================================
 - scrollUntilVisible:
     element:
-      id: "notification-item-restaurant_recommendation"
+      id: "notification-item-restaurant_mention"
     direction: DOWN
     timeout: 5000
 
 # ============================================================
-# Step 6: Verify board types
+# Step 5: Verify board types (1)
 # ============================================================
 - scrollUntilVisible:
     element:
@@ -94,7 +90,7 @@ tags:
     timeout: 5000
 
 # ============================================================
-# Step 7: Verify system types
+# Step 6: Verify system types (1)
 # ============================================================
 - scrollUntilVisible:
     element:
@@ -103,7 +99,7 @@ tags:
     timeout: 5000
 
 # ============================================================
-# Step 8: Verify campaign types
+# Step 7: Verify campaign types (9)
 # ============================================================
 - scrollUntilVisible:
     element:
@@ -113,7 +109,7 @@ tags:
 
 - scrollUntilVisible:
     element:
-      id: "notification-item-campaign_application"
+      id: "notification-item-campaign_application_submitted"
     direction: DOWN
     timeout: 5000
 
@@ -125,19 +121,31 @@ tags:
 
 - scrollUntilVisible:
     element:
-      id: "notification-item-campaign_deadline"
+      id: "notification-item-application_rejected"
     direction: DOWN
     timeout: 5000
 
 - scrollUntilVisible:
     element:
-      id: "notification-item-deliverable_submitted"
+      id: "notification-item-campaign_deadline_approaching"
     direction: DOWN
     timeout: 5000
 
 - scrollUntilVisible:
     element:
-      id: "notification-item-payment_sent"
+      id: "notification-item-deliverables_submitted"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-payment_received"
+    direction: DOWN
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "notification-item-new_campaign_posted"
     direction: DOWN
     timeout: 5000
 
@@ -147,12 +155,18 @@ tags:
     direction: DOWN
     timeout: 5000
 
+- scrollUntilVisible:
+    element:
+      id: "notification-item-revision_requested"
+    direction: DOWN
+    timeout: 5000
+
 # ============================================================
-# Step 9: Verify engagement types
+# Step 8: Verify engagement types (2)
 # ============================================================
 - scrollUntilVisible:
     element:
-      id: "notification-item-friend_post"
+      id: "notification-item-friend_post_restaurant"
     direction: DOWN
     timeout: 5000
 

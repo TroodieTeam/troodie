@@ -25,7 +25,7 @@ BEGIN
   VALUES
     (v_user_id, 'system', '[E2E-SWIPE] Test Notification',
      'This notification will be swiped to delete.',
-     '{}'::jsonb, NULL, 'system', false, NOW() - INTERVAL '1 minute');
+     '{}'::jsonb, NULL, 'system', false, NOW());
 
   RAISE NOTICE 'Seeded 1 swipe-delete E2E notification for user %', v_user_id;
 END $$;

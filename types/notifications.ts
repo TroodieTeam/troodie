@@ -14,24 +14,39 @@ export type PushTokenInsert = Database['public']['Tables']['push_tokens']['Inser
 export type PushTokenUpdate = Database['public']['Tables']['push_tokens']['Update'];
 
 // Notification type enum
+// Includes both the DB constraint values and any legacy aliases used in TypeScript
 export type NotificationType =
   | 'like'
+  | 'post_liked'
   | 'comment'
+  | 'post_commented'
   | 'follow'
+  | 'new_follower'
   | 'achievement'
   | 'restaurant_recommendation'
+  | 'restaurant_mention'
   | 'board_invite'
   | 'post_mention'
+  | 'mentioned_in_post'
+  | 'mentioned_in_comment'
   | 'milestone'
   | 'system'
   | 'campaign_opportunity'
   | 'campaign_application'
+  | 'campaign_application_submitted'
   | 'application_approved'
+  | 'application_rejected'
   | 'campaign_deadline'
+  | 'campaign_deadline_approaching'
   | 'deliverable_submitted'
+  | 'deliverables_submitted'
   | 'payment_sent'
+  | 'payment_received'
   | 'campaign_invite'
+  | 'new_campaign_posted'
+  | 'revision_requested'
   | 'friend_post'
+  | 'friend_post_restaurant'
   | 'weekly_recap';
 
 // Notification category enum

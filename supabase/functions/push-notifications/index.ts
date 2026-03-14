@@ -61,6 +61,22 @@ interface ExpoPushReceipt {
 }
 
 /**
+ * Fetch with retry for 5xx responses from Expo Push API.
+ */
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 2): Promise<Response> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const response = await fetch(url, options)
+        if (response.ok || attempt === maxRetries || response.status < 500) {
+            return response
+        }
+        console.warn(`[PushNotifications] Expo API returned ${response.status}, retrying (${attempt + 1}/${maxRetries})...`)
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)))
+    }
+    // Should never reach here, but just in case
+    return fetch(url, options)
+}
+
+/**
  * Validate an Expo push token format.
  * Valid formats: ExponentPushToken[...] or ExpoPushToken[...]
  */
@@ -83,16 +99,16 @@ function mapPriority(priority: number): 'default' | 'normal' | 'high' {
  */
 function getPreferenceCategory(type: string): string {
     const campaignTypes = [
-        'campaign_opportunity', 'campaign_application', 'application_approved',
-        'campaign_deadline', 'deliverable_submitted', 'payment_sent',
-        'campaign_invite', 'application_rejected', 'revision_requested',
+        'campaign_opportunity', 'campaign_application_submitted', 'application_approved',
+        'application_rejected', 'campaign_deadline_approaching', 'deliverables_submitted',
+        'payment_received', 'new_campaign_posted', 'campaign_invite', 'revision_requested',
     ]
     if (campaignTypes.includes(type)) return 'campaigns'
 
-    const engagementTypes = ['friend_post', 'weekly_recap']
+    const engagementTypes = ['friend_post_restaurant', 'weekly_recap']
     if (engagementTypes.includes(type)) return 'engagement'
 
-    const socialTypes = ['post_liked', 'post_commented', 'new_follower', 'mentioned_in_post', 'mentioned_in_comment']
+    const socialTypes = ['post_liked', 'post_commented', 'follow', 'new_follower', 'mentioned_in_post', 'mentioned_in_comment']
     if (socialTypes.includes(type)) return 'social'
 
     if (type === 'board_invite') return 'boards'
@@ -158,7 +174,7 @@ async function sendToExpoPush(messages: ExpoPushMessage[]): Promise<ExpoPushTick
     const batches = chunk(messages, BATCH_SIZE)
 
     for (const batch of batches) {
-        const response = await fetch(EXPO_PUSH_URL, {
+        const response = await fetchWithRetry(EXPO_PUSH_URL, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
@@ -192,7 +208,7 @@ async function processReceipts(
 ): Promise<void> {
     if (ticketIds.length === 0) return
 
-    const response = await fetch(EXPO_RECEIPTS_URL, {
+    const response = await fetchWithRetry(EXPO_RECEIPTS_URL, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
@@ -256,6 +272,19 @@ Deno.serve(async (req) => {
     }
 
     console.log('[PushNotifications] Function invoked')
+
+    // Validate webhook secret
+    const webhookSecret = Deno.env.get('WEBHOOK_SECRET')
+    if (webhookSecret) {
+        const providedSecret = req.headers.get('x-webhook-secret')
+        if (providedSecret !== webhookSecret) {
+            console.error('[PushNotifications] Invalid webhook secret')
+            return new Response(
+                JSON.stringify({ success: false, error: 'Unauthorized' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+            )
+        }
+    }
 
     try {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!

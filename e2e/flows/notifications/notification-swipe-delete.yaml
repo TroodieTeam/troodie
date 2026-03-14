@@ -53,22 +53,25 @@ tags:
 - takeScreenshot: "swipe-delete-before"
 
 # ============================================================
-# Step 4: Swipe left on the notification to reveal delete
+# Step 4: Swipe left on the first notification row to reveal delete
+# The [E2E-SWIPE] notification is at the top of the list (~25% from top)
 # ============================================================
 - swipe:
-    id: "notification-item-system"
-    direction: LEFT
-    duration: 500
+    start: 80%, 27%
+    end: 20%, 27%
+    duration: 400
 
+- waitForAnimationToEnd
 - waitForAnimationToEnd
 
 - takeScreenshot: "swipe-delete-revealed"
 
 # ============================================================
-# Step 5: Tap the delete button
+# Step 5: Tap the delete button (red trash area on right)
 # ============================================================
 - tapOn:
     id: "notification-delete-system"
+    optional: false
 
 - waitForAnimationToEnd
 
@@ -78,4 +81,4 @@ tags:
 # Step 6: Verify notification is removed
 # ============================================================
 - assertNotVisible:
-    id: "notification-item-system"
+    text: "swiped to delete"

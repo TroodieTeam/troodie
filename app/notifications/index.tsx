@@ -3,6 +3,7 @@ import { designTokens } from '@/constants/designTokens';
 import { useAuth } from '@/contexts/AuthContext';
 import { notificationService } from '@/services/notificationService';
 import { Notification } from '@/types/notifications';
+import { navigateForNotification } from '@/utils/notificationNavigation';
 import { useRouter } from 'expo-router';
 import { Bell, Check, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -16,6 +17,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const PAGE_SIZE = 20;
 
@@ -91,10 +93,15 @@ export default function NotificationsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    const userNotifications = await notificationService.getUserNotifications(user!.id, PAGE_SIZE, 0);
-    setNotifications(userNotifications);
-    setHasMore(userNotifications.length >= PAGE_SIZE);
-    setRefreshing(false);
+    try {
+      const userNotifications = await notificationService.getUserNotifications(user!.id, PAGE_SIZE, 0);
+      setNotifications(userNotifications);
+      setHasMore(userNotifications.length >= PAGE_SIZE);
+    } catch (error) {
+      console.error('[Notifications] Error refreshing:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const loadMore = useCallback(async () => {
@@ -118,117 +125,15 @@ export default function NotificationsScreen() {
 
   const handleNotificationPress = useCallback(async (notification: Notification) => {
     try {
-      // Mark as read
       await notificationService.markAsRead(notification.id);
 
-      // Update local state
       setNotifications(prev =>
         prev.map(n =>
           n.id === notification.id ? { ...n, is_read: true } : n
         )
       );
 
-      // Navigate based on notification type
-      const data = notification.data && typeof notification.data === 'object'
-        ? (notification.data as Record<string, unknown>)
-        : null;
-
-      switch (notification.type) {
-        case 'like':
-        case 'post_liked':
-        case 'comment':
-        case 'post_commented':
-        case 'post_mention':
-        case 'mentioned_in_post':
-        case 'mentioned_in_comment':
-          if (data && 'postId' in data) {
-            router.push(`/posts/${data.postId}`);
-          }
-          break;
-        case 'follow':
-        case 'new_follower':
-          if (data && 'followerId' in data) {
-            router.push(`/user/${data.followerId}`);
-          }
-          break;
-        case 'achievement':
-        case 'milestone':
-          router.push('/profile?tab=achievements');
-          break;
-        case 'restaurant_recommendation':
-        case 'restaurant_mention':
-          if (data && 'restaurantId' in data) {
-            router.push(`/restaurant/${data.restaurantId}`);
-          }
-          break;
-        case 'board_invite': {
-          const boardId = notification.related_id
-            || (data && ('board_id' in data ? data.board_id : data && 'boardId' in data ? data.boardId : null));
-          const invitationId = data && 'invitation_id' in data ? data.invitation_id : null;
-          if (boardId) {
-            if (invitationId) {
-              router.push(`/boards/${boardId}?invitation_id=${invitationId}`);
-            } else {
-              router.push(`/boards/${boardId}`);
-            }
-          }
-          break;
-        }
-        case 'campaign_opportunity':
-        case 'new_campaign_posted':
-          router.push('/creator/explore-campaigns');
-          break;
-        case 'campaign_application':
-        case 'campaign_application_submitted':
-          if (data && 'campaignId' in data) {
-            router.push(`/(tabs)/business/campaigns/${data.campaignId}` as any);
-          } else {
-            router.push('/(tabs)/business/applications' as any);
-          }
-          break;
-        case 'application_approved':
-        case 'application_rejected':
-        case 'campaign_deadline':
-        case 'campaign_deadline_approaching':
-          if (data && 'campaignId' in data) {
-            router.push(`/creator/campaigns` as any);
-          }
-          break;
-        case 'revision_requested':
-          if (data && 'campaignId' in data) {
-            router.push(`/creator/campaigns` as any);
-          }
-          break;
-        case 'deliverable_submitted':
-        case 'deliverables_submitted':
-          if (data && 'campaignId' in data) {
-            router.push(`/business/campaigns/${data.campaignId}/review-deliverables` as any);
-          }
-          break;
-        case 'payment_sent':
-        case 'payment_received':
-          router.push('/creator/earnings' as any);
-          break;
-        case 'campaign_invite':
-          if (data && 'campaignId' in data) {
-            router.push(`/creator/apply/${data.campaignId}` as any);
-          } else {
-            router.push('/creator/explore-campaigns' as any);
-          }
-          break;
-        case 'friend_post':
-        case 'friend_post_restaurant':
-          if (data && 'postId' in data) {
-            router.push(`/posts/${data.postId}`);
-          }
-          break;
-        case 'weekly_recap':
-          // Navigate to feed
-          router.push('/(tabs)');
-          break;
-        default:
-          break;
-      }
+      navigateForNotification(router, notification);
     } catch (error) {
       console.error('[Notifications] Error handling notification:', error);
     }
@@ -347,40 +252,44 @@ export default function NotificationsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        {renderHeader()}
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
-        </View>
-      </SafeAreaView>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaView style={styles.container}>
+          {renderHeader()}
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
+            <Text style={styles.loadingText}>Loading notifications...</Text>
+          </View>
+        </SafeAreaView>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {renderHeader()}
-      
-      <FlatList
-        testID="notifications-list"
-        data={groupedItems}
-        renderItem={renderListItem}
-        keyExtractor={(item) => isDateHeader(item) ? `header-${item.label}` : item.id}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[designTokens.colors.primaryOrange]}
-          />
-        }
-        ListEmptyComponent={renderEmptyState}
-        ListFooterComponent={renderFooter}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      />
-    </SafeAreaView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        {renderHeader()}
+
+        <FlatList
+          testID="notifications-list"
+          data={groupedItems}
+          renderItem={renderListItem}
+          keyExtractor={(item) => isDateHeader(item) ? `header-${item.label}` : item.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[designTokens.colors.primaryOrange]}
+            />
+          }
+          ListEmptyComponent={renderEmptyState}
+          ListFooterComponent={renderFooter}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 

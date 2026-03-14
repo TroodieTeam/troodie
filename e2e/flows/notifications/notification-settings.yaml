@@ -1,0 +1,153 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - regression
+  - notifications
+  - settings
+---
+# Notification Settings - Preferences Management
+# Priority: P1
+#
+# Tests:
+#   1. Navigate to notification settings via deep link
+#   2. Verify preference categories render
+#   3. Expand a category and toggle push/email settings
+#   4. Change frequency option
+#   5. Save changes
+#
+# Account: test-consumer1@bypass.com (consumer)
+#
+# Run:
+#   maestro test e2e/flows/notifications/notification-settings.yaml
+
+# ============================================================
+# Step 1: Login
+# ============================================================
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 2: Navigate to Notification Settings
+# ============================================================
+- openLink: troodie://notifications/settings
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Wait for the settings screen
+- extendedWaitUntil:
+    visible: "Notification Settings"
+    timeout: 10000
+
+- takeScreenshot: "notification-settings-loaded"
+
+# ============================================================
+# Step 3: Verify categories via testIDs (text selectors unreliable on iOS 26)
+# ============================================================
+- assertVisible:
+    id: "settings-category-social"
+
+- assertVisible:
+    id: "settings-category-achievements"
+
+- assertVisible:
+    id: "settings-category-boards"
+
+- takeScreenshot: "notification-settings-categories-visible"
+
+# ============================================================
+# Step 4: Expand Social category and verify sub-settings
+# ============================================================
+- tapOn:
+    id: "settings-category-social-header"
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Verify expanded settings show push/email toggles
+- extendedWaitUntil:
+    visible: "Push notifications"
+    timeout: 5000
+
+- takeScreenshot: "notification-settings-social-expanded"
+
+# ============================================================
+# Step 5: Toggle push notification for social
+# ============================================================
+- tapOn:
+    id: "settings-social-push-toggle"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "notification-settings-push-toggled"
+
+# Toggle it back
+- tapOn:
+    id: "settings-social-push-toggle"
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 6: Change frequency to daily digest
+# ============================================================
+- tapOn: "Daily digest"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "notification-settings-frequency-changed"
+
+# Change back to immediate
+- tapOn: "Immediate"
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 7: Collapse social, expand boards
+# ============================================================
+- tapOn:
+    id: "settings-category-social-header"
+
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "settings-category-boards-header"
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Push notifications"
+    timeout: 5000
+
+- takeScreenshot: "notification-settings-boards-expanded"
+
+# Collapse boards
+- tapOn:
+    id: "settings-category-boards-header"
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 8: Save changes
+# ============================================================
+# Scroll down to Save button
+- scrollUntilVisible:
+    element:
+      id: "settings-save-button"
+    direction: DOWN
+
+- tapOn:
+    id: "settings-save-button"
+
+- waitForAnimationToEnd
+
+# Dismiss success alert
+- tapOn:
+    text: "OK"
+    optional: true
+
+- takeScreenshot: "notification-settings-saved"
