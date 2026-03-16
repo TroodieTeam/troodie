@@ -13,7 +13,7 @@ import {
     Settings,
     Users
 } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     ScrollView,
@@ -75,6 +75,10 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
   loading = false
 }) => {
   const [localPrefs, setLocalPrefs] = useState(preferences);
+
+  useEffect(() => {
+    setLocalPrefs(preferences);
+  }, [preferences]);
 
   const toggleCategory = useCallback((category: NotificationCategory) => {
     const current = localPrefs[category];
