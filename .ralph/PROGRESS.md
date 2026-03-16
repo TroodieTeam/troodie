@@ -1,0 +1,64 @@
+# Progress: Notification Production Readiness
+
+> Implementation Plan: `specs/features/notification-production-readiness/implementation-plan.md`
+> Spec: `specs/features/notification-production-readiness/spec.md`
+
+## Current Status
+
+**Phase**: 1 of 3
+**Last Updated**: 2026-03-13
+**Last Task Completed**: Task 3.5
+
+## Task List
+
+### Phase 1: Core UX (Must-Have)
+
+- [x] Task 1.1: Add notification bell with unread badge to tab bar
+- [x] Task 1.2: Fix realtime subscription churn in useRealtimeNotifications
+- [x] Task 1.3: Implement swipe-to-delete gesture on NotificationItem
+- [x] Task 1.4: Add settings gear icon to notifications header
+
+### Phase 2: Data & Reliability (Before Release)
+
+- [x] Task 2.1: Add pagination with infinite scroll
+- [x] Task 2.2: Add date section headers (Today, Yesterday, This Week, Older)
+- [x] Task 2.3: Enforce user preferences in push edge function
+- [x] Task 2.4: Backfill campaigns and engagement preference rows
+
+### Phase 3: Quality & Testing (Fast-Follow)
+
+- [x] Task 3.1: Wrap NotificationItem in React.memo
+- [x] Task 3.2: Add unit tests for notificationService
+- [x] Task 3.3: Add unit tests for NotificationItem component
+- [x] Task 3.4: Expand E2E seed to cover all 18 DB notification types
+- [x] Task 3.5: Add E2E test for swipe-to-delete
+
+## Completed Tasks
+
+| Task | Completed | Notes |
+|------|-----------|-------|
+| Task 1.1 | 2026-03-13 | Replaced Heart/Activity tab with Bell/Notifications tab. Added NotificationBadge with unread count via useRealtimeNotifications. Replaced activity.tsx with full notifications screen (list, mark-all-read, realtime updates, navigation). |
+| Task 1.2 | 2026-03-13 | Stored all callback props in useRef to prevent subscription re-establishment on parent re-renders. Dependency array now only includes user?.id. Added .unsubscribe() before .removeChannel() in cleanup. Typed subscriptionRef as RealtimeChannel. Wrapped updateUnreadCount in useCallback. |
+| Task 1.3 | 2026-03-13 | Wrapped NotificationItem in Swipeable from react-native-gesture-handler. Left-swipe reveals red delete button with Trash2 icon and scale animation. Delete button calls onSwipeDelete prop. Swipeable only renders right actions when onSwipeDelete is provided. Added testID notification-delete-{type}. |
+| Task 1.4 | 2026-03-13 | Added Settings gear icon from lucide-react-native to notifications header. Positioned in headerRight container before mark-all-read button. Navigates to /notifications/settings. testID: notifications-settings-button. |
+| Task 2.1 | 2026-03-13 | Added offset param to getUserNotifications service (range-based). Notifications screen uses PAGE_SIZE=20, onEndReached for infinite scroll, hasMore tracking, loading footer spinner. Pull-to-refresh resets to page 0. |
+| Task 2.2 | 2026-03-13 | Added date section headers (Today, Yesterday, This Week, Older) to notifications FlatList. Helper groupNotificationsByDate injects header items. Empty sections auto-hidden. Gray uppercase labels with testIDs. |
+| Task 2.3 | 2026-03-13 | Added getPreferenceCategory() mapping all 31 notification types to 6 categories. Added isPushEnabledForUser() query. Edge function now checks notification_preferences.push_enabled before sending push. Defaults to enabled if no preference row exists. Refactored getChannelId to use getPreferenceCategory. |
+| Task 2.4 | 2026-03-13 | Created migration to backfill campaigns and engagement rows for existing users via NOT IN subquery. Updated insert_default_notification_preferences() trigger to include all 7 categories with ON CONFLICT DO NOTHING. |
+| Task 3.1 | 2026-03-13 | Wrapped NotificationItem in React.memo. Extracted handlePress/handleDelete into useCallback hooks inside component. Wrapped parent callbacks (handleNotificationPress, handleDeleteNotification) in useCallback. |
+| Task 3.2 | 2026-03-13 | Added 13 unit tests for NotificationService: getUserNotifications (pagination, default/custom offset, null data, errors), markAsRead (success, error), markAllAsRead (success, error), deleteNotification (success, error), getUnreadCount (rpc, null fallback, error). Fixed jest.setup.js extend-expect → matchers import. |
+| Task 3.3 | 2026-03-13 | Added 66 unit tests for NotificationItem component: icon mapping for all 32 types (31 + unknown fallback), color mapping for 22 representative types, unread dot rendering (read/unread), content rendering (title, message, testID), formatRelativeTime (just now, minutes, hours, days, dates), interaction callbacks (onPress, onSwipeDelete). |
+| Task 3.4 | 2026-03-13 | Created seed (18 DB-valid types with [E2E-ALL] prefix), cleanup, and Maestro test. Covers all 18 notification types in DB constraint: social (4), achievements (2), restaurants (1), boards (1), system (1), campaigns (7), engagement (2). Test uses scrollUntilVisible for items below fold. |
+| Task 3.5 | 2026-03-13 | Created seed (system notification with [E2E-SWIPE] prefix), cleanup, and Maestro test. Test swipes left on notification-item-system, taps notification-delete-system, asserts notification removed. |
+
+## Blockers
+
+None currently.
+
+## Notes
+
+- TRO-18 Push Notifications (backend) is complete — this builds on that foundation
+- `application_rejected` and `revision_requested` triggers already fixed (creator_id → user_id)
+- NotificationBadge component already exists at `components/NotificationBadge.tsx`
+- Gesture libraries (react-native-gesture-handler, react-native-reanimated) already in package.json
+- Bell icon already used in home header — match that pattern for tab bar

@@ -1,0 +1,135 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - notifications
+  - campaigns
+  - regression
+---
+# Campaign Notifications E2E Test
+# Priority: P1
+#
+# Tests:
+#   1. Verify application_rejected notification appears with correct icon
+#   2. Verify revision_requested notification appears with correct icon
+#   3. Tap application_rejected → navigates to creator campaigns
+#   4. Tap revision_requested → navigates to creator campaigns
+#
+# Prerequisites:
+#   - Seed: node scripts/run-sql.js --dev data/test-data/dev/seed-campaign-notification-e2e.sql
+#
+# Run:
+#   maestro test e2e/flows/notifications/campaign-notifications.yaml
+
+# ============================================================
+# Step 1: Login
+# ============================================================
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 2: Navigate to Notifications
+# ============================================================
+- openLink: troodie://notifications
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+# ============================================================
+# Step 3: Verify application_rejected notification
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-application_rejected"
+    direction: DOWN
+    timeout: 10000
+
+- takeScreenshot: "campaign-notif-rejected-visible"
+
+# ============================================================
+# Step 4: Verify revision_requested notification
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-revision_requested"
+    direction: DOWN
+    timeout: 10000
+
+- takeScreenshot: "campaign-notif-revision-visible"
+
+# ============================================================
+# Step 5: Tap application_rejected notification
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-application_rejected"
+    direction: UP
+    timeout: 10000
+
+- tapOn:
+    id: "notification-item-application_rejected"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "campaign-notif-rejected-tapped"
+
+# Navigate back to notifications via deep link (back button may land on a different screen)
+- openLink: troodie://notifications
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+# ============================================================
+# Step 6: Tap revision_requested notification
+# ============================================================
+- scrollUntilVisible:
+    element:
+      id: "notification-item-revision_requested"
+    direction: DOWN
+    timeout: 10000
+
+- tapOn:
+    id: "notification-item-revision_requested"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "campaign-notif-revision-tapped"
+
+# Navigate back to notifications
+- openLink: troodie://notifications
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+# ============================================================
+# Step 7: Mark all as read
+# ============================================================
+- tapOn:
+    id: "mark-all-read-button"
+    optional: true
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "campaign-notif-all-read"

@@ -1,207 +1,106 @@
 appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - smoke
+  - notifications
+  - regression
 ---
-# Test: Notification interactions and navigation
+# Notification Screen - Core Interactions
 # Priority: P0 (Critical)
-# Tags: notifications, navigation, smoke
-# Prerequisites: User logged in, has some notifications
+#
+# Tests:
+#   1. Navigate to notifications screen via deep link
+#   2. Verify notification list loads (or empty state)
+#   3. Mark all as read (if unread exist)
+#   4. Pull-to-refresh
+#
+# Prerequisites:
+#   - Seed notifications: node scripts/run-sql.js --dev data/test-data/dev/seed-notification-e2e.sql
+# Account: consumer1@bypass.com (consumer)
+#
+# Run:
+#   maestro test e2e/flows/notifications/notification-interactions.yaml
 
-- launchApp
+# ============================================================
+# Step 1: Login
+# ============================================================
+- runFlow: ../../helpers/login-bypass.yaml
 
-# Ensure logged in
-- runFlow: ../helpers/auth.yaml
+- waitForAnimationToEnd
 
-# Navigate to notifications/activity tab
+# ============================================================
+# Step 2: Navigate to Notifications
+# ============================================================
+- openLink: troodie://notifications
+
 - tapOn:
-    id: "tab-activity"
+    text: "Open"
+    optional: true
 
-# Wait for notifications to load
-- assertVisible:
-    text: "Activity"
+- waitForAnimationToEnd
+
+# Wait for the notifications screen to appear
+- extendedWaitUntil:
+    visible: "Notifications"
     timeout: 10000
-    optional: true
 
+- takeScreenshot: "notifications-screen-loaded"
+
+# ============================================================
+# Step 3: Verify notification content
+# ============================================================
+
+# The header should be visible
 - assertVisible:
-    text: "Notifications"
-    timeout: 10000
+    id: "notifications-header"
+
+# ============================================================
+# Step 4: Scroll through notifications
+# ============================================================
+- swipe:
+    direction: UP
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "notifications-scrolled"
+
+# ============================================================
+# Step 5: Mark all as read (if button visible)
+# ============================================================
+- tapOn:
+    id: "mark-all-read-button"
     optional: true
 
-# Check if notifications badge exists
-- assertVisible:
-    id: "notification-badge"
-    optional: true
+- waitForAnimationToEnd
 
-# Verify notification list appears
-- assertVisible:
-    id: "notification-list"
-    optional: true
+- takeScreenshot: "notifications-marked-read"
 
-# Test: Tap on a "like" notification
-- scrollUntilVisible:
-    element:
-      text: "liked your"
+# ============================================================
+# Step 6: Pull to refresh
+# ============================================================
+- swipe:
     direction: DOWN
-    timeout: 5000
-    optional: true
+    duration: 1000
 
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: "notifications-after-refresh"
+
+# ============================================================
+# Step 7: Tap a notification (if any exist)
+# ============================================================
+# Try tapping a follow notification (seeded data uses DB type names)
 - tapOn:
-    text: "liked your"
+    id: "notification-item-follow"
     optional: true
 
-# Should navigate to the liked post
-- assertVisible:
-    id: "post-detail"
-    timeout: 10000
-    optional: true
+- waitForAnimationToEnd
 
-- assertVisible:
-    text: "Comments"
-    timeout: 5000
-    optional: true
-
-# Go back to notifications
+# Go back if we navigated
 - back
 
-# Test: Tap on a "follow" notification
-- scrollUntilVisible:
-    element:
-      text: "started following you"
-    direction: DOWN
-    timeout: 5000
-    optional: true
+- waitForAnimationToEnd
 
-- tapOn:
-    text: "started following you"
-    optional: true
-
-# Should navigate to that user's profile
-- assertVisible:
-    id: "user-profile"
-    timeout: 10000
-    optional: true
-
-- assertVisible:
-    text: "Posts"
-    timeout: 5000
-    optional: true
-
-# Go back
-- back
-
-# Test: Tap on a "comment" notification
-- scrollUntilVisible:
-    element:
-      text: "commented on"
-    direction: DOWN
-    timeout: 5000
-    optional: true
-
-- tapOn:
-    text: "commented on"
-    optional: true
-
-# Should navigate to post with comments
-- assertVisible:
-    text: "Comments"
-    timeout: 10000
-    optional: true
-
-# Go back
-- back
-
-# Test: Tap on board invitation
-- scrollUntilVisible:
-    element:
-      text: "invited you to"
-    direction: DOWN
-    timeout: 5000
-    optional: true
-
-- tapOn:
-    text: "invited you to"
-    optional: true
-
-# Should show invitation modal or board
-- assertVisible:
-    text: "Invitation"
-    timeout: 5000
-    optional: true
-
-- tapOn:
-    text: "Close"
-    optional: true
-
-- back
-    optional: true
-
-# Test: Mark notification as read
-- longPressOn:
-    id: "notification-item-0"
-    optional: true
-
-- tapOn:
-    text: "Mark as Read"
-    optional: true
-
-# Test: Access notification settings
-- tapOn:
-    id: "notification-settings-button"
-    optional: true
-
-- tapOn:
-    id: "tab-activity-menu"
-    optional: true
-
-- tapOn:
-    text: "Settings"
-    optional: true
-
-- tapOn:
-    text: "Notification Settings"
-    optional: true
-
-# Verify notification preferences screen
-- assertVisible:
-    text: "Notification Preferences"
-    timeout: 10000
-    optional: true
-
-- assertVisible:
-    text: "Push Notifications"
-    optional: true
-
-# Toggle a notification preference
-- tapOn:
-    id: "notification-pref-likes"
-    optional: true
-
-- tapOn:
-    text: "Likes"
-    optional: true
-
-# Save and go back
-- tapOn:
-    text: "Save"
-    optional: true
-
-- back
-
-# Return to notifications
-- tapOn:
-    id: "tab-activity"
-    optional: true
-
-# Take screenshot
-- takeScreenshot: "notification-interactions-complete"
-
-# Test: Clear all read notifications (optional)
-- tapOn:
-    id: "clear-notifications-button"
-    optional: true
-
-- tapOn:
-    text: "Clear Read"
-    optional: true
-
-- tapOn:
-    text: "Confirm"
-    optional: true
+- takeScreenshot: "notifications-complete"

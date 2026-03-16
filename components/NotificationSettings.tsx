@@ -1,27 +1,25 @@
 import { designTokens } from '@/constants/designTokens';
 import {
     NotificationCategory,
-    NotificationFrequency,
     NotificationSettingsProps,
-    UserNotificationPreferences
 } from '@/types/notifications';
 import {
     Bell,
-    ChevronRight,
+    BellOff,
+    Briefcase,
     Heart,
     MapPin,
+    Newspaper,
     Settings,
-    Trophy,
     Users
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     ScrollView,
     StyleSheet,
     Switch,
     Text,
-    TouchableOpacity,
     View
 } from 'react-native';
 
@@ -30,201 +28,166 @@ interface CategoryConfig {
   title: string;
   description: string;
   icon: any;
-  color: string;
 }
 
-const categoryConfigs: CategoryConfig[] = [
+const CATEGORIES: CategoryConfig[] = [
   {
     key: 'social',
     title: 'Social',
-    description: 'Likes, comments, follows, and mentions',
+    description: 'Likes, comments, follows & mentions',
     icon: Heart,
-    color: '#FF4444'
   },
   {
-    key: 'achievements',
-    title: 'Achievements',
-    description: 'Badges, milestones, and rewards',
-    icon: Trophy,
-    color: '#F59E0B'
-  },
-  {
-    key: 'restaurants',
-    title: 'Restaurants',
-    description: 'New spots, recommendations, and updates',
-    icon: MapPin,
-    color: '#8B5CF6'
+    key: 'campaigns',
+    title: 'Campaigns',
+    description: 'Applications, approvals & payments',
+    icon: Briefcase,
   },
   {
     key: 'boards',
     title: 'Boards',
-    description: 'Board invites, updates, and activity',
+    description: 'Invites & collaboration activity',
     icon: Users,
-    color: '#06B6D4'
+  },
+  {
+    key: 'restaurants',
+    title: 'Restaurants',
+    description: 'Mentions & recommendations',
+    icon: MapPin,
+  },
+  {
+    key: 'engagement',
+    title: 'Activity',
+    description: 'Friend posts & weekly recaps',
+    icon: Newspaper,
   },
   {
     key: 'system',
     title: 'System',
-    description: 'App updates, maintenance, and announcements',
+    description: 'App updates & announcements',
     icon: Settings,
-    color: '#6B7280'
-  }
+  },
 ];
 
-const frequencyOptions: { value: NotificationFrequency; label: string }[] = [
-  { value: 'immediate', label: 'Immediate' },
-  { value: 'daily', label: 'Daily digest' },
-  { value: 'weekly', label: 'Weekly digest' }
-];
-
-export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ 
-  preferences, 
-  onPreferencesChange, 
-  onSave, 
-  loading = false 
+export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
+  preferences,
+  onPreferencesChange,
+  loading = false
 }) => {
-  const [localPreferences, setLocalPreferences] = useState<UserNotificationPreferences>(preferences);
-  const [expandedCategory, setExpandedCategory] = useState<NotificationCategory | null>(null);
+  const [localPrefs, setLocalPrefs] = useState(preferences);
 
-  const updateCategoryPreference = (
-    category: NotificationCategory,
-    field: keyof UserNotificationPreferences[NotificationCategory],
-    value: boolean | NotificationFrequency
-  ) => {
-    const updatedPreferences = {
-      ...localPreferences,
+  useEffect(() => {
+    setLocalPrefs(preferences);
+  }, [preferences]);
+
+  const toggleCategory = useCallback((category: NotificationCategory) => {
+    const current = localPrefs[category];
+    const newEnabled = !current.push_enabled;
+    const updated = {
+      ...localPrefs,
       [category]: {
-        ...localPreferences[category],
-        [field]: value
+        ...current,
+        push_enabled: newEnabled,
+        in_app_enabled: newEnabled,
       }
     };
-    setLocalPreferences(updatedPreferences);
-    onPreferencesChange(updatedPreferences);
-  };
+    setLocalPrefs(updated);
+    onPreferencesChange(updated);
+  }, [localPrefs, onPreferencesChange]);
 
-  const handleSave = () => {
-    onSave();
-  };
+  const allEnabled = Object.values(localPrefs).every(p => p.push_enabled);
+  const allDisabled = Object.values(localPrefs).every(p => !p.push_enabled);
 
-  const renderCategoryItem = (config: CategoryConfig) => {
-    const categoryPrefs = localPreferences[config.key];
-    const Icon = config.icon;
-    const isExpanded = expandedCategory === config.key;
+  const toggleAll = useCallback(() => {
+    const newEnabled = !allEnabled;
+    const updated = { ...localPrefs };
+    for (const key of Object.keys(updated) as NotificationCategory[]) {
+      updated[key] = { ...updated[key], push_enabled: newEnabled, in_app_enabled: newEnabled };
+    }
+    setLocalPrefs(updated);
+    onPreferencesChange(updated);
+  }, [allEnabled, localPrefs, onPreferencesChange]);
 
+  if (loading) {
     return (
-      <View key={config.key} style={styles.categoryContainer}>
-        <TouchableOpacity
-          style={styles.categoryHeader}
-          onPress={() => setExpandedCategory(isExpanded ? null : config.key)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.categoryInfo}>
-            <View style={[styles.categoryIcon, { backgroundColor: `${config.color}20` }]}>
-              <Icon size={20} color={config.color} />
-            </View>
-            <View style={styles.categoryText}>
-              <Text style={styles.categoryTitle}>{config.title}</Text>
-              <Text style={styles.categoryDescription}>{config.description}</Text>
-            </View>
-          </View>
-          <View style={styles.categoryActions}>
-            <Switch
-              value={categoryPrefs.in_app_enabled}
-              onValueChange={(value) => 
-                updateCategoryPreference(config.key, 'in_app_enabled', value)
-              }
-              trackColor={{ false: designTokens.colors.borderLight, true: `${config.color}40` }}
-              thumbColor={categoryPrefs.in_app_enabled ? config.color : designTokens.colors.textLight}
-            />
-            <ChevronRight 
-              size={16} 
-              color={designTokens.colors.textLight}
-              style={[styles.expandIcon, isExpanded && styles.expandIconRotated]}
-            />
-          </View>
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.expandedContent}>
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Push notifications</Text>
-              <Switch
-                value={categoryPrefs.push_enabled}
-                onValueChange={(value) => 
-                  updateCategoryPreference(config.key, 'push_enabled', value)
-                }
-                trackColor={{ false: designTokens.colors.borderLight, true: `${config.color}40` }}
-                thumbColor={categoryPrefs.push_enabled ? config.color : designTokens.colors.textLight}
-              />
-            </View>
-            
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Email notifications</Text>
-              <Switch
-                value={categoryPrefs.email_enabled}
-                onValueChange={(value) => 
-                  updateCategoryPreference(config.key, 'email_enabled', value)
-                }
-                trackColor={{ false: designTokens.colors.borderLight, true: `${config.color}40` }}
-                thumbColor={categoryPrefs.email_enabled ? config.color : designTokens.colors.textLight}
-              />
-            </View>
-
-            <View style={styles.frequencyContainer}>
-              <Text style={styles.settingLabel}>Frequency</Text>
-              <View style={styles.frequencyOptions}>
-                {frequencyOptions.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.frequencyOption,
-                      categoryPrefs.frequency === option.value && styles.frequencyOptionSelected
-                    ]}
-                    onPress={() => 
-                      updateCategoryPreference(config.key, 'frequency', option.value)
-                    }
-                  >
-                    <Text style={[
-                      styles.frequencyOptionText,
-                      categoryPrefs.frequency === option.value && styles.frequencyOptionTextSelected
-                    ]}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={designTokens.colors.primaryOrange} />
       </View>
     );
-  };
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Bell size={24} color={designTokens.colors.primaryOrange} />
-        <Text style={styles.headerTitle}>Notification Settings</Text>
-        <Text style={styles.headerDescription}>
-          Choose what notifications you want to receive and how often
-        </Text>
+      {/* Master toggle */}
+      <View style={styles.masterSection} testID="settings-master-toggle">
+        <View style={styles.masterRow}>
+          <View style={styles.masterInfo}>
+            {allDisabled ? (
+              <BellOff size={22} color={designTokens.colors.textLight} />
+            ) : (
+              <Bell size={22} color={designTokens.colors.primaryOrange} />
+            )}
+            <View style={styles.masterText}>
+              <Text style={styles.masterTitle}>Push Notifications</Text>
+              <Text style={styles.masterDescription}>
+                {allDisabled ? 'All notifications paused' : allEnabled ? 'All notifications active' : 'Some notifications active'}
+              </Text>
+            </View>
+          </View>
+          <Switch
+            testID="settings-master-push-toggle"
+            value={allEnabled}
+            onValueChange={toggleAll}
+            trackColor={{ false: '#E5E7EB', true: `${designTokens.colors.primaryOrange}50` }}
+            thumbColor={allEnabled ? designTokens.colors.primaryOrange : '#FFFFFF'}
+            ios_backgroundColor="#E5E7EB"
+          />
+        </View>
       </View>
 
-      <View style={styles.categoriesContainer}>
-        {categoryConfigs.map(renderCategoryItem)}
+      {/* Category toggles */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>BY CATEGORY</Text>
+        <View style={styles.card}>
+          {CATEGORIES.map((config, index) => {
+            const prefs = localPrefs[config.key];
+            const Icon = config.icon;
+            const isLast = index === CATEGORIES.length - 1;
+
+            return (
+              <View
+                key={config.key}
+                style={[styles.categoryRow, !isLast && styles.categoryRowBorder]}
+                testID={`settings-category-${config.key}`}
+              >
+                <View style={styles.categoryInfo}>
+                  <View style={styles.iconWrapper}>
+                    <Icon size={18} color={prefs.push_enabled ? designTokens.colors.textDark : designTokens.colors.textLight} />
+                  </View>
+                  <View style={styles.categoryText}>
+                    <Text style={[styles.categoryTitle, !prefs.push_enabled && styles.categoryTitleDisabled]}>
+                      {config.title}
+                    </Text>
+                    <Text style={styles.categoryDescription}>{config.description}</Text>
+                  </View>
+                </View>
+                <Switch
+                  testID={`settings-${config.key}-push-toggle`}
+                  value={prefs.push_enabled}
+                  onValueChange={() => toggleCategory(config.key)}
+                  trackColor={{ false: '#E5E7EB', true: `${designTokens.colors.primaryOrange}50` }}
+                  thumbColor={prefs.push_enabled ? designTokens.colors.primaryOrange : '#FFFFFF'}
+                  ios_backgroundColor="#E5E7EB"
+                />
+              </View>
+            );
+          })}
+        </View>
       </View>
 
-      <TouchableOpacity
-        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color={designTokens.colors.white} />
-        ) : (
-          <Text style={styles.saveButtonText}>Save Changes</Text>
-        )}
-      </TouchableOpacity>
+      <Text style={styles.footnote}>
+        Changes are saved automatically. In-app notifications will still appear in your notification center.
+      </Text>
     </ScrollView>
   );
 };
@@ -232,132 +195,112 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designTokens.colors.backgroundLight
+    backgroundColor: '#F2F2F7',
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: designTokens.spacing.xxxl,
-    backgroundColor: designTokens.colors.white,
-    marginBottom: designTokens.spacing.lg
   },
-  headerTitle: {
-    ...designTokens.typography.sectionTitle,
-    color: designTokens.colors.textDark,
-    marginTop: designTokens.spacing.md,
-    marginBottom: designTokens.spacing.sm
+  masterSection: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  headerDescription: {
-    ...designTokens.typography.bodyRegular,
-    color: designTokens.colors.textMedium,
-    textAlign: 'center',
-    lineHeight: 20
-  },
-  categoriesContainer: {
-    backgroundColor: designTokens.colors.white,
-    marginBottom: designTokens.spacing.xxxl
-  },
-  categoryContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: designTokens.colors.borderLight
-  },
-  categoryHeader: {
+  masterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: designTokens.spacing.lg
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  masterInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  masterText: {
+    marginLeft: 12,
+  },
+  masterTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  masterDescription: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  section: {
+    marginTop: 24,
+    marginHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8E8E93',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  categoryRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E7EB',
   },
   categoryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1
+    flex: 1,
+    marginRight: 12,
   },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  iconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: designTokens.spacing.md
+    marginRight: 12,
   },
   categoryText: {
-    flex: 1
+    flex: 1,
   },
   categoryTitle: {
-    ...designTokens.typography.bodyMedium,
-    color: designTokens.colors.textDark,
-    marginBottom: designTokens.spacing.xs
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1C1C1E',
+  },
+  categoryTitleDisabled: {
+    color: '#8E8E93',
   },
   categoryDescription: {
-    ...designTokens.typography.smallText,
-    color: designTokens.colors.textMedium
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 1,
   },
-  categoryActions: {
-    flexDirection: 'row',
-    alignItems: 'center'
+  footnote: {
+    fontSize: 13,
+    color: '#8E8E93',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 40,
+    marginHorizontal: 32,
+    lineHeight: 18,
   },
-  expandIcon: {
-    marginLeft: designTokens.spacing.sm
-  },
-  expandIconRotated: {
-    transform: [{ rotate: '90deg' }]
-  },
-  expandedContent: {
-    paddingHorizontal: designTokens.spacing.lg,
-    paddingBottom: designTokens.spacing.lg,
-    backgroundColor: designTokens.colors.backgroundLight
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: designTokens.spacing.md
-  },
-  settingLabel: {
-    ...designTokens.typography.bodyRegular,
-    color: designTokens.colors.textDark
-  },
-  frequencyContainer: {
-    marginTop: designTokens.spacing.md
-  },
-  frequencyOptions: {
-    flexDirection: 'row',
-    marginTop: designTokens.spacing.sm
-  },
-  frequencyOption: {
-    paddingHorizontal: designTokens.spacing.md,
-    paddingVertical: designTokens.spacing.sm,
-    borderRadius: designTokens.borderRadius.full,
-    borderWidth: 1,
-    borderColor: designTokens.colors.borderLight,
-    marginRight: designTokens.spacing.sm
-  },
-  frequencyOptionSelected: {
-    backgroundColor: designTokens.colors.primaryOrange,
-    borderColor: designTokens.colors.primaryOrange
-  },
-  frequencyOptionText: {
-    ...designTokens.typography.smallText,
-    color: designTokens.colors.textMedium
-  },
-  frequencyOptionTextSelected: {
-    color: designTokens.colors.white,
-    fontWeight: '600' as const
-  },
-  saveButton: {
-    backgroundColor: designTokens.colors.primaryOrange,
-    paddingVertical: designTokens.spacing.lg,
-    paddingHorizontal: designTokens.spacing.xxxl,
-    borderRadius: designTokens.borderRadius.md,
-    marginHorizontal: designTokens.spacing.lg,
-    alignItems: 'center',
-    ...designTokens.shadows.button
-  },
-  saveButtonDisabled: {
-    opacity: 0.6
-  },
-  saveButtonText: {
-    ...designTokens.typography.bodyMedium,
-    color: designTokens.colors.white,
-    fontWeight: '600' as const
-  }
-}); 
+});

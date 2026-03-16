@@ -1,0 +1,108 @@
+appId: com.troodie.troodie.com
+env:
+  TEST_EMAIL: test-consumer1@bypass.com
+tags:
+  - regression
+  - notifications
+  - settings
+---
+# Notification Settings - Preferences Management
+# Priority: P1
+#
+# Tests:
+#   1. Navigate to notification settings via deep link
+#   2. Verify preference categories render
+#   3. Toggle social/category and master push settings
+#   4. Navigate back
+#
+# Account: test-consumer1@bypass.com (consumer)
+#
+# Run:
+#   maestro test e2e/flows/notifications/notification-settings.yaml
+
+# ============================================================
+# Step 1: Login
+# ============================================================
+- runFlow: ../../helpers/login-bypass.yaml
+
+- waitForAnimationToEnd
+
+# ============================================================
+# Step 2: Navigate to Notification Settings
+# ============================================================
+- openLink: troodie://notifications/settings
+
+- tapOn:
+    text: "Open"
+    optional: true
+
+- waitForAnimationToEnd
+
+# Wait for the settings screen
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+- takeScreenshot: "notification-settings-loaded"
+
+# ============================================================
+# Step 3: Verify categories via testIDs (text selectors unreliable on iOS 26)
+# ============================================================
+- assertVisible:
+    id: "settings-category-social"
+
+- assertVisible:
+    id: "settings-category-campaigns"
+
+- assertVisible:
+    id: "settings-category-boards"
+
+- takeScreenshot: "notification-settings-categories-visible"
+
+# ============================================================
+# Step 4: Toggle social push and restore
+# ============================================================
+- tapOn:
+    id: "settings-social-push-toggle"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "notification-settings-social-toggled-off"
+
+- tapOn:
+    id: "settings-social-push-toggle"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "notification-settings-social-toggled-on"
+
+# ============================================================
+# Step 5: Toggle master push and restore
+# ============================================================
+- tapOn:
+    id: "settings-master-push-toggle"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "notification-settings-master-toggled-off"
+
+- tapOn:
+    id: "settings-master-push-toggle"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "notification-settings-master-toggled-on"
+
+# ============================================================
+# Step 6: Navigate back to notifications
+# ============================================================
+- tapOn:
+    id: "settings-back-button"
+
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 10000
+
+- takeScreenshot: "notification-settings-back-to-list"

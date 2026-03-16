@@ -46,8 +46,13 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadNotifications();
-    setRefreshing(false);
+    try {
+      await loadNotifications();
+    } catch (error) {
+      console.error('[NotificationCenter] Error refreshing:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleNotificationPress = async (notification: Notification) => {

@@ -1,14 +1,42 @@
 import { HapticTab } from '@/components/HapticTab';
+import { NotificationBadge } from '@/components/NotificationBadge';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { compactDesign, designTokens } from '@/constants/designTokens';
 import { theme } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { Tabs, useRouter } from 'expo-router';
-import { Compass, Heart, Home, MoreHorizontal, Plus } from 'lucide-react-native';
-import React from 'react';
-import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
+import { Bell, Compass, Home, MoreHorizontal, Plus } from 'lucide-react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function TabLayout() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const updateUnreadCountRef = useRef<() => Promise<void>>();
+
+  const handleUnreadCountChanged = useCallback((count: number) => {
+    setUnreadCount(count);
+  }, []);
+
+  const handleNotificationReceived = useCallback(() => {
+    updateUnreadCountRef.current?.();
+  }, []);
+
+  const { updateUnreadCount } = useRealtimeNotifications({
+    onUnreadCountChanged: handleUnreadCountChanged,
+    onNotificationReceived: handleNotificationReceived,
+  });
+
+  updateUnreadCountRef.current = updateUnreadCount;
+
+  useEffect(() => {
+    if (user?.id) {
+      updateUnreadCount();
+    }
+  }, [user?.id, updateUnreadCount]);
+
   const FloatingAddButton = () => (
     <TouchableOpacity
       style={styles.floatingButton}
@@ -20,7 +48,7 @@ export default function TabLayout() {
   );
 
   return (
- 
+
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: theme.colors.primary,
@@ -77,10 +105,13 @@ export default function TabLayout() {
         <Tabs.Screen
           name="activity"
           options={{
-            title: 'Activity',
-            tabBarTestID: 'tab-activity',
+            title: 'Notifications',
+            tabBarTestID: 'tab-notifications',
             tabBarIcon: ({ color, focused }) => (
-              <Heart size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+              <View>
+                <Bell size={compactDesign.icon.medium} color={color} strokeWidth={focused ? 2.5 : 2} />
+                <NotificationBadge count={unreadCount} size="small" />
+              </View>
             ),
           }}
         />
@@ -113,7 +144,7 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-  
+
   );
 }
 

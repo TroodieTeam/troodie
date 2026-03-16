@@ -2,21 +2,27 @@ import { NotificationSettings } from '@/components/NotificationSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { notificationPreferencesService } from '@/services/notificationPreferencesService';
 import { UserNotificationPreferences } from '@/types/notifications';
-import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NotificationSettingsScreen() {
+  const router = useRouter();
   const { user } = useAuth();
+  const defaultPrefs = { push_enabled: true, in_app_enabled: true, email_enabled: false, frequency: 'immediate' as const };
   const [preferences, setPreferences] = useState<UserNotificationPreferences>({
-    social: { push_enabled: true, in_app_enabled: true, email_enabled: false, frequency: 'immediate' },
-    achievements: { push_enabled: true, in_app_enabled: true, email_enabled: false, frequency: 'immediate' },
-    restaurants: { push_enabled: true, in_app_enabled: true, email_enabled: false, frequency: 'immediate' },
-    boards: { push_enabled: true, in_app_enabled: true, email_enabled: false, frequency: 'immediate' },
-    system: { push_enabled: true, in_app_enabled: true, email_enabled: false, frequency: 'immediate' }
+    social: { ...defaultPrefs },
+    achievements: { ...defaultPrefs },
+    restaurants: { ...defaultPrefs },
+    boards: { ...defaultPrefs },
+    system: { ...defaultPrefs },
+    campaigns: { ...defaultPrefs },
+    engagement: { ...defaultPrefs }
   });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -28,57 +34,61 @@ export default function NotificationSettingsScreen() {
     try {
       setLoading(true);
       const userPreferences = await notificationPreferencesService.getUserPreferences(user!.id);
-      setPreferences(userPreferences);
+      setPreferences(prev => ({ ...prev, ...userPreferences }));
     } catch (error) {
       console.error('Error loading notification preferences:', error);
-      Alert.alert('Error', 'Failed to load notification preferences');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePreferencesChange = (newPreferences: Partial<UserNotificationPreferences>) => {
-    setPreferences(prev => ({
-      ...prev,
-      ...newPreferences
-    }));
-  };
+  // Auto-save with debounce
+  const handlePreferencesChange = useCallback((newPreferences: Partial<UserNotificationPreferences>) => {
+    setPreferences(prev => ({ ...prev, ...newPreferences }));
 
-  const handleSave = async () => {
-    if (!user?.id) return;
-
-    try {
-      setSaving(true);
-      await notificationPreferencesService.updatePreferences(user.id, preferences);
-      Alert.alert('Success', 'Notification preferences saved successfully');
-    } catch (error) {
-      console.error('Error saving notification preferences:', error);
-      Alert.alert('Error', 'Failed to save notification preferences');
-    } finally {
-      setSaving(false);
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
-  };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <NotificationSettings
-          preferences={preferences}
-          onPreferencesChange={handlePreferencesChange}
-          onSave={handleSave}
-          loading={true}
-        />
-      </SafeAreaView>
-    );
-  }
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (!user?.id) return;
+      try {
+        await notificationPreferencesService.updatePreferences(user.id, newPreferences as UserNotificationPreferences);
+      } catch (error) {
+        console.error('Error saving notification preferences:', error);
+      }
+    }, 500);
+  }, [user?.id]);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header} testID="notification-settings-header">
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          testID="settings-back-button"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <ChevronLeft size={24} color="#1C1C1E" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <NotificationSettings
         preferences={preferences}
         onPreferencesChange={handlePreferencesChange}
-        onSave={handleSave}
-        loading={saving}
+        onSave={() => {}}
+        loading={loading}
       />
     </SafeAreaView>
   );
@@ -87,6 +97,28 @@ export default function NotificationSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB'
-  }
-}); 
+    backgroundColor: '#F2F2F7',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    backgroundColor: '#F2F2F7',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  headerSpacer: {
+    width: 44,
+  },
+});
