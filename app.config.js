@@ -81,6 +81,7 @@ export default {
       bundleIdentifier: "com.troodie.troodie.com",
       buildNumber: "1",
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSLocationWhenInUseUsageDescription:
           "Troodie uses your location to show nearby restaurants and recommendations.",
         NSCameraUsageDescription:
