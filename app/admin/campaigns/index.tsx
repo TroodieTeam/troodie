@@ -12,7 +12,7 @@ import { Plus, TrendingUp, Users, DollarSign } from 'lucide-react-native';
 import { designTokens } from '@/constants/designTokens';
 import { platformCampaignService } from '@/services/platformCampaignService';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import EmptyState from '@/components/EmptyState';
+import { EmptyState } from '@/components/design-system';
 
 export default function CampaignsListScreen() {
   const router = useRouter();

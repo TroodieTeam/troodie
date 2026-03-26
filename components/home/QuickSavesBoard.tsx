@@ -3,7 +3,6 @@ import { designTokens } from '@/constants/designTokens'
 import { theme } from '@/constants/theme'
 import { useAuth } from '@/contexts/AuthContext'
 import { boardService } from '@/services/boardService'
-import { boardServiceExtended } from '@/services/boardServiceExtended'
 import { restaurantFavoriteService } from '@/services/restaurantFavoriteService'
 import { restaurantService } from '@/services/restaurantService'
 import { restaurantVisitService } from '@/services/restaurantVisitService'
@@ -40,7 +39,7 @@ const QuickSavesBoard: React.FC<QuickSavesBoardProps> = ({ onRestaurantPress, re
 
       // If no Quick Saves board, get ALL saves (limited to 10 most recent)
       if (quickSaves.length === 0) {
-        quickSaves = await boardServiceExtended.getAllUserSaves(user.id, 10)
+        quickSaves = await boardService.getAllUserSaves(user.id, 10)
       }
 
       // Load restaurant details for each save

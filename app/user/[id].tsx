@@ -10,7 +10,6 @@ import { personas } from '@/data/personas';
 import { useFollowState } from '@/hooks/useFollowState';
 import { achievementService } from '@/services/achievementService';
 import { boardService } from '@/services/boardService';
-import { boardServiceExtended } from '@/services/boardServiceExtended';
 import { communityService } from '@/services/communityService';
 import { moderationService } from '@/services/moderationService';
 import { postService } from '@/services/postService';
@@ -281,7 +280,7 @@ function UserDetailScreenContent() {
         
         // If no Quick Saves board, get ALL saves from all boards
         if (saves.length === 0) {
-          saves = await boardServiceExtended.getAllUserSaves(id, 50); // Limit to 50 most recent
+          saves = await boardService.getAllUserSaves(id, 50); // Limit to 50 most recent
         }
         
         // Load restaurant details for each save
