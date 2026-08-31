@@ -64,7 +64,7 @@ function standardizeCuisine(rawCuisines) {
     const lowerRaw = cleaned.toLowerCase();
     let matched = false;
     for (const approved of lowerCaseApproved){
-      if (lowerRaw.includes(approved) || approved.includes(lowerRaw)) {
+      if (lowerRaw.includes(approved)) {
         standardized.push(APPROVED_CUISINE_TYPES[lowerCaseApproved.indexOf(approved)]);
         matched = true;
         break;
@@ -441,7 +441,7 @@ function processGooglePlacesData(placeDetails, userInput) {
     'Restaurant'
   ];
   if (placeDetails.types) {
-    const relevantTypes = placeDetails.types.filter((type)=>type.includes('restaurant') || type === 'cafe' || type === 'bar' || type === 'bakery' || type === 'meal_takeaway' || type === 'food');
+    const relevantTypes = placeDetails.types.filter((type)=>type.includes('restaurant') || type === 'cafe' || type === 'bar' || type === 'bakery' || type === 'meal_takeaway');
     if (relevantTypes.length > 0) {
       cuisineTypes = standardizeCuisine(relevantTypes.map((type)=>type.replace(/_/g, ' ').replace(/restaurant/g, '').trim()).filter(Boolean));
     }
