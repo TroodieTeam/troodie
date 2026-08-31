@@ -81,32 +81,6 @@ export class CloudinaryVideoService {
   }
 
   /**
-   * Generate Cloudinary signature for authenticated uploads
-   * Uses crypto-js or similar for signature generation
-   */
-  private static async generateSignature(params: Record<string, any>): Promise<string> {
-    // Sort parameters and create query string
-    const sortedParams = Object.keys(params)
-      .sort()
-      .map(key => `${key}=${params[key]}`)
-      .join('&');
-    
-    // Create signature string: sorted_params + API_SECRET
-    const signatureString = sortedParams + config.cloudinaryApiSecret;
-    
-    // Generate SHA1 hash (we'll use a simple approach for React Native)
-    // Note: For production, consider using a native crypto module or backend
-    try {
-      // Use Web Crypto API if available (React Native doesn't support it directly)
-      // For now, we'll use unsigned uploads with upload preset
-      // Or generate signature via backend
-      return '';
-    } catch (error) {
-      return '';
-    }
-  }
-
-  /**
    * Upload and optimize video with progress tracking using REST API
    * 
    * For 5-minute videos, uses aggressive compression:
@@ -217,28 +191,8 @@ export class CloudinaryVideoService {
         // Check derived transformations (async eager)
         optimizedUrl = result.derived[0].secure_url;
       } else {
-        // If eager is async in preset, wait a bit and check status
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Get asset details to check transformation status
-        try {
-          const statusUrl = `https://api.cloudinary.com/v1_1/${config.cloudinaryCloudName}/resources/video/upload/${result.public_id}`;
-          const statusResponse = await fetch(statusUrl, {
-            headers: {
-              'Authorization': `Basic ${btoa(`${config.cloudinaryApiKey}:${config.cloudinaryApiSecret}`)}`,
-            },
-          });
-          
-          if (statusResponse.ok) {
-            const asset = await statusResponse.json();
-            if (asset.derived && asset.derived.length > 0) {
-              optimizedUrl = asset.derived[0].secure_url;
-              // Async transformation complete
-            }
-          }
-        } catch (error) {
-          // Could not check transformation status
-        }
+        // No eager/derived transformations in response — upload preset processes them
+        // asynchronously server-side. Use the original secure_url as the video URL.
       }
 
       if (onProgress) {
@@ -316,35 +270,4 @@ export class CloudinaryVideoService {
     }
   }
 
-  /**
-   * Delete video from Cloudinary using REST API
-   */
-  static async deleteVideo(publicId: string): Promise<void> {
-    try {
-      const timestamp = Math.round(new Date().getTime() / 1000);
-      const signature = await this.generateSignature({
-        public_id: publicId,
-        timestamp,
-      });
-
-      const deleteUrl = `https://api.cloudinary.com/v1_1/${config.cloudinaryCloudName}/video/destroy`;
-      const formData = new FormData();
-      formData.append('public_id', publicId);
-      formData.append('timestamp', timestamp.toString());
-      formData.append('api_key', config.cloudinaryApiKey);
-      formData.append('signature', signature);
-
-      const response = await fetch(deleteUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete video: ${response.status}`);
-      }
-
-    } catch (error) {
-      throw error;
-    }
-  }
 }

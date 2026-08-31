@@ -75,7 +75,7 @@ export function standardizeCuisine(rawCuisines: any): string[] {
     let matched = false;
     
     for (const approved of lowerCaseApproved) {
-      if (lowerRaw.includes(approved) || approved.includes(lowerRaw)) {
+      if (lowerRaw.includes(approved)) {
         standardized.push(APPROVED_CUISINE_TYPES[lowerCaseApproved.indexOf(approved)]);
         matched = true;
         break;
