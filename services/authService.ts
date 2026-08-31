@@ -1,3 +1,4 @@
+import config from '@/lib/config'
 import { supabase } from '@/lib/supabase'
 import { AuthError, Session } from '@supabase/supabase-js'
 
@@ -15,6 +16,11 @@ export interface OtpResponse {
 
 export const authService = {
   // Internal helpers for bypass/test login behavior
+  // Bypass auth must never be reachable in production builds, regardless of
+  // which emails or codes are used, so this is checked before anything else.
+  _isBypassAllowed(): boolean {
+    return config.buildProfile !== 'production'
+  },
   _getBypassDomains(): string[] {
     const envList = (process.env.EXPO_PUBLIC_TEST_EMAIL_DOMAINS || '').split(',').map(d => d.trim()).filter(Boolean)
     // Always include legacy/default domains
@@ -23,6 +29,7 @@ export const authService = {
     return Array.from(merged)
   },
   _isBypassEmail(email: string): boolean {
+    if (!this._isBypassAllowed()) return false
     const lower = email.toLowerCase()
     return this._getBypassDomains().some(suffix => lower.endsWith(suffix)) || lower === 'review@troodieapp.com'
   },
@@ -380,7 +387,7 @@ export const authService = {
   async resendOtp(email: string, type: 'signup' | 'login' = 'login'): Promise<OtpResponse> {
     try {
       // Short-circuit for App Review account to avoid calling Supabase
-      if (email.toLowerCase() === 'review@troodieapp.com') {
+      if (this._isBypassAllowed() && email.toLowerCase() === 'review@troodieapp.com') {
         return {
           success: true,
           messageId: null,

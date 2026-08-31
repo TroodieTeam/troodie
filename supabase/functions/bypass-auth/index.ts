@@ -13,6 +13,22 @@ serve(async (req) => {
   }
 
   try {
+    // This function bypasses real auth entirely, so it must be explicitly
+    // enabled per-environment. Only set ENABLE_AUTH_BYPASS=true as a secret
+    // on the development Supabase project — never on production.
+    if (Deno.env.get('ENABLE_AUTH_BYPASS') !== 'true') {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Bypass auth is disabled in this environment.'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        }
+      )
+    }
+
     const { email, token } = await req.json()
 
     console.log('[bypass-auth] Request for email:', email)
